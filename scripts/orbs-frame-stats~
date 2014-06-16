@@ -1,0 +1,145 @@
+#!/usr/bin/python
+# *-* coding: utf-8 *-*
+# Author: Thomas Martin <thomas.martin.1@ulaval.ca>
+
+####################################################
+############ ORBS reduction script #################
+####################################################
+
+# Note that this script is aimed to run the whole reduction
+# process with the options used by default. 
+# To have more control on each function please use the file
+# "scripts/example_script.py"
+
+# To run this script simply use the following command :
+# $ ./orbs option_file.opt
+# Remember : for any help please refer to the file "Orbs/orbs.py"
+
+import sys, os, time
+import getopt
+
+import numpy as np
+
+# Defining the path to ORBS module from script location
+script_path = os.path.dirname(os.path.realpath(__file__)).split()
+orbs_path = os.path.normpath(('%s'%os.sep).join(str(script_path[0]).split(os.sep)[:-1]))
+sys.path.append(orbs_path)
+
+import orbs
+from orbs.utils import *
+from orbs.core import *
+from orbs.astrometry import *
+
+class Image(Tools):
+
+    def __init__(self, image_path, fwhm_arc=2., profile_name='gaussian',
+                 moffat_beta=2.4, readout_noise=3., dark_current_level=0.,
+                 refresh=False):
+
+        self.data, self.hdr = self.read_fits(image_path, return_header=True)
+        if self.data.ndim != 2:
+            self._print_error('FITS file must have exactly 2 dimensions')
+        self.dimx = self.data.shape[0]
+        self.dimy = self.data.shape[1]
+        self.fwhm_arc = fwhm_arc
+        self.fov = float(self._get_config_parameter("FIELD_OF_VIEW"))
+        self.profile_name = profile_name
+        self.moffat_beta = moffat_beta
+        self._data_prefix = 'frame_stats.'
+        self.readout_noise = readout_noise
+        self.dark_current_level = dark_current_level
+        self.refresh = refresh
+        
+        self.astrom = Astrometry(self.data, self.fwhm_arc, self.fov,
+                                 profile_name=self.profile_name,
+                                 moffat_beta=self.moffat_beta,
+                                 data_prefix=self._data_prefix + 'cam1.',
+                                 readout_noise=self.readout_noise,
+                                 dark_current_level=self.dark_current_level,
+                                 logfile_name=self._logfile_name)
+        
+
+    def get_stats(self, min_star_number=15, saturation_threshold=60000):
+        
+        # Get star list
+        if (os.path.exists(self.astrom._get_star_list_path())
+            and not self.refresh):
+            star_list = load_star_list(self.astrom._get_star_list_path())
+            self.astrom.reset_star_list(star_list)
+        else:
+            # stars detection
+            star_list_path, mean_fwhm = self.astrom.detect_stars(
+                min_star_number=min_star_number,
+                saturation_threshold=saturation_threshold)
+        # fit
+        self.astrom.fit_stars_in_frame(0, precise_guess=True)
+        # get iq
+        iq = robust_mean(sigmacut(self.astrom.fit_results[:,0,'fwhm_arc']))
+        self._print_msg('Mean stars FWHM: %f arcsec'%iq)
+        # get background
+        background = sky_background_level(self.data)
+        self._print_msg('Background estimation: %f counts'%background)
+
+
+def usage(): 
+    print """usage: orbs-frame-stats [OPTIONS] IMAGE_PATH
+
+    Options
+    -------
+    -r  Refresh star list if a star list has already been created
+    
+  ORBS version: %s
+  Author: Thomas Martin (thomas.martin.1@ulaval.ca)  
+"""%orbs.core.__version__
+    sys.exit(2)
+
+def main():
+
+    try:
+        opts, args = getopt.getopt(sys.argv[1:], "r", [])
+    except getopt.GetoptError, err:
+        print str(err)
+        usage()
+
+ 
+    
+    start_time = time.time()
+
+    
+    if (len(args) > 0):
+        to = Tools(logfile_name=os.path.basename(str(args[0])) + '.perf.log')
+    else:
+        to = Tools()
+        
+    #################
+    # Check options #
+    #################
+    refresh = False
+    
+    for opt, arg in opts:
+        if opt in '-r':
+            refresh = True
+        
+    ###################################
+    # Run STATS with the given options 
+    ###################################
+    
+    if (len(args) > 0):
+        image_path = args[0]
+
+        im = Image(image_path, refresh=refresh)
+        im.get_stats()
+        
+        end_time = time.time()
+        
+        #to._print_msg("Script finished at : " + time.ctime(end_time), color=True)
+        #to._print_msg("Total time : " + str((end_time - start_time) / 3600.) + " hours", color=True)
+
+        
+    else: usage()
+
+if __name__ == "__main__":
+    main()
+
+
+

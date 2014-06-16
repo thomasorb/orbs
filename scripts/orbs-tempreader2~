@@ -1,0 +1,133 @@
+#!/usr/bin/python
+# *-* coding: utf-8 *-*
+# Author: Thomas Martin <thomas.martin.1@ulaval.ca>
+
+####################################################
+############ ORBS TempReader #######################
+####################################################
+
+# This script has been created to update headers of the camera 2 given
+# a temperature file created during the observations
+
+import sys, os, time
+import getopt
+
+import numpy as np
+
+# Defining the path to ORBS module from script location
+script_path = os.path.dirname(os.path.realpath(__file__)).split()
+orbs_path = os.path.normpath(('%s'%os.sep).join(str(script_path[0]).split(os.sep)[:-1]))
+sys.path.append(orbs_path)
+    
+from orbs.core import Tools
+
+class TempReader(Tools):
+
+    temp_list = None
+    frame_list = None
+    
+    def read_temperature_files(self, folder_path):
+        """Read files giving the temperature of each frame created by
+        the camera 2 of SpIOMM.
+
+        .. note:: The temperature file must be in the same folder as
+          the frames and its name must be of the form *_temp.txt
+        """
+        files_list = os.listdir(folder_path)
+        frame_files_list = [file_name
+                           for file_name
+                           in os.listdir(folder_path)
+                           if file_name[-5:] == ".fits"]
+        frame_files_list.sort()
+        temp_files_list = [file_name
+                           for file_name
+                           in os.listdir(folder_path)
+                           if file_name[-9:] == "_temp.txt"]
+        
+        temp_list = list()
+        
+        for temp_file_path in temp_files_list:
+            # open each temperature file and read it
+            temp_file = self.open_file(temp_file_path, 'rU')
+            for temp_line in temp_file:
+                if len(temp_line) > 2:
+                    temp_list.append((
+                        float(temp_line.split()[-1].replace(',','.')),
+                        temp_line.split()[0].split('\\')[-1]))
+
+        if len(temp_list) == 0:
+            self._print_error("I must have at least one temperature file (*._temp.txt)")
+        elif len(frame_files_list) == 0:
+            self._print_error("I must have at least one frame file to update file (*._fits)")
+            
+        elif len(temp_list) < len(frame_files_list):
+            self._print_error("List of frame temperatures is shorter than the number of frames. This list cannot be used !")
+            temp_list = None
+
+
+        self.temp_list = temp_list
+        self.frame_list = frame_files_list
+        return temp_list
+                
+    
+    def update_frames_header(self):
+        if self.temp_list == None or self.frame_list == None:
+            self._print_error("You must read the folder before updating frames header. Use read_temperature_files method first.")
+
+        for iframe in range(len(self.frame_list)):
+            self._print_msg(
+                "Updating header of file : %s"%self.frame_list[iframe])
+            temp = [itemp[0] for itemp in self.temp_list if itemp[1] == self.frame_list[iframe]]
+            if len(temp) == 1:
+                temp = temp[0]
+                self._update_fits_key(self.frame_list[iframe],
+                                      'CCD-TEMP',
+                                      temp,
+                                      'CCD temperature at start of exposure in C')
+            else:
+                self._print_error("Oups, the frame name listed does not appear to be listed in the temp file")
+
+def usage(): 
+    print """ orbs-tempreader
+
+    Read the temperature files contained in a frame folder and update
+    frames header.
+
+    This script must be run in the folder that has to be checked.
+
+    If the number of temperature listed and the number of frames is
+    different try to correct the problem.
+
+  Author: Thomas Martin (thomas.martin.1@ulaval.ca)
+"""
+
+def main():
+
+    try:
+        opts, args = getopt.getopt(sys.argv[1:], "h",
+                                   ["help"])
+    except getopt.GetoptError, err:
+        print str(err)
+        usage()
+        sys.exit(2)
+
+ 
+    # Check options    
+    for opt, arg in opts:
+        if opt in ("-h", "--help"):
+            usage()
+            quit()
+       
+
+   
+    # Check folder and update header
+    tempreader = TempReader()
+    tempreader.read_temperature_files("./")
+    tempreader.update_frames_header()
+    
+
+if __name__ == "__main__":
+    main()
+
+
+

@@ -1,0 +1,54 @@
+CUtils module
+=============
+
+Contents
+--------
+
+.. autosummary::
+    :nosignatures:
+
+    cutils.radians
+    cutils.transform_A_to_B
+    cutils.gaussian_array2d
+    cutils.surface_value
+    cutils.csigmacut
+    cutils.csigmaclip
+    cutils.master_combine
+    cutils.crobust_mean
+    cutils.crobust_median
+    cutils.crobust_sum
+    cutils.crobust_std
+    cutils.crobust_average
+
+Cutils
+------
+
+.. automodule:: cutils
+   :members:
+   :private-members:
+   :show-inheritance:
+
+
+.. autofunction:: cutils.radians
+
+.. autofunction:: transform_A_to_B
+
+.. autofunction:: gaussian_array2d
+
+.. autofunction:: surface_value
+
+.. autofunction:: csigmacut
+
+.. autofunction:: csigmaclip
+
+.. autofunction:: master_combine
+
+.. autofunction:: crobust_mean
+
+.. autofunction:: crobust_median
+
+.. autofunction:: crobust_sum
+
+.. autofunction:: crobust_std
+
+.. autofunction:: crobust_average

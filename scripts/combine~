@@ -1,0 +1,48 @@
+#!/usr/bin/python
+# *-* coding: utf-8 *-*
+# Author: Thomas Martin <thomas.martin.1@ulaval.ca>
+# File: combine
+
+#############################################
+############ COMBINE script ##################
+#############################################
+
+# This script helps the user to combine a set of frames. A
+# list of frames path must be given. List files created by ORBS can be
+# used. Custom lists can be created using the command:
+# 'ls /path/to/file/*.fits > list'
+
+
+import sys, os
+
+# Defining the path to ORBS module from script location
+script_path = os.path.dirname(os.path.realpath(__file__)).split()
+orbs_path = os.path.normpath(('%s'%os.sep).join(str(script_path[0]).split(os.sep)[:-1]))
+sys.path.append(orbs_path)
+    
+from orbs.core import Cube
+
+def usage(): 
+    print """usage: combine LIST_OF_FITS IMAGE_NAME
+    
+    Combine a set of frames in one frame.
+    
+    Frames must have the same shape."""
+  
+    sys.exit(2)
+
+def main():
+
+    if len(sys.argv) < 3: usage()
+
+    list_of_fits_path = sys.argv[1]
+    im_name = sys.argv[2]
+    if os.path.exists(list_of_fits_path):
+        cube = Cube(list_of_fits_path, no_log=True)
+        im = cube.get_mean_image()
+        cube.write_fits(im_name, im)
+    else:
+        print "The list file does not exist"
+       
+if __name__ == "__main__":
+    main()

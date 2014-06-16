@@ -1,0 +1,104 @@
+#!/usr/bin/python
+# *-* coding: utf-8 *-*
+# Author: Thomas Martin <thomas.martin.1@ulaval.ca>
+
+####################################################
+############ ORBS SpIOMM Data Corrector ############
+####################################################
+
+import sys, os
+
+# Defining the path to ORBS module from script location
+script_path = os.path.dirname(os.path.realpath(__file__)).split()
+orbs_path = os.path.normpath(('%s'%os.sep).join(str(script_path[0]).split(os.sep)[:-1]))
+sys.path.append(orbs_path)
+
+from orb.core import Tools
+import orb.utils
+
+
+def get_double_index(cam_list, d_index, file_path):
+    for i in range(len(cam_list)):
+        if cam_list[i][0] == str(d_index) + file_path:
+            return i
+    return None
+
+def filter_doubles(file_list):
+    cam_list = list(file_list)
+    to_pop = list()
+    for index in range(len(cam_list)):
+
+        double_index = get_double_index(cam_list, 0, cam_list[index][0])
+        if double_index != None:
+            cam_list[index] = (cam_list[index][0], cam_list[double_index][1])
+            to_pop.append(double_index)
+            for icheck in range(1,10):
+                new_double_index = get_double_index(cam_list, icheck,
+                                                    cam_list[index][0])
+                if new_double_index == None:
+                    break
+                else:
+                    cam_list[index] = (cam_list[index][0], cam_list[
+                        new_double_index][1])
+                    to_pop.append(new_double_index)
+
+    cam_list = [cam_list[ifile] for ifile in range(len(cam_list))
+                if ifile not in to_pop]
+    cam_list.sort(key=lambda ifile: ifile[0])
+    
+    return cam_list
+
+
+
+CENTER_SIZE_COEFF = 0.1
+
+
+cam1_list = os.listdir('.')
+cam2_list = os.listdir('./CAM2/')
+
+# create lists (FINAL_NAME, PATH)
+cam1_list = [(ifile, ifile) for ifile in cam1_list if ('.fits' in ifile)]
+cam2_list = [(ifile, ifile) for ifile in cam2_list
+             if (('.fits' in ifile) and ('bias' not in ifile))]
+
+# filter doubles
+cam1_list = filter_doubles(cam1_list)
+cam2_list = filter_doubles(cam2_list)
+
+# create a cleared folder
+rootpath = os.path.realpath('.').split(os.sep)
+rootpath[-1] = rootpath[-1] + '_CLEARED'
+rootpath = os.sep.join(rootpath)
+
+for ifile in cam1_list:
+    # create path
+    newpath = rootpath + os.sep + ifile[0]
+    frame, hdr = Tools().read_fits(ifile[1], return_header=True)
+    Tools().write_fits(newpath, frame, fits_header=hdr, overwrite=True)
+
+
+
+for ifile in cam2_list:
+    # create path
+    newpath = rootpath + os.sep + 'CAM2' + os.sep + ifile[0]
+
+    # get bias level
+    oldpath = 'CAM2' + os.sep + ifile[1]
+    frame, hdr = Tools().read_fits(oldpath, return_header=True)
+    bias_path = os.path.splitext(oldpath)
+    bias_path = bias_path[0] + '_bias' + bias_path[1]
+    dimx = float(frame.shape[0])
+    dimy = float(frame.shape[1])
+    x_min, x_max, y_min, y_max = orb.utils.get_box_coords(
+        dimx/2., dimy/2., max((dimx, dimy))*CENTER_SIZE_COEFF,
+        0, dimx, 0, dimy)
+    if os.path.exists(bias_path):
+        bias_frame = Tools().read_fits(bias_path)
+        
+        hdr['BIAS-LVL'] = (
+            orb.utils.robust_median(
+                bias_frame[x_min:x_max, y_min:y_max]),
+            'Bias level (moment, at the center of the frame)')
+        
+    Tools().write_fits(newpath, frame, fits_header=hdr, overwrite=True)
+        

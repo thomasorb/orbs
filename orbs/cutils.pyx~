@@ -1,0 +1,851 @@
+# cython: embedsignature=True
+# *-* coding: utf-8 *-*
+# Author: Thomas Martin <thomas.martin.1@ulaval.ca>
+# File: cutils.pyx
+
+# __author__ = "Thomas Martin"
+# __licence__ = "Thomas Martin (thomas.martin.1@ulaval.ca)"
+# __docformat__ = 'reStructuredText'
+
+"""
+CUtils is a set of C functions for ORBS coded in Cython_ to improve their speed.
+
+.. note:: This file must be compiled before it can be used in ORBS::
+
+     cython cutils.pyx
+     
+     gcc -c -fPIC -I/usr/include/python2.7 cutils.c
+     
+     gcc -shared cutils.o -o cutils.so
+
+.. _Cython: http://cython.org/
+
+"""
+import numpy as np
+cimport numpy as np
+
+import scipy.ndimage.filters
+
+import bottleneck as bn # https://pypi.python.org/pypi/Bottleneck
+from cpython cimport bool
+
+## Import functions from math.h (faster than python math.py)
+cdef extern from "math.h":
+    double cos(double theta)
+    double sin(double theta)
+    double exp(double x)
+    double sqrt(double x)
+    double log(double x)
+    double ceil(double x)
+    double floor(double x)
+    double M_PI
+
+def cradians(double deg):
+    """Convert degrees to radians
+    """
+    return deg * M_PI / 180.
+
+def ctransform_A_to_B(double x1, double y1, double dx, double dy, double dr,
+                     double da, double db, double xrc, double yrc, double z):
+    """Transform star positions in camera A to the same star position
+    in camera B given the transformation parameters
+
+    :param x1: x coordinate to transform
+    :param y1: y coordinate to transform
+    :param dx: translation along x
+    :param dy: translation along y
+    :param dr: rotation in the plane of the image
+    :param da: tip angle
+    :param db: tilt angle
+    :param xrc: x coordinate of the rotation center
+    :param yrc: y coordinate of the rotation center
+    :param z: zoom coefficient
+    """
+    dr = cradians(dr)
+    da = cradians(da)
+    db = cradians(db)
+    x1 = x1 / cos(da) / z - dx
+    y1 = y1 / cos(db) / z - dy
+    cdef double x2 = (x1 - xrc) * cos(-dr) - (y1 - yrc) * sin(-dr) + xrc
+    cdef double y2 = (y1 - yrc) * cos(-dr) + (x1 - xrc) * sin(-dr) + yrc
+    return x2, y2
+
+def cgaussian_array2d(double h, double a, double dx, double dy, double fwhm,
+                      int nx, int ny):
+    """Return the 2D profile of a gaussian
+
+    :param h: Height
+    :param a: Amplitude
+    :param dx: X position
+    :param dy: Y position
+    :param fwhm: FWHM
+    :param nx: X dimension of the output array
+    :param ny: Y dimension of the output array
+    """
+    cdef np.ndarray[np.float64_t, ndim=2] arr = np.empty((nx, ny))
+    cdef double r = 0.
+    cdef double w = fwhm / (2. * sqrt(2. * log(2.)))
+
+    for ii in range(nx):
+        for ij in range(ny):
+            r = sqrt((ii - dx)**2. + (ij - dy)**2.)
+            arr[ii,ij] = h + a * exp(-r**2./(2.*w**2.))
+    
+    return arr
+
+def cmoffat_array2d(double h, double a, double dx, double dy,
+                    double fwhm, double beta, int nx, int ny):
+    
+    """Return the 2D profile of a moffat
+
+    :param h: Height
+    :param a: Amplitude
+    :param dx: X position
+    :param dy: Y position
+    :param fwhm: FWHM
+    :param beta: Beta
+    :param nx: X dimension of the output array
+    :param ny: Y dimension of the output array
+    """
+    cdef np.ndarray[np.float64_t, ndim=2] arr = np.empty((nx, ny))
+    cdef double r = 0.
+    cdef double w = fwhm / (2. * sqrt(2. * log(2.)))
+    cdef double alpha
+
+    if beta > 0.:
+        alpha = fwhm / (2. * sqrt(2**(1. / beta) - 1.))
+
+        for ii in range(nx):
+            for ij in range(ny):
+                r = sqrt((ii - dx)**2. + (ij - dy)**2.)
+                arr[ii,ij] = h + a * (1. + (r/alpha)**2.)**(-beta)
+    else:
+        arr.fill(np.nan)
+    
+    return arr
+
+def csurface_value(int dimx, int dimy, double xc, double yc, double rmin,
+                   double rmax, long sub_div):
+    """Return an approximation of the surface value of a pixel given
+    the min and max radius of an annulus in pixels.
+
+    :param dimx: dimension of the box along x
+    
+    :param dimy: dimension of the box along y
+    
+    :param xc: center of the annulus along x
+    
+    :param yc: center of the annulus along y
+    
+    :param rmin: min radius of the annulus
+    
+    :param rmax: max radius of the annulus
+    
+    :param sub_div: Number of subdivisions to make (the higher,the
+      better but the longer too)
+    """
+
+    cdef double value = 1. / sub_div**2
+    cdef int isub
+    cdef int jsub
+    cdef double r
+    cdef long sub_dimx = dimx*sub_div
+    cdef long sub_dimy = dimy*sub_div
+    cdef np.ndarray[np.float64_t, ndim=2] S = np.zeros((dimx, dimy))
+    
+    xc += 0.5
+    yc += 0.5
+    
+    for isub in range(sub_dimx):
+        for jsub in range(sub_dimy):
+            r = sqrt(((<double> isub) - (xc * sub_div - 0.5))**2.
+                      + ((<double> jsub) - (yc * sub_div - 0.5))**2.)
+            if r <= rmax * sub_div and r >= rmin * sub_div:           
+                S[<int>(isub/sub_div), <int>(jsub/sub_div)] += value
+                
+    return S
+
+
+def csigmacut(np.ndarray[np.float64_t, ndim=1] x, double central_value,
+              int use_central_value, double sigma, int min_values):
+    """Return a distribution after a sigma cut rejection
+    of the too deviant values.
+
+    :param x: The distribution to cut
+    
+    :param sigma: Number of sigma above which values are considered as
+      deviant
+
+    :param min_values: Minimum number of values to return
+
+    :param central_value: If not none, this value is used as the
+      central value of the cut. Else the median of the distribution is
+      used as the central value
+
+    :param use_central_value: If True central value is used instead of
+      the median.
+    """
+    cdef int still_rejection = 1
+    cdef double central_x
+    cdef int new_sz
+    cdef int sz
+    
+    if bn.anynan(x):
+        x = x[np.nonzero(~np.isnan(x))]
+    
+    while still_rejection:
+        sz = np.size(x)
+        if not use_central_value:
+            central_x = bn.nanmedian(x)
+        else:
+            central_x = central_value
+            
+        std_x = bn.nanstd(x)
+        new_x = x[np.nonzero((x < central_x + sigma * std_x)
+                             * (x > central_x - sigma * std_x))]
+        
+        new_sz = np.size(new_x)
+        if new_sz == sz or new_sz <= min_values:
+            still_rejection = 0
+        else:
+            x = new_x
+    return x
+
+
+
+def csigmaclip(np.ndarray[np.float64_t, ndim=1] x, double sigma,
+               int min_values):
+    """Return a distribution after a sigma clipping rejection
+    of the too deviant values.
+
+    :param x: The distribution to sigmaclip
+
+    :param sigma: Number of sigma above which values are considered as
+      deviant
+      
+    :param min_values: Minimum number of values to return
+    """
+    cdef int still_rejection = 1
+    cdef double central_x
+    cdef int sz, new_sz
+    cdef double med, std
+    cdef int min_mask = 0
+    cdef int max_mask = x.shape[0] - 1
+    
+    if bn.anynan(x):
+        x = x[np.nonzero(~np.isnan(x))]
+
+    # sort array once and for all
+    x = np.sort(x)
+
+    # compute first median without min and max
+    med = bn.median(x[1:-1])
+    std = bn.nanstd(x[1:-1])
+
+    while still_rejection:
+        # put min and max at first and last index
+        sz = max_mask - min_mask + 1
+
+        while x[min_mask] <= med - sigma * std:
+            min_mask += 1
+        while x[max_mask] >= med + sigma * std:
+            max_mask -= 1
+
+        new_sz = max_mask - min_mask + 1
+        
+        if new_sz == sz or new_sz <= min_values:
+            still_rejection = 0
+        else:
+            med = bn.median(x[min_mask:max_mask+1])
+            std = bn.nanstd(x[min_mask:max_mask+1])
+            
+    return x[min_mask:max_mask+1]
+
+def master_combine(np.ndarray[np.float64_t, ndim=3] frames, double sigma,
+                   int nkeep, int combine_mode, int reject_mode):
+    """
+    Create a master frame from a set a frames.
+
+    This method has been inspired by the **IRAF** function
+    combine.
+
+    :param frames: Frames to be combined.
+
+    :param sigma: Sigma factor for pixel rejection.
+
+    :param nkeep: Minimum number of values to keep before
+      combining operation
+    
+    :param combine_mode: 0, mean ; 1, median.
+    
+    :param reject_mode: 0, avsigclip ; 1, sigclip ; 2, minmax.
+
+    .. note:: Rejection operations:
+
+      * **sigclip**: A Sigma Clipping algorithm is applied for
+        each pixel. Min and max values are rejected to estimate
+        the mean and the standard deviation at each pixel. Then
+        all values over (median + sigma * std) or below (median -
+        sigma * std) are rejected. Those steps are repeated (this
+        time not excluding the extreme values) while no other
+        value is rejected or the minimum number of values to keep
+        is reached. Work best with at least 10 frames.
+
+      * **avsigclip**: Average Sigma Clipping algorithm is the
+        same as Sigma Clipping algorithm but the standard
+        deviation at each pixel is estimated using an averaged
+        value of the std over the lines. This work best than sigma
+        clipping for a small number of frames. This algorithm is a
+        little more time consuming than the others. Works best with
+        at least 5 frames.
+
+      * **minmax**: Minimum and maximum values at each pixel are
+        rejected.
+
+    .. warning:: No rejection operation can be performed with less
+      than 3 frames.
+    """
+
+    cdef int stop_rejection = 0
+    cdef int dimx = frames.shape[0]
+    cdef int dimy = frames.shape[1]
+    cdef int dimz = frames.shape[2]
+    if dimz < 3: raise Exception('There must be more than 2 frames to combine')
+
+    cdef np.ndarray[np.float64_t, ndim=3] framesdiff = np.empty(
+        (dimx, dimy, dimz), dtype=np.float64)
+    
+    cdef np.ndarray[np.int64_t, ndim=2] argmax2d = np.empty(
+        (dimx, dimy), dtype=np.int64)
+    cdef np.ndarray[np.float64_t, ndim=2] max2d = np.empty(
+        (dimx, dimy), dtype=np.float64)
+    cdef np.ndarray[np.float64_t, ndim=2] sqrtmean2d = np.empty(
+        (dimx, dimy), dtype=np.float64)
+    cdef np.ndarray[np.uint8_t, ndim=2] rejects2d = np.zeros(
+        (dimx, dimy), dtype=np.uint8)
+    cdef np.ndarray[np.uint8_t, ndim=2] new_rejects2d = np.zeros(
+        (dimx, dimy), dtype=np.uint8)
+    
+    
+    cdef np.ndarray[np.float64_t, ndim=2] mean2d = np.empty((dimx, dimy))
+    cdef np.ndarray[np.float64_t, ndim=2] std2d = np.empty((dimx, dimy))
+    
+    frames = np.sort(frames, axis=2)
+    mean2d = bn.nanmean(frames[:,:,1:-1], axis=2)
+    std2d = bn.nanstd(frames[:,:,1:-1], axis=2)
+
+    ## Rejection
+    # sigclip or avsigclip
+    if reject_mode == 0 or reject_mode == 1 :
+        while not stop_rejection:
+            if reject_mode == 0:
+                sqrtmean2d = np.sqrt(np.abs(mean2d))
+                sqrtmean2d[np.nonzero(mean2d == 0)] = np.nan
+                std2d = (sqrtmean2d.T
+                         * bn.nanmean(std2d / sqrtmean2d, axis=1)).T
+
+            framesdiff = np.abs((frames.T - mean2d.T).T)
+            argmax2d = bn.nanargmax(framesdiff, axis=2)
+            max2d = bn.nanmax(framesdiff, axis=2)
+            mask2d = np.nonzero(np.logical_and(max2d > std2d * sigma,
+                                               rejects2d < dimz - nkeep))
+            rejpix = (mask2d[0], mask2d[1], argmax2d[mask2d])
+            frames[rejpix] = np.nan
+            new_rejects2d[mask2d] += 1
+            
+            if np.all(new_rejects2d == rejects2d):
+                stop_rejection = 1
+
+            rejects2d = np.copy(new_rejects2d)
+            mean2d = bn.nanmean(frames, axis=2)
+            std2d = bn.nanstd(frames, axis=2)
+        
+    # minmax
+    elif reject_mode == 2:
+        frames = frames[:,:,1:-1]
+        rejects2d.fill(2)
+    else: raise Exception('Bad rejection mode. Must be 0, 1 or 2.')
+
+    ## Combination
+    if combine_mode == 0:
+        return bn.nanmean(frames, axis=2), rejects2d
+    elif combine_mode == 1:
+        return bn.nanmedian(frames, axis=2), rejects2d
+    else: raise Exception('Bad combining mode. Must be 0 or 1')
+
+
+def _crobust_format(np.ndarray x):
+    """Format data and check if it can be computed by bottleneck module.
+
+    :param x: a numpy ndarray
+
+    :return: (formatted_data, flag, complexflag). If the flag is True,
+      data can be computed by the bottleneck module. Else it must be
+      computed with Numpy. The complexflag tells if the data is
+      complex.
+    """
+    cdef bool flag = True
+    cdef bool complexflag = False
+    
+    if x.ndim < 1:
+        flag = False
+
+    if x.dtype == np.dtype(complex):
+        complexflag = True
+
+    if x.dtype.byteorder != '|' or '=':
+        x = x.astype(x.dtype.newbyteorder('N'))
+
+    if x.dtype == np.dtype(float) or x.dtype == np.dtype(complex):
+        if np.any(np.isinf(x)):
+            x[np.nonzero(np.isinf(x))] = np.nan
+        
+    return x, flag, complexflag
+    
+def crobust_mean(np.ndarray x):
+    """Compute robust mean of a numpy ndarray (NaNs are skipped)
+
+    :param x: a numpy ndarray 
+    """
+    cdef bool flag
+    cdef bool complexflag
+    cdef complex complexresult
+    
+    (x, flag, complexflag) = _crobust_format(x)
+
+    if flag:
+        if complexflag:
+            complexresult.real = bn.nanmean(x.real)
+            complexresult.imag = bn.nanmean(x.imag)
+            return complexresult
+        else:
+            return bn.nanmean(x)
+    else:
+        return np.nanmean(x)
+
+
+def crobust_median(np.ndarray x):
+    """Compute robust median of a numpy ndarray (NaNs are skipped)
+
+    :param x: a numpy ndarray 
+    """
+    cdef bool flag
+    cdef bool complexflag
+    cdef complex complexresult
+    
+    (x, flag, complexflag) = _crobust_format(x)
+
+    if flag:
+        if complexflag:
+            complexresult.real = bn.nanmedian(x.real)
+            complexresult.imag = bn.nanmedian(x.imag)
+            return complexresult
+        else:
+            return bn.nanmedian(x)
+    else:
+        return np.median(x)
+
+def crobust_sum(np.ndarray x):
+    """Compute robust sum of a numpy ndarray (NaNs are skipped)
+
+    :param x: a numpy ndarray 
+    """
+    cdef bool flag
+    cdef bool complexflag
+    cdef complex complexresult
+    
+    (x, flag, complexflag) = _crobust_format(x)
+ 
+    if flag:
+        if complexflag:
+            complexresult.real = bn.nansum(x.real)
+            complexresult.imag = bn.nansum(x.imag)
+            return complexresult
+        else:
+            return bn.nansum(x)
+    else:
+        return np.nansum(x)
+
+def crobust_std(np.ndarray x):
+    """Compute robust std of a numpy ndarray (NaNs are skipped)
+
+    :param x: a numpy ndarray 
+    """
+    cdef bool flag
+    cdef bool complexflag
+    cdef complex complexresult
+    
+    (x, flag, complexflag) = _crobust_format(x)
+
+    if flag:
+        if complexflag:
+            complexresult.real = bn.nanstd(x.real)
+            complexresult.imag = bn.nanstd(x.imag)
+            return complexresult
+        else:
+            return bn.nanstd(x)
+    else:
+        return np.nanstd(x)
+
+def crobust_average(np.ndarray x,
+                    np.ndarray w):
+    """Compute robust average of a numpy ndarray (NaNs are skipped)
+
+    :param x: a numpy ndarray
+    :param w: a numpy ndarray of weigths
+    """
+    cdef bool flagx
+    cdef bool flagw
+    cdef bool complexflagx
+    cdef bool complexflagw
+    cdef complex complexresult
+    cdef int i
+    
+    (x, flagx, complexflagx) = _crobust_format(x)
+    (w, flagw, complexflagw) = _crobust_format(w)
+
+    if x.ndim == w.ndim:
+        for i in range(x.ndim):
+            if x.shape[i] != w.shape[i]:
+                raise Exception('Array and weights must have same shape')
+    else:
+        raise Exception('Array and weights must have same number of dimensions')
+        
+    if flagx and flagw:
+        if complexflagx or complexflagw:
+            complexresult.real = bn.nanmean(x.real * w.real)
+            complexresult.imag = bn.nanmean(x.imag * w.imag)
+            return complexresult
+        else:
+            return bn.nanmean(x * w)
+    else:
+        return np.nanmean(x * w)
+
+def cgaussian1d(np.ndarray[np.float64_t, ndim=1] x,
+                double h, double a, double dx, double fwhm):
+    """Return a 1D gaussian given a set of parameters.
+
+    :param x: 1D array of float64 giving the positions where the
+      gaussian is evaluated
+    
+    :param h: Height
+    :param a: Amplitude
+    :param dx: Position of the center
+    :param w: FWHM, :math:`\\text{FWHM} = \\text{Width} \\times 2 \\sqrt{2 \\ln 2}`
+    """
+    cdef double w = fwhm / (2. * sqrt(2. * log(2.)))
+    return  h + a * np.exp(-(x - dx)**2. / (2. * w**2.))
+
+def csinc1d(np.ndarray[np.float64_t, ndim=1] x,
+            double h, double a, double dx, double fwhm):
+    """Return a 1D sinc given a set of parameters.
+
+    :param x: 1D array of float64 giving the positions where the
+      sinc is evaluated
+    
+    :param h: Height
+    :param a: Amplitude
+    :param dx: Position of the center
+    :param w: FWHM, :math:`\\text{FWHM} = \\text{Width} \\times 2 \\sqrt{2 \\ln 2}`
+    """
+    cdef np.ndarray[np.float64_t, ndim=1] X = ((x-dx)/(fwhm/1.2067))
+    return h + a * np.sinc(X)
+
+
+def cfft_filter(np.ndarray[np.float64_t, ndim=1] a,
+                double cutoff, double width, bool lowpass):
+    """
+    Simple lowpass or highpass FFT filter (high pass or low pass)
+
+    Filter shape is a gaussian.
+    
+    :param a: a 1D float64 vector
+
+    :param cutoff_coeff: Coefficient defining the position of the cutoff
+      frequency (Cutoff frequency = cutoff_coeff * vector length)
+
+    :param width_coeff: Coefficient defining the width of
+      the smoothed part of the filter (width = width_coeff * vector
+      length) 
+
+    :param lowpass: If True filter will be 'low_pass' and 'high_pass'
+      if False.
+    """
+    if cutoff > 1. or cutoff < 0.:
+        raise ValueError('cutoff must be between 0. and 1.')
+    if width > 1. or width < 0.:
+        raise ValueError('width must be between 0. and 1.')
+
+    cdef int n = a.shape[0]
+    cdef int fn = <int> floor(<double> n/2.)
+    cdef np.ndarray[np.float64_t, ndim=1] hwindow = np.zeros(
+        fn, dtype=np.float64)
+    cdef np.ndarray[np.float64_t, ndim=1] window = np.empty(
+        n, dtype=np.float64)
+    cdef int icut = max(0, <int> floor(<double> n * cutoff))
+    cdef double wlen = <double> fn * width
+    cdef int wsize = <int> ceil(wlen) * 2
+    cdef np.ndarray[np.float64_t, ndim=1] w = np.empty(
+        wsize, dtype=np.float64)
+    cdef double dx
+    cdef int minx, maxx
+    cdef double median_a
+    
+    # half-window design
+    dx = <double> fn * cutoff - <double> icut
+    w = cgaussian1d(np.arange(wsize, dtype=np.float64),
+                    0., 1., dx, wlen / 1.5)
+    w[0] = 1.
+    
+    minx = icut - <int> floor(wlen / 2.)
+    maxx = minx + w.shape[0]
+    if minx < 0:
+        w = w[-minx:]
+        minx = 0
+    if maxx >= fn:
+        w = w[:fn-maxx]
+        maxx = fn
+    hwindow[minx:maxx] = w
+    if minx > 0:
+        hwindow[:minx+1] = 1.
+
+    if not lowpass:
+        hwindow = - hwindow + 1.
+
+    if not n%2:
+        window = np.hstack((hwindow, hwindow[::-1]))
+    else:
+        window = np.hstack((hwindow, hwindow[-1], hwindow[::-1]))
+
+    if bn.anynan(a):
+        median_a = crobust_median(a)
+        a[np.nonzero(np.isnan(a))] = median_a
+
+    # FFT and IFFT
+    return (np.fft.ifft(np.fft.fft(a) * window)).real
+
+
+def clow_pass_image_filter(np.ndarray[np.float64_t, ndim=2] im, int deg):
+
+    
+    cdef np.ndarray[np.int8_t, ndim=2] real_nans = (
+        np.isnan(im).astype(np.int8))
+    cdef np.ndarray[np.int8_t, ndim=2] new_nans = np.empty_like(real_nans)
+    
+    cdef np.ndarray[np.float64_t, ndim=2] conv_im = np.empty_like(im)
+    cdef np.ndarray[np.float64_t, ndim=2] final_im = np.empty_like(im)
+    cdef np.ndarray[np.float64_t, ndim=2] kernel = cgaussian_kernel(deg)
+    cdef np.ndarray[np.float64_t, ndim=2] kernel_mod = np.empty_like(kernel)
+    cdef np.ndarray[np.float64_t, ndim=2] box = np.empty_like(kernel)
+    
+    cdef int inan
+    cdef int ix
+    cdef int iy
+
+    if np.any(np.isinf(im)):
+        im[np.nonzero(np.isinf(im))] = np.nan
+        
+    
+    conv_im = scipy.ndimage.filters.convolve(im, kernel, 
+                                             mode='nearest')
+    final_im = np.copy(conv_im)
+    
+    new_nans = (np.isnan(conv_im).astype(np.int8)
+                +  np.isinf(conv_im).astype(np.int8) - real_nans)
+    
+    nans = np.nonzero(new_nans > 0)
+    
+    for inan in range(len(nans[0])):
+        ix = nans[0][inan]
+        iy = nans[1][inan]
+        if (ix >= deg and iy >= deg and ix < im.shape[0] - deg
+            and  iy < im.shape[1] - deg):
+            box = np.copy(im[ix-deg:ix+deg+1, iy-deg:iy+deg+1])
+            if np.sum(~np.isnan(box)) > 0:
+                kernel_mod = kernel * ~np.isnan(box)
+                kernel_mod = kernel_mod / np.sum(kernel_mod) * np.sum(kernel)
+                box[np.nonzero(np.isnan(box))] = 0.
+                final_im[ix,iy] = crobust_sum(box * kernel_mod)
+                
+    return final_im
+
+def ccorrect_nans(np.ndarray[np.float64_t, ndim=2] im, int deg):  
+
+    cdef np.ndarray[np.float64_t, ndim=2] final_im = np.empty_like(im)
+    cdef np.ndarray[np.float64_t, ndim=2] box = np.empty(
+        (deg*2+1, deg*2+1), dtype=np.float64)
+    
+    cdef int inan
+    cdef int ix
+    cdef int iy
+
+    if np.any(np.isinf(im)):
+        im[np.nonzero(np.isinf(im))] = np.nan        
+    
+    final_im = np.copy(im)
+    nans = np.nonzero(np.isnan(im))
+
+    for inan in range(len(nans[0])):
+        ix = nans[0][inan]
+        iy = nans[1][inan]
+        if (ix >= deg and iy >= deg and ix < im.shape[0] - deg
+            and  iy < im.shape[1] - deg):
+            box = np.copy(im[ix-deg:ix+deg+1, iy-deg:iy+deg+1])
+            if np.sum(~np.isnan(box)) > 0:
+                final_im[ix,iy] = crobust_median(box)
+                
+    return final_im
+
+    
+def cgaussian_kernel(int deg):
+    """Return a gaussian kernel.
+
+    The degree gives the size of the kernel's side : size = 2 * deg + 1
+
+    :param deg: The degree of the kernel. Must be an integer.
+    """
+    
+    cdef int sz = 2 * deg + 1
+    cdef double ddeg = <double> deg
+    cdef double w = ddeg/4. * (2. * sqrt(2. * log(2.)))
+    cdef np.ndarray[np.float64_t, ndim=2] kernel = np.empty((sz, sz),
+                                                            dtype=np.float64)
+    kernel = cgaussian_array2d(0., 1., ddeg, ddeg, w, sz, sz)
+    return kernel / np.sum(kernel)
+
+
+def cget_box_coords(int ix, int iy, int box_size,
+                    int x_lim_min, int x_lim_max,
+                    int y_lim_min, int y_lim_max):
+    """Return the coordinates of a box given the center of the box,
+    its size and the limits of the range along x and y axes.
+
+    :param ix: center of the box along x axis
+    :param iy: center of the box along y axis
+    
+    :param box_size: Size of the box. The final size of the box will
+      generally be the same if box_size is odd. Note that the final
+      size of the box cannot be guaranteed.
+
+    :param x_lim_min: Minimum limit of the range along x.
+    :param x_lim_max: Maximum limit of the range along x.
+    :param y_lim_min: Minimum limit of the range along y.
+    :param y_lim_max: Maximum limit of the range along y.
+
+    """
+    cdef int x_min = <int> (ix - <int> (box_size/2.))
+    cdef int x_max = <int>(ix + <int>(box_size/2.)) + 1
+    cdef int y_min = <int>(iy - <int>(box_size/2.))
+    cdef int y_max = <int>(iy + <int>(box_size/2.)) + 1
+    if x_min < x_lim_min: x_min = x_lim_min
+    if y_min < y_lim_min: y_min = y_lim_min
+    if x_max >= x_lim_max: x_max = x_lim_max
+    if y_max >= y_lim_max: y_max = y_lim_max
+    if x_max - x_min < 1:
+        x_max = x_min + 1
+    if y_max - y_min < 1:
+        y_max = y_min + 1
+    return x_min, x_max, y_min, y_max
+
+def cpart_value(np.ndarray[np.float64_t, ndim=1] distrib, double coeff):
+    """Return the value lying between two parts of a partition 
+
+    The partition process is nan robusts. It is made over a
+    distribution cleaned from nans.
+    
+    :param distrib: A 1D array of floats.
+    
+    :param coeff: Partition coefficient (must be >= 0. and <= 1.). If
+      0 return the min of the distribution and if 1 return the max.
+    """
+    cdef np.ndarray[np.float64_t, ndim=1] cleaned_distrib = distrib[
+        np.nonzero(~np.isnan(distrib))]
+    cdef int k
+
+    coeff = max(0., min(1., coeff)) # coeff is coerced between 0 and 1
+    
+    if coeff == 0:
+        return np.nanmin(distrib)
+    if coeff == 1:
+        return np.nanmax(distrib)
+    
+    k = (min(<int> (coeff * np.size(cleaned_distrib)),
+             np.size(cleaned_distrib) - 1))
+    return np.partition(cleaned_distrib, k)[k]
+
+def csnr_smooth(np.ndarray[np.float64_t, ndim=2] im,
+                np.ndarray[np.float64_t, ndim=2] snr_im,
+                np.ndarray[np.uint8_t, ndim=2, cast=True] mask,
+                double smooth_power, double clip_coeff=0.9999,
+                double scaling_power=2.):
+
+    """
+    Smooth an image by SNR using a median smoothing function.
+
+    :param im: Image to smooth
+
+    :param snr_im: SNR image. Must have the same shape as th input
+      image.
+    
+    :param smooth_power: Smoothing power. Must be between 0. and 1.
+
+    :param clip_coeff: (Optional) ratios of values used to establish
+      the scale. A ratio 0.9999 means that the 0.01 % of the highest
+      and lowest values are ot taken into account (default 0.9999).
+
+    :param scaling_power: (Optional) scaling power. When high the lowest
+      values are smoothed a lot more than the higher values (default
+      2.)
+    """
+    cdef np.ndarray[np.float64_t, ndim=2] final_im = np.empty_like(im)
+    cdef int iscale, ipix
+    cdef int x_min, x_max, y_min, y_max
+    cdef int ix, iy
+    cdef int deg
+    # DEG MAX is coerced to be between 4 and im.shape/10 and smooth
+    # power is coerced between 0 and 1. IF DEG MAX = 0, no smooth is
+    # done !
+    cdef int DEG_MAX = <int> max((min(im.shape[0], im.shape[1]) / 10.
+                                  * max(0., min(smooth_power, 1.))), 4)
+    
+    cdef double snr_max = cpart_value(snr_im.flatten(), clip_coeff)
+    cdef double snr_min = cpart_value(snr_im.flatten(), 1.-clip_coeff)
+    cdef np.ndarray[np.float64_t, ndim=1] snr_scale = (
+        np.linspace(snr_min, snr_max, DEG_MAX + 1))
+    cdef np.ndarray[np.float64_t, ndim=1] deg_scale = (
+        (np.arange(DEG_MAX, dtype=float)**scaling_power))
+    cdef double MAX_NANS = 0.5
+    
+    deg_scale /= np.max(deg_scale) / DEG_MAX
+
+    snr_scale[0] = np.nanmin(snr_im)
+    snr_scale[-1] = np.nanmax(snr_im)
+    
+    if DEG_MAX == 0:
+        return im
+    
+    if np.any(np.isinf(im)):
+        im[np.nonzero(np.isinf(im))] = np.nan        
+    
+    final_im = np.copy(im)
+
+    snr_im[np.nonzero(np.isnan(snr_im))] = np.nanmin(snr_im)
+
+    for iscale in range(DEG_MAX):
+        pixs = np.nonzero((snr_im >= snr_scale[DEG_MAX-iscale-2])
+                          * (snr_im < snr_scale[DEG_MAX-iscale-1]))
+        
+        for ipix in range(len(pixs[0])):
+            ix = pixs[0][ipix]
+            iy = pixs[1][ipix]
+            if not mask[ix, iy]:
+                x_min, x_max, y_min, y_max = cget_box_coords(
+                    ix, iy, int(deg_scale[iscale]) * 2 + 1,
+                    0, im.shape[0], 0, im.shape[1])
+                if np.sum(np.isnan(im[x_min:x_max, y_min:y_max])) < MAX_NANS * np.size(im[x_min:x_max, y_min:y_max]):
+                    final_im[ix,iy] = bn.nanmedian(im[x_min:x_max, y_min:y_max])
+            else:
+                final_im[ix,iy] = np.nan
+            
+    return final_im
+    

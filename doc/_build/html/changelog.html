@@ -1,0 +1,858 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Changelog &mdash; Orbs 3.7.1 documentation</title>
+    
+    <link rel="stylesheet" href="_static/sphinxdoc.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '3.7.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="shortcut icon" href="_static/logo.ico"/>
+    <link rel="top" title="Orbs 3.7.1 documentation" href="index.html" />
+    <link rel="prev" title="Process module" href="process_module.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="process_module.html" title="Process module"
+             accesskey="P">previous</a> |</li>
+        <li><a href="index.html">Orbs 3.7.1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="index.html">
+              <img class="logo" src="_static/logo.png" alt="Logo"/>
+            </a></p>
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Changelog</a><ul>
+<li><a class="reference internal" href="#v3-1">v3.1</a><ul>
+<li><a class="reference internal" href="#v3-1-0">v3.1.0</a><ul>
+<li><a class="reference internal" href="#alignment">Alignment</a></li>
+<li><a class="reference internal" href="#cosmic-rays-detection">Cosmic rays detection</a></li>
+<li><a class="reference internal" href="#overwriting-fits-files">Overwriting FITS files</a></li>
+<li><a class="reference internal" href="#transmission-function">Transmission function</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#v3-1-1">v3.1.1</a></li>
+<li><a class="reference internal" href="#v3-1-2">v3.1.2</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#v3-2">v3.2</a><ul>
+<li><a class="reference internal" href="#dark-and-bias-correction-for-spiomm-cam2">Dark and Bias correction for SpIOMM CAM2</a></li>
+<li><a class="reference internal" href="#frames-transformation">Frames transformation</a></li>
+<li><a class="reference internal" href="#orbs-script">Orbs script</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#v3-3">v3.3</a><ul>
+<li><a class="reference internal" href="#cosmic-ray-detection-and-correction">Cosmic ray detection and correction</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#v3-4">v3.4</a><ul>
+<li><a class="reference internal" href="#v-3-4-0-phase-correction">v 3.4.0:  Phase correction</a></li>
+<li><a class="reference internal" href="#v3-4-1">v3.4.1</a><ul>
+<li><a class="reference internal" href="#correct-for-strange-phase-with-calibration-stars">Correct for strange phase with calibration stars</a></li>
+<li><a class="reference internal" href="#better-stars-interferogram-at-merging-step">Better stars interferogram at merging step</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#v3-4-2">v3.4.2</a><ul>
+<li><a class="reference internal" href="#bad-frames-vectors-management">Bad frames vectors management</a></li>
+<li><a class="reference internal" href="#zeros-smoothing">Zeros smoothing</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#v3-4-3">v3.4.3</a><ul>
+<li><a class="reference internal" href="#better-fit-of-stars">Better fit of stars</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#v3-4-4">v3.4.4</a><ul>
+<li><a class="reference internal" href="#various-phase-fit-degree">Various phase fit degree</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#v3-4-5-stable">v3.4.5 (stable)</a></li>
+<li><a class="reference internal" href="#v3-4-6">v3.4.6</a><ul>
+<li><a class="reference internal" href="#enhanced-phase-determination">Enhanced phase determination</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#v3-4-7">v3.4.7</a><ul>
+<li><a class="reference internal" href="#reversed-spectrum-corection">Reversed spectrum corection</a></li>
+<li><a class="reference internal" href="#sky-transmission-correction-in-single-camera-mode">Sky transmission correction in single-camera mode</a></li>
+<li><a class="reference internal" href="#passing-alignment-parameters-to-orbs-command">Passing alignment parameters to orbs command</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#v3-4-8">v3.4.8</a><ul>
+<li><a class="reference internal" href="#master-combination-algorithms">Master combination algorithms</a></li>
+<li><a class="reference internal" href="#minor-modifications">Minor modifications</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#v3-5">v3.5</a><ul>
+<li><a class="reference internal" href="#id1">3.5.0</a><ul>
+<li><a class="reference internal" href="#alignment-and-photometry">Alignment and photometry</a></li>
+<li><a class="reference internal" href="#merging-process">Merging process</a></li>
+<li><a class="reference internal" href="#cosmic-ray-detection">Cosmic Ray Detection</a></li>
+<li><a class="reference internal" href="#fft">FFT</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#id2">3.5.1</a></li>
+<li><a class="reference internal" href="#id3">3.5.2</a><ul>
+<li><a class="reference internal" href="#alternative-merging-process">Alternative Merging Process</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#id4">3.5.3</a><ul>
+<li><a class="reference internal" href="#aperture-photometry">Aperture Photometry</a></li>
+<li><a class="reference internal" href="#id5">Cosmic Ray Detection</a></li>
+<li><a class="reference internal" href="#mask">Mask</a></li>
+<li><a class="reference internal" href="#tuning-parameters">Tuning parameters</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#id6">3.5.4</a><ul>
+<li><a class="reference internal" href="#astrometry-photometry">Astrometry &amp; Photometry</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#v3-6">v3.6</a><ul>
+<li><a class="reference internal" href="#id7">3.6.0</a><ul>
+<li><a class="reference internal" href="#flux-calibration">Flux Calibration</a></li>
+<li><a class="reference internal" href="#wcs-correction">WCS correction</a></li>
+<li><a class="reference internal" href="#simplification">Simplification</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#id8">3.6.2</a><ul>
+<li><a class="reference internal" href="#cython-speed-optimization">Cython &amp; speed optimization</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#v3-7">v3.7</a><ul>
+<li><a class="reference internal" href="#id9">3.7.0</a><ul>
+<li><a class="reference internal" href="#orb-a-new-core-module">ORB: A new core module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="process_module.html"
+                        title="previous chapter">Process module</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/changelog.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="changelog">
+<h1>Changelog<a class="headerlink" href="#changelog" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="v3-1">
+<h2>v3.1<a class="headerlink" href="#v3-1" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="v3-1-0">
+<h3>v3.1.0<a class="headerlink" href="#v3-1-0" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="alignment">
+<h4>Alignment<a class="headerlink" href="#alignment" title="Permalink to this headline">¶</a></h4>
+<ul class="simple">
+<li><a class="reference internal" href="process_module.html#process.InterferogramMerger.find_alignment" title="process.InterferogramMerger.find_alignment"><tt class="xref py py-meth docutils literal"><span class="pre">find_alignment()</span></tt></a> has been
+completly modified. There&#8217;s no more need for a list of detected
+stars in the cube B (or camera 2). Stars found in cube A are
+searched in cube B. The process is now faster and must be more
+robust.</li>
+<li><tt class="xref py py-meth docutils literal"><span class="pre">transform_cube_B()</span></tt> has also been changed to
+avoid looking for stars in the cube B.</li>
+</ul>
+</div>
+<div class="section" id="cosmic-rays-detection">
+<h4>Cosmic rays detection<a class="headerlink" href="#cosmic-rays-detection" title="Permalink to this headline">¶</a></h4>
+<ul class="simple">
+<li><a class="reference internal" href="process_module.html#process.RawData.create_cosmic_ray_map" title="process.RawData.create_cosmic_ray_map"><tt class="xref py py-meth docutils literal"><span class="pre">create_cosmic_ray_map()</span></tt></a> remove a low order
+polynomial on each tested interferogram vector before checking for
+cosmic rays. It helps a lot in avoiding too much detected cosmic
+rays on stars.</li>
+</ul>
+</div>
+<div class="section" id="overwriting-fits-files">
+<h4>Overwriting FITS files<a class="headerlink" href="#overwriting-fits-files" title="Permalink to this headline">¶</a></h4>
+<ul class="simple">
+<li><tt class="xref py py-meth docutils literal"><span class="pre">write_fits()</span></tt> has a new option to overwrite a
+FITS file.</li>
+<li>&#8216;orbs&#8217; script can be passed the option -o to enable overwriting over
+the existing FITS files.</li>
+<li><tt class="xref py py-class docutils literal"><span class="pre">Orbs</span></tt>, <tt class="xref py py-class docutils literal"><span class="pre">Cube</span></tt> and all processing
+classes have been modified to use this new option and pass it to any
+self._write_fits() function.</li>
+</ul>
+</div>
+<div class="section" id="transmission-function">
+<h4>Transmission function<a class="headerlink" href="#transmission-function" title="Permalink to this headline">¶</a></h4>
+<ul class="simple">
+<li><a class="reference internal" href="process_module.html#process.InterferogramMerger.merge" title="process.InterferogramMerger.merge"><tt class="xref py py-meth docutils literal"><span class="pre">merge()</span></tt></a> has been changed to
+eliminate the stars with not enough flux (set to 0.25 times the
+maximum flux of the detected stars)</li>
+</ul>
+</div>
+</div>
+<div class="section" id="v3-1-1">
+<h3>v3.1.1<a class="headerlink" href="#v3-1-1" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><a class="reference internal" href="process_module.html#process.RawData.add_missing_frames" title="process.RawData.add_missing_frames"><tt class="xref py py-meth docutils literal"><span class="pre">add_missing_frames()</span></tt></a> : correction of a
+minor bug when adding zeros frames for a single cube interferogram</li>
+<li><a class="reference internal" href="process_module.html#process.RawData.add_missing_frames" title="process.RawData.add_missing_frames"><tt class="xref py py-meth docutils literal"><span class="pre">add_missing_frames()</span></tt></a> and
+<a class="reference internal" href="process_module.html#process.InterferogramMerger.add_missing_frames" title="process.InterferogramMerger.add_missing_frames"><tt class="xref py py-meth docutils literal"><span class="pre">add_missing_frames()</span></tt></a> have been
+corrected to add the correct header to the created zeros frames.</li>
+</ul>
+</div>
+<div class="section" id="v3-1-2">
+<h3>v3.1.2<a class="headerlink" href="#v3-1-2" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><a class="reference internal" href="process_module.html#process.InterferogramMerger.find_alignment" title="process.InterferogramMerger.find_alignment"><tt class="xref py py-meth docutils literal"><span class="pre">find_alignment()</span></tt></a> has been
+modified to use a larger box_size to detect stars during the rough
+alignment step. A warning is printed if less than 80 % of the stars
+can be fitted after the first optimization pass and an error is
+raised if less than 50 % of the stars can be fitted.</li>
+<li><strong>orbs</strong> script can be passed the option -p or &#8211;phase to enter the
+number of points to use for space correction. If 0 is entered no
+phase correction will be done.</li>
+</ul>
+</div>
+</div>
+<div class="section" id="v3-2">
+<h2>v3.2<a class="headerlink" href="#v3-2" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="dark-and-bias-correction-for-spiomm-cam2">
+<h3>Dark and Bias correction for SpIOMM CAM2<a class="headerlink" href="#dark-and-bias-correction-for-spiomm-cam2" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><tt class="xref py py-meth docutils literal"><span class="pre">create_interferogram()</span></tt> : Dark and
+Bias are now removed using their precise temperature and a
+calibrated function. The temperature of the frames (bias frames,
+dark frames and frames to be corrected) must be recorded in the
+header of the files with the keyword CCD-TEMP.</li>
+<li><strong>orbs-tempreader</strong> script: This script has been created to read the
+temperature files created during an observing run and write the
+temperature of the files in the headers of the frames. It must be
+used in each folder where the temperature are needed (bias, dark and
+cam2 folders)</li>
+<li><strong>config.orb</strong> : new keywords (DARK_CALIB_PARAM_A, DARK_CALIB_PARAM_B,
+DARK_CALIB_PARAM_C, BIAS_CALIB_PARAM_A, BIAS_CALIB_PARAM_B) have
+been added for the calibration coefficients of the bias and the
+dark. They have been computed from calibrated bias and dark curves :
+I(T) = f(T).</li>
+</ul>
+</div>
+<div class="section" id="frames-transformation">
+<h3>Frames transformation<a class="headerlink" href="#frames-transformation" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><tt class="xref py py-meth docutils literal"><span class="pre">transform_frame()</span></tt> has been completely changed and
+optimized using scipy.ndimage fast routines for image
+transformation. The time consumption of the transformation step has
+been dramatically decreased : this process is now more than 10 times
+faster.</li>
+</ul>
+</div>
+<div class="section" id="orbs-script">
+<h3>Orbs script<a class="headerlink" href="#orbs-script" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><strong>orbs</strong> script option -r &#8211;raw has been removed and replaced by the
+option &#8211;nostar.Using the option -s (single reduction : only the
+cam1 cube is reduced) it is now possible to reduce one or both cubes
+without stars. The alignment steps are skipped and the default
+alignment parameters are used during the merging process.</li>
+</ul>
+</div>
+</div>
+<div class="section" id="v3-3">
+<h2>v3.3<a class="headerlink" href="#v3-3" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="cosmic-ray-detection-and-correction">
+<h3>Cosmic ray detection and correction<a class="headerlink" href="#cosmic-ray-detection-and-correction" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><a class="reference internal" href="process_module.html#process.RawData.create_cosmic_ray_map" title="process.RawData.create_cosmic_ray_map"><tt class="xref py py-meth docutils literal"><span class="pre">create_cosmic_ray_map()</span></tt></a> is now capable of
+detecting ver faint cosmic rays without overdetecting cosmic rays in
+stars. Planes and satellites are also detected.</li>
+<li>Cosmic rays corrected by
+<tt class="xref py py-meth docutils literal"><span class="pre">create_interferogram()</span></tt> are now replaced by
+a weighted average of the neighbourhood. Weights are defined using a
+gaussian kernel. The kernel degree (i.e. neighbourhood radius) can
+be choosen.</li>
+</ul>
+</div>
+</div>
+<div class="section" id="v3-4">
+<h2>v3.4<a class="headerlink" href="#v3-4" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="v-3-4-0-phase-correction">
+<h3>v 3.4.0:  Phase correction<a class="headerlink" href="#v-3-4-0-phase-correction" title="Permalink to this headline">¶</a></h3>
+<ul>
+<li><p class="first"><a class="reference internal" href="process_module.html#process.InterferogramMerger.merge" title="process.InterferogramMerger.merge"><tt class="xref py py-meth docutils literal"><span class="pre">merge()</span></tt></a> has been modified to
+create a small data cube containing the interferograms of choosen
+stars. Those interferograms can be used by
+<a class="reference internal" href="process_module.html#process.Interferogram.compute_spectrum" title="process.Interferogram.compute_spectrum"><tt class="xref py py-meth docutils literal"><span class="pre">compute_spectrum()</span></tt></a> to recover the
+first order coefficient of the phase. This way the phase is not
+computed for each pixel but a general correction is made.</p>
+</li>
+<li><p class="first"><a class="reference internal" href="process_module.html#process.Interferogram.compute_spectrum" title="process.Interferogram.compute_spectrum"><tt class="xref py py-meth docutils literal"><span class="pre">compute_spectrum()</span></tt></a> has been modified
+to compute the mean first order coefficient given a cube of stars
+interferogram.</p>
+</li>
+<li><p class="first"><tt class="xref py py-meth docutils literal"><span class="pre">transform_frame()</span></tt> has been modified to compute the
+phase fo each pixel given a phase map which gives the zeroth order
+of the polynomial function of the phase for each pixel and the first
+order coefficient. Both parameters (the phase map and the first
+order coefficient) must be given to avoid a pixel by pixel phase
+computation which can be unreliable.</p>
+</li>
+<li><p class="first"><a class="reference internal" href="process_module.html#process.Phase" title="process.Phase"><tt class="xref py py-class docutils literal"><span class="pre">Phase</span></tt></a>: A new class has been created to manage
+phase data cubes. Those data cubes are useful to recover the phase
+maps. Three methods have been created:
+<a class="reference internal" href="process_module.html#process.Phase.create_phase_maps" title="process.Phase.create_phase_maps"><tt class="xref py py-meth docutils literal"><span class="pre">create_phase_maps()</span></tt></a> which create the phase
+maps from a phase cube, <a class="reference internal" href="process_module.html#process.Phase.smooth_phase_map" title="process.Phase.smooth_phase_map"><tt class="xref py py-meth docutils literal"><span class="pre">smooth_phase_map()</span></tt></a>
+which smooth the values of the phase map of 0th order (remember that
+phase values are defined modulo PI) and
+<a class="reference internal" href="process_module.html#process.Phase.fit_phase_map" title="process.Phase.fit_phase_map"><tt class="xref py py-meth docutils literal"><span class="pre">fit_phase_map()</span></tt></a> which fit the created
+smoothed phase map of 0th order to remove noisy data.</p>
+</li>
+<li><p class="first"><tt class="xref py py-meth docutils literal"><span class="pre">full_reduction()</span></tt> and
+<tt class="xref py py-meth docutils literal"><span class="pre">single_reduction()</span></tt> use computed phase maps by
+default. An external phase map of order 0 can be given if it has
+been computed (e.g. from a flat cube).</p>
+</li>
+<li><dl class="first docutils">
+<dt><strong>orbs</strong> script option -s replaced by the options -1 or -2 in order</dt>
+<dd><p class="first last">to reduce only the camera 1 cube (-1) or the camera 2 cube
+(-2). &#8211;flat option added to reduce flat cubes and obtain only
+their phase map (spectrum is not computed)</p>
+</dd>
+</dl>
+</li>
+</ul>
+</div>
+<div class="section" id="v3-4-1">
+<h3>v3.4.1<a class="headerlink" href="#v3-4-1" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="correct-for-strange-phase-with-calibration-stars">
+<h4>Correct for strange phase with calibration stars<a class="headerlink" href="#correct-for-strange-phase-with-calibration-stars" title="Permalink to this headline">¶</a></h4>
+<ul class="simple">
+<li><a class="reference internal" href="process_module.html#process.Interferogram.compute_spectrum" title="process.Interferogram.compute_spectrum"><tt class="xref py py-meth docutils literal"><span class="pre">compute_spectrum()</span></tt></a> no longer use
+stars interferogram to recover the first order coefficient but use
+the mean of the first order phase map. The precision is far better.</li>
+</ul>
+</div>
+<div class="section" id="better-stars-interferogram-at-merging-step">
+<h4>Better stars interferogram at merging step<a class="headerlink" href="#better-stars-interferogram-at-merging-step" title="Permalink to this headline">¶</a></h4>
+<ul class="simple">
+<li><a class="reference internal" href="process_module.html#process.InterferogramMerger.merge" title="process.InterferogramMerger.merge"><tt class="xref py py-meth docutils literal"><span class="pre">merge()</span></tt></a> compute better stars
+interferograms. <tt class="xref py py-meth docutils literal"><span class="pre">fit_stars_in_frame()</span></tt> and
+<tt class="xref py py-meth docutils literal"><span class="pre">fit_gaussian2d()</span></tt> have been modified to give better
+fitted photometry points and retry a fit if it fails because the
+stars is not centered in the box.</li>
+</ul>
+</div>
+</div>
+<div class="section" id="v3-4-2">
+<h3>v3.4.2<a class="headerlink" href="#v3-4-2" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="bad-frames-vectors-management">
+<h4>Bad frames vectors management<a class="headerlink" href="#bad-frames-vectors-management" title="Permalink to this headline">¶</a></h4>
+<p>The idea is to use the different processes to detect bad frames and
+collect their bad frames vectors to suppress bad frames prior to the
+transformation of the interferograms.</p>
+<ul class="simple">
+<li><a class="reference internal" href="process_module.html#process.InterferogramMerger.merge" title="process.InterferogramMerger.merge"><tt class="xref py py-meth docutils literal"><span class="pre">merge()</span></tt></a> creates a bad frames
+vector using a threshold of transmission (70%).</li>
+<li><tt class="xref py py-meth docutils literal"><span class="pre">create_bad_frames_vector()</span></tt> has been created to
+collect the bad frames vector created by various processes and
+create a full bad frames vector which can be passed
+<a class="reference internal" href="process_module.html#process.Interferogram.compute_spectrum" title="process.Interferogram.compute_spectrum"><tt class="xref py py-meth docutils literal"><span class="pre">compute_spectrum()</span></tt></a> and
+<tt class="xref py py-meth docutils literal"><span class="pre">transform_interferogram()</span></tt> in order to remove all the
+detected bad frames prior to transform the interferograms.</li>
+</ul>
+</div>
+<div class="section" id="zeros-smoothing">
+<h4>Zeros smoothing<a class="headerlink" href="#zeros-smoothing" title="Permalink to this headline">¶</a></h4>
+<ul class="simple">
+<li><tt class="xref py py-meth docutils literal"><span class="pre">transform_interferogram()</span></tt> has been modified to do
+what we call the zeros smoothing. The objective is to reduce ringing
+due to steep transition between &#8216;normal&#8217; points and zeros. The
+interferogram is multiplied by a function which smoothes the
+transition between zeros parts and &#8216;good parts&#8217; of the
+interferogram. The good parts symmetrical to the zeros parts (The
+ZPD is the center of symmetry) are multiplied by 2. And the same
+transition is applied from parts multpilied by 2 to parts
+multplied by 1. This way the same weight is given to each and every
+point of the interferogram (points multiplied by zero have their
+symmetrical point multplied by 2). The degree of smoothing can be
+choosen (smoothing_deg option). A higher degree means a smoother
+transition between one part to another but may reduce the SNR.</li>
+<li><tt class="xref py py-meth docutils literal"><span class="pre">smooth()</span></tt> can now smooth a vector using a gaussian
+kernel convolution (much faster).</li>
+</ul>
+</div>
+</div>
+<div class="section" id="v3-4-3">
+<h3>v3.4.3<a class="headerlink" href="#v3-4-3" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Minor bugs corrections</li>
+</ul>
+<div class="section" id="better-fit-of-stars">
+<h4>Better fit of stars<a class="headerlink" href="#better-fit-of-stars" title="Permalink to this headline">¶</a></h4>
+<ul class="simple">
+<li><tt class="xref py py-meth docutils literal"><span class="pre">fit_stars_in_frame()</span></tt> and
+<tt class="xref py py-meth docutils literal"><span class="pre">fit_gaussian2d()</span></tt> modified to give better fitting
+results. Especially for the method
+<a class="reference internal" href="process_module.html#process.InterferogramMerger.merge" title="process.InterferogramMerger.merge"><tt class="xref py py-meth docutils literal"><span class="pre">merge()</span></tt></a> which depends a lot on
+a good fit of all the detected stars.</li>
+</ul>
+</div>
+</div>
+<div class="section" id="v3-4-4">
+<h3>v3.4.4<a class="headerlink" href="#v3-4-4" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="various-phase-fit-degree">
+<h4>Various phase fit degree<a class="headerlink" href="#various-phase-fit-degree" title="Permalink to this headline">¶</a></h4>
+<ul>
+<li><p class="first"><a class="reference internal" href="process_module.html#process.Phase.create_phase_maps" title="process.Phase.create_phase_maps"><tt class="xref py py-meth docutils literal"><span class="pre">create_phase_maps()</span></tt></a> and
+<tt class="xref py py-meth docutils literal"><span class="pre">compute_spectrum()</span></tt> modified to use any order of
+the polynomial fit to the phase</p>
+</li>
+<li><dl class="first docutils">
+<dt><strong>config.orb</strong>: New keyword PHASE_FIT_DEG to configure the desired</dt>
+<dd><p class="first last">degree of the polynomial fit o the
+phase. <tt class="xref py py-meth docutils literal"><span class="pre">__init__()</span></tt> modified to use this
+keyword.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</div>
+</div>
+<div class="section" id="v3-4-5-stable">
+<h3>v3.4.5 (stable)<a class="headerlink" href="#v3-4-5-stable" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Minor modifications of <a class="reference internal" href="process_module.html#process.InterferogramMerger.merge" title="process.InterferogramMerger.merge"><tt class="xref py py-meth docutils literal"><span class="pre">merge()</span></tt></a>
+to make it more stable</li>
+<li>PHASE_FIT_DEG in <strong>config.orb</strong> set to 1</li>
+</ul>
+<p>This version is considered as stable.</p>
+</div>
+<div class="section" id="v3-4-6">
+<h3>v3.4.6<a class="headerlink" href="#v3-4-6" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="enhanced-phase-determination">
+<h4>Enhanced phase determination<a class="headerlink" href="#enhanced-phase-determination" title="Permalink to this headline">¶</a></h4>
+<ul class="simple">
+<li><tt class="xref py py-meth docutils literal"><span class="pre">get_lr_phase()</span></tt> window changed to a NORTON_BEER 2.0
+to get a phase with much less artefacts: give a much more precise
+phase and thus much more precise phase maps.</li>
+<li><a class="reference internal" href="process_module.html#process.Interferogram.compute_phase_coeffs_vector" title="process.Interferogram.compute_phase_coeffs_vector"><tt class="xref py py-meth docutils literal"><span class="pre">compute_phase_coeffs_vector()</span></tt></a> use a
+cleaner way to get the median phase coefficient for each phase map:
+used points are choosen from the residual map created by
+<a class="reference internal" href="process_module.html#process.Phase.create_phase_maps" title="process.Phase.create_phase_maps"><tt class="xref py py-meth docutils literal"><span class="pre">create_phase_maps()</span></tt></a> and sigma-clipped before the mean
+is taken from a well defined gaussian-like distribution of phase
+coefficients.</li>
+</ul>
+</div>
+</div>
+<div class="section" id="v3-4-7">
+<h3>v3.4.7<a class="headerlink" href="#v3-4-7" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="reversed-spectrum-corection">
+<h4>Reversed spectrum corection<a class="headerlink" href="#reversed-spectrum-corection" title="Permalink to this headline">¶</a></h4>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">The problem comes from the 0th order phase map which is
+defined modulo PI. An addition of PI on the phase vector (thus on
+the 0th order of the polynomial) reverses the returned spectrum.</p>
+</div>
+<ul class="simple">
+<li><a class="reference internal" href="process_module.html#process.Interferogram.compute_spectrum" title="process.Interferogram.compute_spectrum"><tt class="xref py py-meth docutils literal"><span class="pre">compute_spectrum()</span></tt></a> modified to avoid the
+spectrum to be reversed (values are negative instead of positive)
+after phase correction. Spectrum polarity is checked using a mean
+interferogram over the whole cube. If the resulting spectrum is
+reversed the whole 0th order phase map is added PI.</li>
+</ul>
+</div>
+<div class="section" id="sky-transmission-correction-in-single-camera-mode">
+<h4>Sky transmission correction in single-camera mode<a class="headerlink" href="#sky-transmission-correction-in-single-camera-mode" title="Permalink to this headline">¶</a></h4>
+<ul class="simple">
+<li><a class="reference internal" href="process_module.html#process.Interferogram.create_correction_vectors" title="process.Interferogram.create_correction_vectors"><tt class="xref py py-meth docutils literal"><span class="pre">create_correction_vectors()</span></tt></a> created to get
+the correction vectors (sky transmission and added light) and
+correct interferograms in single camera-mode. Now <strong>phase
+correction</strong> and <strong>sky transmission correction</strong> are available in
+single camera-mode (but less precise than in binocular mode).</li>
+</ul>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">The sky transmission vector is computed from star
+photometry. Its precision is good but it must be corrected for ZPD
+because with only one camera and near the ZPD stars interferograms
+are not &#8216;flat&#8217; anymore. The &#8216;added light&#8217; vector is computed from a
+median &#8216;interferogram&#8217; It has also to be corrected near the ZPD.</p>
+</div>
+<ul class="simple">
+<li>minor bugs correction and enhancements</li>
+</ul>
+</div>
+<div class="section" id="passing-alignment-parameters-to-orbs-command">
+<h4>Passing alignment parameters to orbs command<a class="headerlink" href="#passing-alignment-parameters-to-orbs-command" title="Permalink to this headline">¶</a></h4>
+<ul class="simple">
+<li><strong>orbs</strong> script: new option : <strong>&#8211;align</strong> to pass precomputed alignement
+parameters. Useful in the case of the computation of a FLAT cube
+(with no possible alignment) if the alignment parameters are already
+knowm from the reduction of an object taken during the same mission.</li>
+</ul>
+</div>
+</div>
+<div class="section" id="v3-4-8">
+<h3>v3.4.8<a class="headerlink" href="#v3-4-8" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="master-combination-algorithms">
+<h4>Master combination algorithms<a class="headerlink" href="#master-combination-algorithms" title="Permalink to this headline">¶</a></h4>
+<ul>
+<li><p class="first"><tt class="xref py py-meth docutils literal"><span class="pre">_create_master_frame()</span></tt> created to use
+better combination algorithms for the creation of master bias, master
+dark and master flat. Some pixels are rejected using a rejection
+algorithm before the images are combined using a median or an
+average function. The rejection algorithms proposed are:</p>
+<blockquote>
+<div><ul class="simple">
+<li>Min-Max rejection</li>
+<li>Sigma-Clipping</li>
+<li>Average Sigma-Clipping (default)</li>
+</ul>
+</div></blockquote>
+<p>Master frames are also written to the disk for checking
+purpose. Note that those rejection algorithm have been inspired by
+the IRAF function combine.</p>
+</li>
+<li><p class="first"><tt class="xref py py-meth docutils literal"><span class="pre">detect_stars()</span></tt> also uses
+<tt class="xref py py-meth docutils literal"><span class="pre">_create_master_frame()</span></tt> to combine frames.</p>
+</li>
+</ul>
+</div>
+<div class="section" id="minor-modifications">
+<h4>Minor modifications<a class="headerlink" href="#minor-modifications" title="Permalink to this headline">¶</a></h4>
+<ul class="simple">
+<li>DATA_FRAMES in <tt class="xref py py-meth docutils literal"><span class="pre">detect_stars()</span></tt> changed from
+10 to 30. Help in finding more stars in some cubes.</li>
+<li><tt class="xref py py-meth docutils literal"><span class="pre">_create_list_from_dir()</span></tt> now check if all the FITS
+files in the directory have the same shape.</li>
+<li><a class="reference internal" href="process_module.html#process.RawData.correct_frame" title="process.RawData.correct_frame"><tt class="xref py py-meth docutils literal"><span class="pre">correct_frame()</span></tt></a> and
+<tt class="xref py py-meth docutils literal"><span class="pre">create_interferogram()</span></tt> modified to
+correct for bias, flat and dark even if one of them are not given
+(before, without biases no correction at all would have been made)</li>
+<li><tt class="xref py py-meth docutils literal"><span class="pre">correct_filter()</span></tt> modified when filter min
+or max are outside the spectrum.</li>
+<li><tt class="xref py py-class docutils literal"><span class="pre">__init__</span></tt> prints modules versions</li>
+<li><tt class="xref py py-class docutils literal"><span class="pre">__init__</span></tt> modified. It is now possible to
+change configuration options for a particular reduction using the
+option file. Keywords are the same.</li>
+<li><a class="reference internal" href="process_module.html#process.RawData.correct_frame" title="process.RawData.correct_frame"><tt class="xref py py-meth docutils literal"><span class="pre">correct_frame()</span></tt></a> modified to avoid strange
+behaviour when dark level is too low.</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="section" id="v3-5">
+<h2>v3.5<a class="headerlink" href="#v3-5" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id1">
+<h3>3.5.0<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="alignment-and-photometry">
+<h4>Alignment and photometry<a class="headerlink" href="#alignment-and-photometry" title="Permalink to this headline">¶</a></h4>
+<p><tt class="xref py py-class docutils literal"><span class="pre">Astrometry</span></tt> class created with a whole new
+astrometry module. This module is used for all astrometrical processes
+(star position detection for alignment and star
+photometry). Astrometry and photometry precision are now a lot better.</p>
+</div>
+<div class="section" id="merging-process">
+<h4>Merging process<a class="headerlink" href="#merging-process" title="Permalink to this headline">¶</a></h4>
+<ul class="simple">
+<li>Single camera reduction: A new step of reduction has been added to
+better correct single camera interferograms for variations of
+transmission and light refracted on clouds.</li>
+<li>2-camera reduction without merging frames (optional):
+<a class="reference internal" href="process_module.html#process.InterferogramMerger.merge" title="process.InterferogramMerger.merge"><tt class="xref py py-meth docutils literal"><span class="pre">merge()</span></tt></a> has a better way of
+correct interferograms without merging frames. Camera 2 frames are
+used to create correction vectors but are not merged to the frames
+of the camera 1.</li>
+</ul>
+</div>
+<div class="section" id="cosmic-ray-detection">
+<h4>Cosmic Ray Detection<a class="headerlink" href="#cosmic-ray-detection" title="Permalink to this headline">¶</a></h4>
+<p><a class="reference internal" href="process_module.html#process.RawData.create_cosmic_ray_map" title="process.RawData.create_cosmic_ray_map"><tt class="xref py py-meth docutils literal"><span class="pre">create_cosmic_ray_map()</span></tt></a>. Completly changed
+and upgraded using ORUS simulated cubes. Faster and far more
+efficient. 95% of good detection over CR&#8217;s with an energy higher than
+the median CR energy. Small number of false detections. Less problems
+with stars and ZPD.</p>
+</div>
+<div class="section" id="fft">
+<h4>FFT<a class="headerlink" href="#fft" title="Permalink to this headline">¶</a></h4>
+<p>&#8216;Zeros smoothing&#8217; step in <tt class="xref py py-meth docutils literal"><span class="pre">transform_interferogram()</span></tt>
+modified to avoid correcting very small zeros parts (CR, bad frames)
+which was creating noise.</p>
+</div>
+</div>
+<div class="section" id="id2">
+<h3>3.5.1<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h3>
+<p>Minor bugs correction</p>
+</div>
+<div class="section" id="id3">
+<h3>3.5.2<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="alternative-merging-process">
+<h4>Alternative Merging Process<a class="headerlink" href="#alternative-merging-process" title="Permalink to this headline">¶</a></h4>
+<p>Addition of an alternative merging process
+(<a class="reference internal" href="process_module.html#process.InterferogramMerger.alternative_merge" title="process.InterferogramMerger.alternative_merge"><tt class="xref py py-meth docutils literal"><span class="pre">alternative_merge()</span></tt></a>): in fact,
+this is the basic merging process which makes no use of star
+photometry. This alternative way of merging, somehow more noisy than
+the regular way, is more robust and might be the best guess if there&#8217;s
+not enough good stars in the field or when all the fiel is covered
+with intense emission lines. It is recommanded to always do the
+reduction this way and the regular way to take what seems the best
+cube.</p>
+<p>The new option in the orbs launch command is:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="o">--</span><span class="n">alt_merge</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="id4">
+<h3>3.5.3<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="aperture-photometry">
+<h4>Aperture Photometry<a class="headerlink" href="#aperture-photometry" title="Permalink to this headline">¶</a></h4>
+<p>An aperture photometry function
+(<tt class="xref py py-meth docutils literal"><span class="pre">aperture_photometry()</span></tt>) has been designed to get
+a far more robust and precise photometry of the stars during the
+&#8216;normal&#8217; merging process. Sky transmission vector precision is now a
+lot better and do not need any more smoothing.</p>
+</div>
+<div class="section" id="id5">
+<h4>Cosmic Ray Detection<a class="headerlink" href="#id5" title="Permalink to this headline">¶</a></h4>
+<p>New step frame check added (removed a long time ago but added once
+again) to get rid of star detection in some frames due to disalignment
+and the size of interferometric fringes. Avoid getting bad photometry
+on stars.</p>
+</div>
+<div class="section" id="mask">
+<h4>Mask<a class="headerlink" href="#mask" title="Permalink to this headline">¶</a></h4>
+<p>Frames created by ORBS are coupled with a mask frame. Mask frames are
+used to get the exact position of all the pixels affected by the
+cosmic rays correction. Cosmic rays correction in stars creates bad
+pixels that have to be taken into account during the photometry
+process t avoid too deviant values.</p>
+</div>
+<div class="section" id="tuning-parameters">
+<h4>Tuning parameters<a class="headerlink" href="#tuning-parameters" title="Permalink to this headline">¶</a></h4>
+<p>It is now possible to tune the parameters of some methods externally
+(in the option file). To tune a &#8216;tunable&#8217; parameter you must use the
+keyword TUNE, give the full name of the method parameter
+(class.method.parameter_name) and its new value:</p>
+<div class="highlight-python"><pre>TUNE InterferogramMerger.find_alignement.BOX_SIZE_COEFF 7.</pre>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">All the parameters are not tunable: this option has to be
+implemented in the method itself with the method
+<tt class="xref py py-meth docutils literal"><span class="pre">_get_tuning_parameter()</span></tt>.</p>
+</div>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p class="last">This possibility is intented be used only for the
+reduction of some particular cubes. If the default value of a
+paramater has to be changed it is better to do it in the method
+itself.</p>
+</div>
+</div>
+</div>
+<div class="section" id="id6">
+<h3>3.5.4<a class="headerlink" href="#id6" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="astrometry-photometry">
+<h4>Astrometry &amp; Photometry<a class="headerlink" href="#astrometry-photometry" title="Permalink to this headline">¶</a></h4>
+<p>Astrometry and photometry processes (fit and aperture) upgraded. They
+know meet the theoretical error and their returned reduced-chi-square
+is far better. All dependant processes in the process module have been
+updated to use this better information and filter bad fitted stars.</p>
+</div>
+</div>
+</div>
+<div class="section" id="v3-6">
+<h2>v3.6<a class="headerlink" href="#v3-6" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id7">
+<h3>3.6.0<a class="headerlink" href="#id7" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="flux-calibration">
+<h4>Flux Calibration<a class="headerlink" href="#flux-calibration" title="Permalink to this headline">¶</a></h4>
+<p>Flux calibration has been added. <tt class="xref py py-meth docutils literal"><span class="pre">calibrate_spectrum()</span></tt>
+replace the old function <tt class="xref py py-meth docutils literal"><span class="pre">correct_spectrum()</span></tt>. The path
+to a standard spectrum reduced by ORBS must be given (STDPATH). This
+can be achieved by reducing a standard cube using the option
+&#8211;standard. The standard name must also be given in the option file
+(STDNAME). This must be recorded in the standard table
+(orbs/data/std_table). Standard spectra form MASSEY et al. 1988 and
+CALSPEC have been added to the data of ORBS so that they can be used
+to do a flux calibration. To do a flux calibration the steps are thus:</p>
+<blockquote>
+<div><ol class="arabic simple">
+<li>Reduce standard cube with option &#8211;standard</li>
+<li>Give the path to the standard spectrum (STDPATH) and the name of
+the standard (STDNAME) in the option file of the cube yo want to
+calibrate</li>
+<li>Reduce the cube you want to calibrate (or only redo the last step)</li>
+</ol>
+</div></blockquote>
+<div class="admonition seealso">
+<p class="first admonition-title">See also</p>
+<p class="last"><a class="reference internal" href="process_module.html#process.Spectrum.get_flux_calibration_vector" title="process.Spectrum.get_flux_calibration_vector"><tt class="xref py py-meth docutils literal"><span class="pre">get_flux_calibration_vector()</span></tt></a></p>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">The standard cube must be reduced with the same number of
+camera as the cube you want to reduce.</p>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">A new class has been created to manage standard spectra:
+<a class="reference internal" href="process_module.html#process.Standard" title="process.Standard"><tt class="xref py py-class docutils literal"><span class="pre">Standard</span></tt></a></p>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Final spectrum cube is now rescaled pixel to pixel in order
+to keep the same energy at the input and at the output of the
+reduction process. With 2 cubes we use the scale map. The scale
+map is the sum of the deep frame of both cubes ; The deep frame
+of cube A is scaled by the modulation coefficient which comes
+from the difference of gain between both cameras. For a single
+cube reduction, its own deep frame is used.</p>
+</div>
+</div>
+<div class="section" id="wcs-correction">
+<h4>WCS correction<a class="headerlink" href="#wcs-correction" title="Permalink to this headline">¶</a></h4>
+<p>If the ra/dec (TARGETR/TARGETD) and x/y (TARGETX/TARGETY)
+corresponding position of a target near the center of the frame is
+given, WCS coords of the cube are updated at the last step (Calibration step
+step):</p>
+<div class="admonition seealso">
+<p class="first admonition-title">See also</p>
+<p class="last"><a class="reference internal" href="process_module.html#process.Spectrum.get_corrected_wcs" title="process.Spectrum.get_corrected_wcs"><tt class="xref py py-meth docutils literal"><span class="pre">get_corrected_wcs()</span></tt></a></p>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">An <strong>internet connection</strong> must be available to correct WCS
+because the USNO database is used to get precise astrometric
+coordinates of the stars in the field.</p>
+</div>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p class="last">A new module is now required to launch ORBS: PyWCS (see
+<a class="reference external" href="http://stsdas.stsci.edu/astrolib/pywcs/">http://stsdas.stsci.edu/astrolib/pywcs/</a>)</p>
+</div>
+</div>
+<div class="section" id="simplification">
+<h4>Simplification<a class="headerlink" href="#simplification" title="Permalink to this headline">¶</a></h4>
+<blockquote>
+<div><ul class="simple">
+<li><tt class="xref py py-class docutils literal"><span class="pre">core.Indexer</span></tt> created to index reduction files and get
+their location easily in <tt class="xref py py-class docutils literal"><span class="pre">orbs.Orbs</span></tt>.</li>
+<li>No more quadrants: Reduction of big data cubes has been simplified
+and do not save reduced files in quadrants any more. Big data
+cubes are thus handled as small data cubes. Reduced by quadrants
+but saved as one set of frames.</li>
+</ul>
+</div></blockquote>
+</div>
+</div>
+<div class="section" id="id8">
+<h3>3.6.2<a class="headerlink" href="#id8" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="cython-speed-optimization">
+<h4>Cython &amp; speed optimization<a class="headerlink" href="#cython-speed-optimization" title="Permalink to this headline">¶</a></h4>
+<blockquote>
+<div><ul class="simple">
+<li><tt class="xref py py-meth docutils literal"><span class="pre">utils.transform_frame()</span></tt> has been modified to do only one
+geometrical transformation instead of a set of transformations
+(tip-tilt then translations then rotation etc.). Coordinates
+transformation function (<tt class="xref py py-meth docutils literal"><span class="pre">cutils.transform_A_to_B()</span></tt>)
+written in Cython to optimize processing speed .</li>
+<li>core functions for fitting stars
+(<tt class="xref py py-meth docutils literal"><span class="pre">cutils.gaussian_array2d()</span></tt> and
+<tt class="xref py py-meth docutils literal"><span class="pre">cutils.surface_value()</span></tt>) have been transcripted to Cython
+for faster processing.</li>
+<li>lots of functions have been cythonized to improve the overall
+speed.</li>
+</ul>
+</div></blockquote>
+</div>
+</div>
+</div>
+<div class="section" id="v3-7">
+<h2>v3.7<a class="headerlink" href="#v3-7" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id9">
+<h3>3.7.0<a class="headerlink" href="#id9" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="orb-a-new-core-module">
+<h4>ORB: A new core module<a class="headerlink" href="#orb-a-new-core-module" title="Permalink to this headline">¶</a></h4>
+<p>ORBS core classes and functions (core.py, utils.py and cutils.pyx)
+have been moved to a module of shared core libraries: ORB. This way,
+ORBS, ORCS, OACS, IRIS and ORUS can share the same core module without
+importing ORBS entirely each time. Conceptually ORBS, like the others,
+just wraps around a core module and is not any more a central part ot
+the whole suite of softwares.</p>
+</div>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="process_module.html" title="Process module"
+             >previous</a> |</li>
+        <li><a href="index.html">Orbs 3.7.1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2014, Thomas Martin (thomas.martin.1@ulaval.ca).
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.
+    </div>
+  </body>
+</html>

@@ -1,0 +1,624 @@
+#!/usr/bin/python
+# *-* coding: utf-8 *-*
+# Author: Thomas Martin <thomas.martin.1@ulaval.ca>
+
+__licence__ = "Thomas Martin (thomas.martin.1@ulaval.ca)"                      
+__docformat__ = 'reStructuredText'
+__version__ = "0.5dev"
+
+import os, sys
+
+# ORBS import
+# Defining the path to ORBS module from script location
+script_path = os.path.dirname(os.path.realpath(__file__)).split()
+orbs_path = os.path.normpath(('%s'%os.sep).join(str(script_path[0]).split(os.sep)[:-1]))
+sys.path.append(orbs_path)
+
+
+from orbs.orbs import Orbs
+from orbs.process import InterferogramMerger, Interferogram
+from orb.core import Tools, Cube
+import orb.utils
+import orb.astrometry
+
+# Other imports
+import getopt
+import numpy as np
+import pylab as pl
+import ds9
+import Tkinter
+import ImageTk
+
+####################################################
+############ OrbsCheck class ############################
+####################################################
+class OrbsCheck(Tools):
+    """
+    OrbsCheck class is aimed to collect and analyse data from ORBS
+    reduction files for a given project.
+
+    .. warning:: OrbsCheck is built over ORBS so that ORBS must be
+      installed. Please make sure to give OrbsCheck the correct path to
+      ORBS files
+   
+    .. note:: OrbsCheck uses :py:class:`orbscheck.Graph` to display the
+      collected informations.
+    """
+
+    MIN_STAR_NB = 30 # Number of stars to detect for statitstics
+    
+    _orbs = None # Orbs() instance
+    _graph = None # Graph() instance
+
+    _interf_frame_A = None # Deep image from the corrected interferogram cube A
+    _interf_frame_B = None # Deep image from the corrected interferogram cube B
+
+    _star_list_A = None # List of star position detected by OrbsCheck
+    _mean_fwhm = None # mean FWHM of stars detected by OrbsCheck
+    _nods9 = None # If False, ds9 interface will not be used
+    raw_frame_nb = None
+    
+    def __init__(self, options_file_path, nods9=False):
+        """Initialize :py:class:`orbscheck.OrbsCheck`
+
+        :param options_file_path: Path to the option file used by
+           :py:class:`orbs.Orbs` for the project to analyse.
+        """
+        self._print_msg("OrbsCheck initialization")
+        self._orbs = Orbs(options_file_path)
+        self._nods9 = nods9
+        self._graph = Graph(nods9=self._nods9)
+        cube = self._orbs._init_raw_data_cube(1)
+        self.raw_frame_nb = cube.dimz
+        
+
+    def show_transmission_vector(self, cam):
+        """Get the transmission vector computed during interferogram
+        merging and display it.
+        
+        .. seealso:: :py:meth:`orbs.Orbs.merge_interferograms`
+        """
+        if cam == 'MERGED':
+            cube = InterferogramMerger(
+                None, None, data_prefix=self._orbs._get_data_prefix(0))
+        elif cam == 'CAM1':
+            cube = Interferogram('', data_prefix=self._orbs._get_data_prefix(1))
+        elif cam == 'CAM2':
+            cube = Interferogram('', data_prefix=self._orbs._get_data_prefix(2))
+            
+        transmission_vector = self.read_fits(
+            cube._get_transmission_vector_path())
+        self._graph.pop_plot(transmission_vector, xlabel="Frame index",
+                             ylabel="Transmission coefficient",
+                             title="Transmission vector")
+
+    def show_ext_illumination_vector(self):
+        """Get the external illumination vector computed during
+        interferogram merging and display it.
+        
+        .. seealso:: :py:meth:`orbs.Orbs.merge_interferograms`
+        """
+        cube = InterferogramMerger(
+            None, None, data_prefix=self._orbs._get_data_prefix(0))
+        ext_illumination_vector = self.read_fits(
+            cube._get_ext_illumination_vector_path())
+        self._graph.pop_plot(ext_illumination_vector, xlabel="Frame index",
+                             ylabel="Counts",
+                             title="External illumination vector")
+
+    def show_added_light_vector(self, cam):
+        """Get the added light vector computed during interferogram
+        merging and display it.
+        
+        .. seealso:: :py:meth:`orbs.Orbs.merge_interferograms`
+        """
+        if cam == 'MERGED':
+            cube = InterferogramMerger(
+                None, None, data_prefix=self._orbs._get_data_prefix(0))
+        elif cam == 'CAM1':
+            cube = Interferogram('', data_prefix=self._orbs._get_data_prefix(1))
+        elif cam == 'CAM2':
+            cube = Interferogram('', data_prefix=self._orbs._get_data_prefix(2))
+            
+        added_light_vector = self.read_fits(
+            cube._get_added_light_vector_path())
+        self._graph.pop_plot(added_light_vector, xlabel="Frame index",
+                             ylabel="Counts",
+                             title="Added light vector")
+
+    def show_alignment_vector(self, camera_number):
+        """Get the alignement vector computed to align the frames of
+        the raw data cube of each camera and display it.
+
+        :param camera_number: The number of the camera to analyse
+          (must be 1 or 2)
+
+        :param err: (Optional) If True, show error vector (default
+          False)
+
+        .. seealso:: :py:meth:`orbs.Orbs.compute_alignment_vector`
+        """
+        cube = self._orbs._init_raw_data_cube(camera_number)
+        alignment_vector = self.read_fits(cube._get_alignment_vector_path(err=False))
+        alignment_error = self.read_fits(cube._get_alignment_vector_path(err=True))
+        alignment_error = np.array([alignment_error,
+                                    alignment_error]).T
+        print alignment_error.shape, alignment_vector.shape
+        ylabel = "Alignment error (in pixels)"
+        title = "Alignment error camera %d"%camera_number
+        self._graph.pop_plot(alignment_vector,
+                             xlabel="Frame index",
+                             ylabel=ylabel,
+                             yerr=alignment_error,
+                             title=title,
+                             ylim=[-5,5])
+
+    def show_detected_stars(self, camera_number):
+        """Get the position of the detected stars used for the
+        alignment processes and diplay it over a frame of the
+        concerned data cube using ds9.
+
+        :param camera_number: The number of the camera to analyse
+          (must be 1 or 2)
+
+        .. seealso:: :py:meth:`orbs.Orbs.compute_alignment_vector`
+        .. seealso:: :py:meth:`orbs.Orbs.transform_cube_B`
+        .. seealso:: :py:meth:`astrometry.Astrometry.detect_stars`
+        """
+        cube = self._orbs._init_raw_data_cube(camera_number)
+        astrom = self._orbs._init_astrometry(cube, camera_number)
+        frame = cube.get_data_frame(0).transpose()
+        star_list = orb.astrometry.load_star_list(astrom._get_star_list_path())
+        self._graph.pop_frame(frame)
+        self._graph.pop_stars(star_list)
+
+    def show_detected_cosmic_rays(self, camera_number, frame_nb):
+        """Get the position of the detected cosmic rays and diplay it
+        over each frame of the concerned data cube using ds9.
+
+        :param camera_number: The number of the camera to analyse
+          (must be 1 or 2)
+
+        .. seealso:: :py:meth:`orbs.Orbs.compute_cosmic_ray_map`
+        """
+        cube = self._orbs._init_raw_data_cube(camera_number)
+        frame = cube.get_data_frame(frame_nb).transpose()
+        cr_list = np.nonzero(self.read_fits(cube._get_cr_map_frame_path(frame_nb)))
+        cr_final_list = list()
+        for icr in range(len(cr_list[0])):
+            cr_final_list.append((cr_list[0][icr], cr_list[1][icr]))    
+        self._graph.pop_frame(frame)
+        self._graph.pop_stars(np.array(cr_final_list))
+
+    def show_alignment_quality(self):
+        """Compare the fitted position of the stars in a deep frame
+        from the corrected interferogram of the first camera and a
+        deep frame from the transformed interferogram of the second
+        camera. Plot the position shift in a graph to measure the
+        quality of the alignement between the two cubes.
+
+        .. seealso:: :py:meth:`orbs.Orbs.transform_cube_B`
+        """
+        
+        cube1 = self._orbs._init_raw_data_cube(1)
+        image_list_path_1 = cube1._get_interfero_list_path()
+        cube1 = Cube(image_list_path_1)
+        self._interf_frame_A = cube1.get_mean_image()
+        self._astrom1 = self._orbs._init_astrometry(cube1, 1)
+            
+        cube2 = InterferogramMerger(
+            None, None, None, 
+            data_prefix=self._orbs._get_data_prefix(0))
+        image_list_path_2 = (
+            cube2._get_transformed_interfero_frame_list_path())
+        cube2 = Cube(image_list_path_2)
+        self._interf_frame_B = cube2.get_mean_image()
+            
+        star_list_path, self._mean_fwhm = self._astrom1.detect_stars(
+            min_star_number=self.MIN_STAR_NB, no_save=True)
+        self._star_list_A = self._astrom1.load_star_list(star_list_path)
+             
+        star_fit_B = orb.astrometry.fit_stars_in_frame(
+            self._interf_frame_B, self._star_list_A,
+            int(self._mean_fwhm * self._astrom1.box_size_coeff))
+        star_distance = np.array([[star_fit_B[istar,'dx'],
+                                   star_fit_B[istar,'dy']]
+                                  for istar in range(len(self._star_list_A))])
+        
+        # arc-sec conversion
+        star_distance[:,0] = self._astrom1.pix2arc(star_distance[:,0])
+        star_distance[:,1] = self._astrom1.pix2arc(star_distance[:,1])
+        mean_distance = orb.utils.robust_mean(orb.utils.sigmacut(
+           np.sqrt(star_distance[:,0]**2 + star_distance[:,1]**2), sigma=3.))
+        mean_center_x = orb.utils.robust_mean(orb.utils.sigmacut(
+            star_distance[:,0], sigma=3.))
+        mean_center_y = orb.utils.robust_mean(orb.utils.sigmacut(
+            star_distance[:,1], sigma=3.))
+   
+        self._graph.pop_scatter(
+            star_distance,
+            circle=(([0.,0.], (self._mean_fwhm / 2.), "Stars FWHM", 'g'),
+                    ([mean_center_x, mean_center_y], mean_distance, "Mean distance", 'r')),
+            xlabel="X shift (in arcseconds)",
+            ylabel="Y shift (in arcseconds)",
+            title="Position difference for each star",
+            xlim=[-self._mean_fwhm / 2.,self._mean_fwhm / 2.],
+            ylim=[-self._mean_fwhm / 2.,self._mean_fwhm/ 2.])
+        
+####################################################
+############ Graph class ###########################
+####################################################
+        
+class Graph(Tools):
+    """
+    Graph class is used to display the informations collected by
+    :py:class:`orbscheck.OrbsCheck`.
+    
+    Graph uses ds9 (through :py:mod:`pyds9`) for image display and
+    the :py:mod:`pylab` library for plotting.
+    """
+
+    FONTSIZE = 14 # Default font size
+    LINEWIDTH = 1.5 # Default line width in graph
+    _last_fig_index = None
+    _ds9 = None # ds9 instance
+    _nods9 = None # If True ds9 interface will no be used
+
+    def __init__(self, nods9=False):
+        """Initialize :py:class:`orbscheck.Graph`. Load ds9.
+        """
+        self._last_fig_index = 0
+        self._nods9 = nods9
+        if not self._nods9:
+            self._load_ds9()
+
+    def _load_ds9(self):
+        """Load ds9.
+
+        .. seealso:: :py:mod:`pyds9`
+        """
+        if self._ds9 != None:
+            self._close_ds9()
+        self._ds9 = ds9.ds9("OrbsCheck")
+        
+    def _close_ds9(self):
+        """Close ds9.
+
+        .. seealso:: :py:mod:`pyds9`
+        """
+        try:
+            self._ds9.set('exit')
+        except:
+            self._print_msg('ds9 is not running')
+        self._ds9 = None
+        
+    def pop_plot(self, y, x=None, xlabel=None, ylabel=None,
+                 title=None, yerr=None, ylim=None):
+        """Plot an array using :py:meth:`pylab.plot` in a new window.
+
+        :param y: The array to display. If no x array is given, assume
+          an x array like np.arange(y.shape[0]).
+        :param x: (Optional) x array.
+        :param xlabel: (Optional) Label for the x axis (default None)
+        :param ylabel: (Optional) Label for the y axis (default None)
+        :param title: (Optional) Title of the plot to display (default
+          None)
+          
+        :param ylim: (Optional) Set limit on y scale (must be a tuple
+          [ymin,ymax])
+        """
+        pl.figure(self._last_fig_index)
+        if len(y.shape) > 1:
+            nb = y.shape[1]
+        else:
+            nb = 1
+        for iy in range(nb):
+            if nb > 1:
+                yi = y[:,iy]
+                yerri = yerr[:,iy]
+            else:
+                yi = y
+                yerri = yerr
+                
+            if x == None:
+                pl.errorbar(np.arange(yi.shape[0]), yi, yerr=yerri,
+                            linewidth=self.LINEWIDTH, color=str(iy/float(nb)))
+            else:
+                pl.errorbar(x,y, linewidth=self.LINEWIDTH, yerr=yerr,
+                            color=str(iy/float(nb)))
+        if xlabel != None:
+            pl.xlabel(xlabel, fontsize = self.FONTSIZE)
+        if ylabel != None:
+            pl.ylabel(ylabel, fontsize = self.FONTSIZE)
+        pl.grid()
+        if title != None:
+            pl.title(title, fontsize = self.FONTSIZE + 2)
+        if ylim != None:
+            pl.ylim(ylim)
+
+        pl.show()
+        self._last_fig_index += 1
+        return self._last_fig_index - 1
+
+    def pop_scatter(self, a, xlabel=None, ylabel=None,
+                    title=None, xlim=None, ylim=None, circle=None):
+        """Plot an scatter graph using :py:meth:`pylab.scatter` in a
+        new window.
+
+        :param a: The array to display. The first column is assumed to
+          give the x coordinates. The second column is assumed to give
+          the y coordinates.
+          
+        :param circle: (Optional) Add circles to the plot. Must be a
+          tuple of parameters (([x1,y1], radius1, label1, color1),
+          ([x2,y2], radius2, label2, color2), ...).
+          
+        :param xlabel: (Optional) Label for the x axis (default None)
+        :param ylabel: (Optional) Label for the y axis (default None)
+        :param title: (Optional) Title of the plot to display (default
+          None)
+        :param xlim: (Optional) Limits for the x axis display (default
+          None). Must be an array [x_min, x_max]
+        :param ylim: (Optional) Limits for the y axis display (default
+          None). Must be an array [y_min, y_max]
+        """
+        pl.figure(self._last_fig_index)
+        for iscat in range(a.shape[0]):
+            pl.scatter(a[iscat,0], a[iscat,1], linewidth=self.LINEWIDTH)
+
+        if circle != None:
+            for icircle in circle:
+                circ=pl.Circle(icircle[0], radius=icircle[1],
+                               fill=False, label=icircle[2],
+                               color=icircle[3], linewidth=self.LINEWIDTH)
+                ax=pl.gca()
+                ax.add_patch(circ)
+            
+        if xlim != None:
+            pl.xlim(xlim)
+        if ylim != None:
+            pl.ylim(ylim)
+        pl.grid()
+        if xlabel != None:
+            pl.xlabel(xlabel, fontsize = self.FONTSIZE)
+        if ylabel != None:
+            pl.ylabel(ylabel, fontsize = self.FONTSIZE)
+        if title != None:
+            pl.title(title, fontsize = self.FONTSIZE + 2)
+        pl.legend()
+        pl.axes().set_aspect('equal')
+        pl.show()
+
+        self._last_fig_index += 1
+        return self._last_fig_index - 1
+
+    def pop_frame(self, frame):
+        """Display an image frame in ds9.
+
+        :param frame: The frame to be displayed as a numpy 2D array.
+        """
+        
+        try:
+            self._ds9.set_np2arr(frame.astype(float))
+            self._ds9.set('cmap bb')
+            self._ds9.set('scale log')
+        except:
+            self._print_msg("ds9 has been closed. Please restart OrbsCheck.")
+
+    def pop_stars(self, star_list):
+        """Display star positions in ds9.
+
+        :star_list: The list of star positions as an array [[x1, y1],
+          [x2, y2], ...]
+        
+        .. note:: The star positions are corrected for the shift of
+          the zero in ds9. In ds9 the pixel indices start from 1 and
+          in python they start from 0.
+        """
+        star_list_path = ".OrbsCheck_formatted_star_list"
+        f = open(star_list_path, 'w')
+        for istar in range(star_list.shape[0]):
+            star_list[istar,:] = star_list[istar,:] + 1
+            f.write("%f %f\n"%(star_list[istar,0], star_list[istar,1]))
+        f.close()
+        try:
+            self._ds9.set('regions format xy')
+            self._ds9.set('regions system image')
+            self._ds9.set('regions load %s'%star_list_path)
+        except:
+            self._print_msg("ds9 has been closed. Please restart OrbsCheck.")
+        
+    def __del__(self):
+        """Close ds9 and delete the Graph class properly.
+        """
+        self._close_ds9()
+
+
+####################################################
+############ OrbsCheckGui class #########################
+####################################################
+
+
+class OrbsCheckGui(Tkinter.Frame):
+    """
+    This class runs OrbsCheck (Interface Rapide d'Information et de
+    Synthèse) an analysis interface for the data reduction software
+    ORBS.
+    
+    To run this script simply use the following command : $ ./orbscheck
+    option_file.opt Remember : for any help please refer to the file
+    'OrbsCheck/orbscheck.py'
+    """
+    script_dir = os.path.dirname(os.path.realpath(__file__)).split()[0] + os.sep
+    
+    _logo_path = os.path.join(script_dir, 'logo.png')
+    _orbscheck = None # OrbsCheck() instance
+    _frame_nb = 0
+    _showing_cr = None
+    
+    def onMove(self, value):
+        self._frame_nb.set(int(value))
+
+    def slide_plus(self):
+        if self._frame_nb.get() < self._orbscheck.raw_frame_nb - 1:
+            self._frame_nb.set(self._frame_nb.get() + 1)
+        if (self._showing_cr == 1 or self._showing_cr == 2):
+            self._orbscheck.show_detected_cosmic_rays(
+                self._showing_cr, self._frame_nb.get())
+
+    def slide_minus(self):
+        if self._frame_nb.get() > 0:
+            self._frame_nb.set(self._frame_nb.get() - 1)
+        if (self._showing_cr == 1 or self._showing_cr == 2):
+            self._orbscheck.show_detected_cosmic_rays(
+                self._showing_cr, self._frame_nb.get())
+
+    def show_detected_cr(self, camera_number):
+        self._orbscheck.show_detected_cosmic_rays(camera_number,
+                                                  self._frame_nb.get())
+        self._showing_cr = camera_number
+    
+    def show_detected_stars(self, camera_number):
+        self._orbscheck.show_detected_stars(camera_number)
+        self._showing_cr = None
+
+    def __init__(self, root, orbscheck):
+        self._orbscheck = orbscheck
+        self._frame_nb = Tkinter.IntVar()
+        Tkinter.Frame.__init__(self, root)
+        root.resizable(False,False)
+
+        # define commands
+        ftrans_vector = (
+            lambda: self._orbscheck.show_transmission_vector(self.cam.get()))
+        fextil_vector = lambda: self._orbscheck.show_ext_illumination_vector()
+        faddli_vector = (
+            lambda: self._orbscheck.show_added_light_vector(self.cam.get()))
+        falignment_vector_1 =  lambda: self._orbscheck.show_alignment_vector(1)
+        falignment_vector_2 =  lambda: self._orbscheck.show_alignment_vector(2)
+        falignment_quality =  lambda: self._orbscheck.show_alignment_quality()
+        fdetected_stars_1 = lambda: self.show_detected_stars(1)
+        fdetected_stars_2 = lambda: self.show_detected_stars(2)
+        fdetected_cr_1 = lambda: self.show_detected_cr(1)
+        fdetected_cr_2 = lambda: self.show_detected_cr(2)
+        
+        # define labels and buttons
+        Tkinter.Label(root, text="General").grid(
+            column=1, row=0, sticky=Tkinter.W, columnspan=2)
+        Tkinter.Button(root, text='DETECTED STARS CAM1', 
+                       command=fdetected_stars_1, width=20).grid(
+            column=1, row=1, columnspan=2)
+        Tkinter.Button(root, text='DETECTED STARS CAM2', 
+                       command=fdetected_stars_2, width=20).grid(
+            column=1, row=2, columnspan=2)
+        
+        Tkinter.Label(root, text="Correction").grid(
+            column=1, row=3, sticky=Tkinter.W)
+        Tkinter.Button(root, text='ALIGNMENT VECTORS CAM1', 
+                       command=falignment_vector_1, width=20).grid(
+            column=1, row=4, columnspan=2)
+        Tkinter.Button(root, text='ALIGNMENT VECTORS CAM2', 
+                       command=falignment_vector_2, width=20).grid(
+            column=1, row=5, columnspan=2)
+        Tkinter.Button(root, text='COSMIC RAYS CAM1', 
+                       command=fdetected_cr_1, width=20).grid(
+            column=1, row=6, columnspan=2)
+        Tkinter.Button(root, text='COSMIC RAYS CAM2', 
+                       command=fdetected_cr_2, width=20).grid(
+            column=1, row=7, columnspan=2)
+        Tkinter.Scale(root, label='Frame Nb',
+                      command=self.onMove,
+                      variable=self._frame_nb,
+                      from_=0, to=self._orbscheck.raw_frame_nb - 1,
+                      length=150,
+                      tickinterval=int(self._orbscheck.raw_frame_nb / 4.),
+                      showvalue='yes',
+                      orient='horizontal').grid(
+            column=1, row=8, columnspan=2, rowspan=3)
+        Tkinter.Button(root, text='-', 
+                       command=self.slide_minus, width=5).grid(
+            column=1, row=11)
+        Tkinter.Button(root, text='+', 
+                       command=self.slide_plus, width=5).grid(
+            column=2, row=11)
+        
+        Tkinter.Label(root, text="Merging Process").grid(
+            column=0, row=5, sticky=Tkinter.W, columnspan=1)
+
+        self.cam_list = ['CAM1', 'CAM2', 'MERGED']
+        
+        self.cam = Tkinter.StringVar(root)
+        self.cam.set('MERGED') # initial value
+        self.ecam = Tkinter.OptionMenu(root, self.cam, *self.cam_list)
+        self.ecam.grid(column=0, row=6, sticky=Tkinter.W)
+        
+        Tkinter.Button(root, text='TRANSMISSION VECTOR', 
+                       command=ftrans_vector, width=20).grid(
+            column=0, row=7, columnspan=1)
+        Tkinter.Button(root, text='EXT. ILLUM. VECTOR', 
+                       command=fextil_vector, width=20).grid(
+            column=0, row=8, columnspan=1)
+        Tkinter.Button(root, text='ADDED LIGHT VECTOR', 
+                       command=faddli_vector, width=20).grid(
+            column=0, row=9, columnspan=1)
+        Tkinter.Button(root, text='ALIGNMENT QUALITY', 
+                       command=falignment_quality, width=20).grid(
+            column=0, row=10, columnspan=1)
+
+        # display logo
+        image = ImageTk.PhotoImage(file=self._logo_path)
+        label = Tkinter.Label(root, image=image)
+        label.image = image
+        label.grid(row=0, column=0, columnspan=1, rowspan=5, padx=5)
+        
+
+def usage(): 
+    print """ orbscheck [OPTIONS]... OPTION_FILE...
+
+    Run the OrbsCheck interface.
+
+  --nods9: ds9 interface will not be loaded. (Useful when using ssh X
+    forwarding). But some OrbsCheck functions will be disabled.
+
+  OrbsCheck version: %s
+  Author: Thomas Martin (thomas.martin.1@ulaval.ca)
+"""%__version__
+    sys.exit(2)
+
+
+if __name__ == "__main__":
+    
+    try:
+        opts, args = getopt.getopt(sys.argv[1:], "", ["nods9"])
+    except getopt.GetoptError, err:
+        print str(err)
+        usage()
+        sys.exit(2)
+
+    nods9 = False
+
+    for opt, arg in opts:
+        if opt in ("--nods9"):
+            nods9 = True
+
+    for opt, arg in opts:
+        Tools()._print_msg(' ' + opt + ' ' + arg)
+        
+    if (len(args) > 0):
+        Tools()._print_msg("** OrbsCheck **", color=True)
+        Tools()._print_msg("Passed arguments : ", color=True)
+        Tools()._print_msg("Option file : %s"%str(args[0]), color=True)
+
+        if nods9 == True:
+            Tools()._print_warning(
+                "DS9 will not be loaded. Some OrbsCheck functions are disabled.")
+
+        orbscheck = OrbsCheck(str(args[0]), nods9=nods9)
+    else: usage()
+    
+    # GUI
+    root = Tkinter.Tk()
+    root.title("OrbsCheck Interface")
+    orbscheck_gui = OrbsCheckGui(root, orbscheck)
+    root.mainloop()
+

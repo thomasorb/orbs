@@ -1,0 +1,19 @@
+CUtils module
+=============
+
+.. automodule:: cutils
+   :members:
+   :private-members:
+   :show-inheritance:
+
+
+.. autofunction:: cutils.radians
+
+.. autofunction:: transform_A_to_B
+
+.. autofunction:: gaussian_array2d
+
+.. autofunction:: surface_value
+
+
+
