@@ -27,7 +27,7 @@
     <link rel="shortcut icon" href="_static/logo.ico"/>
     <link rel="top" title="Orbs 3.7.1 documentation" href="index.html" />
     <link rel="next" title="Process module" href="process_module.html" />
-    <link rel="prev" title="Python for ORBS users" href="python_for_orbs.html" /> 
+    <link rel="prev" title="Quick start Guide" href="quick_start.html" /> 
   </head>
   <body>
     <div class="related">
@@ -40,7 +40,7 @@
           <a href="process_module.html" title="Process module"
              accesskey="N">next</a> |</li>
         <li class="right" >
-          <a href="python_for_orbs.html" title="Python for ORBS users"
+          <a href="quick_start.html" title="Quick start Guide"
              accesskey="P">previous</a> |</li>
         <li><a href="index.html">Orbs 3.7.1 documentation</a> &raquo;</li> 
       </ul>
@@ -60,8 +60,8 @@
 </ul>
 
   <h4>Previous topic</h4>
-  <p class="topless"><a href="python_for_orbs.html"
-                        title="previous chapter">Python for ORBS users</a></p>
+  <p class="topless"><a href="quick_start.html"
+                        title="previous chapter">Quick start Guide</a></p>
   <h4>Next topic</h4>
   <p class="topless"><a href="process_module.html"
                         title="next chapter">Process module</a></p>
@@ -748,6 +748,8 @@ and 2 for a 1x1 binning</li>
 and 2 for a 1x1 binning</li>
 <li>FIELD_OF_VIEW: Size of the field of view of the camera 1 in
 arc-minutes</li>
+<li>FIELD_OF_VIEW_2: Size of the field of view of the camera 2 in
+arc-minutes</li>
 <li>PIX_SIZE_CAM1: Camera 1 pixel size in um</li>
 <li>PIX_SIZE_CAM2: Camera 2 pixel size in um</li>
 <li>BALANCED_CAM: Number of the camera on the balanced port</li>
@@ -943,9 +945,10 @@ default options</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>calibration_laser_map_path</strong> &#8211; (Optional) Path to an already
-computed calibration laser map. If a calibration map is given the
-calibration laser map computation step is skipped.</li>
+<li><strong>calibration_laser_map_path</strong> &#8211; (Optional) Path to an
+already computed calibration laser map. If a calibration
+map is given the calibration laser map computation step is
+skipped.</li>
 <li><strong>phase_map_0_path</strong> &#8211; (Optional) Path to an already
 computed phase map (0th order) from an other cube (e.g. a
 flat cube). If a phase map is given the phase map
@@ -1260,6 +1263,12 @@ camera 2 (STARLIST2)</li>
 <li>apodization_function: Apodization function name (APOD)</li>
 <li>calibration_laser_map_path: Path to the calibration laser
 map (CALIBMAP)</li>
+<li>try_catalogue: If False (0) no catalogued
+information are used for star detection, even if TARGETR,
+TARGETD, TARGETX, TRAGETY are given in the option file. Star
+detection will thus use its own algorithm or use a given
+star list, see STARLIST1 and STARLIST2 keywords. This option
+is set to True by default (TRYCAT).</li>
 </ul>
 </div></blockquote>
 </div>
@@ -1522,7 +1531,7 @@ run this function alone.</p>
           <a href="process_module.html" title="Process module"
              >next</a> |</li>
         <li class="right" >
-          <a href="python_for_orbs.html" title="Python for ORBS users"
+          <a href="quick_start.html" title="Quick start Guide"
              >previous</a> |</li>
         <li><a href="index.html">Orbs 3.7.1 documentation</a> &raquo;</li> 
       </ul>

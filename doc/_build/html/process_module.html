@@ -1902,7 +1902,7 @@ checking.</p>
 
 <dl class="method">
 <dt id="process.CalibrationLaser.create_calibration_laser_map">
-<tt class="descname">create_calibration_laser_map</tt><big>(</big><em>order=30</em>, <em>step=9765</em>, <em>get_calibration_laser_spectrum=False</em><big>)</big><a class="headerlink" href="#process.CalibrationLaser.create_calibration_laser_map" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">create_calibration_laser_map</tt><big>(</big><em>order=30</em>, <em>step=9765</em>, <em>get_calibration_laser_spectrum=False</em>, <em>fast=True</em><big>)</big><a class="headerlink" href="#process.CalibrationLaser.create_calibration_laser_map" title="Permalink to this definition">¶</a></dt>
 <dd><p>Create the calibration laser map.</p>
 <p>Compute the spectral cube from the calibration laser cube and
 create the calibration laser map containing the fitted central
@@ -1917,6 +1917,9 @@ plane (x/y axes).</p>
 <li><strong>step</strong> &#8211; (Optional) Step size in um</li>
 <li><strong>get_calibration_laser_spectrum</strong> &#8211; (Optional) If True return the
 calibration laser spectrum</li>
+<li><strong>fast</strong> &#8211; (Optional) If False a sinc^2 is fitted so the fit
+is better and the procedure becomes slower. If True a
+gaussian is fitted.</li>
 </ul>
 </td>
 </tr>
@@ -1944,12 +1947,6 @@ Interferogram class.</p>
 </tr>
 </tbody>
 </table>
-<dl class="attribute">
-<dt id="process.Spectrum.BASE_URL">
-<tt class="descname">BASE_URL</tt><em class="property"> = 'http://vizier.hia.nrc.ca/viz-bin/'</em><a class="headerlink" href="#process.Spectrum.BASE_URL" title="Permalink to this definition">¶</a></dt>
-<dd><p>Beginning of the URL to the Vizer server by default</p>
-</dd></dl>
-
 <dl class="method">
 <dt id="process.Spectrum._get_calibrated_spectrum_frame_header">
 <tt class="descname">_get_calibrated_spectrum_frame_header</tt><big>(</big><em>frame_index</em>, <em>nm_axis</em>, <em>apodization_function</em>, <em>stars_cube=False</em><big>)</big><a class="headerlink" href="#process.Spectrum._get_calibrated_spectrum_frame_header" title="Permalink to this definition">¶</a></dt>
@@ -2051,47 +2048,6 @@ name is changed (default False).</td>
 </dd></dl>
 
 <dl class="method">
-<dt id="process.Spectrum._query_vizier">
-<tt class="descname">_query_vizier</tt><big>(</big><em>ra</em>, <em>dec</em>, <em>radius=7</em>, <em>catalog='USNO-B1'</em>, <em>max_stars=100</em><big>)</big><a class="headerlink" href="#process.Spectrum._query_vizier" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return a list of star coordinates around an object in a
-given radius based on a query to VizieR Services
-(<a class="reference external" href="http://vizier.u-strasbg.fr/viz-bin/VizieR">http://vizier.u-strasbg.fr/viz-bin/VizieR</a>)</p>
-<p>Note that the idea of this method has been picked from an IDL
-function: QUERYVIZIER
-(<a class="reference external" href="http://idlastro.gsfc.nasa.gov/ftp/pro/sockets/queryvizier.pro">http://idlastro.gsfc.nasa.gov/ftp/pro/sockets/queryvizier.pro</a>)</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>ra</strong> &#8211; Right Ascension of the target in degrees.</li>
-<li><strong>dec</strong> &#8211; Declination of the target in degrees.</li>
-<li><strong>radius</strong> &#8211; (Optional) Radius around the target in
-arc-minutes (default 7).</li>
-<li><strong>catalog</strong> &#8211; (Optional) Catalog to ask on the VizieR
-database (see notes) (default &#8216;USNO-B1&#8217;)</li>
-<li><strong>max_stars</strong> &#8211; (Optional) Maximum number of row to retrieve
-(default 100)</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
-<div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last">Some catalogs that can be used::
-&#8216;V/139&#8217; - Sloan SDSS photometric catalog Release 9 (2012)
-&#8216;2MASS-PSC&#8217; - 2MASS point source catalog (2003)
-&#8216;GSC2.3&#8217; - Version 2.3.2 of the HST Guide Star Catalog (2006)
-&#8216;USNO-B1&#8217; - Verson B1 of the US Naval Observatory catalog (2003)
-&#8216;UCAC4&#8217;  - 4th U.S. Naval Observatory CCD Astrograph Catalog (2012)
-&#8216;B/DENIS/DENIS&#8217; - 2nd Deep Near Infrared Survey of southern Sky (2005)
-&#8216;I/259/TYC2&#8217; - Tycho-2 main catalog (2000)
-&#8216;I/311/HIP2&#8217; - Hipparcos main catalog, new reduction (2007)</p>
-</div>
-</dd></dl>
-
-<dl class="method">
 <dt id="process.Spectrum._update_hdr_wcs">
 <tt class="descname">_update_hdr_wcs</tt><big>(</big><em>hdr</em>, <em>wcs_hdr</em><big>)</big><a class="headerlink" href="#process.Spectrum._update_hdr_wcs" title="Permalink to this definition">¶</a></dt>
 <dd><p>Update a header with WCS parameters</p>
@@ -2108,18 +2064,6 @@ new WCS parameters.</li>
 </tr>
 </tbody>
 </table>
-</dd></dl>
-
-<dl class="attribute">
-<dt id="process.Spectrum.base_url">
-<tt class="descname">base_url</tt><em class="property"> = 'http://webviz.u-strasbg.fr/viz-bin/'</em><a class="headerlink" href="#process.Spectrum.base_url" title="Permalink to this definition">¶</a></dt>
-<dd><p>Beginning of the URL to the Vizier server</p>
-</dd></dl>
-
-<dl class="attribute">
-<dt id="process.Spectrum.base_url_ca">
-<tt class="descname">base_url_ca</tt><em class="property"> = 'http://vizier.hia.nrc.ca/viz-bin/'</em><a class="headerlink" href="#process.Spectrum.base_url_ca" title="Permalink to this definition">¶</a></dt>
-<dd><p>Beginning of the URL to the Vizier server in Canada</p>
 </dd></dl>
 
 <dl class="method">
@@ -2205,42 +2149,6 @@ FILTER_MIN and FILTER_MAX:</p>
 999.2000122 0.002538740868</pre>
 </div>
 </div>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.Spectrum.get_corrected_wcs">
-<tt class="descname">get_corrected_wcs</tt><big>(</big><em>target_ra</em>, <em>target_dec</em>, <em>target_x</em>, <em>target_y</em>, <em>fwhm_arc</em>, <em>fov</em>, <em>wcs_rotation</em>, <em>profile_name='gaussian'</em>, <em>max_stars=50</em><big>)</big><a class="headerlink" href="#process.Spectrum.get_corrected_wcs" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return a corrected WCS for the cube.</p>
-<p>Precise RA/DEC positions of the stars in the field are
-recorded from a catalog of the VIZIER server.</p>
-<p>Using the real position of the same stars in the frame, WCS
-transformation parameters are optimized.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>star_list_path</strong> &#8211; Path to a list of star positions.</li>
-<li><strong>target_ra</strong> &#8211; RA of the target as a tuple [hr,min,sec]</li>
-<li><strong>target_dec</strong> &#8211; DEC of the target as a tuple [deg,min,sec]</li>
-<li><strong>target_x</strong> &#8211; Position of the target in the frame along x
-axis</li>
-<li><strong>target_y</strong> &#8211; Position of the target in the frame along y
-axis</li>
-<li><strong>fwhm_arc</strong> &#8211; Rough FWHM of the stars in arc-seconds.</li>
-<li><strong>fov</strong> &#8211; Field of View along the longer axis of the frame.</li>
-<li><strong>wcs_rotation</strong> &#8211; Initial rotation angle of the WCS.</li>
-<li><strong>max_stars</strong> &#8211; (Optional) Maximum number of stars used to
-fit (default 50)</li>
-</ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Profile_name:</th><td class="field-body"><p class="first last">(Optional) Name of the PSF profile used to fit
-stars.</p>
-</td>
-</tr>
-</tbody>
-</table>
 </dd></dl>
 
 <dl class="method">

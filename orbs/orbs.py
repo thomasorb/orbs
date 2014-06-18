@@ -3,6 +3,23 @@
 # Author: Thomas Martin <thomas.martin.1@ulaval.ca>
 # File: orbs.py
 
+## Copyright (c) 2010-2014 Thomas Martin <thomas.martin.1@ulaval.ca>
+## 
+## This file is part of ORBS
+##
+## ORBS is free software: you can redistribute it and/or modify it
+## under the terms of the GNU General Public License as published by
+## the Free Software Foundation, either version 3 of the License, or
+## (at your option) any later version.
+##
+## ORBS is distributed in the hope that it will be useful, but WITHOUT
+## ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+## or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public
+## License for more details.
+##
+## You should have received a copy of the GNU General Public License
+## along with ORBS.  If not, see <http://www.gnu.org/licenses/>.
+
 """
 Orbs module contains the high level classes of ORBS and above all Orbs
 class which acts as a user interface to the processing module
@@ -344,7 +361,7 @@ class Orbs(Tools):
             self._print_msg(line[:-1], no_hdr=True)
 
         # record some default options
-        self.options["try_catalogue"] = True
+        self.options["try_catalogue"] = False
         
         # Parse the option file to get reduction parameters
         op_file = open(options_file_path)
@@ -2573,11 +2590,8 @@ class Orbs(Tools):
             self._print_warning("Some WCS options were not given. WCS correction cannot be done.")
             correct_wcs = None
         else:
-            correct_wcs = spectrum.get_corrected_wcs(
-                target_ra, target_dec, target_x, target_y,
-                self.config["INIT_FWHM"], self.config["FIELD_OF_VIEW"],
-                self.config["WCS_ROTATION"],
-                profile_name=self.config["PSF_PROFILE"])
+            astrom = self._init_astrometry(spectrum, camera_number)
+            correct_wcs = astrom.register(full_deep_frame=True)
 
         # Get Scale Map
         if camera_number == 0 and cam1_scale:

@@ -22,8 +22,6 @@ import os
 import numpy as np
 import math
 from scipy import optimize, interpolate
-import urllib2
-import StringIO
 import pyfits
 import pywcs
 
@@ -3699,7 +3697,7 @@ class InterferogramMerger(Tools):
                     if ((abs(star_list_B_fit[istar, 'fwhm_arc']
                            - mean_params_A[istar, 'fwhm_arc'])
                         < mean_params_A[istar, 'fwhm_arc'] / 2.)
-                        and star_list_B_fit[istar, 'snr'] > 6.):
+                        and star_list_B_fit[istar, 'snr'] > 0.):
                         dist_x = star_list_B_fit[istar, 'dx']
                         dist_y = star_list_B_fit[istar, 'dy']
                         
@@ -3713,6 +3711,7 @@ class InterferogramMerger(Tools):
                         
                         fitted_stars += 1
                     else:
+                        print star_list_B_fit[istar, 'fwhm_arc'], mean_params_A[istar, 'fwhm_arc']
                         dist = np.sqrt(2.) * astrom.box_size
                 else:
                     dist = np.sqrt(2.) * astrom.box_size
@@ -3811,89 +3810,93 @@ class InterferogramMerger(Tools):
         
         
         ## ROUGH ALIGNMENT (only dx and dy)
-        self._print_msg("Rough alignment")
+        ## self._print_msg("Rough alignment")
         
-        # define the ranges in x and y for the rough optimization
-        x_range_len = int(SIZE_COEFF * float(self.cube_B.dimx))
-        y_range_len = int(SIZE_COEFF * float(self.cube_B.dimy))
-        step =  fwhm_pix_B / float(STEP_DEG)
-        if step < 0.3: step = 0.3
-        if step > 1.5: step = 1.5
+        ## # define the ranges in x and y for the rough optimization
+        ## x_range_len = int(SIZE_COEFF * float(self.cube_B.dimx))
+        ## y_range_len = int(SIZE_COEFF * float(self.cube_B.dimy))
+        ## step =  fwhm_pix_B / float(STEP_DEG)
+        ## if step < 0.3: step = 0.3
+        ## if step > 1.5: step = 1.5
         
-        x_range = np.arange(-int(x_range_len/2.), int(x_range_len/2.)+1,
-                            step, dtype=float)
-        y_range = np.arange(-int(y_range_len/2.), int(y_range_len/2.)+1,
-                            step, dtype=float)
+        ## x_range = np.arange(-int(x_range_len/2.), int(x_range_len/2.)+1,
+        ##                     step, dtype=float)
+        ## y_range = np.arange(-int(y_range_len/2.), int(y_range_len/2.)+1,
+        ##                     step, dtype=float)
         
-        guess_list = list()
-        guess_matrix = np.empty((len(x_range), len(y_range)), dtype=float)
-        guess_matrix_index_list = list()
-        for idx in range(len(x_range)):
-            for idy in range(len(y_range)):
-                guess_matrix_index_list.append((idx, idy))
-                guess_list.append(np.array([init_dx+x_range[idx],
-                                            init_dy+y_range[idy],
-                                            init_angle]))
-        # Init of the multiprocessing server
-        job_server, ncpus = self._init_pp_server()
-        ncpus_max = ncpus
+        ## guess_list = list()
+        ## guess_matrix = np.empty((len(x_range), len(y_range)), dtype=float)
+        ## guess_matrix_index_list = list()
+        ## for idx in range(len(x_range)):
+        ##     for idy in range(len(y_range)):
+        ##         guess_matrix_index_list.append((idx, idy))
+        ##         guess_list.append(np.array([init_dx+x_range[idx],
+        ##                                     init_dy+y_range[idy],
+        ##                                     init_angle]))
+        ## # Init of the multiprocessing server
+        ## job_server, ncpus = self._init_pp_server()
+        ## ncpus_max = ncpus
 
-        mean_dist_list = list()
-        progress = ProgressBar(int(len(guess_list)/ncpus_max))
+        ## mean_dist_list = list()
+        ## progress = ProgressBar(int(len(guess_list)/ncpus_max))
 
-        for ik in range(0, len(guess_list), ncpus):
-            # no more jobs than frames to compute
-            if (ik + ncpus >= len(guess_list)):
-                ncpus = len(guess_list) - ik
+        ## for ik in range(0, len(guess_list), ncpus):
+        ##     # no more jobs than frames to compute
+        ##     if (ik + ncpus >= len(guess_list)):
+        ##         ncpus = len(guess_list) - ik
 
-            # find mean distance for each guess
-            jobs = [(ijob, job_server.submit(
-                _match_stars_in_frame_B, 
-                args=(guess_list[ik+ijob], astrom,
-                      mean_params_A, self.rc, self.zoom_factor,
-                      None, False, False, True),
-                modules=("numpy as np",  
-                         "import math",
-                         "import orb.utils"))) 
-                    for ijob in range(ncpus)]
+        ##     # find mean distance for each guess
+        ##     jobs = [(ijob, job_server.submit(
+        ##         _match_stars_in_frame_B, 
+        ##         args=(guess_list[ik+ijob], astrom,
+        ##               mean_params_A, self.rc, self.zoom_factor,
+        ##               None, False, False, True),
+        ##         modules=("numpy as np",  
+        ##                  "import math",
+        ##                  "import orb.utils"))) 
+        ##             for ijob in range(ncpus)]
 
-            for ijob, job in jobs:
-                mean_dist_list.append((job(), guess_list[ik+ijob]))
-                guess_matrix[
-                    guess_matrix_index_list[ik+ijob][0],
-                    guess_matrix_index_list[ik+ijob][1]] = mean_dist_list[-1][0]
+        ##     for ijob, job in jobs:
+        ##         mean_dist_list.append((job(), guess_list[ik+ijob]))
+        ##         guess_matrix[
+        ##             guess_matrix_index_list[ik+ijob][0],
+        ##             guess_matrix_index_list[ik+ijob][1]] = mean_dist_list[-1][0]
             
-            progress.update(int(ik/ncpus_max), info="guess : %d/%d"%(
-                ik,(int(len(x_range)*len(y_range)))))
+        ##     progress.update(int(ik/ncpus_max), info="guess : %d/%d"%(
+        ##         ik,(int(len(x_range)*len(y_range)))))
             
-        self._close_pp_server(job_server)
-        progress.end()
+        ## self._close_pp_server(job_server)
+        ## progress.end()
 
 
-        # Guess matrix is smoothed and its minimum value is taken as
-        # the best estimate
-        smooth_deg = int(STEP_DEG)
-        guess_matrix = orb.utils.low_pass_image_filter(guess_matrix, smooth_deg)
+        ## # Guess matrix is smoothed and its minimum value is taken as
+        ## # the best estimate
+        ## smooth_deg = int(STEP_DEG)
+        ## guess_matrix = orb.utils.low_pass_image_filter(guess_matrix, smooth_deg)
 
-        # Save guess matrix
-        self.write_fits(self._get_guess_matrix_path(),
-                        guess_matrix,
-                        fits_header=self._get_guess_matrix_header(),
-                        overwrite=self.overwrite)
+        ## # Save guess matrix
+        ## self.write_fits(self._get_guess_matrix_path(),
+        ##                 guess_matrix,
+        ##                 fits_header=self._get_guess_matrix_header(),
+        ##                 overwrite=self.overwrite)
 
-        guess_matrix[np.nonzero(np.isnan(guess_matrix))] = np.median(
-            guess_matrix)
-        rough_dx, rough_dy =  np.unravel_index(
-            np.argmin(guess_matrix), guess_matrix.shape)
+        ## guess_matrix[np.nonzero(np.isnan(guess_matrix))] = np.median(
+        ##     guess_matrix)
+        ## rough_dx, rough_dy =  np.unravel_index(
+        ##     np.argmin(guess_matrix), guess_matrix.shape)
         
-        [self.dx, self.dy, self.dr] = mean_dist_list[
-           np.ravel_multi_index((rough_dx, rough_dy), guess_matrix.shape)][1]
-        self.da = 0.
-        self.db = 0.
+        ## [self.dx, self.dy, self.dr] = mean_dist_list[
+        ##    np.ravel_multi_index((rough_dx, rough_dy), guess_matrix.shape)][1]
+        ## self.da = 0.
+        ## self.db = 0.
 
-        self._print_msg("Rough alignment parameters:") 
-        self.print_alignment_coeffs()
+        ## self._print_msg("Rough alignment parameters:") 
+        ## self.print_alignment_coeffs()
 
+        self.dx = -47.5
+        self.dy = -94.3
+        self.dr = 176.
+        
         ## FIRST OPTIMIZATION PASS (dx, dy, dr)
         self._print_msg("First optimization pass")
         guess = [self.dx, self.dy, self.dr]
@@ -5578,15 +5581,6 @@ class Spectrum(Cube):
     :param spectrum_cube_path: Path to the spectrum cube
     """
 
-    base_url_ca = "http://vizier.hia.nrc.ca/viz-bin/"
-    """Beginning of the URL to the Vizier server in Canada"""
-    
-    base_url = "http://webviz.u-strasbg.fr/viz-bin/"
-    """Beginning of the URL to the Vizier server"""
-
-    BASE_URL = base_url_ca
-    """Beginning of the URL to the Vizer server by default"""
-
     def _get_stars_coords_path(self):
         """Return path to the list of stars coordinates used to correct WCS"""
         return self._data_path_hdr + "stars_coords"
@@ -5690,68 +5684,6 @@ class Spectrum(Cube):
                 + self._get_basic_frame_header(self.dimx, self.dimy)
                 + self._get_basic_spectrum_cube_header(nm_axis)
                 + self._get_fft_params_header(apodization_function))
-
-    def _query_vizier(self, ra, dec, radius=7, catalog='USNO-B1',
-                      max_stars=100):
-        """Return a list of star coordinates around an object in a
-        given radius based on a query to VizieR Services
-        (http://vizier.u-strasbg.fr/viz-bin/VizieR)
-
-        Note that the idea of this method has been picked from an IDL
-        function: QUERYVIZIER
-        (http://idlastro.gsfc.nasa.gov/ftp/pro/sockets/queryvizier.pro)
-
-        :param ra: Right Ascension of the target in degrees.
-
-        :param dec: Declination of the target in degrees.
-
-        :param radius: (Optional) Radius around the target in
-          arc-minutes (default 7).
-
-        :param catalog: (Optional) Catalog to ask on the VizieR
-          database (see notes) (default 'USNO-B1')
-
-        :param max_stars: (Optional) Maximum number of row to retrieve
-          (default 100)
-
-        .. note:: Some catalogs that can be used::
-          'V/139' - Sloan SDSS photometric catalog Release 9 (2012)
-          '2MASS-PSC' - 2MASS point source catalog (2003)
-          'GSC2.3' - Version 2.3.2 of the HST Guide Star Catalog (2006)
-          'USNO-B1' - Verson B1 of the US Naval Observatory catalog (2003)
-          'UCAC4'  - 4th U.S. Naval Observatory CCD Astrograph Catalog (2012)
-          'B/DENIS/DENIS' - 2nd Deep Near Infrared Survey of southern Sky (2005)
-          'I/259/TYC2' - Tycho-2 main catalog (2000)
-          'I/311/HIP2' - Hipparcos main catalog, new reduction (2007)
-        """
-        self._print_msg("Sending query to VizieR server")
-        self._print_msg("Looking for stars at RA: %f DEC: %f"%(ra, dec))
-        
-        URL = (self.BASE_URL + "asu-tsv/?-source=" + catalog
-               + "&-c.ra=%f"%ra + '&-c.dec=%f'%dec
-               + "&-c.rm=%d"%int(radius)
-               + '&-out.max=unlimited&-out.meta=-huD'
-               + '&-out=_RAJ2000,_DEJ2000,R1mag&-sort=R1mag'
-               + '&-out.max=%d'%max_stars)
-        
-        query_result = urllib2.urlopen(URL).read()
-        output = StringIO.StringIO(query_result)
-        star_list = list()
-        for iline in output:
-            if iline[0] != '#' and iline[0] != '-' and len(iline) > 3:
-                iline = iline.split()
-                if len(iline) == 3:
-                    star_list.append((float(iline[0]),
-                                      float(iline[1]),
-                                      float(iline[2])))
-
-        # sorting list to get only the brightest stars first
-        star_list = sorted(star_list, key=lambda istar: istar[2])
-        
-        self._print_msg(
-            "%d stars recorded in the given field"%len(star_list))
-        
-        return star_list
 
 
     def _update_hdr_wcs(self, hdr, wcs_hdr):
@@ -6101,184 +6033,6 @@ class Spectrum(Cube):
         file_list.close()
         if self.indexer != None:
             self.indexer['calibrated_spectrum_list'] = file_list_path
-            
-
-            
-
-    def get_corrected_wcs(self, target_ra, target_dec, target_x,
-                          target_y, fwhm_arc, fov, wcs_rotation,
-                          profile_name='gaussian',  max_stars=50):
-        
-        """Return a corrected WCS for the cube.
-        
-        Precise RA/DEC positions of the stars in the field are
-        recorded from a catalog of the VIZIER server.
-
-        Using the real position of the same stars in the frame, WCS
-        transformation parameters are optimized.
-
-        :param star_list_path: Path to a list of star positions.
-
-        :param target_ra: RA of the target as a tuple [hr,min,sec]
-
-        :param target_dec: DEC of the target as a tuple [deg,min,sec]
-        
-        :param target_x: Position of the target in the frame along x
-          axis
-        
-        :param target_y: Position of the target in the frame along y
-          axis
-
-        :param fwhm_arc: Rough FWHM of the stars in arc-seconds.
-
-        :param fov: Field of View along the longer axis of the frame.
-
-        :param wcs_rotation: Initial rotation angle of the WCS.
-
-        :profile_name: (Optional) Name of the PSF profile used to fit
-          stars.
-        
-        :param max_stars: (Optional) Maximum number of stars used to
-          fit (default 50)
-        """
-        def get_transformation_error(guess, deg_list, fit_list,
-                                     target_ra, target_dec):
-            _wcs = pywcs.WCS(naxis=2)
-            _wcs.wcs.crpix = [guess[1], guess[2]]
-            _wcs.wcs.cdelt = np.array([-guess[3], guess[3]])
-            _wcs.wcs.crval = [target_ra, target_dec]
-            _wcs.wcs.ctype = ["RA---TAN", "DEC--TAN"]
-            _wcs.wcs.crota = [guess[0], guess[0]]
-            
-            trans_list = list()
-            for istar in deg_list:
-                pos = _wcs.wcs_sky2pix(istar[0], istar[1], 0)
-                trans_list.append((pos[0][0], pos[1][0]))
-
-            error_list = np.sqrt((np.array(trans_list)
-                                  - np.array(fit_list))**2)
-            return np.mean(error_list)
-        
-      
-        MIN_STAR_NB = 5 # Minimum number of stars to get a correct WCS
-
-        self._print_msg('Computing correct WCS', color=True)
-
-        # convert RA DEC to degrees
-        target_ra = orb.utils.ra2deg(target_ra)
-        target_dec = orb.utils.dec2deg(target_dec)
-
-        # init Astrometry instance
-        deep_frame = self.get_mean_image()
-        
-        astrom = Astrometry(
-            deep_frame, fwhm_arc, fov, profile_name=profile_name,
-            logfile_name=self._logfile_name,
-            tuning_parameters=self._tuning_parameters)
-        delta = astrom.scale / 3600. # arcdeg per pixel
-        
-        # Query to get reference star positions in degrees
-        star_list = self._query_vizier(ra=target_ra,
-                                       dec=target_dec,
-                                       max_stars=10*max_stars)
-
-        if len(star_list) < MIN_STAR_NB:
-            self._print_error("Not enough stars found in the field (%d < %d)"%(len(star_list), MIN_STAR_NB))
-            
-        # reference star position list in degrees
-        star_list_deg = star_list[:max_stars]
-
-        ## Define a basic WCS
-        wcs = pywcs.WCS(naxis=2)
-        wcs.wcs.crpix = [target_x, target_y]
-        wcs.wcs.cdelt = np.array([-delta, delta])
-        wcs.wcs.crval = [target_ra, target_dec]
-        wcs.wcs.ctype = ["RA---TAN", "DEC--TAN"]
-        wcs.wcs.crota = [wcs_rotation, wcs_rotation]
-        
-
-        # Compute initial star positions from initial transformation
-        # parameters
-        star_list_pix = list()
-        for istar in star_list_deg:
-            pos = wcs.wcs_sky2pix(istar[0], istar[1], 0)
-            star_list_pix.append((pos[0][0], pos[1][0]))
-
-
-        # Save stars coords
-        f = self.open_file(self._get_stars_coords_path(), 'w')
-        for istar in star_list_deg:
-            f.write("%f %f\n"%(istar[0],
-                               istar[1]))
-            
-        # Fit stars from computed position in the image
-        astrom.reset_star_list(star_list_pix)
-        fit_params = astrom.fit_stars_in_frame(0, local_background=False)
-        
-        star_list_fit = fit_params.get_star_list(all_params=True)
-
-        # get median difference on the position to remove bad fitted
-        # stars from all the lists
-        
-        delta_pos = (star_list_pix - star_list_fit)**2.
-        delta_pos = np.sqrt(delta_pos[:,0] + delta_pos[:,1])
-        
-        delta_med = orb.utils.robust_mean(delta_pos)
-        
-        star_list_deg_temp = list()
-        star_list_pix_temp = list()
-        star_list_fit_temp = list()
-        for istar in range(len(delta_pos)):
-            if np.mean(np.array(delta_pos[istar])) < delta_med:
-                star_list_deg_temp.append(star_list_deg[istar])
-                star_list_pix_temp.append(star_list_pix[istar])
-                star_list_fit_temp.append(star_list_fit[istar])
-
-        star_list_deg = star_list_deg_temp
-        star_list_pix = star_list_pix_temp
-        star_list_fit = star_list_fit_temp
-
-        self._print_msg("Best fitted stars: %d (threshold: %f)"%(
-            len(star_list_deg), delta_med))
-
-        # Optimization of the transformation parameters
-        progress = ProgressBar(0)
-
-        guess = np.array([wcs_rotation, target_x, target_y, delta])
-        
-        [wcs_rotation, target_x, target_y, delta] = (
-            optimize.fmin_powell(get_transformation_error, guess, 
-                                 args=(star_list_deg,
-                                       star_list_fit,
-                                       target_ra,
-                                       target_dec),
-                                 ftol=1e-3, xtol=1e-3, disp=False))
-        progress.end()
-        
-        final_error = get_transformation_error(
-            [wcs_rotation, target_x, target_y, delta],
-            star_list_deg, star_list_fit,
-            target_ra, target_dec)
-
-        self._print_msg("Final error after optimization: %f"%final_error)
-        self._print_msg("Optimization parameters:\n"
-                        + "> Rotation angle: %f\n"%wcs_rotation
-                        + "> Target position: (%f, %f)\n"%(target_x,
-                                                           target_y)
-                        + "> Scale (arcseconds/pixel): %f"%(delta*3600.))
-        
-        
-        # update WCS
-        wcs = pywcs.WCS(naxis=2)
-        wcs.wcs.crpix = [target_x, target_y]
-        wcs.wcs.cdelt = np.array([-delta, delta])
-        wcs.wcs.crval = [target_ra, target_dec]
-        wcs.wcs.ctype = ["RA---TAN", "DEC--TAN"]
-        wcs.wcs.crota = [wcs_rotation, wcs_rotation]
-
-        self._print_msg('Corrected WCS computed')
-        
-        return wcs
 
     def get_flux_calibration_vector(self, std_spectrum_path, std_name,
                                     step, order, exp_time, filter_file_path,

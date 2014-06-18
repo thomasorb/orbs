@@ -3,6 +3,23 @@
 # Author: Thomas Martin <thomas.martin.1@ulaval.ca>
 # File: process.py
 
+## Copyright (c) 2010-2014 Thomas Martin <thomas.martin.1@ulaval.ca>
+## 
+## This file is part of ORBS
+##
+## ORBS is free software: you can redistribute it and/or modify it
+## under the terms of the GNU General Public License as published by
+## the Free Software Foundation, either version 3 of the License, or
+## (at your option) any later version.
+##
+## ORBS is distributed in the hope that it will be useful, but WITHOUT
+## ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+## or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public
+## License for more details.
+##
+## You should have received a copy of the GNU General Public License
+## along with ORBS.  If not, see <http://www.gnu.org/licenses/>.
+
 """
 Process module contains all the processing classes of ORBS.
 """
@@ -3685,7 +3702,7 @@ class InterferogramMerger(Tools):
                 0, fix_height=False, fix_fwhm=fix_fwhm,
                 no_aperture_photometry=True,
                 precise_guess=precise_guess, local_background=True,
-                multi_fit=True)
+                multi_fit=True, enable_rotation=True)
  
             dist_list = list()
             fitted_stars = 0
@@ -3711,7 +3728,6 @@ class InterferogramMerger(Tools):
                         
                         fitted_stars += 1
                     else:
-                        print star_list_B_fit[istar, 'fwhm_arc'], mean_params_A[istar, 'fwhm_arc']
                         dist = np.sqrt(2.) * astrom.box_size
                 else:
                     dist = np.sqrt(2.) * astrom.box_size
@@ -3791,7 +3807,7 @@ class InterferogramMerger(Tools):
             star_list_path=star_list_path,
             logfile_name=self._logfile_name,
             tuning_parameters=self._tuning_parameters).fit_stars_in_frame(
-            0, precise_guess=True)
+            0, precise_guess=True, multi_fit=True)
         
         fwhm_arc_A = orb.utils.robust_mean(mean_params_A[:,'fwhm_arc'])
         fwhm_pix_A = orb.utils.robust_mean(mean_params_A[:,'fwhm_pix'])
@@ -3810,92 +3826,88 @@ class InterferogramMerger(Tools):
         
         
         ## ROUGH ALIGNMENT (only dx and dy)
-        ## self._print_msg("Rough alignment")
+        self._print_msg("Rough alignment")
         
-        ## # define the ranges in x and y for the rough optimization
-        ## x_range_len = int(SIZE_COEFF * float(self.cube_B.dimx))
-        ## y_range_len = int(SIZE_COEFF * float(self.cube_B.dimy))
-        ## step =  fwhm_pix_B / float(STEP_DEG)
-        ## if step < 0.3: step = 0.3
-        ## if step > 1.5: step = 1.5
+        # define the ranges in x and y for the rough optimization
+        x_range_len = int(SIZE_COEFF * float(self.cube_B.dimx))
+        y_range_len = int(SIZE_COEFF * float(self.cube_B.dimy))
+        step =  fwhm_pix_B / float(STEP_DEG)
+        if step < 0.3: step = 0.3
+        if step > 1.5: step = 1.5
         
-        ## x_range = np.arange(-int(x_range_len/2.), int(x_range_len/2.)+1,
-        ##                     step, dtype=float)
-        ## y_range = np.arange(-int(y_range_len/2.), int(y_range_len/2.)+1,
-        ##                     step, dtype=float)
+        x_range = np.arange(-int(x_range_len/2.), int(x_range_len/2.)+1,
+                            step, dtype=float)
+        y_range = np.arange(-int(y_range_len/2.), int(y_range_len/2.)+1,
+                            step, dtype=float)
         
-        ## guess_list = list()
-        ## guess_matrix = np.empty((len(x_range), len(y_range)), dtype=float)
-        ## guess_matrix_index_list = list()
-        ## for idx in range(len(x_range)):
-        ##     for idy in range(len(y_range)):
-        ##         guess_matrix_index_list.append((idx, idy))
-        ##         guess_list.append(np.array([init_dx+x_range[idx],
-        ##                                     init_dy+y_range[idy],
-        ##                                     init_angle]))
-        ## # Init of the multiprocessing server
-        ## job_server, ncpus = self._init_pp_server()
-        ## ncpus_max = ncpus
+        guess_list = list()
+        guess_matrix = np.empty((len(x_range), len(y_range)), dtype=float)
+        guess_matrix_index_list = list()
+        for idx in range(len(x_range)):
+            for idy in range(len(y_range)):
+                guess_matrix_index_list.append((idx, idy))
+                guess_list.append(np.array([init_dx+x_range[idx],
+                                            init_dy+y_range[idy],
+                                            init_angle]))
+        # Init of the multiprocessing server
+        job_server, ncpus = self._init_pp_server()
+        ncpus_max = ncpus
 
-        ## mean_dist_list = list()
-        ## progress = ProgressBar(int(len(guess_list)/ncpus_max))
+        mean_dist_list = list()
+        progress = ProgressBar(int(len(guess_list)/ncpus_max))
 
-        ## for ik in range(0, len(guess_list), ncpus):
-        ##     # no more jobs than frames to compute
-        ##     if (ik + ncpus >= len(guess_list)):
-        ##         ncpus = len(guess_list) - ik
+        for ik in range(0, len(guess_list), ncpus):
+            # no more jobs than frames to compute
+            if (ik + ncpus >= len(guess_list)):
+                ncpus = len(guess_list) - ik
 
-        ##     # find mean distance for each guess
-        ##     jobs = [(ijob, job_server.submit(
-        ##         _match_stars_in_frame_B, 
-        ##         args=(guess_list[ik+ijob], astrom,
-        ##               mean_params_A, self.rc, self.zoom_factor,
-        ##               None, False, False, True),
-        ##         modules=("numpy as np",  
-        ##                  "import math",
-        ##                  "import orb.utils"))) 
-        ##             for ijob in range(ncpus)]
+            # find mean distance for each guess
+            jobs = [(ijob, job_server.submit(
+                _match_stars_in_frame_B, 
+                args=(guess_list[ik+ijob], astrom,
+                      mean_params_A, self.rc, self.zoom_factor,
+                      None, False, False, True),
+                modules=("numpy as np",  
+                         "import math",
+                         "import orb.utils"))) 
+                    for ijob in range(ncpus)]
 
-        ##     for ijob, job in jobs:
-        ##         mean_dist_list.append((job(), guess_list[ik+ijob]))
-        ##         guess_matrix[
-        ##             guess_matrix_index_list[ik+ijob][0],
-        ##             guess_matrix_index_list[ik+ijob][1]] = mean_dist_list[-1][0]
+            for ijob, job in jobs:
+                mean_dist_list.append((job(), guess_list[ik+ijob]))
+                guess_matrix[
+                    guess_matrix_index_list[ik+ijob][0],
+                    guess_matrix_index_list[ik+ijob][1]] = mean_dist_list[-1][0]
             
-        ##     progress.update(int(ik/ncpus_max), info="guess : %d/%d"%(
-        ##         ik,(int(len(x_range)*len(y_range)))))
+            progress.update(int(ik/ncpus_max), info="guess : %d/%d"%(
+                ik,(int(len(x_range)*len(y_range)))))
             
-        ## self._close_pp_server(job_server)
-        ## progress.end()
+        self._close_pp_server(job_server)
+        progress.end()
 
 
-        ## # Guess matrix is smoothed and its minimum value is taken as
-        ## # the best estimate
-        ## smooth_deg = int(STEP_DEG)
-        ## guess_matrix = orb.utils.low_pass_image_filter(guess_matrix, smooth_deg)
+        # Guess matrix is smoothed and its minimum value is taken as
+        # the best estimate
+        smooth_deg = int(STEP_DEG)
+        guess_matrix = orb.utils.low_pass_image_filter(guess_matrix, smooth_deg)
 
-        ## # Save guess matrix
-        ## self.write_fits(self._get_guess_matrix_path(),
-        ##                 guess_matrix,
-        ##                 fits_header=self._get_guess_matrix_header(),
-        ##                 overwrite=self.overwrite)
+        # Save guess matrix
+        self.write_fits(self._get_guess_matrix_path(),
+                        guess_matrix,
+                        fits_header=self._get_guess_matrix_header(),
+                        overwrite=self.overwrite)
 
-        ## guess_matrix[np.nonzero(np.isnan(guess_matrix))] = np.median(
-        ##     guess_matrix)
-        ## rough_dx, rough_dy =  np.unravel_index(
-        ##     np.argmin(guess_matrix), guess_matrix.shape)
+        guess_matrix[np.nonzero(np.isnan(guess_matrix))] = np.median(
+            guess_matrix)
+        rough_dx, rough_dy =  np.unravel_index(
+            np.argmin(guess_matrix), guess_matrix.shape)
         
-        ## [self.dx, self.dy, self.dr] = mean_dist_list[
-        ##    np.ravel_multi_index((rough_dx, rough_dy), guess_matrix.shape)][1]
-        ## self.da = 0.
-        ## self.db = 0.
+        [self.dx, self.dy, self.dr] = mean_dist_list[
+           np.ravel_multi_index((rough_dx, rough_dy), guess_matrix.shape)][1]
+        self.da = 0.
+        self.db = 0.
 
-        ## self._print_msg("Rough alignment parameters:") 
-        ## self.print_alignment_coeffs()
-
-        self.dx = -47.5
-        self.dy = -94.3
-        self.dr = 176.
+        self._print_msg("Rough alignment parameters:") 
+        self.print_alignment_coeffs()
         
         ## FIRST OPTIMIZATION PASS (dx, dy, dr)
         self._print_msg("First optimization pass")
@@ -3945,8 +3957,6 @@ class InterferogramMerger(Tools):
         elif ((fitted_star_nb / float(astrom.star_list.shape[0]))
               < WARNING_RATIO):
             self._print_warning("Poor ratio of fitted stars in both cubes (%d%%) for the first optimization pass. Check alignment parameters."%int(fitted_star_nb / float(astrom.star_list.shape[0]) * 100.))
-
-        
                 
         ## SECOND OPTIMIZATION PASS (dx, dy,dr, da, db)
         if full_precision:
@@ -3958,7 +3968,7 @@ class InterferogramMerger(Tools):
                                      args=(astrom, mean_params_A,
                                            self.rc,
                                            self.zoom_factor,
-                                           progress, False, True, True),
+                                           progress, False, True, False),
                                      ftol=1e-3, xtol=1e-3, disp=False,
                                      full_output=True))
             progress.end()
@@ -4586,16 +4596,17 @@ class InterferogramMerger(Tools):
             'RED_CHISQ_COEFF', 1.5))
 
         # Blur frames
-        BLUR = bool(int(self._get_tuning_parameter('BLUR', 1)))
+        BLUR = bool(int(self._get_tuning_parameter('BLUR', 0)))
 
         # Define fit parameters depending on the type of frame
         EXTENDED_EMISSION = bool(int(
             self._get_tuning_parameter('EXTENDED_EMISSION', 0)))
 
+
+        local_background = True
         
         if EXTENDED_EMISSION:
             fix_height = True
-            local_background = True
             fix_fwhm = True
             optimized_modulation_ratio = False
             # Length ratio of the ZPD over the entire cube to correct
@@ -4607,13 +4618,12 @@ class InterferogramMerger(Tools):
                 'Region considered as an extended emission region')
         else:
             fix_height = False
-            local_background = False
             fix_fwhm = False
             optimized_modulation_ratio = True
             # Length ratio of the ZPD over the entire cube to correct
             # the transmission vector
             TRANS_ZPD_SIZE = float(
-                self._get_tuning_parameter('TRANS_ZPD_SIZE', 0.02))
+                self._get_tuning_parameter('TRANS_ZPD_SIZE', 0.01))
         
         if aperture_photometry:
             self._print_msg('Star flux evaluated by aperture photometry')
@@ -4681,18 +4691,31 @@ class InterferogramMerger(Tools):
                                    fix_height=fix_height,
                                    fix_aperture_size=True,
                                    precise_guess=True,
-                                   blur=BLUR)
+                                   blur=BLUR,
+                                   multi_fit=True)
         astrom_B.fit_stars_in_cube(local_background=local_background,
                                    fix_fwhm=fix_fwhm,
                                    fix_height=fix_height,
                                    fix_aperture_size=True,
                                    precise_guess=True,
-                                   blur=BLUR)
+                                   blur=BLUR,
+                                   multi_fit=True)
+        
         astrom_A.load_fit_results(astrom_A._get_fit_results_path())
         astrom_B.load_fit_results(astrom_B._get_fit_results_path())
 
         photom_A = astrom_A.fit_results[:,:,photometry_type]
         photom_B = astrom_B.fit_results[:,:,photometry_type]
+
+        # Find ZPD ################################################
+        bad_frames_vector = orb.utils.correct_bad_frames_vector(
+            bad_frames_vector, self.cube_A.dimz)
+        zmedian = self.cube_A.get_zmedian(nozero=True)
+        zmedian[bad_frames_vector] = 0.
+        zpd_index = orb.utils.find_zpd(zmedian,
+                                       step_number=step_number)
+        
+        self._print_msg('ZPD index: %d'%zpd_index)
 
         ## MODULATION RATIO #######################################
         # Calculating the mean modulation ratio (to correct for
@@ -4700,13 +4723,26 @@ class InterferogramMerger(Tools):
         # path)
 
         # Optimization routine
-        def photom_diff(modulation_ratio, photom_A, photom_B):
-            return orb.utils.robust_mean((photom_A * modulation_ratio - photom_B)**2.)
+        def photom_diff(modulation_ratio, photom_A, photom_B, zpd_min, zpd_max):
+            return orb.utils.robust_median((photom_A * modulation_ratio
+                                            - photom_B)**2.)
+        
+        # use EXT_ZPD_SIZE to remove ZPD from MODULATION RATION calculation
+        ext_zpd_min = zpd_index - int(EXT_ZPD_SIZE * step_number / 2.)
+        if ext_zpd_min < 0: ext_zpd_min = 0
+        ext_zpd_max = zpd_index + int(EXT_ZPD_SIZE * step_number / 2.) + 1
+        if ext_zpd_max > self.cube_A.dimz:
+            ext_zpd_max = self.cube_A.dimz - 1
 
+        photom_A_nozpd = np.copy(photom_A)
+        photom_A_nozpd[:,ext_zpd_min:ext_zpd_max] = np.nan
+        photom_B_nozpd = np.copy(photom_B)
+        photom_B_nozpd[:,ext_zpd_min:ext_zpd_max] = np.nan
+        
         if optimized_modulation_ratio:
             modulation_ratio = optimize.fmin_powell(
                 photom_diff, [1.0],
-                args=(photom_A, photom_B),
+                args=(photom_A_nozpd, photom_B_nozpd, ext_zpd_min, ext_zpd_max),
                 ftol=1e-3, xtol=1e-3, disp=False)
 
             self._print_msg(
@@ -4717,14 +4753,14 @@ class InterferogramMerger(Tools):
             # If the optimization does not work we try a more robust
             # but sometimes less precise method
             modulation_ratios = list()
-            for index in range(photom_A.shape[1]):
+            for index in range(photom_A_nozpd.shape[1]):
                 index_mod = list()
-                for istar in range(photom_A.shape[0]):
+                for istar in range(photom_A_nozpd.shape[0]):
                     if (photom_A[istar,index] != 0.
-                        and not np.isnan(photom_B[istar,index])
-                        and not np.isnan(photom_A[istar,index])):
-                        index_mod.append(photom_B[istar,index]
-                                         / photom_A[istar,index])
+                        and not np.isnan(photom_B_nozpd[istar,index])
+                        and not np.isnan(photom_A_nozpd[istar,index])):
+                        index_mod.append(photom_B_nozpd[istar,index]
+                                         / photom_A_nozpd[istar,index])
                 if len(index_mod) > 0:
                     modulation_ratios.append(orb.utils.robust_mean(
                         orb.utils.sigmacut(index_mod, sigma=SIGMA_CUT_COEFF)))
@@ -4738,7 +4774,7 @@ class InterferogramMerger(Tools):
             self._print_msg(
                 "Modulation ratio: %f (std: %f)"%(
                     modulation_ratio, modulation_ratio_std))
-        
+
         self.write_fits(
             self._get_modulation_ratio_path(), 
             np.array([modulation_ratio]),
@@ -4767,17 +4803,6 @@ class InterferogramMerger(Tools):
             no_fit=True)
         astrom_merged.load_fit_results(astrom_merged._get_fit_results_path())
         photom_merged = astrom_merged.fit_results[:,:,photometry_type]
-
-
-        # Find ZPD ################################################
-        bad_frames_vector = orb.utils.correct_bad_frames_vector(
-            bad_frames_vector, self.cube_A.dimz)
-        zmedian = self.cube_A.get_zmedian(nozero=True)
-        zmedian[bad_frames_vector] = 0.
-        zpd_index = orb.utils.find_zpd(zmedian,
-                                       step_number=step_number)
-        
-        self._print_msg('ZPD index: %d'%zpd_index)
             
         ## TRANSMISSION VECTOR ####################################
         self._print_msg("Computing transmission vector")
@@ -4802,7 +4827,8 @@ class InterferogramMerger(Tools):
                 red_chisq_list.append(red_chisq)
 
         # reject stars with a bad reduced-chi-square
-        mean_red_chisq = orb.utils.robust_mean(orb.utils.sigmacut(red_chisq_list))
+        mean_red_chisq = orb.utils.robust_mean(
+            orb.utils.sigmacut(red_chisq_list))
         temp_list_trans = list()
         temp_list_flux_err = list()
         for istar in range(len(transmission_vector_list)):
@@ -4914,12 +4940,6 @@ class InterferogramMerger(Tools):
 
             
             # correct vector for ZPD
-            ext_zpd_min = zpd_index - int(EXT_ZPD_SIZE * step_number / 2.)
-            if ext_zpd_min < 0: ext_zpd_min = 0
-            ext_zpd_max = zpd_index + int(EXT_ZPD_SIZE * step_number / 2.) + 1
-            if ext_zpd_max > self.cube_A.dimz:
-                ext_zpd_max = self.cube_A.dimz - 1
-            
             ext_level_vector[ext_zpd_min:ext_zpd_max] = 0.
             ext_level_vector = orb.utils.correct_vector(
                 ext_level_vector, bad_value=0., polyfit=True, deg=3)
