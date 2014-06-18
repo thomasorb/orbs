@@ -8,7 +8,7 @@ ORBS Documentation
 ##################
 
 .. image:: orbs.png
-   :width: 40%
+   :width: 25%
    :align: center
 
 .. topic:: Welcome to ORBS documentation !

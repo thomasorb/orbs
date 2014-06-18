@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Process module &mdash; Orbs 3.7.1 documentation</title>
+    <title>Process module &mdash; Orbs 3.7.2 documentation</title>
     
     <link rel="stylesheet" href="_static/sphinxdoc.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -14,7 +14,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
-        VERSION:     '3.7.1',
+        VERSION:     '3.7.2',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -25,7 +25,7 @@
     <script type="text/javascript" src="_static/doctools.js"></script>
     <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="shortcut icon" href="_static/logo.ico"/>
-    <link rel="top" title="Orbs 3.7.1 documentation" href="index.html" />
+    <link rel="top" title="Orbs 3.7.2 documentation" href="index.html" />
     <link rel="next" title="Changelog" href="changelog.html" />
     <link rel="prev" title="Orbs module" href="orbs_module.html" /> 
   </head>
@@ -42,7 +42,7 @@
         <li class="right" >
           <a href="orbs_module.html" title="Orbs module"
              accesskey="P">previous</a> |</li>
-        <li><a href="index.html">Orbs 3.7.1 documentation</a> &raquo;</li> 
+        <li><a href="index.html">Orbs 3.7.2 documentation</a> &raquo;</li> 
       </ul>
     </div>
       <div class="sphinxsidebar">
@@ -1213,7 +1213,7 @@ better precision (because both cubes are used to compute it)</p>
 
 <dl class="method">
 <dt id="process.Interferogram.extract_stars_spectrum">
-<tt class="descname">extract_stars_spectrum</tt><big>(</big><em>star_list_path</em>, <em>fwhm_arc</em>, <em>fov</em>, <em>transmission_vector_path</em>, <em>added_light_vector_path</em>, <em>calibration_laser_map_path</em>, <em>step</em>, <em>order</em>, <em>nm_laser</em>, <em>filter_file_path</em>, <em>step_nb</em>, <em>window_type=None</em>, <em>bad_frames_vector=None</em>, <em>smoothing_deg=2</em>, <em>aperture=True</em>, <em>profile_name='gaussian'</em>, <em>moffat_beta=3.5</em>, <em>filter_correct=True</em>, <em>flat_spectrum_path=None</em>, <em>aper_coeff=3.0</em>, <em>blur=False</em><big>)</big><a class="headerlink" href="#process.Interferogram.extract_stars_spectrum" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">extract_stars_spectrum</tt><big>(</big><em>star_list_path</em>, <em>fwhm_arc</em>, <em>fov</em>, <em>transmission_vector_path</em>, <em>added_light_vector_path</em>, <em>calibration_laser_map_path</em>, <em>step</em>, <em>order</em>, <em>nm_laser</em>, <em>filter_file_path</em>, <em>step_nb</em>, <em>window_type=None</em>, <em>bad_frames_vector=None</em>, <em>smoothing_deg=2</em>, <em>aperture=True</em>, <em>profile_name='gaussian'</em>, <em>moffat_beta=3.5</em>, <em>filter_correct=True</em>, <em>flat_spectrum_path=None</em>, <em>aper_coeff=3.0</em><big>)</big><a class="headerlink" href="#process.Interferogram.extract_stars_spectrum" title="Permalink to this definition">¶</a></dt>
 <dd><p>Extract the spectrum of the stars in a list of stars location
 list by photometry.</p>
 <p>This method may be used after
@@ -1274,10 +1274,6 @@ aperture radius is Rap = aper_coeff * FWHM. Better when
 between 1.5 to reduce the variation of the collected photons
 with varying FWHM and 3. to account for the flux in the
 wings (default 3., better for star with a high SNR).</li>
-<li><strong>blur</strong> &#8211; (Optional) If True, blur frame (low pass
-filtering) before fitting stars. It can be used to enhance
-the quality of the fitted flux of undersampled data (default
-False).</li>
 </ul>
 </td>
 </tr>
@@ -1565,7 +1561,7 @@ Frame_{n,2}}{Frame_{n,1} + Frame_{n,2}}\]</div>
 
 <dl class="method">
 <dt id="process.InterferogramMerger.extract_stars_spectrum">
-<tt class="descname">extract_stars_spectrum</tt><big>(</big><em>star_list_path</em>, <em>fwhm_arc</em>, <em>fov</em>, <em>modulation_ratio_path</em>, <em>transmission_vector_path</em>, <em>ext_illumination_vector_path</em>, <em>calibration_laser_map_path</em>, <em>step</em>, <em>order</em>, <em>nm_laser</em>, <em>filter_file_path</em>, <em>step_nb</em>, <em>window_type=None</em>, <em>bad_frames_vector=None</em>, <em>phase_map_0_path=None</em>, <em>phase_coeffs=None</em>, <em>smoothing_deg=2</em>, <em>aperture=True</em>, <em>profile_name='gaussian'</em>, <em>moffat_beta=3.5</em>, <em>n_phase=None</em>, <em>auto_phase=False</em>, <em>filter_correct=True</em>, <em>flat_spectrum_path=None</em>, <em>aper_coeff=3.0</em>, <em>blur=False</em><big>)</big><a class="headerlink" href="#process.InterferogramMerger.extract_stars_spectrum" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">extract_stars_spectrum</tt><big>(</big><em>star_list_path</em>, <em>fwhm_arc</em>, <em>fov</em>, <em>modulation_ratio_path</em>, <em>transmission_vector_path</em>, <em>ext_illumination_vector_path</em>, <em>calibration_laser_map_path</em>, <em>step</em>, <em>order</em>, <em>nm_laser</em>, <em>filter_file_path</em>, <em>step_nb</em>, <em>window_type=None</em>, <em>bad_frames_vector=None</em>, <em>phase_map_0_path=None</em>, <em>phase_coeffs=None</em>, <em>smoothing_deg=2</em>, <em>aperture=True</em>, <em>profile_name='gaussian'</em>, <em>moffat_beta=3.5</em>, <em>n_phase=None</em>, <em>auto_phase=False</em>, <em>filter_correct=True</em>, <em>flat_spectrum_path=None</em>, <em>aper_coeff=3.0</em><big>)</big><a class="headerlink" href="#process.InterferogramMerger.extract_stars_spectrum" title="Permalink to this definition">¶</a></dt>
 <dd><p>Extract the spectrum of the stars in a list of stars location
 list by photometry.</p>
 <p>This method may be used after
@@ -1650,10 +1646,6 @@ aperture radius is Rap = aper_coeff * FWHM. Better when
 between 1.5 to reduce the variation of the collected photons
 with varying FWHM and 3. to account for the flux in the
 wings (default 3., better for star with a high SNR).</li>
-<li><strong>blur</strong> &#8211; (Optional) If True, blur frame (low pass
-filtering) before fitting stars. It can be used to enhance
-the quality of the fitted flux of undersampled data (default
-False).</li>
 </ul>
 </td>
 </tr>
@@ -2458,7 +2450,7 @@ in erg/cm^2/s/A.</p>
         <li class="right" >
           <a href="orbs_module.html" title="Orbs module"
              >previous</a> |</li>
-        <li><a href="index.html">Orbs 3.7.1 documentation</a> &raquo;</li> 
+        <li><a href="index.html">Orbs 3.7.2 documentation</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">

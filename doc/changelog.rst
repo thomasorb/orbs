@@ -624,5 +624,35 @@ ORBS core classes and functions (core.py, utils.py and cutils.pyx)
 have been moved to a module of shared core libraries: ORB. This way,
 ORBS, ORCS, OACS, IRIS and ORUS can share the same core module without
 importing ORBS entirely each time. Conceptually ORBS, like the others,
-just wraps around a core module and is not any more a central part ot
+just wraps around ORB module and is not any more the central part ot
 the whole suite of softwares.
+
+3.7.1
+=====
+
+Multi fit of the stars
+----------------------
+
+The functions based on star fitting have been updated to take full
+advantage of the multi_fit mode of
+:meth:`orb.astrometry.fit_stars_in_frame`. Stars are fitted all
+together based on the idea that the position pattern is good but may
+be shifted, rotated or zoomed. The stars share also the same
+FWHM. This update has made ORBS far more robust and precise on the
+alignment and merge processes. Even a cube like ORION which contains
+only few stars with very bad SNR can be perfectly aligned.
+
+USNO-B1 based star detection
+----------------------------
+
+It is now possible to use a star catalogue like USNO-B1 to detect
+stars in the cube. It is not a default behaviour because extended
+emission region contains virtually no catalogued stars. This option
+can be useful for galaxies to avoid the confision of HII regions and
+stars.
+
+3.7.2
+=====
+
+Minor bugs fix. This version is considered as a nearly stable version
+ready for release.

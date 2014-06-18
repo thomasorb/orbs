@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Changelog &mdash; Orbs 3.7.1 documentation</title>
+    <title>Changelog &mdash; Orbs 3.7.2 documentation</title>
     
     <link rel="stylesheet" href="_static/sphinxdoc.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -14,7 +14,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
-        VERSION:     '3.7.1',
+        VERSION:     '3.7.2',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -25,7 +25,7 @@
     <script type="text/javascript" src="_static/doctools.js"></script>
     <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="shortcut icon" href="_static/logo.ico"/>
-    <link rel="top" title="Orbs 3.7.1 documentation" href="index.html" />
+    <link rel="top" title="Orbs 3.7.2 documentation" href="index.html" />
     <link rel="prev" title="Process module" href="process_module.html" /> 
   </head>
   <body>
@@ -38,7 +38,7 @@
         <li class="right" >
           <a href="process_module.html" title="Process module"
              accesskey="P">previous</a> |</li>
-        <li><a href="index.html">Orbs 3.7.1 documentation</a> &raquo;</li> 
+        <li><a href="index.html">Orbs 3.7.2 documentation</a> &raquo;</li> 
       </ul>
     </div>
       <div class="sphinxsidebar">
@@ -153,6 +153,12 @@
 <li><a class="reference internal" href="#orb-a-new-core-module">ORB: A new core module</a></li>
 </ul>
 </li>
+<li><a class="reference internal" href="#id10">3.7.1</a><ul>
+<li><a class="reference internal" href="#multi-fit-of-the-stars">Multi fit of the stars</a></li>
+<li><a class="reference internal" href="#usno-b1-based-star-detection">USNO-B1 based star detection</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#id11">3.7.2</a></li>
 </ul>
 </li>
 </ul>
@@ -765,7 +771,7 @@ given, WCS coords of the cube are updated at the last step (Calibration step
 step):</p>
 <div class="admonition seealso">
 <p class="first admonition-title">See also</p>
-<p class="last"><a class="reference internal" href="process_module.html#process.Spectrum.get_corrected_wcs" title="process.Spectrum.get_corrected_wcs"><tt class="xref py py-meth docutils literal"><span class="pre">get_corrected_wcs()</span></tt></a></p>
+<p class="last"><tt class="xref py py-meth docutils literal"><span class="pre">get_corrected_wcs()</span></tt></p>
 </div>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
@@ -825,9 +831,36 @@ speed.</li>
 have been moved to a module of shared core libraries: ORB. This way,
 ORBS, ORCS, OACS, IRIS and ORUS can share the same core module without
 importing ORBS entirely each time. Conceptually ORBS, like the others,
-just wraps around a core module and is not any more a central part ot
+just wraps around ORB module and is not any more the central part ot
 the whole suite of softwares.</p>
 </div>
+</div>
+<div class="section" id="id10">
+<h3>3.7.1<a class="headerlink" href="#id10" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="multi-fit-of-the-stars">
+<h4>Multi fit of the stars<a class="headerlink" href="#multi-fit-of-the-stars" title="Permalink to this headline">¶</a></h4>
+<p>The functions based on star fitting have been updated to take full
+advantage of the multi_fit mode of
+<tt class="xref py py-meth docutils literal"><span class="pre">orb.astrometry.fit_stars_in_frame()</span></tt>. Stars are fitted all
+together based on the idea that the position pattern is good but may
+be shifted, rotated or zoomed. The stars share also the same
+FWHM. This update has made ORBS far more robust and precise on the
+alignment and merge processes. Even a cube like ORION which contains
+only few stars with very bad SNR can be perfectly aligned.</p>
+</div>
+<div class="section" id="usno-b1-based-star-detection">
+<h4>USNO-B1 based star detection<a class="headerlink" href="#usno-b1-based-star-detection" title="Permalink to this headline">¶</a></h4>
+<p>It is now possible to use a star catalogue like USNO-B1 to detect
+stars in the cube. It is not a default behaviour because extended
+emission region contains virtually no catalogued stars. This option
+can be useful for galaxies to avoid the confision of HII regions and
+stars.</p>
+</div>
+</div>
+<div class="section" id="id11">
+<h3>3.7.2<a class="headerlink" href="#id11" title="Permalink to this headline">¶</a></h3>
+<p>Minor bugs fix. This version is considered as a nearly stable version
+ready for release.</p>
 </div>
 </div>
 </div>
@@ -847,7 +880,7 @@ the whole suite of softwares.</p>
         <li class="right" >
           <a href="process_module.html" title="Process module"
              >previous</a> |</li>
-        <li><a href="index.html">Orbs 3.7.1 documentation</a> &raquo;</li> 
+        <li><a href="index.html">Orbs 3.7.2 documentation</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">

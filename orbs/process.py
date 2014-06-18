@@ -2340,7 +2340,7 @@ class Interferogram(Cube):
         astrom.fit_stars_in_cube(local_background=False,
                                  fix_aperture_size=True,
                                  precise_guess=True,
-                                 blur=True)
+                                 multi_fit=True)
         
         astrom.load_fit_results(astrom._get_fit_results_path())
         
@@ -2945,8 +2945,7 @@ class Interferogram(Cube):
                                smoothing_deg=2,
                                aperture=True, profile_name='gaussian',
                                moffat_beta=3.5, filter_correct=True,
-                               flat_spectrum_path=None, aper_coeff=3.,
-                               blur=False):
+                               flat_spectrum_path=None, aper_coeff=3.):
         
         """
         Extract the spectrum of the stars in a list of stars location
@@ -3023,11 +3022,6 @@ class Interferogram(Cube):
           between 1.5 to reduce the variation of the collected photons
           with varying FWHM and 3. to account for the flux in the
           wings (default 3., better for star with a high SNR).
-
-        :param blur: (Optional) If True, blur frame (low pass
-          filtering) before fitting stars. It can be used to enhance
-          the quality of the fitted flux of undersampled data (default
-          False).
         """
         
         PHASE_LEN_COEFF = 0.8 # Ratio of the number of points used to
@@ -3068,7 +3062,7 @@ class Interferogram(Cube):
                                  fix_aperture_size=False,
                                  precise_guess=True,
                                  aper_coeff=aper_coeff,
-                                 blur=blur)
+                                 multi_fit=True)
         
         astrom.load_fit_results(astrom._get_fit_results_path())
         photom = astrom.fit_results[:,:,photometry_type]
@@ -4595,8 +4589,11 @@ class InterferogramMerger(Tools):
         RED_CHISQ_COEFF = float(self._get_tuning_parameter(
             'RED_CHISQ_COEFF', 1.5))
 
-        # Blur frames
-        BLUR = bool(int(self._get_tuning_parameter('BLUR', 0)))
+        # FIXED MODULATION RATIO
+        FIXED_MODULATION_RATIO = self._get_tuning_parameter(
+            'FIXED_MODULATION_RATIO', None)
+        if FIXED_MODULATION_RATIO is not None:
+            FIXED_MODULATION_RATIO = float(FIXED_MODULATION_RATIO)
 
         # Define fit parameters depending on the type of frame
         EXTENDED_EMISSION = bool(int(
@@ -4606,7 +4603,6 @@ class InterferogramMerger(Tools):
         local_background = True
         
         if EXTENDED_EMISSION:
-            fix_height = True
             fix_fwhm = True
             optimized_modulation_ratio = False
             # Length ratio of the ZPD over the entire cube to correct
@@ -4617,7 +4613,6 @@ class InterferogramMerger(Tools):
             self._print_warning(
                 'Region considered as an extended emission region')
         else:
-            fix_height = False
             fix_fwhm = False
             optimized_modulation_ratio = True
             # Length ratio of the ZPD over the entire cube to correct
@@ -4645,7 +4640,7 @@ class InterferogramMerger(Tools):
             logfile_name=self._logfile_name,
             tuning_parameters=self._tuning_parameters).fit_stars_in_frame(
             0, precise_guess=True, local_background=local_background,
-            fix_fwhm=fix_fwhm, fix_height=fix_height)
+            fix_fwhm=fix_fwhm, fix_height=False)
         mean_params_B = Astrometry(
             frameB, fwhm_arc, fov, profile_name=profile_name,
             star_list_path=star_list_path, readout_noise=readout_noise_2,
@@ -4653,7 +4648,7 @@ class InterferogramMerger(Tools):
             logfile_name=self._logfile_name,
             tuning_parameters=self._tuning_parameters).fit_stars_in_frame(
             0, precise_guess=True, local_background=local_background,
-            fix_fwhm=fix_fwhm, fix_height=fix_height)
+            fix_fwhm=fix_fwhm, fix_height=False)
 
         star_list_A = mean_params_A.get_star_list()
         star_list_B = mean_params_A.get_star_list()
@@ -4688,17 +4683,13 @@ class InterferogramMerger(Tools):
         # Fit stars and get stars photometry
         astrom_A.fit_stars_in_cube(local_background=local_background,
                                    fix_fwhm=fix_fwhm,
-                                   fix_height=fix_height,
+                                   fix_height=False,
                                    fix_aperture_size=True,
-                                   precise_guess=True,
-                                   blur=BLUR,
                                    multi_fit=True)
         astrom_B.fit_stars_in_cube(local_background=local_background,
                                    fix_fwhm=fix_fwhm,
-                                   fix_height=fix_height,
+                                   fix_height=False,
                                    fix_aperture_size=True,
-                                   precise_guess=True,
-                                   blur=BLUR,
                                    multi_fit=True)
         
         astrom_A.load_fit_results(astrom_A._get_fit_results_path())
@@ -4739,7 +4730,7 @@ class InterferogramMerger(Tools):
         photom_B_nozpd = np.copy(photom_B)
         photom_B_nozpd[:,ext_zpd_min:ext_zpd_max] = np.nan
         
-        if optimized_modulation_ratio:
+        if optimized_modulation_ratio and FIXED_MODULATION_RATIO is None:
             modulation_ratio = optimize.fmin_powell(
                 photom_diff, [1.0],
                 args=(photom_A_nozpd, photom_B_nozpd, ext_zpd_min, ext_zpd_max),
@@ -4749,7 +4740,7 @@ class InterferogramMerger(Tools):
                 "Optimized modulation ratio: %f"%(
                     modulation_ratio))
         
-        else:
+        elif FIXED_MODULATION_RATIO is None:
             # If the optimization does not work we try a more robust
             # but sometimes less precise method
             modulation_ratios = list()
@@ -4774,6 +4765,11 @@ class InterferogramMerger(Tools):
             self._print_msg(
                 "Modulation ratio: %f (std: %f)"%(
                     modulation_ratio, modulation_ratio_std))
+        else:
+            modulation_ratio = FIXED_MODULATION_RATIO
+            self._print_msg(
+                "Fixed modulation ratio: %f"%(
+                    modulation_ratio))
 
         self.write_fits(
             self._get_modulation_ratio_path(), 
@@ -5212,8 +5208,7 @@ class InterferogramMerger(Tools):
                                aperture=True, profile_name='gaussian',
                                moffat_beta=3.5, n_phase=None,
                                auto_phase=False, filter_correct=True,
-                               flat_spectrum_path=None, aper_coeff=3.,
-                               blur=False):
+                               flat_spectrum_path=None, aper_coeff=3.):
         
         """
         Extract the spectrum of the stars in a list of stars location
@@ -5318,12 +5313,7 @@ class InterferogramMerger(Tools):
           aperture radius is Rap = aper_coeff * FWHM. Better when
           between 1.5 to reduce the variation of the collected photons
           with varying FWHM and 3. to account for the flux in the
-          wings (default 3., better for star with a high SNR).
-
-        :param blur: (Optional) If True, blur frame (low pass
-          filtering) before fitting stars. It can be used to enhance
-          the quality of the fitted flux of undersampled data (default
-          False).
+          wings (default 3., better for star with a high SNR).   
         """
         PHASE_LEN_COEFF = 0.5 # Ratio of the number of points used to
                               # define phase over the total number of
@@ -5374,12 +5364,12 @@ class InterferogramMerger(Tools):
                                    fix_aperture_size=False,
                                    precise_guess=True,
                                    aper_coeff=aper_coeff,
-                                   blur=blur)
+                                   multi_fit=True)
         astrom_B.fit_stars_in_cube(local_background=False,
                                    fix_aperture_size=False,
                                    precise_guess=True,
                                    aper_coeff=aper_coeff,
-                                   blur=blur)
+                                   multi_fit=True)
         
         astrom_A.load_fit_results(astrom_A._get_fit_results_path())
         astrom_B.load_fit_results(astrom_B._get_fit_results_path())
@@ -6985,7 +6975,7 @@ class Standard(Tools):
 
         astrom.reset_star_list(np.array([std_coords]))
         fit_results = astrom.fit_stars_in_frame(0, local_background=False,
-                                                fix_height=True,
+                                                multi_fit=True,
                                                 precise_guess=True)
         
         star_counts = fit_results[0, 'aperture_flux']

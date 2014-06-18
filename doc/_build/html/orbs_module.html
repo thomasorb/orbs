@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Orbs module &mdash; Orbs 3.7.1 documentation</title>
+    <title>Orbs module &mdash; Orbs 3.7.2 documentation</title>
     
     <link rel="stylesheet" href="_static/sphinxdoc.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -14,7 +14,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
-        VERSION:     '3.7.1',
+        VERSION:     '3.7.2',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -25,7 +25,7 @@
     <script type="text/javascript" src="_static/doctools.js"></script>
     <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="shortcut icon" href="_static/logo.ico"/>
-    <link rel="top" title="Orbs 3.7.1 documentation" href="index.html" />
+    <link rel="top" title="Orbs 3.7.2 documentation" href="index.html" />
     <link rel="next" title="Process module" href="process_module.html" />
     <link rel="prev" title="Quick start Guide" href="quick_start.html" /> 
   </head>
@@ -42,7 +42,7 @@
         <li class="right" >
           <a href="quick_start.html" title="Quick start Guide"
              accesskey="P">previous</a> |</li>
-        <li><a href="index.html">Orbs 3.7.1 documentation</a> &raquo;</li> 
+        <li><a href="index.html">Orbs 3.7.2 documentation</a> &raquo;</li> 
       </ul>
     </div>
       <div class="sphinxsidebar">
@@ -1263,12 +1263,12 @@ camera 2 (STARLIST2)</li>
 <li>apodization_function: Apodization function name (APOD)</li>
 <li>calibration_laser_map_path: Path to the calibration laser
 map (CALIBMAP)</li>
-<li>try_catalogue: If False (0) no catalogued
-information are used for star detection, even if TARGETR,
-TARGETD, TARGETX, TRAGETY are given in the option file. Star
-detection will thus use its own algorithm or use a given
-star list, see STARLIST1 and STARLIST2 keywords. This option
-is set to True by default (TRYCAT).</li>
+<li>try_catalogue: If True (&gt;0) a star catalogue (e.g. USNO-B1)
+is used for star detection (TARGETR, TARGETD, TARGETX,
+TRAGETY must be given in the option file). If False star
+detection will use its own algorithm. You can also force
+ORBS to use a given star list, see STARLIST1 and STARLIST2
+keywords. This option is set to False by default (TRYCAT).</li>
 </ul>
 </div></blockquote>
 </div>
@@ -1533,7 +1533,7 @@ run this function alone.</p>
         <li class="right" >
           <a href="quick_start.html" title="Quick start Guide"
              >previous</a> |</li>
-        <li><a href="index.html">Orbs 3.7.1 documentation</a> &raquo;</li> 
+        <li><a href="index.html">Orbs 3.7.2 documentation</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">

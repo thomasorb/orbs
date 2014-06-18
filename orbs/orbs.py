@@ -228,12 +228,12 @@ class Orbs(Tools):
         * apodization_function: Apodization function name (APOD)
         * calibration_laser_map_path: Path to the calibration laser
           map (CALIBMAP)
-        * try_catalogue: If False (0) no catalogued
-          information are used for star detection, even if TARGETR,
-          TARGETD, TARGETX, TRAGETY are given in the option file. Star
-          detection will thus use its own algorithm or use a given
-          star list, see STARLIST1 and STARLIST2 keywords. This option
-          is set to True by default (TRYCAT).
+        * try_catalogue: If True (>0) a star catalogue (e.g. USNO-B1)
+          is used for star detection (TARGETR, TARGETD, TARGETX,
+          TRAGETY must be given in the option file). If False star
+          detection will use its own algorithm. You can also force
+          ORBS to use a given star list, see STARLIST1 and STARLIST2
+          keywords. This option is set to False by default (TRYCAT).
     """
     tuning_parameters = dict()
     """Dictionary containg the tuning parameters of some methods
