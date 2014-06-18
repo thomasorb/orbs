@@ -173,7 +173,7 @@ def usage():
     6. Compute phase maps (see: compute_phase_maps())
     7. Compute spectrum (see: compute_spectrum())
     8. Calibrate spectrum (see: calibrate_spectrum())
-  
+
   ORBS version: {}, ORB version: {}
   Author: Thomas Martin (thomas.martin.1@ulaval.ca)  
 """.format(orbs.version.__version__, orb.version.__version__)
