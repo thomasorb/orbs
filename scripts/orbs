@@ -42,6 +42,7 @@ script_path = os.path.dirname(os.path.realpath(__file__)).split()
 orbs_path = os.path.normpath(('%s'%os.sep).join(str(script_path[0]).split(os.sep)[:-1]))
 sys.path.append(orbs_path)
 
+import orb
 from orb.core import Tools
 import orbs
 from orbs.orbs import Orbs
@@ -173,9 +174,9 @@ def usage():
     7. Compute spectrum (see: compute_spectrum())
     8. Calibrate spectrum (see: calibrate_spectrum())
   
-  ORBS version: %s
+  ORBS version: {}, ORB version: {}
   Author: Thomas Martin (thomas.martin.1@ulaval.ca)  
-"""%orbs.version.__version__
+""".format(orbs.version.__version__, orb.version.__version__)
     sys.exit(2)
 
 def main():
