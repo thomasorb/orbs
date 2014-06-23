@@ -1443,7 +1443,8 @@ class RawData(Cube):
             x_max = np.max(x_range) + 1L
             y_min = np.min(y_range)
             y_max = np.max(y_range) + 1L
-            plain_frame = np.zeros((dimx, dimy), dtype=float)
+            plain_frame = np.empty((dimx, dimy), dtype=float)
+            plain_frame.fill(np.nan)
             plain_mask_frame = np.zeros((dimx, dimy), dtype=float)
             
             if bad_frames_vector == None:
@@ -2201,8 +2202,8 @@ class Interferogram(Cube):
         self._print_msg("Computing phase coefficients of order > 0", color=True)
         
         res_map = self.read_fits(residual_map_path)
-        res_map[np.nonzero(res_map == 0)] = np.max(res_map)
-        res_map[np.nonzero(np.isnan(res_map))] = np.max(res_map)
+        res_map[np.nonzero(res_map == 0)] = np.nanmax(res_map)
+        res_map[np.nonzero(np.isnan(res_map))] = np.nanmax(res_map)
         res_distrib = res_map[np.nonzero(~np.isnan(res_map))].flatten()
         # residuals are sorted and sigma-cut filtered 
         best_res_distrib = orb.utils.sigmacut(
@@ -2211,7 +2212,8 @@ class Interferogram(Cube):
                 int(BEST_RATIO * np.size(res_distrib)))[
                 :int(BEST_RATIO * np.size(res_distrib))], sigma=2.5)
         res_map_mask = np.ones_like(res_map, dtype=np.bool)
-        res_map_mask[np.nonzero(res_map > orb.utils.robust_median(best_res_distrib))] = 0
+        res_map_mask[np.nonzero(
+            res_map > orb.utils.robust_median(best_res_distrib))] = 0
         
         
         self._print_msg("Number of well fitted phase vectors used to compute phase coefficients: %d"%len(np.nonzero(res_map_mask)[0]))
@@ -3883,7 +3885,6 @@ class InterferogramMerger(Tools):
         # the best estimate
         smooth_deg = int(STEP_DEG)
         guess_matrix = orb.utils.low_pass_image_filter(guess_matrix, smooth_deg)
-
         # Save guess matrix
         self.write_fits(self._get_guess_matrix_path(),
                         guess_matrix,
@@ -5853,7 +5854,7 @@ class Spectrum(Cube):
             y_min = int(self.dimy * MEAN_SCALING_BORDER)
             y_max = int(self.dimy * (1. - MEAN_SCALING_BORDER))
             spectrum_scale_map_box = spectrum_scale_map[x_min:x_max,
-                                            y_min:y_max]
+                                                        y_min:y_max]
             ref_scale_map_box = ref_scale_map[x_min:x_max, y_min:y_max]
 
             return (orb.utils.robust_mean(orb.utils.sigmacut(ref_scale_map_box
@@ -6641,7 +6642,8 @@ class Phase(Cube):
             w = np.ones_like(coeffs)
             mask = np.nonzero(coeffs == 0)
             w[mask] = 1e-20
-            return orb.utils.polyfit1d(coeffs, smooth_deg, w=w, return_coeffs=False)
+            return orb.utils.polyfit1d(coeffs, smooth_deg, w=w,
+                                       return_coeffs=False)
 
 
         FIT_DEG = 1 # Degree of the polynomial used fo the fit
@@ -6664,8 +6666,10 @@ class Phase(Cube):
         # border points are removed
         border = (self.dimx + self.dimy)/2. * BORDER 
         mask_map[border:-border,border:-border:] = 1.
-        # zeros points are removed
+        # zeros and nans are removed
         mask_map[np.nonzero(phase_map == 0)] = 0.
+        mask_map[np.nonzero(np.isnan(phase_map))] = 0.
+        phase_map[np.nonzero(np.isnan(phase_map))] = 0.
         mask = np.nonzero(mask_map)
 
         ## Phase map fit

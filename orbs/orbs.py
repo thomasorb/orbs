@@ -169,6 +169,10 @@ class Orbs(Tools):
         * BIAS_CALIB_PARAMS: Bias calibration parameters a, b of the
           function : bias_level = aT + b [T in degrees C]. Used to
           correct for varying dark level of the camera 2 of SpIOMM
+        * EXT_ILLUMINATION: If there is a chance for some light to
+          enter in one of the cameras and not the other this must be
+          set to 1. This way this external light can be tracked by the
+          merge process.
     """
     
     options = dict()
@@ -331,6 +335,8 @@ class Orbs(Tools):
             "OPTIM_DARK_CAM2"))
         self.config["WCS_ROTATION"] = float(self._get_config_parameter(
             "WCS_ROTATION"))
+        self.config['EXT_ILLUMINATION'] = bool(int(self._get_config_parameter(
+            "EXT_ILLUMINATION")))
 
         # defining DARK_ACTIVATION_ENERGY
         self.config["DARK_ACTIVATION_ENERGY"] = float(
@@ -445,7 +451,11 @@ class Orbs(Tools):
                 # If a keyword is the same as a configuration keyword,
                 # config option is changed
                 if keyword in self.config.keys():
-                    self.config[keyword] = type(self.config[keyword])(option_1)
+                    key_type = type(self.config[keyword])
+                    if key_type != bool:
+                        self.config[keyword] = key_type(option_1)
+                    else:
+                        self.config[keyword] = bool(int(option_1))
                     self._print_warning("Configuration option %s changed to %s"%(keyword, option_1))
 
                 # Get tuning parameters
@@ -1091,7 +1101,7 @@ class Orbs(Tools):
                 no_star=no_star,
                 alignment_coeffs=alignment_coeffs,
                 min_star_number=self.config['DETECT_STAR_NB'])
-            
+
         if (start_step <= 5):
             if alt_merge:
                 self.merge_interferograms_alt()
@@ -1099,7 +1109,8 @@ class Orbs(Tools):
                 self.merge_interferograms(
                     create_stars_cube=create_stars_cube,
                     bad_frames_vector=bad_frames_vector,
-                    compute_ext_light=not no_sky,
+                    compute_ext_light=(
+                        (not no_sky and self.config['EXT_ILLUMINATION'])),
                     min_star_number=self.config['DETECT_STAR_NB'])
             self.add_missing_frames(0, stars_cube=create_stars_cube)
             
@@ -1111,13 +1122,13 @@ class Orbs(Tools):
         if (start_step <= 7) and n_phase != 0 and not standard:
             self._print_msg("Phase map computation", color=True)
             if not create_stars_cube:
-                self.compute_spectrum(
-                    0, calibration_laser_map_path=calibration_laser_map_path,
-                    window_type='2.0', 
-                    stars_cube=create_stars_cube,
-                    n_phase=n_phase,
-                    phase_cube=True,
-                    balanced=True)
+                ## self.compute_spectrum(
+                ##     0, calibration_laser_map_path=calibration_laser_map_path,
+                ##     window_type='2.0', 
+                ##     stars_cube=create_stars_cube,
+                ##     n_phase=n_phase,
+                ##     phase_cube=True,
+                ##     balanced=True)
                 self.compute_phase_maps(
                     0, calibration_laser_map_path=calibration_laser_map_path)
                 if phase_map_only:
@@ -1831,8 +1842,8 @@ class Orbs(Tools):
 
         :param compute_ext_light: (Optional) If True compute the
           external light vector. Make sure that there's enough 'sky'
-          pixels in the frame. The vector will be deeply affected if
-          the object covers the whole area (default True).
+          pixels in the frames. The vector will be deeply affected if
+          the object covers the whole area (default True).  
 
         .. note:: The transmission function used to correct for the
           variations of the sky transmission is calculated by summing
@@ -2474,17 +2485,17 @@ class Orbs(Tools):
             logfile_name=self._logfile_name)
         
         perf = Performance(phase, "Phase map creation", camera_number)
-        # create phase map
-        phase.create_phase_maps(
-            calibration_laser_map_path,
-            filter_path,
-            self.config["CALIB_NM_LASER"], step, order,
-            interferogram_length=interferogram_length,
-            fit_order=self.config["PHASE_FIT_DEG"])
+        ## # create phase map
+        ## phase.create_phase_maps(
+        ##     calibration_laser_map_path,
+        ##     filter_path,
+        ##     self.config["CALIB_NM_LASER"], step, order,
+        ##     interferogram_length=interferogram_length,
+        ##     fit_order=self.config["PHASE_FIT_DEG"])
 
-        # smooth the 0th order phase map
-        phase_map_path = phase._get_phase_map_path(0)
-        phase.smooth_phase_map(phase_map_path)
+        ## # smooth the 0th order phase map
+        ## phase_map_path = phase._get_phase_map_path(0)
+        ## phase.smooth_phase_map(phase_map_path)
         if fit:
             # fit the 0th order phase map
             phase_map_path = phase._get_phase_map_path(

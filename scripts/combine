@@ -29,7 +29,7 @@
 # used. Custom lists can be created using the command:
 # 'ls /path/to/file/*.fits > list'
 
-
+import os, sys
 from orb.core import Cube
 
 def usage(): 

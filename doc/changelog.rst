@@ -656,3 +656,19 @@ stars.
 
 Minor bugs fix. This version is considered as a nearly stable version
 ready for release.
+
+3.7.2.1
+=======
+
+  * Better integration of the multi fit mode (now used most of the
+    time)
+
+  * option file keyword added: TRYCAT that must be set to 1 to use the
+    USNO-B1 catalogue for star detection.
+
+  * Better treatment of NaNs. Begin to remove the use of zeros in
+    place of NaNs.
+
+  * doc update
+
+  * bug fix

@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Orbs module &mdash; Orbs 3.7.2 documentation</title>
+    <title>Orbs module &mdash; Orbs 3.7.2.1 documentation</title>
     
     <link rel="stylesheet" href="_static/sphinxdoc.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -14,7 +14,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
-        VERSION:     '3.7.2',
+        VERSION:     '3.7.2.1',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -25,7 +25,7 @@
     <script type="text/javascript" src="_static/doctools.js"></script>
     <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="shortcut icon" href="_static/logo.ico"/>
-    <link rel="top" title="Orbs 3.7.2 documentation" href="index.html" />
+    <link rel="top" title="Orbs 3.7.2.1 documentation" href="index.html" />
     <link rel="next" title="Process module" href="process_module.html" />
     <link rel="prev" title="Quick start Guide" href="quick_start.html" /> 
   </head>
@@ -42,7 +42,7 @@
         <li class="right" >
           <a href="quick_start.html" title="Quick start Guide"
              accesskey="P">previous</a> |</li>
-        <li><a href="index.html">Orbs 3.7.2 documentation</a> &raquo;</li> 
+        <li><a href="index.html">Orbs 3.7.2.1 documentation</a> &raquo;</li> 
       </ul>
     </div>
       <div class="sphinxsidebar">
@@ -772,6 +772,10 @@ camera 2 of SpIOMM</li>
 <li>BIAS_CALIB_PARAMS: Bias calibration parameters a, b of the
 function : bias_level = aT + b [T in degrees C]. Used to
 correct for varying dark level of the camera 2 of SpIOMM</li>
+<li>EXT_ILLUMINATION: If there is a chance for some light to
+enter in one of the cameras and not the other this must be
+set to 1. This way this external light can be tracked by the
+merge process.</li>
 </ul>
 </div></blockquote>
 </div>
@@ -1154,7 +1158,7 @@ of frames considered as bad (presence of plane, satellites,
 important flux loss due to too much clouds)</li>
 <li><strong>compute_ext_light</strong> &#8211; (Optional) If True compute the
 external light vector. Make sure that there&#8217;s enough &#8216;sky&#8217;
-pixels in the frame. The vector will be deeply affected if
+pixels in the frames. The vector will be deeply affected if
 the object covers the whole area (default True).</li>
 </ul>
 </td>
@@ -1533,7 +1537,7 @@ run this function alone.</p>
         <li class="right" >
           <a href="quick_start.html" title="Quick start Guide"
              >previous</a> |</li>
-        <li><a href="index.html">Orbs 3.7.2 documentation</a> &raquo;</li> 
+        <li><a href="index.html">Orbs 3.7.2.1 documentation</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
