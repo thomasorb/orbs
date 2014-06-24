@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Orbs module &mdash; Orbs 3.7.2.1 documentation</title>
+    <title>Orbs module &mdash; Orbs 3.7.2.2 documentation</title>
     
     <link rel="stylesheet" href="_static/sphinxdoc.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -14,7 +14,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
-        VERSION:     '3.7.2.1',
+        VERSION:     '3.7.2.2',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -25,7 +25,7 @@
     <script type="text/javascript" src="_static/doctools.js"></script>
     <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="shortcut icon" href="_static/logo.ico"/>
-    <link rel="top" title="Orbs 3.7.2.1 documentation" href="index.html" />
+    <link rel="top" title="Orbs 3.7.2.2 documentation" href="index.html" />
     <link rel="next" title="Process module" href="process_module.html" />
     <link rel="prev" title="Quick start Guide" href="quick_start.html" /> 
   </head>
@@ -42,7 +42,7 @@
         <li class="right" >
           <a href="quick_start.html" title="Quick start Guide"
              accesskey="P">previous</a> |</li>
-        <li><a href="index.html">Orbs 3.7.2.1 documentation</a> &raquo;</li> 
+        <li><a href="index.html">Orbs 3.7.2.2 documentation</a> &raquo;</li> 
       </ul>
     </div>
       <div class="sphinxsidebar">
@@ -107,106 +107,143 @@
 <h2><a class="toc-backref" href="#id2">Orbs class</a><a class="headerlink" href="#orbs-class" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt id="orbs.orbs.Orbs">
-<em class="property">class </em><tt class="descclassname">orbs.orbs.</tt><tt class="descname">Orbs</tt><big>(</big><em>options_file_path</em>, <em>config_file_name='config.orb'</em>, <em>overwrite=False</em><big>)</big><a class="headerlink" href="#orbs.orbs.Orbs" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><tt class="descclassname">orbs.orbs.</tt><tt class="descname">Orbs</tt><big>(</big><em>option_file_path</em>, <em>config_file_name='config.orb'</em>, <em>overwrite=False</em>, <em>silent=False</em><big>)</big><a class="headerlink" href="#orbs.orbs.Orbs" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">orb.core.Tools</span></tt></p>
 <p>ORBS user-interface implementing the high level reduction methods</p>
 <p>Help managing files during the reduction process and offer
 simple high level methods to reduce SpIOMM data. You must init
 Orbs class with a path to an option file (e.g. option.opt)
 containing all the parameters needed to run a reduction.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">The option file must contain at least the following
+parameters (each parameter is preceded by a keyword). See
+&#8216;options&#8217; attribute to get all the possible keywords.</p>
+</div>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>options_file_path</strong> &#8211; Path to the option file</li>
-<li><strong>config_file_name</strong> &#8211; (Optional) name of the config file to
-use. Must be located in <tt class="docutils literal"><span class="pre">orbs/data/</span></tt></li>
-</ul>
-</td>
+<tr class="field-odd field"><th class="field-name">OBJECT:</th><td class="field-body">Name of the object</td>
 </tr>
-<tr class="field-even field"><th class="field-name">Option file:</th><td class="field-body"><dl class="first docutils">
-<dt>The option file must contain at least the following parameters (each parameter is preceded by a keyword). See &#8216;options&#8217; attribute to get all the possible keywords.</dt>
-<dd><ul class="first last simple">
-<li><strong>OBJECT</strong> : Object name (without space)</li>
-<li><strong>FILTER</strong> : Filter name</li>
-<li><strong>BINCAM1</strong> : Binning for camera 1</li>
-<li><strong>BINCAM2</strong> : Binning for camera 2</li>
-<li><strong>SPESTEP</strong> : Step size of the moving mirror (in nm)</li>
-<li><strong>SPESTNB</strong> : Number of steps</li>
-<li><strong>SPEORDR</strong> : Order of spectral folding</li>
-<li><strong>SPEEXPT</strong> : Exposition time of the frames (in s)</li>
-<li><strong>SPEDART</strong> : Exposition time of the dark frames (in s)</li>
-<li><strong>OBSDATE</strong> : Observation date (YYYY-MM-DD)</li>
-<li><strong>DIRCAM1</strong> : Path to the directory containing the 
-images of the camera 1</li>
-<li><strong>DIRCAM2</strong> : Path to the directory containing the 
-images of the camera 2</li>
-<li><strong>DIRBIA1</strong> : Path to the directory containing the 
-bias frames for the camera 1</li>
-<li><strong>DIRBIA2</strong> : Path to the directory containing the 
-bias frames for the camera 2</li>
-<li><strong>DIRDRK1</strong> : Path to the directory containing the
-dark frames for the camera 1</li>
-<li><strong>DIRDRK2</strong> : Path to the directory containing the 
-dark frames for the camera 2</li>
-<li><strong>DIRFLT1</strong> : Path to the directory containing the 
-flat frames for the camera 1</li>
-<li><strong>DIRFLT2</strong> : Path to the directory containing the 
-flat frames for the camera 2</li>
-<li><strong>DIRCAL1</strong> : Path to the directory containing the 
-images of the calibration laser cube of the camera 1</li>
-</ul>
-</dd>
-</dl>
+<tr class="field-even field"><th class="field-name">FILTER:</th><td class="field-body">Filter name</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">BINCAM1:</th><td class="field-body">Binning of the camera 1</td>
+</tr>
+<tr class="field-even field"><th class="field-name">BINCAM2:</th><td class="field-body">Binning of the camera 2</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">SPESTEP:</th><td class="field-body">Step size of the moving mirror (in nm)</td>
+</tr>
+<tr class="field-even field"><th class="field-name">SPESTNB:</th><td class="field-body">Number of steps</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">SPEORDR:</th><td class="field-body">Order of the spectral folding</td>
+</tr>
+<tr class="field-even field"><th class="field-name">SPEEXPT:</th><td class="field-body">Exposition time of the frames (in s)</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">SPEDART:</th><td class="field-body">Exposition time of the dark frames (in s)</td>
+</tr>
+<tr class="field-even field"><th class="field-name">OBSDATE:</th><td class="field-body">Observation date (YYYY-MM-DD)</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">HOUR_UT:</th><td class="field-body">UT hour of the observation (HH:MM:SS)</td>
+</tr>
+<tr class="field-even field"><th class="field-name">BADFRMS:</th><td class="field-body">List of bad frames indexes</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">TARGETR:</th><td class="field-body">RA of the target (hour:min:sec)</td>
+</tr>
+<tr class="field-even field"><th class="field-name">TARGETD:</th><td class="field-body">DEC of the target (degree:min:sec)</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">TARGETX:</th><td class="field-body">X position of the target in the first frame</td>
+</tr>
+<tr class="field-even field"><th class="field-name">TARGETY:</th><td class="field-body">Y position of the target in the first frame</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">DIRCAM1:</th><td class="field-body">Path to the directory containing the images of the
+camera 1</td>
+</tr>
+<tr class="field-even field"><th class="field-name">DIRCAM2:</th><td class="field-body">Path to the directory containing the images of the
+camera 2</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">DIRBIA1:</th><td class="field-body">Path to the directory containing the bias frames for the
+camera 1</td>
+</tr>
+<tr class="field-even field"><th class="field-name">DIRBIA2:</th><td class="field-body">Path to the directory containing the bias frames for the
+camera 2</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">DIRDRK1:</th><td class="field-body">Path to the directory containing the dark frames for the
+camera 1</td>
+</tr>
+<tr class="field-even field"><th class="field-name">DIRDRK2:</th><td class="field-body">Path to the directory containing the dark frames for the
+camera 2</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">DIRFLT1:</th><td class="field-body">Path to the directory containing the flat frames for the
+camera 1</td>
+</tr>
+<tr class="field-even field"><th class="field-name">DIRFLT2:</th><td class="field-body">Path to the directory containing the flat frames for the
+camera 2</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">DIRCAL1:</th><td class="field-body">Path to the directory containing the images of the
+calibration laser cube of the camera 1</td>
+</tr>
+<tr class="field-even field"><th class="field-name">DIRCAL2:</th><td class="field-body">Path to the directory containing the images of the
+calibration laser cube of the camera 2</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">DIRFLTS:</th><td class="field-body">Path to the directory containing the flat spectrum
+frames</td>
+</tr>
+<tr class="field-even field"><th class="field-name">STDPATH:</th><td class="field-body">Path to the standard spectrum file</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">PHAPATH:</th><td class="field-body">Path to the external phase map file</td>
+</tr>
+<tr class="field-even field"><th class="field-name">STDNAME:</th><td class="field-body">Name of the standard used for flux calibration</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">FRINGES:</th><td class="field-body">Fringes parameters</td>
+</tr>
+<tr class="field-even field"><th class="field-name">STARLIST1:</th><td class="field-body">Path to a list of star positions for the camera 1</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">STARLIST2:</th><td class="field-body">Path to a list of star positions for the camera 2</td>
+</tr>
+<tr class="field-even field"><th class="field-name">APOD:</th><td class="field-body">Apodization function name</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">CALIBMAP:</th><td class="field-body">Path to the calibration laser map</td>
+</tr>
+<tr class="field-even field"><th class="field-name">TRYCAT:</th><td class="field-body">If True (an integer &gt; 0) a star catalogue (e.g. USNO-B1)
+is used for star detection (TARGETR, TARGETD, TARGETX, TARGETY
+must be given in the option file). If False star detection will
+use its own algorithm. You can also force ORBS to use a given
+star list, see STARLIST1 and STARLIST2 keywords. This option is
+set to False by default</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">WAVENUMBER:</th><td class="field-body">If True (an integer &gt; 0) the output spectrum will be
+in wavenumber instead of wavelength. This option avoids the use
+of interpolation to transform the original wavenumber spectrum
+to a wavelength spectrum</td>
+</tr>
+<tr class="field-even field"><th class="field-name">WAVE_CALIB:</th><td class="field-body">If True (an integer &gt; 0) the output sepctrum will be
+wavelength calibrated using the calibration laser map. This
+option is set to True by default</td>
+</tr>
+</tbody>
+</table>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
 <ul class="last simple">
 <li>The order of the parameters is not important</li>
-<li>Lines without a keyword are treated as commentaries</li>
+<li>Lines without a keyword are treated as commentaries (but the
+use of # is better)</li>
 <li>Paths can be either relative or absolut</li>
-<li>An example of an option file (options.opt) can be 
-found in the scripts folder (Orbs/scripts) of the 
-package</li>
+<li>An example of an option file (options.opt) can be found in
+the scripts folder (Orbs/scripts) of the package</li>
 <li>&#8216;orbs-optcreator&#8217; is an executable script that can be used
 to create an option file</li>
 </ul>
 </div>
-<div class="last admonition warning">
+<div class="admonition warning">
 <p class="first admonition-title">Warning</p>
-<p class="last">Two parameters are needed <strong>at least</strong> : the object 
+<p class="last">Two parameters are needed <strong>at least</strong> : the object
 name (OBJECT) and the filter name (FILTER)</p>
 </div>
-</td>
-</tr>
-</tbody>
-</table>
-<dl class="method">
-<dt id="orbs.orbs.Orbs._create_list_from_dir">
-<tt class="descname">_create_list_from_dir</tt><big>(</big><em>dir_path</em>, <em>list_file_name</em><big>)</big><a class="headerlink" href="#orbs.orbs.Orbs._create_list_from_dir" title="Permalink to this definition">¶</a></dt>
-<dd><p>Create a file containing the list of all FITS files at
-a specified directory and returns the path to the list 
-file.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>dir_path</strong> &#8211; Directory containing the FITS files</li>
-<li><strong>list_file_name</strong> &#8211; Path to the list file to be created</li>
-</ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">Path to the created list file</p>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
 <dl class="method">
 <dt id="orbs.orbs.Orbs._get_calibrated_spectrum_cube_path">
-<tt class="descname">_get_calibrated_spectrum_cube_path</tt><big>(</big><em>camera_number</em>, <em>apod</em><big>)</big><a class="headerlink" href="#orbs.orbs.Orbs._get_calibrated_spectrum_cube_path" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">_get_calibrated_spectrum_cube_path</tt><big>(</big><em>camera_number</em>, <em>apod</em>, <em>wavenumber=False</em><big>)</big><a class="headerlink" href="#orbs.orbs.Orbs._get_calibrated_spectrum_cube_path" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return path to the calibrated spectrum cube resulting of the
 reduction process</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -218,8 +255,32 @@ reduction process</p>
 merged data).</li>
 <li><strong>apod</strong> &#8211; Apodization function name to be added to the
 path.</li>
+<li><strong>wavenumber</strong> &#8211; If True the spectral axis of the cube is
+considered to be a wavenumber axis. If False it is
+considered to be a wavelength axis (default False).</li>
 </ul>
 </td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="orbs.orbs.Orbs._get_calibration_laser_fits_header">
+<tt class="descname">_get_calibration_laser_fits_header</tt><big>(</big><big>)</big><a class="headerlink" href="#orbs.orbs.Orbs._get_calibration_laser_fits_header" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the header corresponding to the calibration laser
+that can be added to the created FITS files.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="orbs.orbs.Orbs._get_calibration_laser_map">
+<tt class="descname">_get_calibration_laser_map</tt><big>(</big><em>camera_number</em><big>)</big><a class="headerlink" href="#orbs.orbs.Orbs._get_calibration_laser_map" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the calibration laser map.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>camera_number</strong> &#8211; Camera number (can be 1, 2 or 0)</td>
 </tr>
 </tbody>
 </table>
@@ -307,6 +368,21 @@ for merged data).</td>
 <tt class="descname">_get_project_dir</tt><big>(</big><big>)</big><a class="headerlink" href="#orbs.orbs.Orbs._get_project_dir" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return the path to the project directory depending on 
 the project name.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="orbs.orbs.Orbs._get_project_fits_header">
+<tt class="descname">_get_project_fits_header</tt><big>(</big><em>camera_number=None</em><big>)</big><a class="headerlink" href="#orbs.orbs.Orbs._get_project_fits_header" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the header of the project that can be added to the
+created FITS files.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>camera_number</strong> &#8211; Number of the camera (can be 0, 1 or 2)</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="method">
@@ -1207,74 +1283,58 @@ transmission. Default True.</td>
 </dd></dl>
 
 <dl class="attribute">
+<dt id="orbs.orbs.Orbs.optionfile">
+<tt class="descname">optionfile</tt><em class="property"> = None</em><a class="headerlink" href="#orbs.orbs.Orbs.optionfile" title="Permalink to this definition">¶</a></dt>
+<dd><p>OptionFile instance</p>
+</dd></dl>
+
+<dl class="attribute">
 <dt id="orbs.orbs.Orbs.options">
 <tt class="descname">options</tt><em class="property"> = {}</em><a class="headerlink" href="#orbs.orbs.Orbs.options" title="Permalink to this definition">¶</a></dt>
 <dd><p>Dictionary containing all the options of the option file and
 others created during initialization needed by processing classes.</p>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
-<p>Keywords used (the keyword of the option file is
-indicated in parenthesis):</p>
-<blockquote class="last">
-<div><ul class="simple">
-<li>object_name: Name of the object (OBJECT)</li>
-<li>filter_name: Filter name (FILTER)</li>
-<li>bin_cam_1: Binning of the camera 1 (BINCAM1)</li>
-<li>bin_cam_2: Binning of the camera 2 (BINCAM2)</li>
-<li>step: Step size of the moving mirror (in nm) (SPESTEP)</li>
-<li>step_number: Number of steps (SPESTNB)</li>
-<li>order: Order of the spectral folding (SPEORDR)</li>
-<li>nm_min: Shortest wavelength of the spectral range (in nm)</li>
-<li>nm_max: Longest wavelength of the spectral range (in nm)</li>
-<li>exp_time: Exposition time of the frames (in s) (SPEEXPT)</li>
-<li>dark_time: Exposition time of the dark frames (in s) (SPEDART)</li>
-<li>obs_date: Observation date (YYYY-MM-DD) (OBSDATE)</li>
-<li>bad_frames: List of bad frames indexes (BADFRMS)</li>
-<li>target_ra: RA of the target (hour:min:sec) (TARGETR)</li>
-<li>target_dec: DEC of the target (degree:min:sec) (TARGETD)</li>
-<li>target_x: X position of the target in the frames (TARGETX)</li>
-<li>target_y: Y position of the target in the frames(TARGETY)</li>
-<li>image_list_path_1: Path to the directory containing the
-images of the camera 1 (DIRCAM1)</li>
-<li>image_list_path_2: Path to the directory containing the
-images of the camera 2 (DIRCAM2)</li>
-<li>bias_path_1: Path to the directory containing the bias
-frames for the camera 1 (DIRBIA1)</li>
-<li>bias_path_2: Path to the directory containing the bias
-frames for the camera 2 (DIRBIA2)</li>
-<li>dark_path_1: Path to the directory containing the dark
-frames for the camera 1 (DIRDRK1)</li>
-<li>dark_path_2: Path to the directory containing the dark
-frames for the camera 2 (DIRDRK2)</li>
-<li>flat_path_1: Path to the directory containing the flat
-frames for the camera 1 (DIRFLT1)</li>
-<li>flat_path_2: Path to the directory containing the flat
-frames for the camera 2 (DIRFLT2)</li>
-<li>calib_path_1: Path to the directory containing the images of
-the calibration laser cube of the camera 1 (DIRCAL1)</li>
-<li>calib_path_2: Path to the directory containing the images of
-the calibration laser cube of the camera 2 (DIRCAL2)</li>
-<li>standard_path: Path to the standard spectrum file (STDPATH)</li>
-<li>phase_map_path: Path to the external phase map file (PHAPATH)</li>
-<li>standard_name: Name of the standard (STDNAME)</li>
-<li>fringes: Fringes parameters (FRINGES).</li>
-<li>flat_spectrum_path: Path to the directory containing the
-flat spectrum frames (DIRFLTS)</li>
-<li>star_list_path_1: Path to a list of star positions for the
-camera 1 (STARLIST1)</li>
-<li>star_list_path_2: Path to a list of star positions for the
-camera 2 (STARLIST2)</li>
-<li>apodization_function: Apodization function name (APOD)</li>
-<li>calibration_laser_map_path: Path to the calibration laser
-map (CALIBMAP)</li>
-<li>try_catalogue: If True (&gt;0) a star catalogue (e.g. USNO-B1)
-is used for star detection (TARGETR, TARGETD, TARGETX,
-TRAGETY must be given in the option file). If False star
-detection will use its own algorithm. You can also force
-ORBS to use a given star list, see STARLIST1 and STARLIST2
-keywords. This option is set to False by default (TRYCAT).</li>
+<p>Keywords used and related keyword in the option file:</p>
+<ul class="last simple">
+<li>object_name: OBJECT</li>
+<li>filter_name: FILTER</li>
+<li>bin_cam_1: BINCAM1</li>
+<li>bin_cam_2: BINCAM2</li>
+<li>step: SPESTEP</li>
+<li>step_number: SPESTNB</li>
+<li>order: SPEORDR</li>
+<li>exp_time: SPEEXPT</li>
+<li>dark_time: SPEDART</li>
+<li>obs_date: OBSDATE</li>
+<li>bad_frames: BADFRMS</li>
+<li>target_ra: TARGETR</li>
+<li>target_dec: TARGETD</li>
+<li>target_x: TARGETX</li>
+<li>target_y: TARGETY</li>
+<li>image_list_path_1: DIRCAM1</li>
+<li>image_list_path_2: DIRCAM2</li>
+<li>bias_path_1: DIRBIA1</li>
+<li>bias_path_2: DIRBIA2</li>
+<li>dark_path_1: DIRDRK1</li>
+<li>dark_path_2: DIRDRK2</li>
+<li>flat_path_1: DIRFLT1</li>
+<li>flat_path_2: DIRFLT2</li>
+<li>calib_path_1: DIRCAL1</li>
+<li>calib_path_2: DIRCAL2</li>
+<li>standard_path: STDPATH</li>
+<li>phase_map_path: PHAPATH</li>
+<li>standard_name: STDNAME</li>
+<li>fringes: FRINGES</li>
+<li>flat_spectrum_path: DIRFLTS</li>
+<li>star_list_path_1: STARLIST1</li>
+<li>star_list_path_2: STARLIST2</li>
+<li>apodization_function: APOD</li>
+<li>calibration_laser_map_path: CALIBMAP</li>
+<li>try_catalogue: TRYCAT</li>
+<li>wavenumber: WAVENUMBER</li>
+<li>wavelength_calibration: WAVE_CALIB</li>
 </ul>
-</div></blockquote>
 </div>
 </dd></dl>
 
@@ -1537,7 +1597,7 @@ run this function alone.</p>
         <li class="right" >
           <a href="quick_start.html" title="Quick start Guide"
              >previous</a> |</li>
-        <li><a href="index.html">Orbs 3.7.2.1 documentation</a> &raquo;</li> 
+        <li><a href="index.html">Orbs 3.7.2.2 documentation</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">

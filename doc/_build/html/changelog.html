@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Changelog &mdash; Orbs 3.7.2.1 documentation</title>
+    <title>Changelog &mdash; Orbs 3.7.2.2 documentation</title>
     
     <link rel="stylesheet" href="_static/sphinxdoc.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -14,7 +14,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
-        VERSION:     '3.7.2.1',
+        VERSION:     '3.7.2.2',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -25,7 +25,7 @@
     <script type="text/javascript" src="_static/doctools.js"></script>
     <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="shortcut icon" href="_static/logo.ico"/>
-    <link rel="top" title="Orbs 3.7.2.1 documentation" href="index.html" />
+    <link rel="top" title="Orbs 3.7.2.2 documentation" href="index.html" />
     <link rel="prev" title="Process module" href="process_module.html" /> 
   </head>
   <body>
@@ -38,7 +38,7 @@
         <li class="right" >
           <a href="process_module.html" title="Process module"
              accesskey="P">previous</a> |</li>
-        <li><a href="index.html">Orbs 3.7.2.1 documentation</a> &raquo;</li> 
+        <li><a href="index.html">Orbs 3.7.2.2 documentation</a> &raquo;</li> 
       </ul>
     </div>
       <div class="sphinxsidebar">
@@ -160,6 +160,12 @@
 </li>
 <li><a class="reference internal" href="#id11">3.7.2</a></li>
 <li><a class="reference internal" href="#id12">3.7.2.1</a></li>
+<li><a class="reference internal" href="#id13">3.7.2.2</a><ul>
+<li><a class="reference internal" href="#wavenumber-computation-better-integration-with-orcs">Wavenumber computation &amp; better integration with ORCS</a></li>
+<li><a class="reference internal" href="#miscellaneous">Miscellaneous</a></li>
+<li><a class="reference internal" href="#orb-s-scripts">ORB&#8217;s scripts</a></li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>
@@ -730,15 +736,13 @@ can be achieved by reducing a standard cube using the option
 (orbs/data/std_table). Standard spectra form MASSEY et al. 1988 and
 CALSPEC have been added to the data of ORBS so that they can be used
 to do a flux calibration. To do a flux calibration the steps are thus:</p>
-<blockquote>
-<div><ol class="arabic simple">
+<ol class="arabic simple">
 <li>Reduce standard cube with option &#8211;standard</li>
 <li>Give the path to the standard spectrum (STDPATH) and the name of
 the standard (STDNAME) in the option file of the cube yo want to
 calibrate</li>
 <li>Reduce the cube you want to calibrate (or only redo the last step)</li>
 </ol>
-</div></blockquote>
 <div class="admonition seealso">
 <p class="first admonition-title">See also</p>
 <p class="last"><a class="reference internal" href="process_module.html#process.Spectrum.get_flux_calibration_vector" title="process.Spectrum.get_flux_calibration_vector"><tt class="xref py py-meth docutils literal"><span class="pre">get_flux_calibration_vector()</span></tt></a></p>
@@ -788,37 +792,31 @@ coordinates of the stars in the field.</p>
 </div>
 <div class="section" id="simplification">
 <h4>Simplification<a class="headerlink" href="#simplification" title="Permalink to this headline">¶</a></h4>
-<blockquote>
-<div><ul class="simple">
+<ul class="simple">
 <li><tt class="xref py py-class docutils literal"><span class="pre">core.Indexer</span></tt> created to index reduction files and get
 their location easily in <tt class="xref py py-class docutils literal"><span class="pre">orbs.Orbs</span></tt>.</li>
 <li>No more quadrants: Reduction of big data cubes has been simplified
-and do not save reduced files in quadrants any more. Big data
-cubes are thus handled as small data cubes. Reduced by quadrants
-but saved as one set of frames.</li>
+and do not save reduced files in quadrants any more. Big data cubes
+are thus handled as small data cubes. Reduced by quadrants but saved
+as one set of frames.</li>
 </ul>
-</div></blockquote>
 </div>
 </div>
 <div class="section" id="id8">
 <h3>3.6.2<a class="headerlink" href="#id8" title="Permalink to this headline">¶</a></h3>
 <div class="section" id="cython-speed-optimization">
 <h4>Cython &amp; speed optimization<a class="headerlink" href="#cython-speed-optimization" title="Permalink to this headline">¶</a></h4>
-<blockquote>
-<div><ul class="simple">
+<ul class="simple">
 <li><tt class="xref py py-meth docutils literal"><span class="pre">utils.transform_frame()</span></tt> has been modified to do only one
 geometrical transformation instead of a set of transformations
 (tip-tilt then translations then rotation etc.). Coordinates
-transformation function (<tt class="xref py py-meth docutils literal"><span class="pre">cutils.transform_A_to_B()</span></tt>)
-written in Cython to optimize processing speed .</li>
-<li>core functions for fitting stars
-(<tt class="xref py py-meth docutils literal"><span class="pre">cutils.gaussian_array2d()</span></tt> and
-<tt class="xref py py-meth docutils literal"><span class="pre">cutils.surface_value()</span></tt>) have been transcripted to Cython
+transformation function (<tt class="xref py py-meth docutils literal"><span class="pre">cutils.transform_A_to_B()</span></tt>) written in
+Cython to optimize processing speed .</li>
+<li>core functions for fitting stars (<tt class="xref py py-meth docutils literal"><span class="pre">cutils.gaussian_array2d()</span></tt>
+and <tt class="xref py py-meth docutils literal"><span class="pre">cutils.surface_value()</span></tt>) have been transcripted to Cython
 for faster processing.</li>
-<li>lots of functions have been cythonized to improve the overall
-speed.</li>
+<li>lots of functions have been cythonized to improve the overall speed.</li>
 </ul>
-</div></blockquote>
 </div>
 </div>
 </div>
@@ -832,7 +830,7 @@ speed.</li>
 have been moved to a module of shared core libraries: ORB. This way,
 ORBS, ORCS, OACS, IRIS and ORUS can share the same core module without
 importing ORBS entirely each time. Conceptually ORBS, like the others,
-just wraps around ORB module and is not any more the central part ot
+just wraps around ORB module and is not any more the central part of
 the whole suite of softwares.</p>
 </div>
 </div>
@@ -865,18 +863,59 @@ ready for release.</p>
 </div>
 <div class="section" id="id12">
 <h3>3.7.2.1<a class="headerlink" href="#id12" title="Permalink to this headline">¶</a></h3>
-<blockquote>
-<div><ul class="simple">
-<li>Better integration of the multi fit mode (now used most of the
-time)</li>
+<ul class="simple">
+<li>Better integration of the multi fit mode (now used most of the time)</li>
 <li>option file keyword added: TRYCAT that must be set to 1 to use the
 USNO-B1 catalogue for star detection.</li>
-<li>Better treatment of NaNs. Begin to remove the use of zeros in
-place of NaNs.</li>
+<li>Better treatment of NaNs. Begin to remove the use of zeros in place
+of NaNs.</li>
 <li>doc update</li>
 <li>bug fix</li>
 </ul>
-</div></blockquote>
+</div>
+<div class="section" id="id13">
+<h3>3.7.2.2<a class="headerlink" href="#id13" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="wavenumber-computation-better-integration-with-orcs">
+<h4>Wavenumber computation &amp; better integration with ORCS<a class="headerlink" href="#wavenumber-computation-better-integration-with-orcs" title="Permalink to this headline">¶</a></h4>
+<p>The whole spectrum computation process can now be done in wavenumber
+(useful to avoid the mutiple interpolation nescessary to move from a
+regular wavenumber space to an iregular wavelength space back and
+forth).</p>
+<p>It is also possible to compute an uncalibrated spectrum. This way
+there is absolutly no interpolation made during the spectrum
+computation. The output can be used by ORCS directly and ORCS itself
+does not have any interpolation to do for the extraction of the lines
+parameters. <strong>This ensure that the spectral information is not distorded
+at all during the process</strong>.</p>
+<p>The filter correction during the calibration process takes into
+account the fact that no wavelength calibration has been done.</p>
+<ul class="simple">
+<li>Important modified methods:<ul>
+<li><a class="reference internal" href="process_module.html#process.Interferogram.compute_spectrum" title="process.Interferogram.compute_spectrum"><tt class="xref py py-meth docutils literal"><span class="pre">compute_spectrum()</span></tt></a></li>
+<li><a class="reference internal" href="process_module.html#process.Spectrum.calibrate" title="process.Spectrum.calibrate"><tt class="xref py py-meth docutils literal"><span class="pre">calibrate()</span></tt></a></li>
+</ul>
+</li>
+<li>New keyword added in the option file: WAVENUMBER, WAVE_CALIB</li>
+</ul>
+</div>
+<div class="section" id="miscellaneous">
+<h4>Miscellaneous<a class="headerlink" href="#miscellaneous" title="Permalink to this headline">¶</a></h4>
+<ul class="simple">
+<li><tt class="xref py py-meth docutils literal"><span class="pre">__init__()</span></tt> simplified by the use of
+<tt class="xref py py-class docutils literal"><span class="pre">orb.core.OptionFile</span></tt> previously used only by
+<tt class="xref py py-class docutils literal"><span class="pre">orcs.orcs.SpectralCube()</span></tt></li>
+<li>doc updated</li>
+</ul>
+</div>
+<div class="section" id="orb-s-scripts">
+<h4>ORB&#8217;s scripts<a class="headerlink" href="#orb-s-scripts" title="Permalink to this headline">¶</a></h4>
+<ul class="simple">
+<li>move ORB&#8217;s scripts (dstack, combine, rollxz, rollyz, reduce) from
+orbs/scripts to orb/scripts so that only ORBS specific scripts are
+in orbs/scripts.</li>
+<li>create <strong>unstack</strong> script to unstack a cube into a set of frames</li>
+</ul>
+</div>
 </div>
 </div>
 </div>
@@ -896,7 +935,7 @@ place of NaNs.</li>
         <li class="right" >
           <a href="process_module.html" title="Process module"
              >previous</a> |</li>
-        <li><a href="index.html">Orbs 3.7.2.1 documentation</a> &raquo;</li> 
+        <li><a href="index.html">Orbs 3.7.2.2 documentation</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">

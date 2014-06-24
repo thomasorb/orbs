@@ -99,7 +99,7 @@ class RawData(Cube):
 
     def _get_cr_map_list_path(self):
         """Return  the default path to the cosmic ray map list"""
-        return self._data_path_hdr + "cr_map_list"
+        return self._data_path_hdr + "cr_map.list"
     
     def _get_hp_map_path(self):
         """Return the default path to the hot pixels map."""
@@ -146,7 +146,7 @@ class RawData(Cube):
     def _get_interfero_list_path(self):
         """Return the default path to the list of the interferogram
         cube"""
-        return self._data_path_hdr + "interf_list"
+        return self._data_path_hdr + "interf.list"
 
     def _get_master_path(self, kind):
         """Return the default path to a master frame.
@@ -2047,7 +2047,7 @@ class Interferogram(Cube):
 
     def _get_corrected_interferogram_list_path(self):
         """Return the default path to the corrected interferogram list"""
-        return self._data_path_hdr + "corr_interf_list"
+        return self._data_path_hdr + "corr_interf.list"
 
     
     def _get_corrected_interferogram_frame_path(self, frame_index):
@@ -2086,7 +2086,7 @@ class Interferogram(Cube):
         else:
             stars_header = ""
        
-        return self._data_path_hdr + stars_header + "%s_list"%cube_type
+        return self._data_path_hdr + stars_header + "%s.list"%cube_type
        
 
     def _get_spectrum_frame_path(self, frame_index, stars_cube=False,
@@ -2120,14 +2120,22 @@ class Interferogram(Cube):
                 + "%s%04d.fits"%(cube_type, frame_index))
 
 
-    def _get_spectrum_frame_header(self, frame_index, nm_axis,
-                                   apodization_function, phase=False):
+    def _get_spectrum_frame_header(self, frame_index, axis,
+                                   apodization_function, phase=False,
+                                   wavenumber=False):
         """Return the header of the spectral frames.
         
         :param frame_index: Index of the frame.
-        :param nm_axis: Wavelength axis in nanometers.
+        
+        :param axis: Spectrum axis (must be in wavelength or in
+          wavenumber).
+        
         :param phase: (Optional) If True the path is changed for a
           phase cube (default False).
+
+        :param wavenumber: (Optional) If True the axis is considered
+          to be in wavenumber. If False the axis is considered to be
+          in wavelength (default False).
         """
         if not phase: cube_type = "Spectrum"
         else: cube_type = "Phase"
@@ -2136,7 +2144,8 @@ class Interferogram(Cube):
                 + self._project_header
                 + self._calibration_laser_header
                 + self._get_basic_frame_header(self.dimx, self.dimy)
-                + self._get_basic_spectrum_frame_header(frame_index, nm_axis)
+                + self._get_basic_spectrum_frame_header(frame_index, axis,
+                                                        wavenumber=wavenumber)
                 + self._get_fft_params_header(apodization_function))
 
     def _get_spectrum_path(self, stars_cube=False, phase=False):
@@ -2157,11 +2166,13 @@ class Interferogram(Cube):
             stars_header = ""
         return self._data_path_hdr + stars_header + "%s.fits"%cube_type
  
-    def _get_spectrum_header(self, nm_axis, apodization_function,
-                             stars_cube=False, phase=False):
+    def _get_spectrum_header(self, axis, apodization_function,
+                             stars_cube=False, phase=False,
+                             wavenumber=False):
         """Return the header of the spectal cube.
         
-        :param nm_axis: Wavelength axis in nanometers.
+        :param axis: Spectrum axis (must be in wavelength or in
+          wavenumber).
         
         :param stars_cube: (Optional) The spectrum computed
           contains only the spectrum of some stars. The default path
@@ -2169,6 +2180,10 @@ class Interferogram(Cube):
           
         :param phase: (Optional) If True the path is changed for a
           phase cube (default False).
+
+        :param wavenumber: (Optional) If True the axis is considered
+          to be in wavenumber. If False the axis is considered to be
+          in wavelength (default False).
         """
         if not phase: cube_type = "Spectrum"
         else: cube_type = "Phase"
@@ -2182,7 +2197,8 @@ class Interferogram(Cube):
                 + self._project_header
                 + self._calibration_laser_header
                 + self._get_basic_frame_header(self.dimx, self.dimy)
-                + self._get_basic_spectrum_cube_header(nm_axis)
+                + self._get_basic_spectrum_cube_header(axis,
+                                                       wavenumber=wavenumber)
                 + self._get_fft_params_header(apodization_function))
 
     def compute_phase_coeffs_vector(self, phase_map_paths,
@@ -2505,13 +2521,16 @@ class Interferogram(Cube):
                          window_type=None, stars_cube=False,
                          phase_cube=False, phase_map_0_path=None,
                          phase_coeffs=None, filter_file_path=None,
-                         balanced=True, smoothing_deg=2, fringes=None):
+                         balanced=True, smoothing_deg=2, fringes=None,
+                         wavenumber=False):
         
         """Compute the spectrum from the corrected interferogram
         frames. Can be used to compute spectrum for camera 1, camera 2
         or merged interferogram.
 
-        :param calibration_laser_map_path: Path to the calibration map.
+        :param calibration_laser_map_path: Path to the calibration
+          map. If set to None, the spectrum cube will not be
+          calibrated in wavelength.
 
         :param bin: The binning of the interferogram frames (equal to
           the binning of the camera 1)
@@ -2591,7 +2610,14 @@ class Interferogram(Cube):
           amp2], [freq3, amp3], ...]. Fringes are removed by dividing
           the interferograms by a sinusoidal function representing a
           periodically variable modulation efficiency (default None).
-
+          
+        :param wavenumber: (Optional) If True, the returned spectrum
+          is projected onto its original wavenumber axis (emission
+          lines and especially unapodized sinc emission lines are thus
+          symetric which is not the case if the spectrum is projected
+          onto a, more convenient, regular wavelength axis) (default
+          False).
+    
         .. Note:: External phase computation:
 
           In order to achieve a better phase correction it can be
@@ -2630,7 +2656,7 @@ class Interferogram(Cube):
         .. seealso:: :class:`process.Phase`
         """
 
-        def _compute_spectrum_in_column(nm_laser, nm_axis, 
+        def _compute_spectrum_in_column(nm_laser, 
                                         calibration_laser_map_column, step,
                                         order, 
                                         data, window_type, zpd_shift,
@@ -2638,7 +2664,7 @@ class Interferogram(Cube):
                                         bad_frames_vector, phase_map_column,
                                         phase_coeffs, return_phase,
                                         balanced, filter_min, filter_max,
-                                        smoothing_deg, fringes):
+                                        smoothing_deg, fringes, wavenumber):
             """Compute spectrum in one column. Used to parallelize the
             process"""
             dimz = data.shape[1]
@@ -2705,7 +2731,8 @@ class Interferogram(Cube):
                         return_phase=return_phase,
                         balanced=balanced,
                         weights=weights,
-                        smoothing_deg=smoothing_deg)
+                        smoothing_deg=smoothing_deg,
+                        wavenumber=wavenumber)
                         
             return spectrum_column
             
@@ -2737,19 +2764,28 @@ class Interferogram(Cube):
         self._print_msg("Phase will be computed with %d points"%n_phase)
 
         ## Calibration map loading and interpolation
-        self._print_msg("loading calibration map")
-        calibration_laser_map = self.read_fits(calibration_laser_map_path)
-        if (calibration_laser_map.shape[0] != self.dimx):
-            calibration_laser_map = orb.utils.interpolate_map(
-                calibration_laser_map, self.dimx, self.dimy)
-        
+        if calibration_laser_map_path is not None:
+            self._print_msg("loading calibration laser map")
+            wavelength_calibration = True
+            calibration_laser_map = self.read_fits(calibration_laser_map_path)
+            if (calibration_laser_map.shape[0] != self.dimx):
+                calibration_laser_map = orb.utils.interpolate_map(
+                    calibration_laser_map, self.dimx, self.dimy)
+        else:
+            # no calibration: the calibration laser wavelength is set
+            # to the real one (laser_nm) so that no calibration has to
+            # be done.
+            self._print_warning('No wavelength calibration')
+            wavelength_calibration = False
+            calibration_laser_map = np.empty(
+                (self.dimx, self.dimy), dtype=float)
+            calibration_laser_map.fill(nm_laser)
+            
         ## Defining regular wavelength axis
         if not phase_cube:
             axis_len = self.dimz
         else:
             axis_len = n_phase
-            
-        nm_axis = orb.utils.create_nm_axis(axis_len, step, order)
         
         #############################
         ## Note: variable names are all "spectrum" related even if it
@@ -2816,6 +2852,9 @@ class Interferogram(Cube):
         self._print_msg("Folding order: %f"%order)
         self._print_msg("Step size: %f"%step)
         self._print_msg("Bad frames: %s"%str(np.nonzero(bad_frames_vector)[0]))
+        self._print_msg("Wavenumber output: {}".format(wavenumber))
+        self._print_msg("Wavelength calibration: {}".format(
+            wavelength_calibration))
         if fringes != None:
             if not phase_cube:
                 self._print_msg("Fringes:")
@@ -2833,6 +2872,11 @@ class Interferogram(Cube):
         else:
             filter_min = None
             filter_max = None
+
+        if not wavenumber:
+            axis = orb.utils.create_nm_axis(axis_len, step, order)
+        else:
+            axis = orb.utils.create_cm1_axis(axis_len, step, order)
         
         for iquad in range(0, self.QUAD_NB):
             x_min, x_max, y_min, y_max = self.get_quadrant_dims(iquad)
@@ -2851,7 +2895,7 @@ class Interferogram(Cube):
                 # jobs creation      
                 jobs = [(ijob, job_server.submit(
                     _compute_spectrum_in_column, 
-                    args=(nm_laser, nm_axis, 
+                    args=(nm_laser, 
                           calibration_laser_map[x_min + ii + ijob,
                                                 y_min:y_max], 
                           step, order, iquad_data[ii+ijob,:,:], 
@@ -2860,7 +2904,7 @@ class Interferogram(Cube):
                           phase_map_0[x_min + ii + ijob, y_min:y_max],
                           phase_coeffs, phase_cube, balanced,
                           filter_min, filter_max, smoothing_deg,
-                          fringes), 
+                          fringes, wavenumber), 
                     modules=("import numpy as np", "import math",  
                              "from scipy import interpolate", 
                              "from scipy import fftpack, signal", 
@@ -2906,7 +2950,7 @@ class Interferogram(Cube):
                 silent=True,
                 fits_header=self._get_spectrum_frame_header(
                     iframe, 
-                    nm_axis, window_type),
+                    axis, window_type, wavenumber=wavenumber),
                 overwrite=True)
                 
         progress.end()
@@ -3492,7 +3536,7 @@ class InterferogramMerger(Tools):
 
     def _get_merged_interfero_frame_list_path(self):
         """Return the path to the list of frames of the merged cube"""
-        return self._data_path_hdr + "interf_list"
+        return self._data_path_hdr + "interf.list"
 
     def _get_merged_interfero_frame_path(self, index):
         """Return the default path to the merged interferogram frames.
@@ -3527,7 +3571,7 @@ class InterferogramMerger(Tools):
 
     def _get_transformed_interfero_frame_list_path(self):
         """Return the path to the list of frames of the transformed cube"""
-        return self._data_path_hdr + "transf_list"
+        return self._data_path_hdr + "transf.list"
 
     def _get_transformed_interfero_frame_path(self, index):
         """Return the default path to the transformed interferogram frames.
@@ -3549,7 +3593,7 @@ class InterferogramMerger(Tools):
 
     def _get_stars_interfero_frame_list_path(self):
         """Return the path to the list of frames of the stars cube"""
-        return self._data_path_hdr + "stars_list"
+        return self._data_path_hdr + "stars.list"
 
     def _get_stars_interfero_frame_path(self, index):
         """Return the default path to the stars interferogram frames.
@@ -5605,9 +5649,9 @@ class Spectrum(Cube):
           name is changed (default False).
         """ 
         if stars_cube:
-            return self._data_path_hdr + "calibrated_stars_spectrum_list"
+            return self._data_path_hdr + "calibrated_stars_spectrum.list"
         else:
-            return self._data_path_hdr + "calibrated_spectrum_list"
+            return self._data_path_hdr + "calibrated_spectrum.list"
 
     def _get_calibrated_spectrum_frame_path(self, frame_index,
                                             stars_cube=False):
@@ -5636,19 +5680,25 @@ class Spectrum(Cube):
                 + "%s%04d.fits"%(cube_type, frame_index))
 
 
-    def _get_calibrated_spectrum_frame_header(self, frame_index, nm_axis,
+    def _get_calibrated_spectrum_frame_header(self, frame_index, axis,
                                               apodization_function,
-                                              stars_cube=False):
+                                              stars_cube=False,
+                                              wavenumber=False):
         
         """Return the header of the calibrated spectral frames.
         
-        :param frame_index: Index of the frame.
-        
-        :param nm_axis: Wavelength axis in nanometers.
+        :param frame_index: Index of the frame.  
+    
+        :param axis: Spectrum axis (must be in wavelength or in
+          wavenumber).
         
         :param stars_cube: (Optional) The spectrum computed contains
           only the spectrum of some stars. The default path name is
           changed (default False).
+
+        :param wavenumber: (Optional) If True the axis is considered
+          to be in wavenumber. If False the axis is considered to be
+          in wavelength (default False).
         """
         if stars_cube: file_type = "Calibrated stars spectrum frame"
         else: file_type = "Calibrated spectrum frame"
@@ -5657,7 +5707,8 @@ class Spectrum(Cube):
                 + self._project_header
                 + self._calibration_laser_header
                 + self._get_basic_frame_header(self.dimx, self.dimy)
-                + self._get_basic_spectrum_frame_header(frame_index, nm_axis)
+                + self._get_basic_spectrum_frame_header(frame_index, axis,
+                                                        wavenumber=wavenumber)
                 + self._get_fft_params_header(apodization_function))
     
     def _get_calibrated_spectrum_path(self, stars_cube=False):
@@ -5675,15 +5726,21 @@ class Spectrum(Cube):
         return (self._data_path_hdr + stars_header
                 + "calibrated_spectrum.fits")
     
-    def _get_calibrated_spectrum_header(self, nm_axis, apodization_function,
-                                        stars_cube=False):
+    def _get_calibrated_spectrum_header(self, axis, apodization_function,
+                                        stars_cube=False,
+                                        wavenumber=False):
         """Return the header of the calibrated spectral cube.
         
-        :param nm_axis: Wavelength axis in nanometers.
+        :param axis: Spectrum axis (must be in wavelength or in
+          wavenumber).
         
         :param stars_cube: (Optional) The spectrum computed
           contains only the spectrum of some stars. The default path
           name is changed (default False).
+          
+        :param wavenumber: (Optional) If True the axis is considered
+          to be in wavenumber. If False the axis is considered to be
+          in wavelength (default False).
         """
         if stars_cube:
             header = self._get_basic_header('Calibrated stars spectrum cube')
@@ -5693,7 +5750,8 @@ class Spectrum(Cube):
                 + self._project_header
                 + self._calibration_laser_header
                 + self._get_basic_frame_header(self.dimx, self.dimy)
-                + self._get_basic_spectrum_cube_header(nm_axis)
+                + self._get_basic_spectrum_cube_header(axis,
+                                                       wavenumber=wavenumber)
                 + self._get_fft_params_header(apodization_function))
 
 
@@ -5721,7 +5779,8 @@ class Spectrum(Cube):
                   stars_cube=False, correct_wcs=None,
                   flux_calibration_vector=None, energy_map_path=None,
                   deep_frame_path=None, mean_scaling=True,
-                  mean_flux=True):
+                  mean_flux=True, wavenumber=False,
+                  calibration_laser_map_path=None, nm_laser=None):
         
         """Calibrate spectrum cube: correct for filter transmission
         function, correct WCS parameters and flux calibration.
@@ -5783,6 +5842,19 @@ class Spectrum(Cube):
           included the filter and no filter correction is done
           (default True).
 
+        :param wavenumber: (Optional) If True, the spectrum is
+          considered to be in wavenumber. If False it is considered to
+          be in wavelength (default False).
+
+        :param calibration_laser_map_path: (Optional) If not None the
+          input spectrum is considered as uncalibrated for
+          wavelength. The filter correction is thus applied taking
+          into account the calibration laser map (default None).
+
+        :param nm_laser: (Optional) Must be set if a calibration laser
+          map is given. This option has no use in the other case and
+          can be set to None.
+
         .. note:: The filter file used must have two colums separated
           by a space character. The first column contains the
           wavelength axis in nm. The second column contains the
@@ -5807,7 +5879,9 @@ class Spectrum(Cube):
         def _correct_spectrum_column(spectrum_col, filter_function,
                                      min_index, max_index,
                                      flux_calibration_vector,
-                                     scale_map_col, scale_factor, scale_type):
+                                     scale_map_col, scale_factor, scale_type,
+                                     calibration_laser_col, nm_laser, step, order,
+                                     wavenumber):
             """
             .. note:: This function just makes a division by the
             filter function: the filter function must have been normalized, and
@@ -5833,10 +5907,75 @@ class Spectrum(Cube):
                 spectrum_col *= scale_factor
 
             # filter correction
-            spectrum_col[:,min_index:max_index] /= (
-                filter_function[min_index:max_index])
-            spectrum_col[:,:min_index] = np.nan
-            spectrum_col[:,max_index:] = np.nan
+            # if the cube is wavelength calibrated
+            if np.all(calibration_laser_col / nm_laser == 1.):
+                spectrum_col[:,min_index:max_index] /= (
+                    filter_function[min_index:max_index])
+                spectrum_col[:,:min_index] = np.nan
+                spectrum_col[:,max_index:] = np.nan
+            else:
+                if wavenumber:
+                    cm1_axis = orb.utils.create_cm1_axis(spectrum_col.shape[1],
+                                                         step, order, corr=1.)
+                    filter_min_nm = cm1_axis[min_index]
+                    filter_max_nm = cm1_axis[max_index]
+                else:
+                    # filter function is projected onto an irregular nm axis
+                    nm_axis = orb.utils.create_nm_axis(spectrum_col.shape[1],
+                                                       step, order)
+                    filter_min_nm = nm_axis[min_index]
+                    filter_max_nm = nm_axis[max_index]
+                
+                for icol in range(spectrum_col.shape[0]):
+                    
+                    corr = calibration_laser_col[icol]/nm_laser
+                    
+                    if wavenumber:
+                        cm1_axis_corr = orb.utils.create_cm1_axis(
+                            spectrum_col.shape[1], step, order, corr=corr)
+                        [imin_index, imax_index] = orb.utils.nm2pix(
+                            cm1_axis_corr, [filter_min_nm, filter_max_nm])
+                        ifilter = orb.utils.interpolate_axis(
+                            filter_function, cm1_axis_corr, 1, old_axis=cm1_axis)
+                    
+                        imin_index = int(imin_index)
+                        imax_index = int(imax_index)
+                        spectrum_col[icol, imin_index:imax_index] /= (
+                            ifilter[imin_index:imax_index])
+                        spectrum_col[icol,:imin_index] = np.nan
+                        spectrum_col[icol,imax_index:] = np.nan
+                    
+                    else:
+                        
+                        # note: too much interpolations are done here, this
+                        # could be reduced
+                        nm_axis_ireg_corr = orb.utils.create_nm_axis_ireg(
+                            spectrum_col.shape[1], step, order, corr=corr)
+                        nm_axis_ireg = orb.utils.create_nm_axis_ireg(
+                            spectrum_col.shape[1], step, order, corr=1.)
+                        # both filter and spectrum are interpolated to
+                        # a common nm iregular axis
+                        ifilter = orb.utils.interpolate_axis(
+                            filter_function, nm_axis_ireg_corr, 1, old_axis=nm_axis)
+                        spectrum_col[icol, :] = orb.utils.interpolate_axis(
+                            spectrum_col[icol, :], nm_axis_ireg, 5, old_axis=nm_axis)
+
+                        [imin_index, imax_index] = orb.utils.nm2pix(
+                            nm_axis_ireg_corr, [filter_min_nm, filter_max_nm])
+                        
+                        imin_index = int(imin_index)
+                        imax_index = int(imax_index)
+                        spectrum_col[icol, imin_index:imax_index] /= (
+                            ifilter[imin_index:imax_index])
+                        spectrum_col[icol,:imin_index] = np.nan
+                        spectrum_col[icol,imax_index:] = np.nan
+
+                        # once the spectrum has been divided by the
+                        # filter it is interpolated back to its
+                        # original axis
+                        spectrum_col[icol, :] = orb.utils.interpolate_axis(
+                            spectrum_col[icol, :], nm_axis, 5, old_axis=nm_axis_ireg)
+                        
 
             # flux calibration
             if flux_calibration_vector != None:
@@ -5873,10 +6012,26 @@ class Spectrum(Cube):
             apodization_function = hdu[0].header['APODIZ']
         else:
             apodization_function = 'None'
+
+        # get calibration laser map
+        if calibration_laser_map_path is not None:
+            calibration_laser_map = self.read_fits(calibration_laser_map_path)
+            if (calibration_laser_map.shape[0] != self.dimx):
+                calibration_laser_map = orb.utils.interpolate_map(
+                    calibration_laser_map,
+                    self.dimx, self.dimy)
+            if nm_laser is None:
+                self._print_error('If a calibration laser map is given nm_laser must also be set !')
+        else:
+            calibration_laser_map = np.ones(
+                (self.dimx, self.dimy), dtype=float)
+            nm_laser = 1.
+            
         
         # Get filter parameters
         filter_function, filter_min, filter_max = orb.utils.get_filter_function(
-            filter_file_path, step, order, self.dimz)
+            filter_file_path, step, order, self.dimz, wavenumber=wavenumber)
+
         if filter_min < 0: filter_min = 0
         if filter_max > self.dimz: filter_max = self.dimz
 
@@ -5939,6 +6094,8 @@ class Spectrum(Cube):
                                        y_min, y_max, 
                                        0, self.dimz)
             iquad_scale_map = scale_map[x_min:x_max, y_min:y_max]
+            iquad_calibration_laser_map = calibration_laser_map[
+                x_min:x_max, y_min:y_max]
             job_server, ncpus = self._init_pp_server()
             ncpus_max = int(ncpus)
             progress = ProgressBar(int((x_max-x_min)/ncpus_max))
@@ -5960,7 +6117,9 @@ class Spectrum(Cube):
                         filter_min, filter_max,
                         flux_calibration_vector,
                         iquad_scale_map[ii+ijob,:],
-                        scale_factor, scale_type),
+                        scale_factor, scale_type,
+                        iquad_calibration_laser_map[ii+ijob,:],
+                        nm_laser, step, order, wavenumber),
                     modules=("numpy as np", "import orb.utils"))) 
                         for ijob in range(ncpus)]
 
@@ -5985,6 +6144,11 @@ class Spectrum(Cube):
             progress.end()
 
         # merge *.IQUAD files
+        if wavenumber:
+            axis = orb.utils.create_nm_axis(self.dimz, step, order)
+        else:
+            axis = orb.utils.create_cm1_axis(self.dimz, step, order)
+            
         progress = ProgressBar(self.dimz)
         for iframe in range(self.dimz):
             progress.update(iframe, info='Merging quads')
@@ -5998,8 +6162,9 @@ class Spectrum(Cube):
                 
             # Create header
             hdr = self._get_calibrated_spectrum_frame_header(
-                iframe, orb.utils.create_nm_axis(self.dimz, step, order),
-                apodization_function, stars_cube=stars_cube)
+                iframe, axis,
+                apodization_function, stars_cube=stars_cube,
+                wavenumber=wavenumber)
 
             # Create WCS header
             new_hdr = pyfits.PrimaryHDU(frame.transpose()).header

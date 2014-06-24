@@ -537,13 +537,13 @@ can be achieved by reducing a standard cube using the option
 CALSPEC have been added to the data of ORBS so that they can be used
 to do a flux calibration. To do a flux calibration the steps are thus:
 
-  1. Reduce standard cube with option --standard
+1. Reduce standard cube with option --standard
 
-  2. Give the path to the standard spectrum (STDPATH) and the name of
-     the standard (STDNAME) in the option file of the cube yo want to
-     calibrate
+2. Give the path to the standard spectrum (STDPATH) and the name of
+   the standard (STDNAME) in the option file of the cube yo want to
+   calibrate
 
-  3. Reduce the cube you want to calibrate (or only redo the last step)
+3. Reduce the cube you want to calibrate (or only redo the last step)
   
 .. seealso:: :py:meth:`~process.Spectrum.get_flux_calibration_vector`
 
@@ -583,13 +583,13 @@ step):
 Simplification
 --------------
 
-  * :py:class:`core.Indexer` created to index reduction files and get
-    their location easily in :py:class:`orbs.Orbs`.
+* :py:class:`core.Indexer` created to index reduction files and get
+  their location easily in :py:class:`orbs.Orbs`.
 
-  * No more quadrants: Reduction of big data cubes has been simplified
-    and do not save reduced files in quadrants any more. Big data
-    cubes are thus handled as small data cubes. Reduced by quadrants
-    but saved as one set of frames.
+* No more quadrants: Reduction of big data cubes has been simplified
+  and do not save reduced files in quadrants any more. Big data cubes
+  are thus handled as small data cubes. Reduced by quadrants but saved
+  as one set of frames.
 
 3.6.2
 =====
@@ -597,19 +597,17 @@ Simplification
 Cython & speed optimization
 ---------------------------
 
-  * :py:meth:`utils.transform_frame` has been modified to do only one
-    geometrical transformation instead of a set of transformations
-    (tip-tilt then translations then rotation etc.). Coordinates
-    transformation function (:meth:`cutils.transform_A_to_B`)
-    written in Cython to optimize processing speed .
+* :py:meth:`utils.transform_frame` has been modified to do only one
+  geometrical transformation instead of a set of transformations
+  (tip-tilt then translations then rotation etc.). Coordinates
+  transformation function (:meth:`cutils.transform_A_to_B`) written in
+  Cython to optimize processing speed .
 
-  * core functions for fitting stars
-    (:meth:`cutils.gaussian_array2d` and
-    :meth:`cutils.surface_value`) have been transcripted to Cython
-    for faster processing.
+* core functions for fitting stars (:meth:`cutils.gaussian_array2d`
+  and :meth:`cutils.surface_value`) have been transcripted to Cython
+  for faster processing.
 
-  * lots of functions have been cythonized to improve the overall
-    speed.
+* lots of functions have been cythonized to improve the overall speed.
 
 v3.7
 ****
@@ -624,7 +622,7 @@ ORBS core classes and functions (core.py, utils.py and cutils.pyx)
 have been moved to a module of shared core libraries: ORB. This way,
 ORBS, ORCS, OACS, IRIS and ORUS can share the same core module without
 importing ORBS entirely each time. Conceptually ORBS, like the others,
-just wraps around ORB module and is not any more the central part ot
+just wraps around ORB module and is not any more the central part of
 the whole suite of softwares.
 
 3.7.1
@@ -660,15 +658,61 @@ ready for release.
 3.7.2.1
 =======
 
-  * Better integration of the multi fit mode (now used most of the
-    time)
+* Better integration of the multi fit mode (now used most of the time)
 
-  * option file keyword added: TRYCAT that must be set to 1 to use the
-    USNO-B1 catalogue for star detection.
+* option file keyword added: TRYCAT that must be set to 1 to use the
+  USNO-B1 catalogue for star detection.
 
-  * Better treatment of NaNs. Begin to remove the use of zeros in
-    place of NaNs.
+* Better treatment of NaNs. Begin to remove the use of zeros in place
+  of NaNs.
 
-  * doc update
+* doc update
 
-  * bug fix
+* bug fix
+
+3.7.2.2
+=======
+
+Wavenumber computation & better integration with ORCS
+-----------------------------------------------------
+
+The whole spectrum computation process can now be done in wavenumber
+(useful to avoid the mutiple interpolation nescessary to move from a
+regular wavenumber space to an iregular wavelength space back and
+forth).
+
+It is also possible to compute an uncalibrated spectrum. This way
+there is absolutly no interpolation made during the spectrum
+computation. The output can be used by ORCS directly and ORCS itself
+does not have any interpolation to do for the extraction of the lines
+parameters. **This ensure that the spectral information is not distorded
+at all during the process**.
+
+The filter correction during the calibration process takes into
+account the fact that no wavelength calibration has been done.
+
+* Important modified methods:
+
+  * :py:meth:`~process.Interferogram.compute_spectrum`
+  * :py:meth:`~process.Spectrum.calibrate`
+
+* New keyword added in the option file: WAVENUMBER, WAVE_CALIB
+
+
+Miscellaneous
+-------------
+
+* :py:meth:`~orbs.Orbs.__init__` simplified by the use of
+  :py:class:`orb.core.OptionFile` previously used only by
+  :py:class:`orcs.orcs.SpectralCube()`
+
+* doc updated
+
+ORB's scripts
+-------------
+
+* move ORB's scripts (dstack, combine, rollxz, rollyz, reduce) from
+  orbs/scripts to orb/scripts so that only ORBS specific scripts are
+  in orbs/scripts.
+
+* create **unstack** script to unstack a cube into a set of frames

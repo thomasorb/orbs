@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Process module &mdash; Orbs 3.7.2.1 documentation</title>
+    <title>Process module &mdash; Orbs 3.7.2.2 documentation</title>
     
     <link rel="stylesheet" href="_static/sphinxdoc.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -14,7 +14,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
-        VERSION:     '3.7.2.1',
+        VERSION:     '3.7.2.2',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -25,7 +25,7 @@
     <script type="text/javascript" src="_static/doctools.js"></script>
     <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="shortcut icon" href="_static/logo.ico"/>
-    <link rel="top" title="Orbs 3.7.2.1 documentation" href="index.html" />
+    <link rel="top" title="Orbs 3.7.2.2 documentation" href="index.html" />
     <link rel="next" title="Changelog" href="changelog.html" />
     <link rel="prev" title="Orbs module" href="orbs_module.html" /> 
   </head>
@@ -42,7 +42,7 @@
         <li class="right" >
           <a href="orbs_module.html" title="Orbs module"
              accesskey="P">previous</a> |</li>
-        <li><a href="index.html">Orbs 3.7.2.1 documentation</a> &raquo;</li> 
+        <li><a href="index.html">Orbs 3.7.2.2 documentation</a> &raquo;</li> 
       </ul>
     </div>
       <div class="sphinxsidebar">
@@ -861,7 +861,7 @@ index.</p>
 
 <dl class="method">
 <dt id="process.Interferogram._get_spectrum_frame_header">
-<tt class="descname">_get_spectrum_frame_header</tt><big>(</big><em>frame_index</em>, <em>nm_axis</em>, <em>apodization_function</em>, <em>phase=False</em><big>)</big><a class="headerlink" href="#process.Interferogram._get_spectrum_frame_header" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">_get_spectrum_frame_header</tt><big>(</big><em>frame_index</em>, <em>axis</em>, <em>apodization_function</em>, <em>phase=False</em>, <em>wavenumber=False</em><big>)</big><a class="headerlink" href="#process.Interferogram._get_spectrum_frame_header" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return the header of the spectral frames.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -869,9 +869,13 @@ index.</p>
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>frame_index</strong> &#8211; Index of the frame.</li>
-<li><strong>nm_axis</strong> &#8211; Wavelength axis in nanometers.</li>
+<li><strong>axis</strong> &#8211; Spectrum axis (must be in wavelength or in
+wavenumber).</li>
 <li><strong>phase</strong> &#8211; (Optional) If True the path is changed for a
 phase cube (default False).</li>
+<li><strong>wavenumber</strong> &#8211; (Optional) If True the axis is considered
+to be in wavenumber. If False the axis is considered to be
+in wavelength (default False).</li>
 </ul>
 </td>
 </tr>
@@ -904,19 +908,23 @@ phase cube (default False).</li>
 
 <dl class="method">
 <dt id="process.Interferogram._get_spectrum_header">
-<tt class="descname">_get_spectrum_header</tt><big>(</big><em>nm_axis</em>, <em>apodization_function</em>, <em>stars_cube=False</em>, <em>phase=False</em><big>)</big><a class="headerlink" href="#process.Interferogram._get_spectrum_header" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">_get_spectrum_header</tt><big>(</big><em>axis</em>, <em>apodization_function</em>, <em>stars_cube=False</em>, <em>phase=False</em>, <em>wavenumber=False</em><big>)</big><a class="headerlink" href="#process.Interferogram._get_spectrum_header" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return the header of the spectal cube.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>nm_axis</strong> &#8211; Wavelength axis in nanometers.</li>
+<li><strong>axis</strong> &#8211; Spectrum axis (must be in wavelength or in
+wavenumber).</li>
 <li><strong>stars_cube</strong> &#8211; (Optional) The spectrum computed
 contains only the spectrum of some stars. The default path
 name is changed (default False).</li>
 <li><strong>phase</strong> &#8211; (Optional) If True the path is changed for a
 phase cube (default False).</li>
+<li><strong>wavenumber</strong> &#8211; (Optional) If True the axis is considered
+to be in wavenumber. If False the axis is considered to be
+in wavelength (default False).</li>
 </ul>
 </td>
 </tr>
@@ -1002,7 +1010,7 @@ more precise mean coefficent.</li>
 
 <dl class="method">
 <dt id="process.Interferogram.compute_spectrum">
-<tt class="descname">compute_spectrum</tt><big>(</big><em>calibration_laser_map_path</em>, <em>bin</em>, <em>step</em>, <em>order</em>, <em>nm_laser</em>, <em>zpd_shift=None</em>, <em>polyfit_deg=1</em>, <em>n_phase=None</em>, <em>bad_frames_vector=None</em>, <em>window_type=None</em>, <em>stars_cube=False</em>, <em>phase_cube=False</em>, <em>phase_map_0_path=None</em>, <em>phase_coeffs=None</em>, <em>filter_file_path=None</em>, <em>balanced=True</em>, <em>smoothing_deg=2</em>, <em>fringes=None</em><big>)</big><a class="headerlink" href="#process.Interferogram.compute_spectrum" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">compute_spectrum</tt><big>(</big><em>calibration_laser_map_path</em>, <em>bin</em>, <em>step</em>, <em>order</em>, <em>nm_laser</em>, <em>zpd_shift=None</em>, <em>polyfit_deg=1</em>, <em>n_phase=None</em>, <em>bad_frames_vector=None</em>, <em>window_type=None</em>, <em>stars_cube=False</em>, <em>phase_cube=False</em>, <em>phase_map_0_path=None</em>, <em>phase_coeffs=None</em>, <em>filter_file_path=None</em>, <em>balanced=True</em>, <em>smoothing_deg=2</em>, <em>fringes=None</em>, <em>wavenumber=False</em><big>)</big><a class="headerlink" href="#process.Interferogram.compute_spectrum" title="Permalink to this definition">¶</a></dt>
 <dd><p>Compute the spectrum from the corrected interferogram
 frames. Can be used to compute spectrum for camera 1, camera 2
 or merged interferogram.</p>
@@ -1011,7 +1019,9 @@ or merged interferogram.</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>calibration_laser_map_path</strong> &#8211; Path to the calibration map.</li>
+<li><strong>calibration_laser_map_path</strong> &#8211; Path to the calibration
+map. If set to None, the spectrum cube will not be
+calibrated in wavelength.</li>
 <li><strong>bin</strong> &#8211; The binning of the interferogram frames (equal to
 the binning of the camera 1)</li>
 <li><strong>order</strong> &#8211; Folding order</li>
@@ -1075,6 +1085,12 @@ intensity. The array must be like [[freq1, amp1], [freq2,
 amp2], [freq3, amp3], ...]. Fringes are removed by dividing
 the interferograms by a sinusoidal function representing a
 periodically variable modulation efficiency (default None).</li>
+<li><strong>wavenumber</strong> &#8211; (Optional) If True, the returned spectrum
+is projected onto its original wavenumber axis (emission
+lines and especially unapodized sinc emission lines are thus
+symetric which is not the case if the spectrum is projected
+onto a, more convenient, regular wavelength axis) (default
+False).</li>
 </ul>
 </td>
 </tr>
@@ -1941,7 +1957,7 @@ Interferogram class.</p>
 </table>
 <dl class="method">
 <dt id="process.Spectrum._get_calibrated_spectrum_frame_header">
-<tt class="descname">_get_calibrated_spectrum_frame_header</tt><big>(</big><em>frame_index</em>, <em>nm_axis</em>, <em>apodization_function</em>, <em>stars_cube=False</em><big>)</big><a class="headerlink" href="#process.Spectrum._get_calibrated_spectrum_frame_header" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">_get_calibrated_spectrum_frame_header</tt><big>(</big><em>frame_index</em>, <em>axis</em>, <em>apodization_function</em>, <em>stars_cube=False</em>, <em>wavenumber=False</em><big>)</big><a class="headerlink" href="#process.Spectrum._get_calibrated_spectrum_frame_header" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return the header of the calibrated spectral frames.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -1949,10 +1965,14 @@ Interferogram class.</p>
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>frame_index</strong> &#8211; Index of the frame.</li>
-<li><strong>nm_axis</strong> &#8211; Wavelength axis in nanometers.</li>
+<li><strong>axis</strong> &#8211; Spectrum axis (must be in wavelength or in
+wavenumber).</li>
 <li><strong>stars_cube</strong> &#8211; (Optional) The spectrum computed contains
 only the spectrum of some stars. The default path name is
 changed (default False).</li>
+<li><strong>wavenumber</strong> &#8211; (Optional) If True the axis is considered
+to be in wavenumber. If False the axis is considered to be
+in wavelength (default False).</li>
 </ul>
 </td>
 </tr>
@@ -1983,17 +2003,21 @@ name is changed (default False).</li>
 
 <dl class="method">
 <dt id="process.Spectrum._get_calibrated_spectrum_header">
-<tt class="descname">_get_calibrated_spectrum_header</tt><big>(</big><em>nm_axis</em>, <em>apodization_function</em>, <em>stars_cube=False</em><big>)</big><a class="headerlink" href="#process.Spectrum._get_calibrated_spectrum_header" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">_get_calibrated_spectrum_header</tt><big>(</big><em>axis</em>, <em>apodization_function</em>, <em>stars_cube=False</em>, <em>wavenumber=False</em><big>)</big><a class="headerlink" href="#process.Spectrum._get_calibrated_spectrum_header" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return the header of the calibrated spectral cube.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>nm_axis</strong> &#8211; Wavelength axis in nanometers.</li>
+<li><strong>axis</strong> &#8211; Spectrum axis (must be in wavelength or in
+wavenumber).</li>
 <li><strong>stars_cube</strong> &#8211; (Optional) The spectrum computed
 contains only the spectrum of some stars. The default path
 name is changed (default False).</li>
+<li><strong>wavenumber</strong> &#8211; (Optional) If True the axis is considered
+to be in wavenumber. If False the axis is considered to be
+in wavelength (default False).</li>
 </ul>
 </td>
 </tr>
@@ -2060,7 +2084,7 @@ new WCS parameters.</li>
 
 <dl class="method">
 <dt id="process.Spectrum.calibrate">
-<tt class="descname">calibrate</tt><big>(</big><em>filter_file_path</em>, <em>step</em>, <em>order</em>, <em>stars_cube=False</em>, <em>correct_wcs=None</em>, <em>flux_calibration_vector=None</em>, <em>energy_map_path=None</em>, <em>deep_frame_path=None</em>, <em>mean_scaling=True</em>, <em>mean_flux=True</em><big>)</big><a class="headerlink" href="#process.Spectrum.calibrate" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">calibrate</tt><big>(</big><em>filter_file_path</em>, <em>step</em>, <em>order</em>, <em>stars_cube=False</em>, <em>correct_wcs=None</em>, <em>flux_calibration_vector=None</em>, <em>energy_map_path=None</em>, <em>deep_frame_path=None</em>, <em>mean_scaling=True</em>, <em>mean_flux=True</em>, <em>wavenumber=False</em>, <em>calibration_laser_map_path=None</em>, <em>nm_laser=None</em><big>)</big><a class="headerlink" href="#process.Spectrum.calibrate" title="Permalink to this definition">¶</a></dt>
 <dd><p>Calibrate spectrum cube: correct for filter transmission
 function, correct WCS parameters and flux calibration.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -2115,6 +2139,16 @@ mean flux loss due to the filter. If False, the flux
 calibration vector is considered to correct for everything
 included the filter and no filter correction is done
 (default True).</li>
+<li><strong>wavenumber</strong> &#8211; (Optional) If True, the spectrum is
+considered to be in wavenumber. If False it is considered to
+be in wavelength (default False).</li>
+<li><strong>calibration_laser_map_path</strong> &#8211; (Optional) If not None the
+input spectrum is considered as uncalibrated for
+wavelength. The filter correction is thus applied taking
+into account the calibration laser map (default None).</li>
+<li><strong>nm_laser</strong> &#8211; (Optional) Must be set if a calibration laser
+map is given. This option has no use in the other case and
+can be set to None.</li>
 </ul>
 </td>
 </tr>
@@ -2450,7 +2484,7 @@ in erg/cm^2/s/A.</p>
         <li class="right" >
           <a href="orbs_module.html" title="Orbs module"
              >previous</a> |</li>
-        <li><a href="index.html">Orbs 3.7.2.1 documentation</a> &raquo;</li> 
+        <li><a href="index.html">Orbs 3.7.2.2 documentation</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">

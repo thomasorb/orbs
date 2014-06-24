@@ -43,7 +43,7 @@ import pp
 import bottleneck as bn
 import pywcs
 
-from orb.core import Tools, Cube, Indexer
+from orb.core import Tools, Cube, Indexer, OptionFile
 from process import RawData, InterferogramMerger, Interferogram
 from process import Phase, Spectrum, CalibrationLaser
 from orb.astrometry import Astrometry
@@ -62,52 +62,126 @@ class Orbs(Tools):
     Orbs class with a path to an option file (e.g. option.opt)
     containing all the parameters needed to run a reduction.
 
-    :param options_file_path: Path to the option file
+    .. note:: The option file must contain at least the following
+      parameters (each parameter is preceded by a keyword). See
+      'options' attribute to get all the possible keywords.
+
+    :OBJECT: Name of the object
+
+    :FILTER: Filter name
+
+    :BINCAM1: Binning of the camera 1
+
+    :BINCAM2: Binning of the camera 2
+
+    :SPESTEP: Step size of the moving mirror (in nm)
+
+    :SPESTNB: Number of steps
+
+    :SPEORDR: Order of the spectral folding
+
+    :SPEEXPT: Exposition time of the frames (in s)
+
+    :SPEDART: Exposition time of the dark frames (in s)
     
-    :param config_file_name: (Optional) name of the config file to
-       use. Must be located in ``orbs/data/``
+    :OBSDATE: Observation date (YYYY-MM-DD)
 
-    :Option file: The option file must contain at least the following parameters (each parameter is preceded by a keyword). See 'options' attribute to get all the possible keywords.
-        * **OBJECT** : Object name (without space)
-        * **FILTER** : Filter name
-        * **BINCAM1** : Binning for camera 1
-        * **BINCAM2** : Binning for camera 2
-        * **SPESTEP** : Step size of the moving mirror (in nm)
-        * **SPESTNB** : Number of steps
-        * **SPEORDR** : Order of spectral folding
-        * **SPEEXPT** : Exposition time of the frames (in s)
-        * **SPEDART** : Exposition time of the dark frames (in s)
-        * **OBSDATE** : Observation date (YYYY-MM-DD)
-        * **DIRCAM1** : Path to the directory containing the 
-          images of the camera 1
-        * **DIRCAM2** : Path to the directory containing the 
-          images of the camera 2
-        * **DIRBIA1** : Path to the directory containing the 
-          bias frames for the camera 1
-        * **DIRBIA2** : Path to the directory containing the 
-          bias frames for the camera 2
-        * **DIRDRK1** : Path to the directory containing the
-          dark frames for the camera 1
-        * **DIRDRK2** : Path to the directory containing the 
-          dark frames for the camera 2
-        * **DIRFLT1** : Path to the directory containing the 
-          flat frames for the camera 1
-        * **DIRFLT2** : Path to the directory containing the 
-          flat frames for the camera 2
-        * **DIRCAL1** : Path to the directory containing the 
-          images of the calibration laser cube of the camera 1
+    :HOUR_UT: UT hour of the observation (HH:MM:SS)
 
-      .. note::
+    :BADFRMS: List of bad frames indexes
+
+    :TARGETR: RA of the target (hour:min:sec)
+        
+    :TARGETD: DEC of the target (degree:min:sec)
+
+    :TARGETX: X position of the target in the first frame
+
+    :TARGETY: Y position of the target in the first frame
+
+    :DIRCAM1: Path to the directory containing the images of the
+      camera 1
+
+    :DIRCAM2: Path to the directory containing the images of the
+      camera 2
+
+    :DIRBIA1: Path to the directory containing the bias frames for the
+      camera 1
+
+    :DIRBIA2: Path to the directory containing the bias frames for the
+      camera 2
+
+    :DIRDRK1: Path to the directory containing the dark frames for the
+      camera 1
+
+    :DIRDRK2: Path to the directory containing the dark frames for the
+      camera 2
+
+    :DIRFLT1: Path to the directory containing the flat frames for the
+      camera 1
+          
+    :DIRFLT2: Path to the directory containing the flat frames for the
+      camera 2
+          
+    :DIRCAL1: Path to the directory containing the images of the
+      calibration laser cube of the camera 1
+
+    :DIRCAL2: Path to the directory containing the images of the
+      calibration laser cube of the camera 2
+
+    :DIRFLTS: Path to the directory containing the flat spectrum
+      frames
+
+    :STDPATH: Path to the standard spectrum file
+
+    :PHAPATH: Path to the external phase map file
+
+    :STDNAME: Name of the standard used for flux calibration
+
+    :FRINGES: Fringes parameters
+
+    :STARLIST1: Path to a list of star positions for the camera 1
+
+    :STARLIST2: Path to a list of star positions for the camera 2
+
+    :APOD: Apodization function name
+
+    :CALIBMAP: Path to the calibration laser map
+
+    :TRYCAT: If True (an integer > 0) a star catalogue (e.g. USNO-B1)
+      is used for star detection (TARGETR, TARGETD, TARGETX, TARGETY
+      must be given in the option file). If False star detection will
+      use its own algorithm. You can also force ORBS to use a given
+      star list, see STARLIST1 and STARLIST2 keywords. This option is
+      set to False by default
+        
+    :WAVENUMBER: If True (an integer > 0) the output spectrum will be
+      in wavenumber instead of wavelength. This option avoids the use
+      of interpolation to transform the original wavenumber spectrum
+      to a wavelength spectrum
+          
+    :WAVE_CALIB: If True (an integer > 0) the output sepctrum will be
+      wavelength calibrated using the calibration laser map. This
+      option is set to True by default
+
+
+    .. note::
+    
         * The order of the parameters is not important
-        * Lines without a keyword are treated as commentaries
+        
+        * Lines without a keyword are treated as commentaries (but the
+          use of # is better)
+        
         * Paths can be either relative or absolut
-        * An example of an option file (options.opt) can be 
-          found in the scripts folder (Orbs/scripts) of the 
-          package
+        
+        * An example of an option file (options.opt) can be found in
+          the scripts folder (Orbs/scripts) of the package
+          
         * 'orbs-optcreator' is an executable script that can be used
-          to create an option file                                                                      
-      .. warning:: Two parameters are needed **at least** : the object 
-        name (OBJECT) and the filter name (FILTER) 
+          to create an option file
+
+          
+    .. warning:: Two parameters are needed **at least** : the object
+        name (OBJECT) and the filter name (FILTER)
     """
 
     __version__ = None # imported from __version__ given in the core module
@@ -139,36 +213,57 @@ class Orbs(Tools):
        are the same)
 
         * INIT_ANGLE: Rough angle between images of the cameras 1 and 2
+        
         * INIT_DX: Rough disalignment along x axis between cameras 1
           and 2 for a 1x1 binning
+          
         * INIT_DY: Rough disalignment along y axis between cameras 1
           and 2 for a 1x1 binning
+          
         * FIELD_OF_VIEW: Size of the field of view of the camera 1 in
           arc-minutes
+          
         * FIELD_OF_VIEW_2: Size of the field of view of the camera 2 in
           arc-minutes
+          
         * PIX_SIZE_CAM1: Camera 1 pixel size in um
+
         * PIX_SIZE_CAM2: Camera 2 pixel size in um
+        
         * BALANCED_CAM: Number of the camera on the balanced port
+        
         * CALIB_NM_LASER: Wavelength of the calibration laser in nm
+        
         * CALIB_ORDER: Folding order of the calibration laser cube
+        
         * CALIB_STEP_SIZE: Step size of the calibration laser cube
+        
         * PHASE_FIT_DEG: Degree of the polynomial used to fit the phase
+        
         * DETECT_STAR_NB: Number of star to use for alignment and photometry
+        
         * INIT_FWHM: Rough estimate of the stars FWHM in arcseconds
+        
         * PSF_PROFILE: PSF used to fit stars (can be gaussian of moffat)
+        
         * MOFFAT_BETA: Default beta parameter for the Moffat PSF
+        
         * DETECT_STACK: Number of frames to combine for star detection
+        
         * OPTIM_DARK_CAM1: If set to 1 : run the optimization routine
           to remove camera 1 dark. Set to 0 to avoid optimization routine
+          
         * OPTIM_DARK_CAM2: If set to 1 : run the optimization routine
           to remove camera 2 dark. Set to 0 to avoid optimization routine
+          
         * DARK_ACTIVATION_ENERGY: Calibrated activation energy of the
           dark frames. Used to correct for varying dark level of the
           camera 2 of SpIOMM
+          
         * BIAS_CALIB_PARAMS: Bias calibration parameters a, b of the
           function : bias_level = aT + b [T in degrees C]. Used to
           correct for varying dark level of the camera 2 of SpIOMM
+          
         * EXT_ILLUMINATION: If there is a chance for some light to
           enter in one of the cameras and not the other this must be
           set to 1. This way this external light can be tracked by the
@@ -179,65 +274,81 @@ class Orbs(Tools):
     """Dictionary containing all the options of the option file and
     others created during initialization needed by processing classes.
 
-    .. note:: Keywords used (the keyword of the option file is
-       indicated in parenthesis):
+    .. note:: Keywords used and related keyword in the option file:
     
-        * object_name: Name of the object (OBJECT)
-        * filter_name: Filter name (FILTER)
-        * bin_cam_1: Binning of the camera 1 (BINCAM1)
-        * bin_cam_2: Binning of the camera 2 (BINCAM2)
-        * step: Step size of the moving mirror (in nm) (SPESTEP)
-        * step_number: Number of steps (SPESTNB)
-        * order: Order of the spectral folding (SPEORDR)
-        * nm_min: Shortest wavelength of the spectral range (in nm)
-        * nm_max: Longest wavelength of the spectral range (in nm)
-        * exp_time: Exposition time of the frames (in s) (SPEEXPT)
-        * dark_time: Exposition time of the dark frames (in s) (SPEDART)
-        * obs_date: Observation date (YYYY-MM-DD) (OBSDATE)
-        * bad_frames: List of bad frames indexes (BADFRMS)
-        * target_ra: RA of the target (hour:min:sec) (TARGETR)
-        * target_dec: DEC of the target (degree:min:sec) (TARGETD)
-        * target_x: X position of the target in the frames (TARGETX)
-        * target_y: Y position of the target in the frames(TARGETY)
-        * image_list_path_1: Path to the directory containing the
-          images of the camera 1 (DIRCAM1)
-        * image_list_path_2: Path to the directory containing the
-          images of the camera 2 (DIRCAM2)
-        * bias_path_1: Path to the directory containing the bias
-          frames for the camera 1 (DIRBIA1)
-        * bias_path_2: Path to the directory containing the bias
-          frames for the camera 2 (DIRBIA2)
-        * dark_path_1: Path to the directory containing the dark
-          frames for the camera 1 (DIRDRK1)
-        * dark_path_2: Path to the directory containing the dark
-          frames for the camera 2 (DIRDRK2)
-        * flat_path_1: Path to the directory containing the flat
-          frames for the camera 1 (DIRFLT1)
-        * flat_path_2: Path to the directory containing the flat
-          frames for the camera 2 (DIRFLT2)
-        * calib_path_1: Path to the directory containing the images of
-          the calibration laser cube of the camera 1 (DIRCAL1)
-        * calib_path_2: Path to the directory containing the images of
-          the calibration laser cube of the camera 2 (DIRCAL2)
-        * standard_path: Path to the standard spectrum file (STDPATH)
-        * phase_map_path: Path to the external phase map file (PHAPATH)
-        * standard_name: Name of the standard (STDNAME)
-        * fringes: Fringes parameters (FRINGES).
-        * flat_spectrum_path: Path to the directory containing the
-          flat spectrum frames (DIRFLTS)
-        * star_list_path_1: Path to a list of star positions for the
-          camera 1 (STARLIST1)
-        * star_list_path_2: Path to a list of star positions for the
-          camera 2 (STARLIST2)
-        * apodization_function: Apodization function name (APOD)
-        * calibration_laser_map_path: Path to the calibration laser
-          map (CALIBMAP)
-        * try_catalogue: If True (>0) a star catalogue (e.g. USNO-B1)
-          is used for star detection (TARGETR, TARGETD, TARGETX,
-          TRAGETY must be given in the option file). If False star
-          detection will use its own algorithm. You can also force
-          ORBS to use a given star list, see STARLIST1 and STARLIST2
-          keywords. This option is set to False by default (TRYCAT).
+        * object_name: OBJECT
+        
+        * filter_name: FILTER
+        
+        * bin_cam_1: BINCAM1
+        
+        * bin_cam_2: BINCAM2
+        
+        * step: SPESTEP
+        
+        * step_number: SPESTNB
+        
+        * order: SPEORDR
+        
+        * exp_time: SPEEXPT
+        
+        * dark_time: SPEDART
+        
+        * obs_date: OBSDATE
+        
+        * bad_frames: BADFRMS
+        
+        * target_ra: TARGETR
+        
+        * target_dec: TARGETD
+        
+        * target_x: TARGETX
+        
+        * target_y: TARGETY
+        
+        * image_list_path_1: DIRCAM1
+          
+        * image_list_path_2: DIRCAM2
+          
+        * bias_path_1: DIRBIA1
+
+        * bias_path_2: DIRBIA2
+          
+        * dark_path_1: DIRDRK1
+
+        * dark_path_2: DIRDRK2
+          
+        * flat_path_1: DIRFLT1
+          
+        * flat_path_2: DIRFLT2
+          
+        * calib_path_1: DIRCAL1
+          
+        * calib_path_2: DIRCAL2
+          
+        * standard_path: STDPATH
+        
+        * phase_map_path: PHAPATH
+        
+        * standard_name: STDNAME
+        
+        * fringes: FRINGES
+        
+        * flat_spectrum_path: DIRFLTS
+          
+        * star_list_path_1: STARLIST1
+          
+        * star_list_path_2: STARLIST2
+          
+        * apodization_function: APOD
+        
+        * calibration_laser_map_path: CALIBMAP
+          
+        * try_catalogue: TRYCAT
+          
+        * wavenumber: WAVENUMBER
+
+        * wavelength_calibration: WAVE_CALIB
     """
     tuning_parameters = dict()
     """Dictionary containg the tuning parameters of some methods
@@ -255,13 +366,15 @@ class Orbs(Tools):
           TUNE InterferogramMerger.find_alignment.BOX_SIZE_COEFF 7
     """
     
+    optionfile = None
+    """OptionFile instance"""
     
     
-    def __init__(self, options_file_path, config_file_name="config.orb",
-                 overwrite=False):
+    def __init__(self, option_file_path, config_file_name="config.orb",
+                 overwrite=False, silent=False):
         """Initialize Orbs class.
 
-        :param options_file_path: Path to the option file.
+        :param option_file_path: Path to the option file.
 
         :param config_file_name: (Optional) Name of the config file to
           use. Must be located in orbs/data/.
@@ -269,12 +382,33 @@ class Orbs(Tools):
         :param overwrite: (Optional) If True, any existing FITS file
           created by Orbs will be overwritten during the reduction
           process (default False).
+
+        :param silent: (Optional) If True no messages nor warnings are
+          displayed by Orbs (useful for silent init).
         """
+        def store_config_parameter(key, cast):
+            if cast is not bool:
+                self.config[key] = cast(self._get_config_parameter(key))
+            else:
+                self.config[key] = bool(int(self._get_config_parameter(key)))
+
+        def store_option_parameter(option_key, key, cast, folder=False):
+            value = self.optionfile.get(key, cast)
+            if value is not None:
+                if not folder:
+                    self.options[option_key] = value
+                else:
+                    list_file_path =os.path.join(
+                        self._get_project_dir(), key + ".list")
+                    self.options[option_key] = self._create_list_from_dir(
+                        value, list_file_path)
+
         self.config_file_name = config_file_name
-        self._logfile_name =  os.path.basename(options_file_path) + '.log'
+        self._logfile_name =  os.path.basename(option_file_path) + '.log'
         self._msg_class_hdr = self._get_msg_class_hdr()
         self.overwrite = overwrite
         self.__version__ = __version__
+        self._silent = silent
 
         # First, print ORBS version
         self._print_msg("ORBS version: %s"%self.__version__, color=True)
@@ -288,55 +422,33 @@ class Orbs(Tools):
         self._print_msg("PyWCS version: %s"%pywcs.__version__)
         
         # Print the entire config file for log
-        conf_file = self.open_file(
-            self._get_config_file_path(), 'r')
-        self._print_msg("Configuration file content:", color=True)
-        for line in conf_file:
-            self._print_msg(line[:-1], no_hdr=True)
+        with self.open_file(self._get_config_file_path(), 'r') as conf_file:
+            self._print_msg("Configuration file content:", color=True)
+            for line in conf_file:
+                self._print_msg(line[:-1], no_hdr=True)
 
         # read config file to get instrumental parameters
-        self.config["INIT_ANGLE"] = float(self._get_config_parameter(
-            "INIT_ANGLE"))
-        self.config["INIT_DX"] = float(self._get_config_parameter(
-            "INIT_DX"))
-        self.config["INIT_DY"] = float(self._get_config_parameter(
-            "INIT_DY"))
-        self.config["FIELD_OF_VIEW"] = float(self._get_config_parameter(
-            "FIELD_OF_VIEW"))
-        self.config["FIELD_OF_VIEW_2"] = float(self._get_config_parameter(
-            "FIELD_OF_VIEW_2"))
-        self.config["PIX_SIZE_CAM1"] = int(self._get_config_parameter(
-            "PIX_SIZE_CAM1"))
-        self.config["PIX_SIZE_CAM2"] = int(self._get_config_parameter(
-            "PIX_SIZE_CAM2"))
-        self.config["BALANCED_CAM"] = int(self._get_config_parameter(
-            "BALANCED_CAM"))
-        self.config["CALIB_NM_LASER"] = float(self._get_config_parameter(
-            "CALIB_NM_LASER"))
-        self.config["CALIB_ORDER"] = float(self._get_config_parameter(
-            "CALIB_ORDER"))
-        self.config["CALIB_STEP_SIZE"] = float(self._get_config_parameter(
-            "CALIB_STEP_SIZE"))
-        self.config["PHASE_FIT_DEG"] = int(self._get_config_parameter(
-            "PHASE_FIT_DEG"))
-        self.config["DETECT_STAR_NB"] = int(self._get_config_parameter(
-            "DETECT_STAR_NB"))
-        self.config["INIT_FWHM"] = float(self._get_config_parameter(
-            "INIT_FWHM"))
-        self.config["PSF_PROFILE"] = str(self._get_config_parameter(
-            "PSF_PROFILE"))
-        self.config["MOFFAT_BETA"] = float(self._get_config_parameter(
-            "MOFFAT_BETA"))
-        self.config["DETECT_STACK"] = float(self._get_config_parameter(
-            "DETECT_STACK"))
-        self.config["OPTIM_DARK_CAM1"] = int(self._get_config_parameter(
-            "OPTIM_DARK_CAM1"))
-        self.config["OPTIM_DARK_CAM2"] = int(self._get_config_parameter(
-            "OPTIM_DARK_CAM2"))
-        self.config["WCS_ROTATION"] = float(self._get_config_parameter(
-            "WCS_ROTATION"))
-        self.config['EXT_ILLUMINATION'] = bool(int(self._get_config_parameter(
-            "EXT_ILLUMINATION")))
+        store_config_parameter("INIT_ANGLE", float)
+        store_config_parameter("INIT_DX", float)
+        store_config_parameter("INIT_DY", float)
+        store_config_parameter("FIELD_OF_VIEW", float)
+        store_config_parameter("FIELD_OF_VIEW_2", float)
+        store_config_parameter("PIX_SIZE_CAM1", int)
+        store_config_parameter("PIX_SIZE_CAM2", int)
+        store_config_parameter("BALANCED_CAM", int)
+        store_config_parameter("CALIB_NM_LASER", float)
+        store_config_parameter("CALIB_ORDER", float)
+        store_config_parameter("CALIB_STEP_SIZE", float)
+        store_config_parameter("PHASE_FIT_DEG", int)
+        store_config_parameter("DETECT_STAR_NB", int)
+        store_config_parameter("INIT_FWHM", float)
+        store_config_parameter("PSF_PROFILE", str)
+        store_config_parameter("MOFFAT_BETA", float)
+        store_config_parameter("DETECT_STACK", float)
+        store_config_parameter("OPTIM_DARK_CAM1", int)
+        store_config_parameter("OPTIM_DARK_CAM2", int)
+        store_config_parameter("WCS_ROTATION", float)
+        store_config_parameter("EXT_ILLUMINATION", bool)
 
         # defining DARK_ACTIVATION_ENERGY
         self.config["DARK_ACTIVATION_ENERGY"] = float(
@@ -357,11 +469,11 @@ class Orbs(Tools):
         else: self._print_warning("No bias calibration parameters (check BIAS_CALIB_A, BIAS_CALIB_B in the configuration file.)")
 
         # Read option file to get observation parameters
-        if not os.path.exists(options_file_path):
+        if not os.path.exists(option_file_path):
             self._print_error("Option file does not exists !")
 
         # Print first the entire option file for log
-        op_file = open(options_file_path)
+        op_file = open(option_file_path)
         self._print_msg("Option file content :", color=True)
         for line in op_file:
             self._print_msg(line[:-1], no_hdr=True)
@@ -370,98 +482,58 @@ class Orbs(Tools):
         self.options["try_catalogue"] = False
         
         # Parse the option file to get reduction parameters
-        op_file = open(options_file_path)
-        for line in op_file:
-            if len(line) > 1:
-                keyword = (line.split())[0]
-                option_1 = (line.split())[1]
-                if len(line.split()) > 2:
-                    option_2 = (line.split())[2]
-                if keyword == "OBJECT":
-                    self.options["object_name"] = str(option_1)
-                if keyword == "FILTER":
-                    self.options["filter_name"] = str(option_1)
-                if keyword == "BINCAM1":
-                    self.options["bin_cam_1"] = int(option_1)
-                if keyword == "BINCAM2":
-                    self.options["bin_cam_2"] = int(option_1)
-                if keyword == "SPESTEP":
-                    self.options["step"] = float(option_1)
-                if keyword == "SPESTNB":
-                    self.options["step_number"] = int(option_1)    
-                if keyword == "SPEORDR":
-                    self.options["order"] = float(option_1)
-                if keyword == "SPEEXPT":
-                    self.options["exp_time"] = float(option_1)
-                if keyword == "SPEDART":
-                    self.options["dark_time"] = float(option_1)
-                if keyword == "OBSDATE":
-                    self.options["obs_date"] = str(option_1)
-                if keyword == "TARGETR":
-                    self.options["target_ra"] = str(option_1).split(':')
-                if keyword == "TARGETD":
-                    self.options["target_dec"] = str(option_1).split(':')
-                if keyword == "TARGETX":
-                    self.options["target_x"] = float(str(option_1))
-                if keyword == "TARGETY":
-                    self.options["target_y"] = float(str(option_1))
-                if keyword == "STDPATH":
-                    self.options["standard_path"] = str(option_1)
-                if keyword == "STDNAME":
-                    self.options["standard_name"] = str(option_1)
-                if keyword == "PHAPATH":
-                    self.options["phase_map_path"] = str(option_1)
+        self.optionfile = OptionFile(option_file_path)
+        store_option_parameter('object_name', 'OBJECT', str)
+        store_option_parameter('filter_name', 'FILTER', str)
+        store_option_parameter('bin_cam_1', 'BINCAM1', int)
+        store_option_parameter('bin_cam_2', 'BINCAM2', int)
+        store_option_parameter('step', 'SPESTEP', float)
+        store_option_parameter('step_number', 'SPESTNB', int)
+        store_option_parameter('order', 'SPEORDR', float)
+        store_option_parameter('exp_time', 'SPEEXPT', float)
+        store_option_parameter('dark_time', 'SPEDART', float)
+        store_option_parameter('obs_date', 'OBSDATE', str)
+        store_option_parameter('target_ra', 'TARGETR', str)
+        if 'target_ra' in self.options:
+            self.options['target_ra'] = self.options['target_ra'].split(':')
+        store_option_parameter('target_dec', 'TARGETD', str)
+        if 'target_dec' in self.options:
+            self.options['target_dec'] = self.options['target_dec'].split(':')
+        store_option_parameter('target_x', 'TARGETX', float)
+        store_option_parameter('target_y', 'TARGETY', float)
+        store_option_parameter('standard_path', 'STDPATH', str)
+        store_option_parameter('standard_name', 'STDNAME', str)
+        store_option_parameter('phase_map_path', 'PHAPATH', str)
+        store_option_parameter('star_list_path_1', 'STARLIST1', str)
+        store_option_parameter('star_list_path_2', 'STARLIST2', str)
+        store_option_parameter('apodization_function', 'APOD', str)
+        store_option_parameter('calibration_laser_map_path', 'CALIBMAP', str)
+        store_option_parameter('try_catalogue', 'TRYCAT', bool)
+        store_option_parameter('wavenumber', 'WAVENUMBER', bool)
+        store_option_parameter('wavelength_calibration', 'WAVE_CALIB', bool)
+        
+        fringes = self.optionfile.get_fringes()
+        if fringes is not None:
+            self.options['fringes'] = fringes
 
-                if keyword == "STARLIST1":
-                    self.options["star_list_path_1"] = str(option_1)
-                if keyword == "STARLIST2":
-                    self.options["star_list_path_2"] = str(option_1)
-                if keyword == "APOD":
-                    self.options["apodization_function"] = str(option_1)
-                if keyword == "CALIBMAP":
-                    self.options["calibration_laser_map_path"] = str(option_1)
-                if keyword == "TRYCAT":
-                    self.options["try_catalogue"] = bool(int(option_1))
-                if keyword == "FRINGES":
-                    option_1 = option_1.split(':')
-                    try:
-                        self.options['fringes'] = np.array(
-                            [iopt.split(',') for iopt in option_1],
-                            dtype=float)
-                        
-                    except ValueError:
-                        self._print_error("Fringes badly defined. Use no whitespace, each fringe must be separated by a ':'. Fringes parameters must be given in the order [frequency, amplitude] separated by a ',' (e.g. 150.0,0.04:167.45,0.095 gives 2 fringes of parameters [150.0, 0.04] and [167.45, 0.095]).")
-                   
-                if keyword == "BADFRMS":
-                    bad_frames = option_1.split(",")
-                    bad_frames_list = list()
-                    try:
-                        for ibad in bad_frames:
-                            if (ibad.find(":") > 0):
-                                min_bad = int(ibad.split(":")[0])
-                                max_bad = int(ibad.split(":")[1])+1
-                                for i in range(min_bad, max_bad):
-                                    bad_frames_list.append(i)
-                            else:
-                                bad_frames_list.append(int(ibad))
-                        self.options["bad_frames"] =  np.array(bad_frames_list)
-                    except ValueError:
-                        self._print_error("Bad frames badly defined. Use no whitespace, bad frames must be comma separated. the sign ':' can be used to define a range of bad frames, commas and ':' can be mixed. Frame index must be integer.")
-                    
-                # If a keyword is the same as a configuration keyword,
-                # config option is changed
-                if keyword in self.config.keys():
-                    key_type = type(self.config[keyword])
-                    if key_type != bool:
-                        self.config[keyword] = key_type(option_1)
-                    else:
-                        self.config[keyword] = bool(int(option_1))
-                    self._print_warning("Configuration option %s changed to %s"%(keyword, option_1))
-
-                # Get tuning parameters
-                if keyword == "TUNE":
-                    self.tuning_parameters[option_1] = option_2
-                    self._print_warning("Tuning parameter %s changed to %s"%(option_1, option_2))
+        bad_frames = self.optionfile.get_bad_frames()
+        if bad_frames is not None:
+            self.options['bad_frames'] = bad_frames
+            
+        # If a keyword is the same as a configuration keyword,
+        # config option is changed
+        for key in self.config.iterkeys():
+           if self.optionfile[key] is not None:
+               key_type = type(self.config[key])
+               self.config[key] = self.optionfile.get(key, key_type)
+               self._print_warning("Configuration option %s changed to %s"%(key, self.config[key]))
+               
+        # Get tuning parameters
+        self.tuning_parameters = self.optionfile.get_tuning_parameters()
+        for itune in self.tuning_parameters:
+            self._print_warning("Tuning parameter %s changed to %s"%(
+                itune, self.tuning_parameters[itune]))
+        
         # compute nm min and nm max from step and order parameters
         if ("step" in self.options) and ("order" in self.options):
             self.options["nm_min"] = (1. / ((self.options["order"] + 1.) / 
@@ -476,49 +548,19 @@ class Orbs(Tools):
             self.options["project_name"] = (self.options["object_name"] 
                                             + "_" + self.options["filter_name"])
 
-        # parse again the option file to get folder paths
+        # get folders paths
         self._print_msg('Reading data folders and checking files')
-        op_file = open(options_file_path)
-        for line in op_file:
-            if len(line) > 1:
-                keyword = (line.split())[0]
-                option = " ".join((line.split())[1:])
-                if keyword == "DIRCAM1":   
-                    self.options["image_list_path_1"] = (
-                        self._create_list_from_dir(
-                            option, keyword + "_list"))
-                if keyword == "DIRCAM2":   
-                    self.options["image_list_path_2"] = (
-                        self._create_list_from_dir(
-                            option, keyword + "_list"))
-                if keyword == "DIRBIA1":   
-                    self.options["bias_path_1"] = self._create_list_from_dir(
-                        option, keyword + "_list")
-                if keyword == "DIRBIA2":
-                    self.options["bias_path_2"] = self._create_list_from_dir(
-                        option, keyword + "_list")
-                if keyword == "DIRDRK1":
-                    self.options["dark_path_1"] = self._create_list_from_dir(
-                        option, keyword + "_list")
-                if keyword == "DIRDRK2":
-                    self.options["dark_path_2"] = self._create_list_from_dir(
-                        option, keyword + "_list")
-                if keyword == "DIRFLT1":
-                    self.options["flat_path_1"] = self._create_list_from_dir(
-                        option, keyword + "_list")
-                if keyword == "DIRFLT2":
-                    self.options["flat_path_2"] = self._create_list_from_dir(
-                        option, keyword + "_list")
-                if keyword == "DIRCAL1":
-                    self.options["calib_path_1"] = self._create_list_from_dir(
-                        option, keyword + "_list")
-                if keyword == "DIRCAL2":
-                    self.options["calib_path_2"] = self._create_list_from_dir(
-                        option, keyword + "_list")
-                if keyword == "DIRFLTS":
-                    self.options[
-                        "flat_spectrum_path"] = self._create_list_from_dir(
-                        option, keyword + "_list")
+        store_option_parameter('image_list_path_1', 'DIRCAM1', str, True)
+        store_option_parameter('image_list_path_2', 'DIRCAM2', str, True)
+        store_option_parameter('bias_path_1', 'DIRBIA1', str, True)
+        store_option_parameter('bias_path_2', 'DIRBIA2', str, True)
+        store_option_parameter('dark_path_1', 'DIRDRK1', str, True)
+        store_option_parameter('dark_path_2', 'DIRDRK2', str, True)
+        store_option_parameter('flat_path_1', 'DIRFLT1', str, True)
+        store_option_parameter('flat_path_2', 'DIRFLT2', str, True)
+        store_option_parameter('calib_path_1', 'DIRCAL1', str, True)
+        store_option_parameter('calib_path_2', 'DIRCAL2', str, True)
+        store_option_parameter('flat_spectrum_path', 'DIRFLTS', str, True)
                     
         # Check step number and number of raw images
         if (('image_list_path_1' in self.options)
@@ -533,60 +575,14 @@ class Orbs(Tools):
                 self._print_error('The number of steps (%d) of a full cube must be greater or equal to the number of images given for CAM1 and CAM2 (%d)'%(
                     self.options['step_number'], dimz1))
 
-
         # Init Indexer
         self.indexer = Indexer(data_prefix=self.options['object_name']
                                + '_' + self.options['filter_name'] + '.')
         self.indexer.load_index()
-        
-    def _create_list_from_dir(self, dir_path, list_file_name):
-        """Create a file containing the list of all FITS files at
-        a specified directory and returns the path to the list 
-        file.
 
-        :param dir_path: Directory containing the FITS files
-        :param list_file_name: Path to the list file to be created
-        :returns: Path to the created list file
-        """
-        if dir_path[-1] != os.sep:
-            dir_path += os.sep
-        dir_path = os.path.dirname(str(dir_path))
-        list_file_name = os.path.join(self._get_project_dir(), list_file_name)
-        if os.path.exists(dir_path):
-            list_file = self.open_file(list_file_name)
-            file_list=os.listdir(dir_path)
-            file_list.sort()
-            first_file = True
-            file_nb = 0
-            for filename in file_list:
-                if (os.path.splitext(filename)[1] == ".fits"
-                    and '_bias.fits' not in filename):
-                    file_path = os.path.join(dir_path, filename)
-                    if os.path.exists(file_path):
-                        fits_hdu = self.read_fits(file_path,
-                                                  return_hdu_only=True)
-                        dims = fits_hdu[0].header['NAXIS']
-                        if first_file:
-                            dimx = fits_hdu[0].header['NAXIS1']
-                            dimy = fits_hdu[0].header['NAXIS2']
-                            first_file = False
-                        if (dims == 2
-                            and fits_hdu[0].header['NAXIS1'] == dimx
-                            and fits_hdu[0].header['NAXIS2'] == dimy):
-                            list_file.write(str(file_path)  + "\n")
-                            file_nb += 1
-                        else:
-                            self._print_error("All FITS files in the directory %s do not have the same shape. Please remove bad files."%str(dir_path))
-                    else:
-                        self._print_error(str(file_path) + " does not exists !")
-            if file_nb > 0:
-                return list_file_name
-            else:
-                self._print_error('No FITS file in the folder: %s'%dir_path)
-        else:
-            self._print_error(str(dir_path) + " does not exists !")
-
-    def _get_calibration_laser_fits_header(self, camera_number=None):
+    def _get_calibration_laser_fits_header(self):
+        """Return the header corresponding to the calibration laser
+        that can be added to the created FITS files."""
         hdr = list()
         hdr.append(('COMMENT','',''))
         hdr.append(('COMMENT','Calibration parameters',''))
@@ -601,6 +597,11 @@ class Orbs(Tools):
         return hdr
 
     def _get_project_fits_header(self, camera_number=None):
+        """Return the header of the project that can be added to the
+        created FITS files.
+
+        :param camera_number: Number of the camera (can be 0, 1 or 2)
+        """
         hdr = list()
         hdr.append(('COMMENT','',''))
         hdr.append(('COMMENT','Observation parameters',''))
@@ -715,7 +716,8 @@ class Orbs(Tools):
         return (self._get_root_data_path_hdr(camera_number)
                 + 'flat_phase_map.fits')
     
-    def _get_calibrated_spectrum_cube_path(self, camera_number, apod):
+    def _get_calibrated_spectrum_cube_path(self, camera_number, apod,
+                                           wavenumber=False):
         """Return path to the calibrated spectrum cube resulting of the
         reduction process
         
@@ -724,9 +726,15 @@ class Orbs(Tools):
 
         :param apod: Apodization function name to be added to the
           path.
+
+        :param wavenumber: If True the spectral axis of the cube is
+          considered to be a wavenumber axis. If False it is
+          considered to be a wavelength axis (default False).
         """
+        if wavenumber: wave_type = 'cm1'
+        else: wave_type = 'nm'
         return (self._get_root_data_path_hdr(camera_number)
-                + apod + '.fits')
+                + wave_type + '.' + apod + '.fits')
 
     def _get_standard_spectrum_path(self, camera_number):
         """Return path to the standard star spectrum
@@ -1122,13 +1130,13 @@ class Orbs(Tools):
         if (start_step <= 7) and n_phase != 0 and not standard:
             self._print_msg("Phase map computation", color=True)
             if not create_stars_cube:
-                ## self.compute_spectrum(
-                ##     0, calibration_laser_map_path=calibration_laser_map_path,
-                ##     window_type='2.0', 
-                ##     stars_cube=create_stars_cube,
-                ##     n_phase=n_phase,
-                ##     phase_cube=True,
-                ##     balanced=True)
+                self.compute_spectrum(
+                    0, calibration_laser_map_path=calibration_laser_map_path,
+                    window_type='2.0', 
+                    stars_cube=create_stars_cube,
+                    n_phase=n_phase,
+                    phase_cube=True,
+                    balanced=True)
                 self.compute_phase_maps(
                     0, calibration_laser_map_path=calibration_laser_map_path)
                 if phase_map_only:
@@ -2052,8 +2060,7 @@ class Orbs(Tools):
             data_prefix=self._get_data_prefix(camera_number),
             project_header = self._get_project_fits_header(
                 camera_number),
-            calibration_laser_header=self._get_calibration_laser_fits_header(
-                camera_number),
+            calibration_laser_header=self._get_calibration_laser_fits_header(),
             overwrite=self.overwrite,
             tuning_parameters=self.tuning_parameters,
             indexer=self.indexer,
@@ -2093,6 +2100,33 @@ class Orbs(Tools):
         perf_stats = perf.print_stats()
         del cube, perf
         return perf_stats
+
+
+    def _get_calibration_laser_map(self, camera_number):
+        """Return the calibration laser map.
+
+        :param camera_number: Camera number (can be 1, 2 or 0)
+        """
+        if 'calibration_laser_map_path' in self.options:
+            calibration_laser_map_path = self.options[
+                'calibration_laser_map_path']
+            self._print_msg('Using an external calibration laser map: %s'%(
+                calibration_laser_map_path))
+            
+        else:
+            if (camera_number == 0 or camera_number == 1):
+                calibration_laser_map_path = self.indexer[
+                    'cam1.calibration_laser_map']
+            elif camera_number == 2:
+                calibration_laser_map_path = self.indexer[
+                    'cam2.calibration_laser_map']
+            else:
+                self._print_error("Camera number must be 0,1 or 2")
+                
+        if not os.path.exists(calibration_laser_map_path):
+            self._print_error("Calibration laser map not found ({} does not exist)".format(calibration_laser_map_path))
+        return calibration_laser_map_path
+
 
     def compute_spectrum(self, camera_number, zpd_shift=None,
                          calibration_laser_map_path=None,
@@ -2180,27 +2214,11 @@ class Orbs(Tools):
         .. seealso:: :meth:`process.Interferogram.compute_spectrum`
         .. seealso:: :meth:`orb.utils.transform_interferogram`
         """
-
-        if 'calibration_laser_map_path' in self.options:
-            calibration_laser_map_path = self.options[
-                'calibration_laser_map_path']
-            self._print_msg('Using an external calibration laser map: %s'%(
-                calibration_laser_map_path))
-            
-            
+        # get calibration laser map path   
         if calibration_laser_map_path is None:
-            if (camera_number == 0 or camera_number == 1):
-                calibration_laser_map_path = self.indexer[
-                    'cam1.calibration_laser_map']
-            elif camera_number == 2:
-                calibration_laser_map_path = self.indexer[
-                    'cam2.calibration_laser_map']
-            else:
-                self._print_error("Camera number must be 0,1 or 2")
-                
-        if not os.path.exists(calibration_laser_map_path):
-            self._print_error("Sorry but spectrum cannot be computed without any calibration laser map")
-
+            calibration_laser_map_path = self._get_calibration_laser_map(
+                camera_number)
+      
         ## Load phase maps and create phase coefficients vector
         phase_map_correction = False
 
@@ -2286,8 +2304,7 @@ class Orbs(Tools):
             data_prefix=self._get_data_prefix(camera_number),
             project_header = self._get_project_fits_header(
                 camera_number),
-            calibration_laser_header=self._get_calibration_laser_fits_header(
-                camera_number),
+            calibration_laser_header=self._get_calibration_laser_fits_header(),
             overwrite=self.overwrite,
             tuning_parameters=self.tuning_parameters,
             indexer=self.indexer)
@@ -2334,7 +2351,19 @@ class Orbs(Tools):
         if "fringes" in self.options:
             fringes=self.options['fringes']
         else: fringes = None
-        
+
+        # wavenumber option
+        wavenumber = False
+        if not phase_cube:
+            if 'wavenumber' in self.options:
+                wavenumber = self.options['wavenumber']
+
+        # wavelength calibration option
+        if not phase_cube:
+            if 'wavelength_calibration' in self.options:
+                if not self.options['wavelength_calibration']:
+                    calibration_laser_map_path = None
+                
         ## Compute phase coeffs vector
         if (phase_coeffs is None
             and not phase_cube
@@ -2359,7 +2388,8 @@ class Orbs(Tools):
                 self.options["filter_name"]),
             balanced=balanced,
             smoothing_deg=smoothing_deg,
-            fringes=fringes)
+            fringes=fringes,
+            wavenumber=wavenumber)
 
         perf_stats = perf.print_stats()
         del cube, perf
@@ -2427,25 +2457,10 @@ class Orbs(Tools):
         if filter_path is None:
             self._print_warning("Unknown filter name.")
             
-        # get calibration laser map path
-        if 'calibration_laser_map_path' in self.options:
-            calibration_laser_map_path = self.options[
-                'calibration_laser_map_path']
-            self._print_msg('Using an external calibration laser map: %s'%(
-                calibration_laser_map_path))
-            
+        # get calibration laser map path   
         if calibration_laser_map_path is None:
-            if (camera_number == 0 or camera_number == 1):
-                calibration_laser_map_path = self.indexer[
-                    'cam1.calibration_laser_map']
-            elif camera_number == 2:
-                calibration_laser_map_path = self.indexer[
-                    'cam2.calibration_laser_map']
-            else:
-                self._print_error("Camera number must be 0, 1 or 2")
-            
-            if not os.path.exists(calibration_laser_map_path):
-                self._print_error("Sorry but the phase cannot be fitted without any calibration laser map")
+            calibration_laser_map_path = self._get_calibration_laser_map(
+                camera_number)
 
         # get default phase list path
         if phase_list_path is None:
@@ -2477,25 +2492,24 @@ class Orbs(Tools):
             data_prefix=self._get_data_prefix(camera_number),
             project_header = self._get_project_fits_header(
                 camera_number),
-            calibration_laser_header=self._get_calibration_laser_fits_header(
-                camera_number),
+            calibration_laser_header=self._get_calibration_laser_fits_header(),
             overwrite=self.overwrite,
             tuning_parameters=self.tuning_parameters,
             indexer=self.indexer,
             logfile_name=self._logfile_name)
         
         perf = Performance(phase, "Phase map creation", camera_number)
-        ## # create phase map
-        ## phase.create_phase_maps(
-        ##     calibration_laser_map_path,
-        ##     filter_path,
-        ##     self.config["CALIB_NM_LASER"], step, order,
-        ##     interferogram_length=interferogram_length,
-        ##     fit_order=self.config["PHASE_FIT_DEG"])
+        # create phase map
+        phase.create_phase_maps(
+            calibration_laser_map_path,
+            filter_path,
+            self.config["CALIB_NM_LASER"], step, order,
+            interferogram_length=interferogram_length,
+            fit_order=self.config["PHASE_FIT_DEG"])
 
-        ## # smooth the 0th order phase map
-        ## phase_map_path = phase._get_phase_map_path(0)
-        ## phase.smooth_phase_map(phase_map_path)
+        # smooth the 0th order phase map
+        phase_map_path = phase._get_phase_map_path(0)
+        phase.smooth_phase_map(phase_map_path)
         if fit:
             # fit the 0th order phase map
             phase_map_path = phase._get_phase_map_path(
@@ -2573,8 +2587,7 @@ class Orbs(Tools):
             data_prefix=self._get_data_prefix(camera_number),
             project_header = self._get_project_fits_header(
                 camera_number),
-            calibration_laser_header=self._get_calibration_laser_fits_header(
-                camera_number),
+            calibration_laser_header=self._get_calibration_laser_fits_header(),
             overwrite=self.overwrite,
             tuning_parameters=self.tuning_parameters,
             indexer=self.indexer,
@@ -2618,13 +2631,24 @@ class Orbs(Tools):
         else:
             deep_frame_path = self.indexer.get_path('deep_frame', camera_number)
 
+        # check wavelength calibration
+        if not self.options['wavelength_calibration']:
+            calibration_laser_map_path = self._get_calibration_laser_map(
+                camera_number)
+        else:
+            calibration_laser_map_path = None
+            
         # Calibration
         spectrum.calibrate(
             filter_path, step, order, stars_cube=stars_cube,
             correct_wcs=correct_wcs,
             flux_calibration_vector=flux_calibration_vector,
             energy_map_path=energy_map_path,
-            deep_frame_path=deep_frame_path)
+            deep_frame_path=deep_frame_path,
+            wavenumber=self.options['wavenumber'],
+            calibration_laser_map_path=calibration_laser_map_path,
+            nm_laser=self.config['CALIB_NM_LASER'])
+        
         perf_stats = perf.print_stats()
         del perf, spectrum
         return perf_stats
@@ -2796,8 +2820,7 @@ class Orbs(Tools):
                 project_header = self._get_project_fits_header(
                     camera_number),
                 calibration_laser_header=
-                self._get_calibration_laser_fits_header(
-                    camera_number),
+                self._get_calibration_laser_fits_header(),
                 overwrite=self.overwrite,
                 tuning_parameters=self.tuning_parameters,
                 indexer=self.indexer,
@@ -2847,16 +2870,28 @@ class Orbs(Tools):
                                                    camera_number)
         spectrum = Cube(spectrum_list_path)
         spectrum_header = spectrum.get_frame_header(0)
-        
-        nm_axis = orb.utils.create_nm_axis(spectrum.dimz, self.options['step'],
-                                           self.options['order'])
-        spectrum_header.extend(self._get_basic_spectrum_cube_header(nm_axis),
-                               strip=True, update=False, end=True)
+
+        if 'wavenumber' in self.options:
+            wavenumber = self.options['wavenumber']
+        else:
+            wavenumber = False
+
+        if not wavenumber:
+            axis = orb.utils.create_nm_axis(
+                spectrum.dimz, self.options['step'], self.options['order'])
+        else:
+            axis = orb.utils.create_cm1_axis(
+                spectrum.dimz,  self.options['step'], self.options['order'])
+            
+        spectrum_header.extend(
+            self._get_basic_spectrum_cube_header(
+                axis, wavenumber= wavenumber),
+            strip=True, update=False, end=True)
         spectrum_header.set('FILETYPE', 'Calibrated Spectrum Cube')
 
         apod = spectrum_header['APODIZ']
         spectrum_path = self._get_calibrated_spectrum_cube_path(
-            camera_number, apod)
+            camera_number, apod, wavenumber=wavenumber)
         spectrum.export(spectrum_path, fits_header=spectrum_header,
                         overwrite=self.overwrite)
 
@@ -2974,7 +3009,6 @@ class Performance(Tools):
                                                     self._camera_number),
                         color='alt')
 
-        
     def get_max_mem(self):
         """Return max memory used by the process in bytes
         """
