@@ -480,6 +480,8 @@ class Orbs(Tools):
 
         # record some default options
         self.options["try_catalogue"] = False
+        self.options['wavelength_calibration'] = True
+        self.options['wavenumber'] = False
         
         # Parse the option file to get reduction parameters
         self.optionfile = OptionFile(option_file_path)
