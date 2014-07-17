@@ -1,0 +1,85 @@
+#!/usr/bin/python
+# *-* coding: utf-8 *-*
+# Author: Thomas Martin <thomas.martin.1@ulaval.ca>
+
+## Copyright (c) 2010-2014 Thomas Martin <thomas.martin.1@ulaval.ca>
+## 
+## This file is part of ORBS
+##
+## ORBS is free software: you can redistribute it and/or modify it
+## under the terms of the GNU General Public License as published by
+## the Free Software Foundation, either version 3 of the License, or
+## (at your option) any later version.
+##
+## ORBS is distributed in the hope that it will be useful, but WITHOUT
+## ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+## or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public
+## License for more details.
+##
+## You should have received a copy of the GNU General Public License
+## along with ORBS.  If not, see <http://www.gnu.org/licenses/>.
+
+####################################################
+############ ORBS TempReader #######################
+####################################################
+
+# This script has been created to update headers of the camera 2 given
+# a temperature file created during the observations
+
+import sys
+import getopt
+import numpy as np
+
+from orb.core import Tools
+
+class TcsReader(Tools):
+
+    airmass = list()
+    
+    def read_tcs_file(self, tcs_path):
+        with self.open_file(tcs_path, 'r') as f:
+            for iline in f:
+                if "Masse d'air" in iline:
+                    self.airmass.append(float(iline.split()[-1]))
+
+        self._print_msg('[Airmass] min: {}, max: {}, mean:{}'.format(
+            np.min(self.airmass), np.max(self.airmass), np.mean(self.airmass)))
+
+def usage(): 
+    print """ orbs-tcsreader [TCS_FILE]
+
+  Author: Thomas Martin (thomas.martin.1@ulaval.ca)
+"""
+
+def main():
+
+    try:
+        opts, args = getopt.getopt(sys.argv[1:], "h",
+                                   ["help"])
+    except getopt.GetoptError, err:
+        print str(err)
+        usage()
+        sys.exit(2)
+
+ 
+    # Check options    
+    for opt, arg in opts:
+        if opt in ("-h", "--help"):
+            usage()
+            quit()
+       
+    if len(args) != 1:
+        usage()
+        sys.exit(2)
+        
+    # Check folder and update header
+    
+    tcsreader = TcsReader()
+    tcsreader.read_tcs_file(args[0])
+    
+
+if __name__ == "__main__":
+    main()
+
+
+

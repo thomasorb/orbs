@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Process module &mdash; Orbs 3.7.2.2 documentation</title>
+    <title>Process module &mdash; Orbs 3.7.2.3 documentation</title>
     
     <link rel="stylesheet" href="_static/sphinxdoc.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -14,7 +14,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
-        VERSION:     '3.7.2.2',
+        VERSION:     '3.7.2.3',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -25,7 +25,7 @@
     <script type="text/javascript" src="_static/doctools.js"></script>
     <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="shortcut icon" href="_static/logo.ico"/>
-    <link rel="top" title="Orbs 3.7.2.2 documentation" href="index.html" />
+    <link rel="top" title="Orbs 3.7.2.3 documentation" href="index.html" />
     <link rel="next" title="Changelog" href="changelog.html" />
     <link rel="prev" title="Orbs module" href="orbs_module.html" /> 
   </head>
@@ -42,7 +42,7 @@
         <li class="right" >
           <a href="orbs_module.html" title="Orbs module"
              accesskey="P">previous</a> |</li>
-        <li><a href="index.html">Orbs 3.7.2.2 documentation</a> &raquo;</li> 
+        <li><a href="index.html">Orbs 3.7.2.3 documentation</a> &raquo;</li> 
       </ul>
     </div>
       <div class="sphinxsidebar">
@@ -1671,7 +1671,7 @@ wings (default 3., better for star with a high SNR).</li>
 
 <dl class="method">
 <dt id="process.InterferogramMerger.find_alignment">
-<tt class="descname">find_alignment</tt><big>(</big><em>star_list_path</em>, <em>init_angle</em>, <em>init_dx</em>, <em>init_dy</em>, <em>fwhm_arc_A</em>, <em>fov_A</em>, <em>full_precision=True</em>, <em>profile_name='gaussian'</em>, <em>moffat_beta=3.5</em><big>)</big><a class="headerlink" href="#process.InterferogramMerger.find_alignment" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">find_alignment</tt><big>(</big><em>star_list_path</em>, <em>init_angle</em>, <em>init_dx</em>, <em>init_dy</em>, <em>fwhm_arc_A</em>, <em>fov_A</em>, <em>full_precision=False</em>, <em>profile_name='gaussian'</em>, <em>moffat_beta=3.5</em><big>)</big><a class="headerlink" href="#process.InterferogramMerger.find_alignment" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return the alignment coefficients to align the cube of the
 camera 2 on the cube of the camera 1</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -1687,10 +1687,9 @@ camera 2 on the cube of the camera 1</p>
 camera A.</li>
 <li><strong>fov_A</strong> &#8211; Field of view of the camera A in arcminutes (given
 along x axis.</li>
-<li><strong>full_precision</strong> &#8211; (Optional) If False the calculation of
-the alignement coefficients is much shorter but slightly
-less precise (da and db are set to 0.). Useful for testing
-(default True).</li>
+<li><strong>full_precision</strong> &#8211; (Optional) If True tip and tilt angles
+(da and db) are checked. Note that this can take a lot of
+time. If False da and db are set to 0 (default False).</li>
 <li><strong>profile_name</strong> &#8211; (Optional) PSF profile to use to fit
 stars. Can be &#8216;gaussian&#8217; or &#8216;moffat&#8217; (default
 &#8216;gaussian&#8217;). See:
@@ -1927,7 +1926,7 @@ plane (x/y axes).</p>
 calibration laser spectrum</li>
 <li><strong>fast</strong> &#8211; (Optional) If False a sinc^2 is fitted so the fit
 is better and the procedure becomes slower. If True a
-gaussian is fitted.</li>
+gaussian is fitted (default True).</li>
 </ul>
 </td>
 </tr>
@@ -2084,7 +2083,7 @@ new WCS parameters.</li>
 
 <dl class="method">
 <dt id="process.Spectrum.calibrate">
-<tt class="descname">calibrate</tt><big>(</big><em>filter_file_path</em>, <em>step</em>, <em>order</em>, <em>stars_cube=False</em>, <em>correct_wcs=None</em>, <em>flux_calibration_vector=None</em>, <em>energy_map_path=None</em>, <em>deep_frame_path=None</em>, <em>mean_scaling=True</em>, <em>mean_flux=True</em>, <em>wavenumber=False</em>, <em>calibration_laser_map_path=None</em>, <em>nm_laser=None</em><big>)</big><a class="headerlink" href="#process.Spectrum.calibrate" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">calibrate</tt><big>(</big><em>filter_file_path</em>, <em>step</em>, <em>order</em>, <em>stars_cube=False</em>, <em>correct_wcs=None</em>, <em>flux_calibration_vector=None</em>, <em>energy_map_path=None</em>, <em>deep_frame_path=None</em>, <em>mean_scaling=True</em>, <em>mean_flux=True</em>, <em>wavenumber=False</em>, <em>calibration_laser_map_path=None</em>, <em>nm_laser=None</em>, <em>standard_header=None</em><big>)</big><a class="headerlink" href="#process.Spectrum.calibrate" title="Permalink to this definition">¶</a></dt>
 <dd><p>Calibrate spectrum cube: correct for filter transmission
 function, correct WCS parameters and flux calibration.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -2149,6 +2148,9 @@ into account the calibration laser map (default None).</li>
 <li><strong>nm_laser</strong> &#8211; (Optional) Must be set if a calibration laser
 map is given. This option has no use in the other case and
 can be set to None.</li>
+<li><strong>standard_header</strong> &#8211; (Optional) Header for the standard
+star used for flux calibration. This header part will be
+appended to the FITS header.</li>
 </ul>
 </td>
 </tr>
@@ -2322,7 +2324,7 @@ different phase maps will be created by this method.</p>
 
 <dl class="method">
 <dt id="process.Phase.fit_phase_map">
-<tt class="descname">fit_phase_map</tt><big>(</big><em>phase_map_path</em><big>)</big><a class="headerlink" href="#process.Phase.fit_phase_map" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">fit_phase_map</tt><big>(</big><em>phase_map_path</em>, <em>residual_map_path</em><big>)</big><a class="headerlink" href="#process.Phase.fit_phase_map" title="Permalink to this definition">¶</a></dt>
 <dd><p>Fit the phase map.</p>
 <p>Help remove most of the noise. This process is useful if the phase
 map has been computed from astronomical data without a high SNR.</p>
@@ -2330,7 +2332,11 @@ map has been computed from astronomical data without a high SNR.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>phase_map_path</strong> &#8211; Path to the phase map</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>phase_map_path</strong> &#8211; Path to the phase map</li>
+<li><strong>residual_map_path</strong> &#8211; Path to the residual on phase fit</li>
+</ul>
+</td>
 </tr>
 </tbody>
 </table>
@@ -2484,7 +2490,7 @@ in erg/cm^2/s/A.</p>
         <li class="right" >
           <a href="orbs_module.html" title="Orbs module"
              >previous</a> |</li>
-        <li><a href="index.html">Orbs 3.7.2.2 documentation</a> &raquo;</li> 
+        <li><a href="index.html">Orbs 3.7.2.3 documentation</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">

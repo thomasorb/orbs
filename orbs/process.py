@@ -39,7 +39,14 @@ import os
 import numpy as np
 import math
 from scipy import optimize, interpolate
-import pyfits
+
+try:
+    import astropy.io.fits as pyfits
+except:
+    import pyfits
+    import warnings
+    warnings.warn('PyFITS is now a part of Astropy (http://www.astropy.org/). PyFITS support as a standalone module will be stopped soon. It is better to install Astropy. You can still keep PyFITS for other applications.', FutureWarning)
+    
 import pywcs
 
 
@@ -384,7 +391,7 @@ class RawData(Cube):
         """
         self._print_msg("Loading alignment vector")
         alignment_vector = self.read_fits(alignment_vector_path, no_error=True)
-        if (alignment_vector != None):
+        if (alignment_vector is not None):
             if (alignment_vector.shape[0] == self.dimz):
                 self._print_msg("Alignment vector loaded")
                 return alignment_vector
@@ -483,13 +490,13 @@ class RawData(Cube):
                         fits_header=
                         self._get_alignment_vector_header(),
                         overwrite=self.overwrite)
-        if self.indexer != None:
+        if self.indexer is not None:
             self.indexer['alignment_vector'] = alignment_vector_path
         self.write_fits(alignment_err_vector_path, np.array(alignment_error), 
                         fits_header=
                         self._get_alignment_vector_header(err=True),
                         overwrite=self.overwrite)
-        if self.indexer != None:
+        if self.indexer is not None:
             self.indexer['alignment_err_vector'] = alignment_err_vector_path
     
 
@@ -890,7 +897,7 @@ class RawData(Cube):
                             self._get_basic_header(file_type="Cosmic ray map"),
                             overwrite=self.overwrite)
             list_file.write(cr_map_path + "\n")
-        if self.indexer != None:
+        if self.indexer is not None:
             self.indexer['cr_map_list'] = self._get_cr_map_list_path()
 
     def check_bad_frames(self, cr_map_list_path=None, coeff=2.):
@@ -906,7 +913,7 @@ class RawData(Cube):
         MIN_CR = 30.
         
         # Instanciating cosmic ray map cube
-        if (cr_map_list_path == None):
+        if (cr_map_list_path is None):
                 cr_map_list_path = self._get_cr_map_list_path()
         cr_map_cube = Cube(cr_map_list_path)
         cr_map = cr_map_cube.get_all_data()
@@ -1177,7 +1184,7 @@ class RawData(Cube):
             """
             def _coeff_test(dark_coeff, frame, dark_frame, hp_map, only_hp):
                 test_frame = frame - (dark_frame * dark_coeff)
-                if (hp_map != None):
+                if (hp_map is not None):
                     if only_hp:
                         hp_frame = test_frame[np.nonzero(hp_map)]
                         # we try to minimize the std of the hot pixels in
@@ -1203,33 +1210,33 @@ class RawData(Cube):
             
         frame = np.array(self.get_data_frame(index), dtype = float)
         
-        if master_bias != None: master_bias = np.copy(master_bias)
-        if master_dark != None: master_dark = np.copy(master_dark)
-        if master_flat != None: master_flat = np.copy(master_flat)
+        if master_bias is not None: master_bias = np.copy(master_bias)
+        if master_dark is not None: master_dark = np.copy(master_dark)
+        if master_flat is not None: master_flat = np.copy(master_flat)
         
         # getting frame temperature
         frame_header = self.get_frame_header(index)
-        if frame_header.has_key("CCD-TEMP"):
+        if 'CCD-TEMP' in frame_header:
             frame_temp = frame_header["CCD-TEMP"]
         else:
             frame_temp = None
 
         # getting bias level
         frame_header = self.get_frame_header(index)
-        if frame_header.has_key("BIAS-LVL"):
+        if "BIAS-LVL" in frame_header:
             frame_bias_level = frame_header["BIAS-LVL"]
         else:
             frame_bias_level = None
         
         # bias substraction
-        if (master_bias != None):
+        if (master_bias is not None):
             bias_coeff = 1.0
             if (optimize_dark_coeff):
-                if frame_bias_level != None:
+                if frame_bias_level is not None:
                     bias_coeff = frame_bias_level / master_bias_level
-                elif ((bias_calibration_params != None)
-                      and (master_bias_temp != None)
-                      and (frame_temp != None)):
+                elif ((bias_calibration_params is not None)
+                      and (master_bias_temp is not None)
+                      and (frame_temp is not None)):
                     bias_coeff = self.get_bias_coeff_from_T(
                         master_bias_temp,
                         master_bias_level,
@@ -1239,12 +1246,12 @@ class RawData(Cube):
             frame -= master_bias * bias_coeff
 
         # computing dark image (bias substracted)
-        if (master_dark != None
-            and exposition_time != None):
+        if (master_dark is not None
+            and exposition_time is not None):
 
             if optimize_dark_coeff:
                 # load hot pixels map
-                if hp_map_path == None:
+                if hp_map_path is None:
                     hp_map = self.read_fits(self._get_hp_map_path())
                 else: 
                     hp_map = self.read_fits(hp_map_path)
@@ -1256,9 +1263,9 @@ class RawData(Cube):
                 # If we can use calibrated parameters, the dark frame
                 # is scaled using the temperature difference between
                 # the master dark and the frame.
-                if ((dark_activation_energy != None)
-                    and (master_dark_temp != None)
-                    and (frame_temp != None)):
+                if ((dark_activation_energy is not None)
+                    and (master_dark_temp is not None)
+                    and (frame_temp is not None)):
                     dark_coeff = self.get_dark_coeff_from_T(
                         master_dark_temp, master_dark_level,
                         frame_temp, dark_activation_energy)
@@ -1292,8 +1299,8 @@ class RawData(Cube):
                 frame -= (master_dark * exposition_time)
 
         # computing flat image
-        if master_flat != None:
-            if (dark_int_time != None) and (flat_int_time != None):
+        if master_flat is not None:
+            if (dark_int_time is not None) and (flat_int_time is not None):
                 dark_flat_coeff = float(flat_int_time / float(dark_int_time))
                 dark_master_flat = master_dark * dark_flat_coeff
                 master_flat = master_flat - dark_master_flat - master_bias
@@ -1447,7 +1454,7 @@ class RawData(Cube):
             plain_frame.fill(np.nan)
             plain_mask_frame = np.zeros((dimx, dimy), dtype=float)
             
-            if bad_frames_vector == None:
+            if bad_frames_vector is None:
                 bad_frames_vector = []
                 
             if (ik not in bad_frames_vector): # we don't work on bad frames
@@ -1548,26 +1555,26 @@ class RawData(Cube):
         # check existence of dark and bias calibration parameters in
         # case of an optimization of the bias level and the dark level
         if optimize_dark_coeff:
-            if dark_activation_energy == None:
+            if dark_activation_energy is None:
                 self._print_warning("No dark activation energy have been passed. The dark level will have to be guessed (less precise)")
             else:
                 self._print_msg("Dark activation energy (in eV): %s"%str(
                     dark_activation_energy))
-            if bias_calibration_params == None:
+            if bias_calibration_params is None:
                 self._print_warning("No bias calibration parameters have been passed. The bias level will not be optimized (less precise)")
             else:
                 self._print_msg("Bias calibration parameters: %s"%str(
                     bias_calibration_params))
                 
         # load master bias
-        if (bias_path != None):
+        if (bias_path is not None):
             master_bias, master_bias_temp = self._load_bias(
                 bias_path, return_temperature=True, combine=combine,
                 reject=reject)
             master_bias_level = orb.utils.robust_median(master_bias[x_min:x_max,
                                                           y_min:y_max])
             self._print_msg('Master bias median level at the center of the frame: %f'%master_bias_level)
-            if optimize_dark_coeff and master_bias_temp == None:
+            if optimize_dark_coeff and master_bias_temp is None:
                 self._print_warning("The temperature of the master bias could not be defined. The bias level will not be optimized (less precise)")
         else:
             master_bias = None
@@ -1577,17 +1584,17 @@ class RawData(Cube):
             
         # load master dark (bias is substracted and master dark is
         # divided by the dark integration time)
-        if (dark_path != None and master_bias != None):
+        if (dark_path is not None and master_bias is not None):
             master_dark, master_dark_temp = self._load_dark(
                 dark_path, return_temperature=True, combine=combine,
                 reject=reject)
             master_dark_uncorrected = np.copy(master_dark)
             if optimize_dark_coeff:
                 # remove bias
-                if master_dark_temp == None:
+                if master_dark_temp is None:
                     self._print_warning("The temperature of the master dark could not be defined. The dark level will have to be guessed (less precise)")
                     master_dark -= master_bias
-                elif bias_calibration_params != None:
+                elif bias_calibration_params is not None:
                     master_bias_coeff = self.get_bias_coeff_from_T(
                         master_bias_temp, master_bias_level,
                         master_dark_temp, bias_calibration_params)
@@ -1609,7 +1616,7 @@ class RawData(Cube):
             self._print_warning("no dark list given, there will be no dark corrections of the images")
 
         # load master flat
-        if (flat_path != None):
+        if (flat_path is not None):
             master_flat = self._load_flat(flat_path, combine=combine,
                                           reject=reject,
                                           smooth_deg=flat_smooth_deg)
@@ -1618,17 +1625,17 @@ class RawData(Cube):
             self._print_warning("No flat list given, there will be no flat field correction of the images")
             
         # load alignment vector
-        if (alignment_vector_path == None):
+        if (alignment_vector_path is None):
             alignment_vector_path = self._get_alignment_vector_path() 
         alignment_vector = self._load_alignment_vector(alignment_vector_path)
-        if (alignment_vector == None):
+        if (alignment_vector is None):
             alignment_vector = np.zeros((self.dimz, 2), dtype = float)
             self._print_warning("No alignment vector loaded : there will be no alignment of the images")
 
         # create hot pixel map
         hp_map_path = None
         if optimize_dark_coeff:
-            if master_dark != None and master_bias != None:
+            if master_dark is not None and master_bias is not None:
                 self.create_hot_pixel_map(master_dark_uncorrected, master_bias)
                 hp_map_path=self._get_hp_map_path()
             else:
@@ -1654,7 +1661,7 @@ class RawData(Cube):
         cr_map_cube = None
         
         # Instanciating cosmic ray map cube
-        if (cr_map_list_path == None):
+        if (cr_map_list_path is None):
             cr_map_list_path = self._get_cr_map_list_path()
             if os.path.exists(cr_map_list_path):
                 cr_map_cube = Cube(cr_map_list_path)
@@ -1680,7 +1687,7 @@ class RawData(Cube):
             cr_maps = np.zeros((self.dimx, self.dimy, ncpus), dtype=np.bool)
             
             for icpu in range(ncpus):
-                if cr_map_cube != None:
+                if cr_map_cube is not None:
                     cr_maps[:,:,icpu] = cr_map_cube.get_data_frame(ik+icpu)
 
             # 1 - frames correction for bias, dark, flat.
@@ -1769,7 +1776,7 @@ class RawData(Cube):
             progress.end()
         
         
-        if self.indexer != None:
+        if self.indexer is not None:
             self.indexer['interfero_list'] = self._get_interfero_list_path()
             
         self._print_msg("Interferogram computed")
@@ -1781,7 +1788,7 @@ class RawData(Cube):
             fits_header=self._get_energy_map_header(),
             overwrite=True, silent=False)
         
-        if self.indexer != None:
+        if self.indexer is not None:
             self.indexer['energy_map'] = self._get_energy_map_path()
             
         # Create deep frame
@@ -1792,7 +1799,7 @@ class RawData(Cube):
             fits_header=self._get_deep_frame_header(),
             overwrite=True, silent=False)
         
-        if self.indexer != None:
+        if self.indexer is not None:
             self.indexer['deep_frame'] = self._get_deep_frame_path()
         
             
@@ -1870,7 +1877,7 @@ class CalibrationLaser(Cube):
 
         :param fast: (Optional) If False a sinc^2 is fitted so the fit
           is better and the procedure becomes slower. If True a
-          gaussian is fitted.
+          gaussian is fitted (default True).
         """
         
         def _find_max_in_column(column_data, step, order, nm_axis,
@@ -1885,7 +1892,7 @@ class CalibrationLaser(Cube):
             column_spectrum = orb.utils.cube_raw_fft(column_data, apod=None)
             if (int(order) & 1):
                     column_spectrum = column_spectrum[::-1]
-            for ij in range(column_spectrum.shape[0]):
+            for ij in range(column_data.shape[0]):
                 spectrum_vector = column_spectrum[ij,:]
                 # defining window
                 max_index = np.argmax(spectrum_vector)
@@ -1908,10 +1915,11 @@ class CalibrationLaser(Cube):
                 else:
                     fit_params = orb.utils.fit_lines_in_vector(
                         spectrum_vector, [max_index], fmodel='sinc2',
-                        interpolation_params=[step, order],
+                        observation_params=[step, order],
                         fwhm_guess=2.,
                         poly_order=0,
-                        signal_range=[range_min, range_max])
+                        signal_range=[range_min, range_max],
+                        wavenumber=True)
                     
                 if (fit_params != []):
                     max_index_fit = fit_params['lines-params'][0][2]
@@ -1991,7 +1999,7 @@ class CalibrationLaser(Cube):
                         fits_header=self._get_calibration_laser_map_header(),
                         overwrite=self.overwrite)
 
-        if self.indexer != None:
+        if self.indexer is not None:
             self.indexer['calibration_laser_map'] = self._get_calibration_laser_map_path()
             
         if get_calibration_laser_spectrum:
@@ -2419,7 +2427,7 @@ class Interferogram(Cube):
                         transmission_vector,
                         fits_header= self._get_transmission_vector_header(),
                         overwrite=self.overwrite)
-        if self.indexer != None:
+        if self.indexer is not None:
             self.indexer['transmission_vector'] = (
                 self._get_transmission_vector_path())
         
@@ -2427,7 +2435,7 @@ class Interferogram(Cube):
                         added_light_vector,
                         fits_header= self._get_added_light_vector_header(),
                         overwrite=self.overwrite)
-        if self.indexer != None:
+        if self.indexer is not None:
             self.indexer['added_light_vector'] = (
                 self._get_added_light_vector_path())
 
@@ -2508,7 +2516,7 @@ class Interferogram(Cube):
         progress.end()
         corr_interf_list_file.close()
 
-        if self.indexer != None:
+        if self.indexer is not None:
             self.indexer['corr_interf_list'] = (
                 self._get_corrected_interferogram_list_path())
             
@@ -2681,7 +2689,7 @@ class Interferogram(Cube):
                 if len(np.nonzero(data[ij,:])[0]) > dimz/2.:
                     
                     # Compute external phase vector from given coefficients
-                    if phase_map_column != None and phase_coeffs != None:
+                    if phase_map_column is not None and phase_coeffs is not None:
                         coeffs_list = list()
                         coeffs_list.append(phase_map_column[ij])
                         coeffs_list += phase_coeffs
@@ -2695,10 +2703,10 @@ class Interferogram(Cube):
                     # defined for each pixel (no external phase
                     # provided)
                     weights = np.zeros(n_phase)
-                    if (ext_phase == None
+                    if (ext_phase is None
                         and n_phase != 0
-                        and filter_min != None
-                        and filter_max != None):
+                        and filter_min is not None
+                        and filter_max is not None):
                         weights += 1e-20
                         filter_min_pix, filter_max_pix = (
                             orb.utils.get_filter_edges_pix(
@@ -2712,7 +2720,7 @@ class Interferogram(Cube):
                     interf = np.copy(data[ij,:])
 
                     # defringe
-                    if fringes != None and not return_phase:
+                    if fringes is not None and not return_phase:
                         for ifringe in range(len(fringes)):
                             fringe_vector = orb.utils.variable_me(
                                 dimz, [fringes[ifringe, 0],
@@ -2754,7 +2762,7 @@ class Interferogram(Cube):
         ## Defining the number of points for the phase computation.
         # The number of points by default is greater for phase
         # cube computation than phase correction
-        if n_phase == None:
+        if n_phase is None:
             n_phase = int(PHASE_LEN_RATIO * float(self.dimz))
             
         if n_phase > self.dimz:
@@ -2794,14 +2802,14 @@ class Interferogram(Cube):
         #############################
 
         ## Searching ZPD shift 
-        if zpd_shift == None:
+        if zpd_shift is None:
             zpd_shift = orb.utils.find_zpd(self.get_zmedian(nozero=True),
                                            return_zpd_shift=True)
 
         self._print_msg("Zpd will be shifted from %d frames"%zpd_shift)
 
         ## Loading phase map and phase coefficients
-        if (phase_map_0_path != None and phase_coeffs != None
+        if (phase_map_0_path is not None and phase_coeffs is not None
             and n_phase > 0):
             phase_map_0 = self.read_fits(phase_map_0_path)
         else:
@@ -2816,7 +2824,7 @@ class Interferogram(Cube):
         # reversed). As there is no way to know the correct phase,
         # spectrum polarity must be tested. We get the mean
         # interferogram and transform it to check.
-        if (phase_map_0_path != None and phase_coeffs != None
+        if (phase_map_0_path is not None and phase_coeffs is not None
                 and n_phase > 0):
             
             self._print_msg("Check spectrum polarity")
@@ -2855,7 +2863,7 @@ class Interferogram(Cube):
         self._print_msg("Wavenumber output: {}".format(wavenumber))
         self._print_msg("Wavelength calibration: {}".format(
             wavelength_calibration))
-        if fringes != None:
+        if fringes is not None:
             if not phase_cube:
                 self._print_msg("Fringes:")
                 for ifringe in range(fringes.shape[0]):
@@ -2866,7 +2874,7 @@ class Interferogram(Cube):
         
         # get filter min and filter max edges for weights definition
         # in case no external phase is provided
-        if n_phase != 0 and filter_file_path != None:
+        if n_phase != 0 and filter_file_path is not None:
             (filter_nm, filter_trans,
              filter_min, filter_max) = orb.utils.read_filter_file(filter_file_path)
         else:
@@ -2977,7 +2985,7 @@ class Interferogram(Cube):
             if stars_cube: list_file_key = 'stars_' + list_file_key
             
 
-        if self.indexer != None:
+        if self.indexer is not None:
                 self.indexer[list_file_key] = list_file_path
 
 
@@ -3075,7 +3083,7 @@ class Interferogram(Cube):
                               # points of the interferograms
         
         # Loading flat spectrum cube
-        if flat_spectrum_path != None:
+        if flat_spectrum_path is not None:
             flat_cube = Cube(flat_spectrum_path)
         else:
             flat_cube = None
@@ -3221,7 +3229,7 @@ class Interferogram(Cube):
                 star_spectrum[filter_max_pix:] = np.nan
                
             # flat correction
-            if flat_cube != None:
+            if flat_cube is not None:
                 # extracting flat spectrum in the region of the star
                 (x_min, x_max,
                  y_min, y_max) = orb.utils.get_box_coords(star_x, star_y,
@@ -3270,7 +3278,7 @@ class Interferogram(Cube):
                         star_spectrum_list,
                         fits_header=self._get_extracted_star_spectra_header(),
                         overwrite=self.overwrite)
-        if self.indexer != None:
+        if self.indexer is not None:
             self.indexer['extracted_star_spectra'] = (
                 self._get_extracted_star_spectra_path())
 
@@ -3403,13 +3411,13 @@ class InterferogramMerger(Tools):
         self._data_path_hdr = self._get_data_path_hdr()
         self._tuning_parameters = tuning_parameters
         
-        if alignment_coeffs != None:
+        if alignment_coeffs is not None:
             [self.dx, self.dy, self.dr, self.da, self.db] = alignment_coeffs
 
-        if image_list_path_A != None:
+        if image_list_path_A is not None:
             self.cube_A = Cube(image_list_path_A,
                                project_header=cube_A_project_header)
-        if image_list_path_B != None:
+        if image_list_path_B is not None:
             self.cube_B = Cube(image_list_path_B,
                                project_header=cube_B_project_header)
 
@@ -3418,13 +3426,13 @@ class InterferogramMerger(Tools):
         self.pix_size_A = pix_size_A
         self.pix_size_B = pix_size_B
         # defining zoom factor
-        if (self.pix_size_A != None and self.pix_size_B != None
-            and self.bin_A != None and self.bin_B != None):
+        if (self.pix_size_A is not None and self.pix_size_B is not None
+            and self.bin_A is not None and self.bin_B is not None):
             self.zoom_factor = ((float(self.pix_size_B) * float(self.bin_B)) / 
                                 (float(self.pix_size_A) * float(self.bin_A)))
         
         # defining rotation center
-        if self.cube_B != None:
+        if self.cube_B is not None:
             self.rc = [(float(self.cube_B.dimx) / 2.), 
                        (float(self.cube_B.dimy) / 2.)]
 
@@ -3656,7 +3664,7 @@ class InterferogramMerger(Tools):
             f.close
 
     def find_alignment(self, star_list_path, init_angle, init_dx, init_dy,
-                       fwhm_arc_A, fov_A, full_precision=True,
+                       fwhm_arc_A, fov_A, full_precision=False,
                        profile_name='gaussian',
                        moffat_beta=3.5):
         """
@@ -3677,10 +3685,9 @@ class InterferogramMerger(Tools):
         :param fov_A: Field of view of the camera A in arcminutes (given
           along x axis.
 
-        :param full_precision: (Optional) If False the calculation of
-          the alignement coefficients is much shorter but slightly
-          less precise (da and db are set to 0.). Useful for testing
-          (default True).
+        :param full_precision: (Optional) If True tip and tilt angles
+          (da and db) are checked. Note that this can take a lot of
+          time. If False da and db are set to 0 (default False).
 
         :param profile_name: (Optional) PSF profile to use to fit
           stars. Can be 'gaussian' or 'moffat' (default
@@ -3749,7 +3756,7 @@ class InterferogramMerger(Tools):
             
             for istar in range(star_list_B.shape[0]):
                 
-                if star_list_B_fit[istar] != None:
+                if star_list_B_fit[istar] is not None:
                     # FWHM filtering in case FWHM is not fixed (rough alignment)
                     if ((abs(star_list_B_fit[istar, 'fwhm_arc']
                            - mean_params_A[istar, 'fwhm_arc'])
@@ -3775,7 +3782,7 @@ class InterferogramMerger(Tools):
                 dist_list.append(dist)
                 
             mean_dist = np.mean(np.array(dist_list))
-            if progress != None:
+            if progress is not None:
                 progress.update(
                     0, "fitted stars : %d%%, mean distance  : %.2f"%(
                         float(fitted_stars)/float(star_list_A.shape[0])*100.,
@@ -4134,7 +4141,7 @@ class InterferogramMerger(Tools):
 
         transf_list_file.close()
         
-        if self.indexer != None:
+        if self.indexer is not None:
             self.indexer['transformed_interfero_frame_list'] = self._get_transformed_interfero_frame_list_path()
 
 
@@ -4264,7 +4271,7 @@ class InterferogramMerger(Tools):
                         self._get_energy_map_header(),
                         overwrite=self.overwrite)
 
-        if self.indexer != None:
+        if self.indexer is not None:
             self.indexer['energy_map'] = self._get_energy_map_path()
 
         self.write_fits(self._get_deep_frame_path(), deep_frame, 
@@ -4272,7 +4279,7 @@ class InterferogramMerger(Tools):
                         self._get_deep_frame_header(),
                         overwrite=self.overwrite)
 
-        if self.indexer != None:
+        if self.indexer is not None:
             self.indexer['deep_frame'] = self._get_deep_frame_path()
 
         ## TRANSMISSION SCALE
@@ -4337,7 +4344,7 @@ class InterferogramMerger(Tools):
         self._close_pp_server(job_server)
         progress.end()
 
-        if self.indexer != None:
+        if self.indexer is not None:
             self.indexer['merged_interfero_frame_list'] = (
                 self._get_merged_interfero_frame_list_path())
         
@@ -4822,7 +4829,7 @@ class InterferogramMerger(Tools):
             fits_header=self._get_modulation_ratio_header(),
             overwrite=self.overwrite)
 
-        if self.indexer != None:
+        if self.indexer is not None:
             self.indexer['modulation_ratio'] = self._get_modulation_ratio_path()
 
         # PHOTOMETRY ON MERGED FRAMES #############################
@@ -4939,7 +4946,7 @@ class InterferogramMerger(Tools):
             transmission_vector.reshape((transmission_vector.shape[0],1)),
             fits_header=self._get_transmission_vector_header(),
             overwrite=self.overwrite)
-        if self.indexer != None:
+        if self.indexer is not None:
             self.indexer[
                 'transmission_vector'] = self._get_transmission_vector_path()
         
@@ -4956,7 +4963,7 @@ class InterferogramMerger(Tools):
             fits_header=self._get_bad_frames_vector_header(),
             overwrite=self.overwrite)
         
-        if self.indexer != None:
+        if self.indexer is not None:
             self.indexer[
                 'bad_frames_vector'] = self._get_bad_frames_vector_path()
 
@@ -5002,7 +5009,7 @@ class InterferogramMerger(Tools):
             ext_level_vector.reshape((ext_level_vector.shape[0],1)),
             fits_header=self._get_ext_illumination_vector_header(),
             overwrite=self.overwrite)
-        if self.indexer != None:
+        if self.indexer is not None:
             self.indexer['ext_illumination_vector'] = (
                 self._get_ext_illumination_vector_path())
 
@@ -5071,7 +5078,7 @@ class InterferogramMerger(Tools):
                 fits_header=self._get_added_light_vector_header(),
                 overwrite=self.overwrite)
 
-            if self.indexer != None:
+            if self.indexer is not None:
                 self.indexer['added_light_vector'] = (
                     self._get_added_light_vector_path())
         else:
@@ -5184,7 +5191,7 @@ class InterferogramMerger(Tools):
         progress.end()
         image_list_file.close
           
-        if self.indexer != None:
+        if self.indexer is not None:
             if create_stars_cube:
                 self.indexer['stars_interfero_frame_list'] = (
                     image_list_file_path)
@@ -5208,7 +5215,7 @@ class InterferogramMerger(Tools):
                         self._get_energy_map_header(),
                         overwrite=self.overwrite)
 
-        if self.indexer != None:
+        if self.indexer is not None:
             self.indexer['energy_map'] = self._get_energy_map_path()
 
         
@@ -5216,7 +5223,7 @@ class InterferogramMerger(Tools):
                         fits_header=self._get_deep_frame_header(),
                         overwrite=self.overwrite)
 
-        if self.indexer != None:
+        if self.indexer is not None:
             self.indexer['deep_frame'] = self._get_deep_frame_path()
 
 
@@ -5233,7 +5240,7 @@ class InterferogramMerger(Tools):
                         fits_header=self._get_calibration_stars_header(),
                         overwrite=self.overwrite)
 
-        if self.indexer != None:
+        if self.indexer is not None:
             self.indexer['calibration_stars'] = calibration_stars_path
             
         self._print_msg("Cubes merged")
@@ -5368,7 +5375,7 @@ class InterferogramMerger(Tools):
         
 
         # Loading flat spectrum cube
-        if flat_spectrum_path != None:
+        if flat_spectrum_path is not None:
             flat_cube = Cube(flat_spectrum_path)
         else:
             flat_cube = None
@@ -5464,7 +5471,7 @@ class InterferogramMerger(Tools):
                                        step_number=step_nb)
         
         ## Loading phase map and phase coefficients
-        if (phase_map_0_path != None and phase_coeffs != None
+        if (phase_map_0_path is not None and phase_coeffs is not None
             and n_phase != 0):
             phase_map_0 = self.read_fits(phase_map_0_path)
         else:
@@ -5509,7 +5516,7 @@ class InterferogramMerger(Tools):
                 star_interf = temp_interf
 
             # define external phase
-            if (phase_map_0 != None and phase_coeffs != None
+            if (phase_map_0 is not None and phase_coeffs is not None
                 and not auto_phase):
                 coeffs_list = list()
                 coeffs_list.append(phase_map_0[int(star_x), int(star_y)])
@@ -5523,11 +5530,11 @@ class InterferogramMerger(Tools):
                 # Weights definition if the phase has to be
                 # defined for each star (no external phase
                 # provided)
-                if n_phase == None or n_phase == 0:
+                if n_phase is None or n_phase == 0:
                     n_phase = int(PHASE_LEN_COEFF * step_nb)
 
                 weights = np.zeros(n_phase)
-                if ext_phase == None and n_phase != 0:
+                if ext_phase is None and n_phase != 0:
                     weights += 1e-20
                     weights_min_pix, weights_max_pix = (
                         orb.utils.get_filter_edges_pix(
@@ -5568,7 +5575,7 @@ class InterferogramMerger(Tools):
                 star_spectrum[filter_max_pix:] = np.nan
                
             # flat correction
-            if flat_cube != None:
+            if flat_cube is not None:
                 # extracting flat spectrum in the region of the star
                 (x_min, x_max,
                  y_min, y_max) = orb.utils.get_box_coords(star_x, star_y,
@@ -5617,7 +5624,7 @@ class InterferogramMerger(Tools):
                         star_spectrum_list,
                         fits_header=self._get_extracted_star_spectra_header(),
                         overwrite=self.overwrite)
-        if self.indexer != None:
+        if self.indexer is not None:
             self.indexer['extracted_star_spectra'] = (
                 self._get_extracted_star_spectra_path())
    
@@ -5780,7 +5787,8 @@ class Spectrum(Cube):
                   flux_calibration_vector=None, energy_map_path=None,
                   deep_frame_path=None, mean_scaling=True,
                   mean_flux=True, wavenumber=False,
-                  calibration_laser_map_path=None, nm_laser=None):
+                  calibration_laser_map_path=None, nm_laser=None,
+                  standard_header=None):
         
         """Calibrate spectrum cube: correct for filter transmission
         function, correct WCS parameters and flux calibration.
@@ -5855,6 +5863,10 @@ class Spectrum(Cube):
           map is given. This option has no use in the other case and
           can be set to None.
 
+        :param standard_header: (Optional) Header for the standard
+          star used for flux calibration. This header part will be
+          appended to the FITS header.
+
         .. note:: The filter file used must have two colums separated
           by a space character. The first column contains the
           wavelength axis in nm. The second column contains the
@@ -5880,20 +5892,20 @@ class Spectrum(Cube):
                                      min_index, max_index,
                                      flux_calibration_vector,
                                      scale_map_col, scale_factor, scale_type,
-                                     calibration_laser_col, nm_laser, step, order,
-                                     wavenumber):
+                                     calibration_laser_col, nm_laser,
+                                     step, order, wavenumber):
             """
             .. note:: This function just makes a division by the
             filter function: the filter function must have been normalized, and
             corrected.
             """
             # rescaling:
-            if scale_factor == None and scale_type != None:
+            if scale_factor is None and scale_type is not None:
                 for iy in range(spectrum_col.shape[0]):
-                    if scale_type=='energy':
+                    if scale_type == 'energy':
                         mean_scale = orb.utils.spectrum_mean_energy(
                             spectrum_col[iy,:])
-                    elif scale_type=='intensity':
+                    elif scale_type == 'intensity':
                         mean_scale = orb.utils.robust_mean(spectrum_col[iy,:])
                     else: raise Exception('bad scale type')
                     if (mean_scale != 0.
@@ -5946,7 +5958,6 @@ class Spectrum(Cube):
                         spectrum_col[icol,imax_index:] = np.nan
                     
                     else:
-                        
                         # note: too much interpolations are done here, this
                         # could be reduced
                         nm_axis_ireg_corr = orb.utils.create_nm_axis_ireg(
@@ -5956,9 +5967,11 @@ class Spectrum(Cube):
                         # both filter and spectrum are interpolated to
                         # a common nm iregular axis
                         ifilter = orb.utils.interpolate_axis(
-                            filter_function, nm_axis_ireg_corr, 1, old_axis=nm_axis)
+                            filter_function, nm_axis_ireg_corr, 1,
+                            old_axis=nm_axis)
                         spectrum_col[icol, :] = orb.utils.interpolate_axis(
-                            spectrum_col[icol, :], nm_axis_ireg, 5, old_axis=nm_axis)
+                            spectrum_col[icol, :], nm_axis_ireg, 5,
+                            old_axis=nm_axis)
 
                         [imin_index, imax_index] = orb.utils.nm2pix(
                             nm_axis_ireg_corr, [filter_min_nm, filter_max_nm])
@@ -5974,11 +5987,12 @@ class Spectrum(Cube):
                         # filter it is interpolated back to its
                         # original axis
                         spectrum_col[icol, :] = orb.utils.interpolate_axis(
-                            spectrum_col[icol, :], nm_axis, 5, old_axis=nm_axis_ireg)
+                            spectrum_col[icol, :], nm_axis, 5,
+                            old_axis=nm_axis_ireg)
                         
 
             # flux calibration
-            if flux_calibration_vector != None:
+            if flux_calibration_vector is not None:
                 spectrum_col *= flux_calibration_vector
             
             return spectrum_col
@@ -6035,7 +6049,7 @@ class Spectrum(Cube):
         if filter_min < 0: filter_min = 0
         if filter_max > self.dimz: filter_max = self.dimz
 
-        if flux_calibration_vector != None:
+        if flux_calibration_vector is not None:
             if mean_flux == True:
                 filter_function[filter_min:filter_max] /= orb.utils.robust_mean(
                     filter_function[filter_min:filter_max])
@@ -6045,17 +6059,17 @@ class Spectrum(Cube):
         self._print_msg("Calibrating spectra", color=True)
         self._print_msg("Filter correction")
         
-        if flux_calibration_vector != None:
+        if flux_calibration_vector is not None:
             self._print_msg("Flux calibration")
         else:
             self._print_warning("No flux calibration")
             
-        if correct_wcs != None:
+        if correct_wcs is not None:
             self._print_msg("WCS correction")
         else:
             self._print_warning("No WCS correction")
 
-        if energy_map_path != None and deep_frame_path == None:
+        if energy_map_path is not None and deep_frame_path is None:
             energy_map = self.read_fits(energy_map_path)
             self._print_warning("Energy scaling (energy map)")
             scale_type = 'energy'
@@ -6067,7 +6081,7 @@ class Spectrum(Cube):
                     scale_factor, scale_factor_std))
             else:
                 scale_factor = None
-        elif deep_frame_path != None:
+        elif deep_frame_path is not None:
             deep_frame = self.read_fits(deep_frame_path)
             self._print_msg("Intensity scaling (deep frame)")
             scale_type = 'intensity'
@@ -6148,7 +6162,14 @@ class Spectrum(Cube):
             axis = orb.utils.create_nm_axis(self.dimz, step, order)
         else:
             axis = orb.utils.create_cm1_axis(self.dimz, step, order)
-            
+
+        # update standard header
+        if standard_header is not None:
+            standard_header.append((
+                'FLAMBDA',
+                np.nanmean(flux_calibration_vector),
+                'Mean flux/ADU [erg/cm^2/s/A/ADU]'))
+                
         progress = ProgressBar(self.dimz)
         for iframe in range(self.dimz):
             progress.update(iframe, info='Merging quads')
@@ -6169,24 +6190,28 @@ class Spectrum(Cube):
             # Create WCS header
             new_hdr = pyfits.PrimaryHDU(frame.transpose()).header
             new_hdr.extend(hdr, strip=True, update=True, end=True)
-            if correct_wcs != None:
+            if correct_wcs is not None:
                 hdr = self._update_hdr_wcs(new_hdr, correct_wcs.to_header())
             else:
                 hdr = new_hdr
-                    
+
             hdr.set('PC1_1', after='CROTA2')
             hdr.set('PC1_2', after='PC1_1')
             hdr.set('PC2_1', after='PC1_2')
             hdr.set('PC2_2', after='PC2_1')
             hdr.set('WCSAXES', before='CTYPE1')
             
+            # Create Standard header
+            if standard_header is not None:
+                hdr.extend(standard_header, strip=False, update=False, end=True)
+                    
             # Create flux header
             flux_hdr = list()
             flux_hdr.append(('COMMENT','',''))
             flux_hdr.append(('COMMENT','Flux',''))
             flux_hdr.append(('COMMENT','----',''))
             flux_hdr.append(('COMMENT','',''))
-            if flux_calibration_vector != None:
+            if flux_calibration_vector is not None:
                 flux_hdr.append(('BUNIT','FLUX','Flux unit [erg/cm^2/s/A]'))
             else:
                 flux_hdr.append(('BUNIT','UNCALIB','Uncalibrated Flux'))
@@ -6207,7 +6232,7 @@ class Spectrum(Cube):
                 iframe, stars_cube=stars_cube)
             file_list.write("%s\n"%frame_path)
         file_list.close()
-        if self.indexer != None:
+        if self.indexer is not None:
             self.indexer['calibrated_spectrum_list'] = file_list_path
 
     def get_flux_calibration_vector(self, std_spectrum_path, std_name,
@@ -6259,7 +6284,7 @@ class Spectrum(Cube):
         std_exp_time = hdr['EXPTIME']
         std_step_nb = re_spectrum.shape[0]
         std_nm_axis = orb.utils.create_nm_axis(std_step_nb, std_step, std_order)
-           
+
         # Real spectrum is converted to ADU/s
         # We must divide by the exposition time
         re_spectrum /= std_exp_time # ADU -> ADU/s
@@ -6290,8 +6315,8 @@ class Spectrum(Cube):
             self._print_msg('Mean theoretical flux of the star: %e erg/cm^2/s/A'%orb.utils.robust_mean(th_spectrum))
             self._print_msg('Mean flux of the star in the cube: %e ADU/s'%orb.utils.robust_mean(re_spectrum))
             calib.fill(orb.utils.robust_mean(th_spectrum) / orb.utils.robust_mean(re_spectrum))
-            
         else:
+            self._print_error('Not tested yet')
             # absorption lines are removed from fit
             mean = orb.utils.robust_mean(orb.utils.sigmacut(re_spectrum))
             std = orb.utils.robust_std(orb.utils.sigmacut(re_spectrum))
@@ -6357,7 +6382,7 @@ class Phase(Cube):
         :param phase_map_type: (Optional) Type of phase map. Must be
           None, 'smoothed', 'fitted', 'error' or 'residual'
         """
-        if phase_map_type != None:
+        if phase_map_type is not None:
             if phase_map_type == 'smoothed':
                 pm_type = "_smoothed"
             elif phase_map_type == 'fitted':
@@ -6391,7 +6416,7 @@ class Phase(Cube):
           than one of those options are set to True the priority order
           is smoothed, then fitted, then error.
         """
-        if phase_map_type != None:
+        if phase_map_type is not None:
             if phase_map_type == 'smoothed':
                 header = self._get_basic_header(
                     'Smoothed phase map order %d'%order)
@@ -6409,7 +6434,7 @@ class Phase(Cube):
         else:
             header = self._get_basic_header('Phase map order %d'%order)
        
-        if self.dimx != None and self.dimy != None:
+        if self.dimx is not None and self.dimy is not None:
             return (header
                     + self._project_header
                     + self._calibration_laser_header
@@ -6554,7 +6579,7 @@ class Phase(Cube):
                                   # total band
 
         # defining interferogram length
-        if interferogram_length == None:
+        if interferogram_length is None:
             interferogram_length = self.dimz
 
         # Calibration laser map load and interpolation
@@ -6564,7 +6589,7 @@ class Phase(Cube):
                 calibration_laser_map,
                 self.dimx, self.dimy)
         ## Create filter min and max map
-        if filter_file_path != None:
+        if filter_file_path is not None:
             (filter_nm, filter_trans,
              filter_min, filter_max) = orb.utils.read_filter_file(filter_file_path)
         else:
@@ -6647,7 +6672,7 @@ class Phase(Cube):
                 0, phase_map_type='residual'),
             overwrite=self.overwrite)
         
-        if self.indexer != None:
+        if self.indexer is not None:
             self.indexer['phase_map_residual'] = res_map_path
             
         # remove bad fitted phase values
@@ -6690,7 +6715,7 @@ class Phase(Cube):
                             self._get_phase_map_header(iorder),
                             overwrite=self.overwrite)
 
-            if self.indexer != None:
+            if self.indexer is not None:
                 self.indexer['phase_map_%d'%iorder] = phase_map_path
             
 
@@ -6786,107 +6811,165 @@ class Phase(Cube):
                         fits_header=self._get_phase_map_header(
                             0, phase_map_type='smoothed'),
                         overwrite=self.overwrite)
-        if self.indexer != None:
+        if self.indexer is not None:
             self.indexer['phase_map_smoothed_0'] = phase_map_path
+
+
+    ## def fit_phase_map(self, phase_map_path, bla):
+    ##     """Fit the phase map.
+
+    ##     Help remove most of the noise. This process is useful if the phase
+    ##     map has been computed from astronomical data without a high SNR.
+
+    ##     :param phase_map_path: Path to the phase map
+    ##     """
+
+    ##     def smooth_fit_parameter(coeffs_list, order, smooth_deg):
+    ##         """
+    ##         Smooth the fitting parameters for a paticular order of the
+    ##         polynomial fit.
+    ##         """
+    ##         coeffs = coeffs_list[:,order]
+    ##         w = np.ones_like(coeffs)
+    ##         mask = np.nonzero(coeffs == 0)
+    ##         w[mask] = 1e-20
+    ##         return orb.utils.polyfit1d(coeffs, smooth_deg, w=w, return_coeffs=False)
+
+
+    ##     FIT_DEG = 1 # Degree of the polynomial used fo the fit
+        
+    ##     MAX_FIT_ERROR = 0.1 # Maximum fit error over which a warning
+    ##                         # is raised
+
+    ##     SMOOTH_DEG = 1 # Degree of the polynomial for smoothing the
+    ##                    # fit parameters
+                       
+    ##     BORDER = 0.1 # percentage of the image length removed on the
+    ##                  # border to fit the phase map (cannot be more
+    ##                  # than 0.5)
+
+    ##     phase_map = self.read_fits(phase_map_path)
+    ##     coeffs_list = list()
+
+    ##     ## Mask definition : the pixel used for fitting the phase map
+    ##     mask_map = np.zeros_like(phase_map)
+    ##     # border points are removed
+    ##     border = (self.dimx + self.dimy)/2. * BORDER 
+    ##     mask_map[border:-border,border:-border:] = 1.
+    ##     # zeros points are removed
+    ##     mask_map[np.nonzero(phase_map == 0)] = 0.
+    ##     mask = np.nonzero(mask_map)
+
+    ##     self.write_fits('bla.fits', mask_map) ; quit()
+
+    ##     ## Phase map fit
+    ##     self._print_msg("Fitting phase map", color=True)
+    ##     progress = ProgressBar(phase_map.shape[1])
+    ##     for ij in range(phase_map.shape[1]):
+    ##         ipmap = phase_map[:,ij]
+    ##         imask = mask_map[:,ij]
+    ##         if not np.any(ipmap):
+    ##             coeffs_list.append((np.zeros(FIT_DEG + 1, dtype=float), [1e20]))
+    ##         else:
+    ##             w = np.copy(imask)
+    ##             w[np.nonzero(imask == 0)] = 1e-20
+    ##             # do not fit too noisy data (there must be more than
+    ##             # half good points on the vector)
+    ##             if (len(np.nonzero(w > 0.5)[0])
+    ##                 > 0.5 * phase_map.shape[1]
+    ##                 - (phase_map.shape[1] * BORDER * 2.)):
+    ##                 vect, coeffs = orb.utils.polyfit1d(ipmap, FIT_DEG, w=w,
+    ##                                                    return_coeffs=True)
+    ##                 coeffs_list.append((coeffs[0], coeffs[1][0]))
+    ##             else:
+    ##                 coeffs_list.append((np.zeros(FIT_DEG + 1, dtype=float),
+    ##                                     [1e20]))
+    ##         progress.update(ij, info="fitting phase map")
+    ##     progress.end()
+
+    ##     ## Smooth fit parameters 
+    ##     coeffs_list = np.array([icoeffs[0] for icoeffs in coeffs_list])
+    ##     params_fit_list = list()
+    ##     for ideg in range(FIT_DEG + 1):
+    ##         params_fit_list.append(smooth_fit_parameter(
+    ##             coeffs_list, ideg, SMOOTH_DEG))
+    ##     params_fit_list = np.array(params_fit_list)
+        
+    ##     ## Reconstructing the phase map
+    ##     fitted_phase_map = np.zeros_like(phase_map)
+    ##     for ij in range(phase_map.shape[1]):
+    ##         fitted_phase_map[:,ij] = np.polynomial.polynomial.polyval(
+    ##             np.arange(phase_map.shape[0]), params_fit_list[:, ij])
+               
+    ##     ## Error computation
+    ##     # Creation of the error map: The error map gives the 
+    ##     # Squared Error for each point used in the fit point. 
+    ##     error_map = (phase_map - fitted_phase_map)**2
+    ##     error_map[np.nonzero(mask_map == 0)] = 0.
+        
+    ##     # The square root of the mean of this map is then normalized
+    ##     # by the range of the values fitted. This gives the Normalized
+    ##     # root-mean-square deviation
+    ##     fit_error =(((np.mean(error_map[mask]))**0.5)
+    ##                  / (np.max(phase_map[mask]) - np.min(phase_map[mask])))
+        
+    ##     self._print_msg(
+    ##         "Normalized root-mean-square deviation on the fit: %f%%"%(
+    ##             fit_error*100.))
+
+    ##     if fit_error > MAX_FIT_ERROR:
+    ##         self._print_warning("Normalized root-mean-square deviation on the fit is too high (%f > %f): phase correction will certainly be uncorrect !"%(fit_error, MAX_FIT_ERROR))
+        
+    ##     ## save fitted phase map and error map
+    ##     error_map_path = self._get_phase_map_path(0, phase_map_type='error')
+    ##     fitted_map_path = self._get_phase_map_path(0, phase_map_type='fitted')
+    ##     self.write_fits(error_map_path, error_map, 
+    ##                     fits_header=
+    ##                     self._get_phase_map_header(0, phase_map_type='error'),
+    ##                     overwrite=self.overwrite)
+    ##     if self.indexer != None:
+    ##         self.indexer['phase_map_fitted_error_0'] = error_map_path
+    ##     self.write_fits(fitted_map_path, fitted_phase_map, 
+    ##                     fits_header=
+    ##                     self._get_phase_map_header(0, phase_map_type='fitted'),
+    ##                     overwrite=self.overwrite)
+    ##     if self.indexer != None:
+    ##         self.indexer['phase_map_fitted_0'] = fitted_map_path
     
-    def fit_phase_map(self, phase_map_path):
+    def fit_phase_map(self, phase_map_path, residual_map_path):
         """Fit the phase map.
 
         Help remove most of the noise. This process is useful if the phase
         map has been computed from astronomical data without a high SNR.
 
         :param phase_map_path: Path to the phase map
+
+        :param residual_map_path: Path to the residual on phase fit
         """
-
-        def smooth_fit_parameter(coeffs_list, order, smooth_deg):
-            """
-            Smooth the fitting parameters for a paticular order of the
-            polynomial fit.
-            """
-            coeffs = coeffs_list[:,order]
-            w = np.ones_like(coeffs)
-            mask = np.nonzero(coeffs == 0)
-            w[mask] = 1e-20
-            return orb.utils.polyfit1d(coeffs, smooth_deg, w=w,
-                                       return_coeffs=False)
-
 
         FIT_DEG = 1 # Degree of the polynomial used fo the fit
         
         MAX_FIT_ERROR = 0.1 # Maximum fit error over which a warning
                             # is raised
-
-        SMOOTH_DEG = 1 # Degree of the polynomial for smoothing the
-                       # fit parameters
                        
         BORDER = 0.1 # percentage of the image length removed on the
                      # border to fit the phase map (cannot be more
                      # than 0.5)
 
         phase_map = self.read_fits(phase_map_path)
-        coeffs_list = list()
-
-        ## Mask definition : the pixel used for fitting the phase map
-        mask_map = np.zeros_like(phase_map)
         # border points are removed
+        mask = np.ones_like(phase_map, dtype=bool)
         border = (self.dimx + self.dimy)/2. * BORDER 
-        mask_map[border:-border,border:-border:] = 1.
-        # zeros and nans are removed
-        mask_map[np.nonzero(phase_map == 0)] = 0.
-        mask_map[np.nonzero(np.isnan(phase_map))] = 0.
-        phase_map[np.nonzero(np.isnan(phase_map))] = 0.
-        mask = np.nonzero(mask_map)
+        mask[border:-border,border:-border:] = False
+        mask[np.nonzero(phase_map == 0.)] = True
+        phase_map[np.nonzero(mask)] = np.nan
+        # error map
+        err_map = self.read_fits(residual_map_path)
+        err_map[np.nonzero(mask)] = np.nan
+        err_map = np.sqrt(err_map)
 
-        ## Phase map fit
-        self._print_msg("Fitting phase map", color=True)
-        progress = ProgressBar(phase_map.shape[1])
-        for ij in range(phase_map.shape[1]):
-            ipmap = phase_map[:,ij]
-            imask = mask_map[:,ij]
-            if not np.any(ipmap):
-                coeffs_list.append((np.zeros(FIT_DEG + 1, dtype=float), [1e20]))
-            else:
-                w = np.copy(imask)
-                w[np.nonzero(imask == 0)] = 1e-20
-                # do not fit too noisy data (there must be more than
-                # half good points on the vector)
-                if (len(np.nonzero(w > 0.5)[0])
-                    > 0.5 * phase_map.shape[1]
-                    - (phase_map.shape[1] * BORDER * 2.)):
-                    vect, coeffs = orb.utils.polyfit1d(ipmap, FIT_DEG, w=w,
-                                                       return_coeffs=True)
-                    coeffs_list.append((coeffs[0], coeffs[1][0]))
-                else:
-                    coeffs_list.append((np.zeros(FIT_DEG + 1, dtype=float),
-                                        [1e20]))
-            progress.update(ij, info="fitting phase map")
-        progress.end()
-
-        ## Smooth fit parameters 
-        coeffs_list = np.array([icoeffs[0] for icoeffs in coeffs_list])
-        params_fit_list = list()
-        for ideg in range(FIT_DEG + 1):
-            params_fit_list.append(smooth_fit_parameter(
-                coeffs_list, ideg, SMOOTH_DEG))
-        params_fit_list = np.array(params_fit_list)
-        
-        ## Reconstructing the phase map
-        fitted_phase_map = np.zeros_like(phase_map)
-        for ij in range(phase_map.shape[1]):
-            fitted_phase_map[:,ij] = np.polynomial.polynomial.polyval(
-                np.arange(phase_map.shape[0]), params_fit_list[:, ij])
-               
-        ## Error computation
-        # Creation of the error map: The error map gives the 
-        # Squared Error for each point used in the fit point. 
-        error_map = (phase_map - fitted_phase_map)**2
-        error_map[np.nonzero(mask_map == 0)] = 0.
-        
-        # The square root of the mean of this map is then normalized
-        # by the range of the values fitted. This gives the Normalized
-        # root-mean-square deviation
-        fit_error =(((np.mean(error_map[mask]))**0.5)
-                     / (np.max(phase_map[mask]) - np.min(phase_map[mask])))
+        fitted_phase_map, error_map, fit_error = orb.utils.fit_map(
+            phase_map, err_map, FIT_DEG)
         
         self._print_msg(
             "Normalized root-mean-square deviation on the fit: %f%%"%(
@@ -6898,17 +6981,17 @@ class Phase(Cube):
         ## save fitted phase map and error map
         error_map_path = self._get_phase_map_path(0, phase_map_type='error')
         fitted_map_path = self._get_phase_map_path(0, phase_map_type='fitted')
-        self.write_fits(error_map_path, error_map, 
-                        fits_header=
-                        self._get_phase_map_header(0, phase_map_type='error'),
-                        overwrite=self.overwrite)
-        if self.indexer != None:
+        self.write_fits(
+            error_map_path, error_map, 
+            fits_header= self._get_phase_map_header(0, phase_map_type='error'),
+            overwrite=self.overwrite)
+        if self.indexer is not None:
             self.indexer['phase_map_fitted_error_0'] = error_map_path
-        self.write_fits(fitted_map_path, fitted_phase_map, 
-                        fits_header=
-                        self._get_phase_map_header(0, phase_map_type='fitted'),
-                        overwrite=self.overwrite)
-        if self.indexer != None:
+        self.write_fits(
+            fitted_map_path, fitted_phase_map, 
+            fits_header= self._get_phase_map_header(0, phase_map_type='fitted'),
+            overwrite=self.overwrite)
+        if self.indexer is not None:
             self.indexer['phase_map_fitted_0'] = fitted_map_path
 
 
@@ -6946,7 +7029,7 @@ class Standard(Tools):
         :param logfile_name: (Optional) Give a specific name to the
           logfile (default None).
         """
-        if logfile_name != None:
+        if logfile_name is not None:
             self._logfile_name = logfile_name
             
         self.config_file_name=config_file_name

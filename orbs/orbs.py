@@ -38,7 +38,16 @@ import resource
 
 import scipy
 import numpy as np
-import pyfits
+
+
+try:
+    import astropy
+    import astropy.io.fits as pyfits
+except:
+    import pyfits
+    import warnings
+    warnings.warn('PyFITS is now a part of Astropy (http://www.astropy.org/). PyFITS support as a standalone module will be stopped soon. It is better to install Astropy. You can still keep PyFITS for other applications.', FutureWarning)
+    
 import pp
 import bottleneck as bn
 import pywcs
@@ -48,7 +57,8 @@ from process import RawData, InterferogramMerger, Interferogram
 from process import Phase, Spectrum, CalibrationLaser
 from orb.astrometry import Astrometry
 import orb.utils
-
+import orb.constants
+import orb.version
 
 ##################################################
 #### CLASS Orbs ##################################
@@ -368,7 +378,9 @@ class Orbs(Tools):
     
     optionfile = None
     """OptionFile instance"""
-    
+
+    option_file_path = None
+    """Path to the option file"""
     
     def __init__(self, option_file_path, config_file_name="config.orb",
                  overwrite=False, silent=False):
@@ -403,6 +415,7 @@ class Orbs(Tools):
                     self.options[option_key] = self._create_list_from_dir(
                         value, list_file_path)
 
+        self.option_file_path = option_file_path
         self.config_file_name = config_file_name
         self._logfile_name =  os.path.basename(option_file_path) + '.log'
         self._msg_class_hdr = self._get_msg_class_hdr()
@@ -412,11 +425,17 @@ class Orbs(Tools):
 
         # First, print ORBS version
         self._print_msg("ORBS version: %s"%self.__version__, color=True)
+        self._print_msg("ORB version: %s"%orb.version.__version__, color=True)
 
         # Print modules versions
         self._print_msg("Numpy version: %s"%np.__version__)
         self._print_msg("Scipy version: %s"%scipy.__version__)
-        self._print_msg("PyFITS version: %s"%pyfits.__version__)
+        
+        try:
+            self._print_msg("Pyfits version: %s"%pyfits.__version__)
+        except:
+            self._print_msg("Astropy version: %s"%astropy.__version__)
+        
         self._print_msg("Parallel Python version: %s"%pp.version)
         self._print_msg("Bottleneck version: %s"%bn.__version__)
         self._print_msg("PyWCS version: %s"%pywcs.__version__)
@@ -582,12 +601,30 @@ class Orbs(Tools):
                                + '_' + self.options['filter_name'] + '.')
         self.indexer.load_index()
 
+    def _get_calibration_standard_fits_header(self):
+
+        if ('standard_name' in self.options
+            and 'standard_path' in self.options):
+            hdr = list()
+            hdr.append(('COMMENT','',''))
+            hdr.append(('COMMENT','Calibration standard parameters',''))
+            hdr.append(('COMMENT','-------------------------------',''))
+            hdr.append(('COMMENT','',''))
+            hdr.append(('STDNAME', self.options['standard_name'],
+                        'Name of the standard star'))
+            std_path = os.path.basename(self.options['standard_path'])[
+                :orb.constants.FITS_CARD_MAX_STR_LENGTH]
+            hdr.append(('STDPATH', std_path,
+                        'Path to the standard star file'))
+            return hdr
+        else: return None
+            
     def _get_calibration_laser_fits_header(self):
         """Return the header corresponding to the calibration laser
         that can be added to the created FITS files."""
         hdr = list()
         hdr.append(('COMMENT','',''))
-        hdr.append(('COMMENT','Calibration parameters',''))
+        hdr.append(('COMMENT','Calibration laser parameters',''))
         hdr.append(('COMMENT','----------------------',''))
         hdr.append(('COMMENT','',''))
         hdr.append(('CALIBNM',self.config["CALIB_NM_LASER"],
@@ -605,6 +642,16 @@ class Orbs(Tools):
         :param camera_number: Number of the camera (can be 0, 1 or 2)
         """
         hdr = list()
+        hdr.append(('COMMENT','',''))
+        hdr.append(('COMMENT','ORBS',''))
+        hdr.append(('COMMENT','----',''))
+        hdr.append(('COMMENT','',''))
+        hdr.append(('ORBSVER', self.__version__, 'ORBS version'))
+        option_file_name = os.path.basename(self.option_file_path)[
+            :orb.constants.FITS_CARD_MAX_STR_LENGTH]
+        hdr.append(('OPTNAME', option_file_name,
+                    'Name of the option file'))
+        
         hdr.append(('COMMENT','',''))
         hdr.append(('COMMENT','Observation parameters',''))
         hdr.append(('COMMENT','----------------------',''))
@@ -626,6 +673,22 @@ class Orbs(Tools):
         if "step" in self.options:
             hdr.append(('STEP', self.options["step"], 
                         'Step size in nm'))
+        if "step_number" in self.options:
+            hdr.append(('STEPNB', self.options["step_number"], 
+                        'Number of steps'))
+        if "target_ra" in self.options:
+            hdr.append(('TARGETR', ':'.join(self.options["target_ra"]), 
+                        'Target Right Ascension'))
+        if "target_dec" in self.options:
+            hdr.append(('TARGETD', ':'.join(self.options["target_dec"]), 
+                        'Target Declination'))
+        if "target_x" in self.options:
+            hdr.append(('TARGETX', self.options["target_x"], 
+                        'Target estimated X coordinate'))
+        if "target_y" in self.options:
+            hdr.append(('TARGETY', self.options["target_y"], 
+                        'Target estimated Y coordinate'))
+
         hdr.append(('COMMENT','',''))
         hdr.append(('COMMENT','Image Description',''))
         hdr.append(('COMMENT','-----------------',''))
@@ -719,7 +782,8 @@ class Orbs(Tools):
                 + 'flat_phase_map.fits')
     
     def _get_calibrated_spectrum_cube_path(self, camera_number, apod,
-                                           wavenumber=False):
+                                           wavenumber=False,
+                                           wavelength_calibration=True):
         """Return path to the calibrated spectrum cube resulting of the
         reduction process
         
@@ -735,8 +799,11 @@ class Orbs(Tools):
         """
         if wavenumber: wave_type = 'cm1'
         else: wave_type = 'nm'
+        if wavelength_calibration: calib = ''
+        else: calib = '.uncalib'
+            
         return (self._get_root_data_path_hdr(camera_number)
-                + wave_type + '.' + apod + '.fits')
+                + wave_type + '.' + apod + calib + '.fits')
 
     def _get_standard_spectrum_path(self, camera_number):
         """Return path to the standard star spectrum
@@ -1652,7 +1719,7 @@ class Orbs(Tools):
 
     def transform_cube_B(self, alignment_coeffs=None, 
                          star_list_path_1=None, min_star_number=15,
-                         full_precision=True, interp_order=1,
+                         full_precision=False, interp_order=1,
                          stars_fwhm_1_arc=2.,
                          no_star=False):
         
@@ -1674,9 +1741,9 @@ class Orbs(Tools):
           be detected by the automatic detection process (used if no
           path to a list of stars is given). Default 15.
 
-        :param full_precision: (Optional) If False the calculation of
-          the alignement coefficients is much shorter but slightly
-          less precise. Useful for testing (Default True).
+        :param full_precision: (Optional) If True tip and tilt angles
+          (da and db) are checked. Note that this can take a lot of
+          time. If False da and db are set to 0 (default False).
 
         :param interp_order: (Optional) Interpolation order (Default 1.).
 
@@ -2516,7 +2583,9 @@ class Orbs(Tools):
             # fit the 0th order phase map
             phase_map_path = phase._get_phase_map_path(
                 0, phase_map_type='smoothed')
-            phase.fit_phase_map(phase_map_path)
+            residual_map_path = phase._get_phase_map_path(
+                0, phase_map_type='residual') 
+            phase.fit_phase_map(phase_map_path, residual_map_path)
         perf_stats = perf.print_stats()
         del perf
         return perf_stats
@@ -2649,7 +2718,8 @@ class Orbs(Tools):
             deep_frame_path=deep_frame_path,
             wavenumber=self.options['wavenumber'],
             calibration_laser_map_path=calibration_laser_map_path,
-            nm_laser=self.config['CALIB_NM_LASER'])
+            nm_laser=self.config['CALIB_NM_LASER'],
+            standard_header = self._get_calibration_standard_fits_header())
         
         perf_stats = perf.print_stats()
         del perf, spectrum
@@ -2893,7 +2963,8 @@ class Orbs(Tools):
 
         apod = spectrum_header['APODIZ']
         spectrum_path = self._get_calibrated_spectrum_cube_path(
-            camera_number, apod, wavenumber=wavenumber)
+            camera_number, apod, wavenumber=wavenumber,
+            wavelength_calibration=self.options['wavelength_calibration'])
         spectrum.export(spectrum_path, fits_header=spectrum_header,
                         overwrite=self.overwrite)
 

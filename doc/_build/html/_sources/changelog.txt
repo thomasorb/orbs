@@ -699,6 +699,13 @@ account the fact that no wavelength calibration has been done.
 * New keyword added in the option file: WAVENUMBER, WAVE_CALIB
 
 
+Enhanced phase map fit
+----------------------
+
+* :py:meth:`~process.Phase.fit_phase_map` has been enhanced to give
+  better results and use the residual map on phase fit.
+
+
 Miscellaneous
 -------------
 
@@ -716,3 +723,32 @@ ORB's scripts
   in orbs/scripts.
 
 * create **unstack** script to unstack a cube into a set of frames
+
+3.7.2.3
+=======
+
+Astropy.fits.io
+---------------
+
+* PyFITS is now part of Astropy (http://www.astropy.org/). PyFITS
+  library will not be used anymore and the required import have been
+  changed to astropy.fits.io.
+
+* Bugs with new version of pyfits fixed
+
+Miscellaneous
+-------------
+
+* FITS keywords updated for standard flux calibration (standard name,
+  standard file path, mean flambda calibration). Target ra, dec, x, y,
+  step number, ORBS version and ORBS option file name also added.
+
+Full precision
+--------------
+
+* :py:meth:`~process.InterferogramMerger.find_alignment` default
+  behaviour changed. The alignement pass for tip and tilt angles is
+  not anymore by default. It is still possible to do it by adding this
+  line in the option file::
+
+    TUNE InterferogramMerger.find_alignment.FULL_PRECISION 1

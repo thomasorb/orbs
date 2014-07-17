@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Orbs module &mdash; Orbs 3.7.2.2 documentation</title>
+    <title>Orbs module &mdash; Orbs 3.7.2.3 documentation</title>
     
     <link rel="stylesheet" href="_static/sphinxdoc.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -14,7 +14,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
-        VERSION:     '3.7.2.2',
+        VERSION:     '3.7.2.3',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -25,7 +25,7 @@
     <script type="text/javascript" src="_static/doctools.js"></script>
     <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="shortcut icon" href="_static/logo.ico"/>
-    <link rel="top" title="Orbs 3.7.2.2 documentation" href="index.html" />
+    <link rel="top" title="Orbs 3.7.2.3 documentation" href="index.html" />
     <link rel="next" title="Process module" href="process_module.html" />
     <link rel="prev" title="Quick start Guide" href="quick_start.html" /> 
   </head>
@@ -42,7 +42,7 @@
         <li class="right" >
           <a href="quick_start.html" title="Quick start Guide"
              accesskey="P">previous</a> |</li>
-        <li><a href="index.html">Orbs 3.7.2.2 documentation</a> &raquo;</li> 
+        <li><a href="index.html">Orbs 3.7.2.3 documentation</a> &raquo;</li> 
       </ul>
     </div>
       <div class="sphinxsidebar">
@@ -243,7 +243,7 @@ name (OBJECT) and the filter name (FILTER)</p>
 </div>
 <dl class="method">
 <dt id="orbs.orbs.Orbs._get_calibrated_spectrum_cube_path">
-<tt class="descname">_get_calibrated_spectrum_cube_path</tt><big>(</big><em>camera_number</em>, <em>apod</em>, <em>wavenumber=False</em><big>)</big><a class="headerlink" href="#orbs.orbs.Orbs._get_calibrated_spectrum_cube_path" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">_get_calibrated_spectrum_cube_path</tt><big>(</big><em>camera_number</em>, <em>apod</em>, <em>wavenumber=False</em>, <em>wavelength_calibration=True</em><big>)</big><a class="headerlink" href="#orbs.orbs.Orbs._get_calibrated_spectrum_cube_path" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return path to the calibrated spectrum cube resulting of the
 reduction process</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -1283,6 +1283,12 @@ transmission. Default True.</td>
 </dd></dl>
 
 <dl class="attribute">
+<dt id="orbs.orbs.Orbs.option_file_path">
+<tt class="descname">option_file_path</tt><em class="property"> = None</em><a class="headerlink" href="#orbs.orbs.Orbs.option_file_path" title="Permalink to this definition">¶</a></dt>
+<dd><p>Path to the option file</p>
+</dd></dl>
+
+<dl class="attribute">
 <dt id="orbs.orbs.Orbs.optionfile">
 <tt class="descname">optionfile</tt><em class="property"> = None</em><a class="headerlink" href="#orbs.orbs.Orbs.optionfile" title="Permalink to this definition">¶</a></dt>
 <dd><p>OptionFile instance</p>
@@ -1461,7 +1467,7 @@ file (default False).</li>
 
 <dl class="method">
 <dt id="orbs.orbs.Orbs.transform_cube_B">
-<tt class="descname">transform_cube_B</tt><big>(</big><em>alignment_coeffs=None</em>, <em>star_list_path_1=None</em>, <em>min_star_number=15</em>, <em>full_precision=True</em>, <em>interp_order=1</em>, <em>stars_fwhm_1_arc=2.0</em>, <em>no_star=False</em><big>)</big><a class="headerlink" href="#orbs.orbs.Orbs.transform_cube_B" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">transform_cube_B</tt><big>(</big><em>alignment_coeffs=None</em>, <em>star_list_path_1=None</em>, <em>min_star_number=15</em>, <em>full_precision=False</em>, <em>interp_order=1</em>, <em>stars_fwhm_1_arc=2.0</em>, <em>no_star=False</em><big>)</big><a class="headerlink" href="#orbs.orbs.Orbs.transform_cube_B" title="Permalink to this definition">¶</a></dt>
 <dd><p>Calculate the alignment parameters of the camera 2
 relatively to the first one. Transform the images of the
 camera 2 using linear interpolation by default.</p>
@@ -1481,9 +1487,9 @@ given coefficients.</li>
 <li><strong>min_star_number</strong> &#8211; (Optional) Minimum number of star to
 be detected by the automatic detection process (used if no
 path to a list of stars is given). Default 15.</li>
-<li><strong>full_precision</strong> &#8211; (Optional) If False the calculation of
-the alignement coefficients is much shorter but slightly
-less precise. Useful for testing (Default True).</li>
+<li><strong>full_precision</strong> &#8211; (Optional) If True tip and tilt angles
+(da and db) are checked. Note that this can take a lot of
+time. If False da and db are set to 0 (default False).</li>
 <li><strong>interp_order</strong> &#8211; (Optional) Interpolation order (Default 1.).</li>
 <li><strong>stars_fwhm_1_arc</strong> &#8211; (Optional) FWHM of the stars of the
 camera 1 in arcsec. Used only when an external list of stars
@@ -1597,7 +1603,7 @@ run this function alone.</p>
         <li class="right" >
           <a href="quick_start.html" title="Quick start Guide"
              >previous</a> |</li>
-        <li><a href="index.html">Orbs 3.7.2.2 documentation</a> &raquo;</li> 
+        <li><a href="index.html">Orbs 3.7.2.3 documentation</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">

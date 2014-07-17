@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Changelog &mdash; Orbs 3.7.2.2 documentation</title>
+    <title>Changelog &mdash; Orbs 3.7.2.3 documentation</title>
     
     <link rel="stylesheet" href="_static/sphinxdoc.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -14,7 +14,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
-        VERSION:     '3.7.2.2',
+        VERSION:     '3.7.2.3',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -25,7 +25,7 @@
     <script type="text/javascript" src="_static/doctools.js"></script>
     <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="shortcut icon" href="_static/logo.ico"/>
-    <link rel="top" title="Orbs 3.7.2.2 documentation" href="index.html" />
+    <link rel="top" title="Orbs 3.7.2.3 documentation" href="index.html" />
     <link rel="prev" title="Process module" href="process_module.html" /> 
   </head>
   <body>
@@ -38,7 +38,7 @@
         <li class="right" >
           <a href="process_module.html" title="Process module"
              accesskey="P">previous</a> |</li>
-        <li><a href="index.html">Orbs 3.7.2.2 documentation</a> &raquo;</li> 
+        <li><a href="index.html">Orbs 3.7.2.3 documentation</a> &raquo;</li> 
       </ul>
     </div>
       <div class="sphinxsidebar">
@@ -162,8 +162,15 @@
 <li><a class="reference internal" href="#id12">3.7.2.1</a></li>
 <li><a class="reference internal" href="#id13">3.7.2.2</a><ul>
 <li><a class="reference internal" href="#wavenumber-computation-better-integration-with-orcs">Wavenumber computation &amp; better integration with ORCS</a></li>
+<li><a class="reference internal" href="#enhanced-phase-map-fit">Enhanced phase map fit</a></li>
 <li><a class="reference internal" href="#miscellaneous">Miscellaneous</a></li>
 <li><a class="reference internal" href="#orb-s-scripts">ORB&#8217;s scripts</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#id14">3.7.2.3</a><ul>
+<li><a class="reference internal" href="#astropy-fits-io">Astropy.fits.io</a></li>
+<li><a class="reference internal" href="#id15">Miscellaneous</a></li>
+<li><a class="reference internal" href="#full-precision">Full precision</a></li>
 </ul>
 </li>
 </ul>
@@ -898,6 +905,13 @@ account the fact that no wavelength calibration has been done.</p>
 <li>New keyword added in the option file: WAVENUMBER, WAVE_CALIB</li>
 </ul>
 </div>
+<div class="section" id="enhanced-phase-map-fit">
+<h4>Enhanced phase map fit<a class="headerlink" href="#enhanced-phase-map-fit" title="Permalink to this headline">¶</a></h4>
+<ul class="simple">
+<li><a class="reference internal" href="process_module.html#process.Phase.fit_phase_map" title="process.Phase.fit_phase_map"><tt class="xref py py-meth docutils literal"><span class="pre">fit_phase_map()</span></tt></a> has been enhanced to give
+better results and use the residual map on phase fit.</li>
+</ul>
+</div>
 <div class="section" id="miscellaneous">
 <h4>Miscellaneous<a class="headerlink" href="#miscellaneous" title="Permalink to this headline">¶</a></h4>
 <ul class="simple">
@@ -914,6 +928,38 @@ account the fact that no wavelength calibration has been done.</p>
 orbs/scripts to orb/scripts so that only ORBS specific scripts are
 in orbs/scripts.</li>
 <li>create <strong>unstack</strong> script to unstack a cube into a set of frames</li>
+</ul>
+</div>
+</div>
+<div class="section" id="id14">
+<h3>3.7.2.3<a class="headerlink" href="#id14" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="astropy-fits-io">
+<h4>Astropy.fits.io<a class="headerlink" href="#astropy-fits-io" title="Permalink to this headline">¶</a></h4>
+<ul class="simple">
+<li>PyFITS is now part of Astropy (<a class="reference external" href="http://www.astropy.org/">http://www.astropy.org/</a>). PyFITS
+library will not be used anymore and the required import have been
+changed to astropy.fits.io.</li>
+<li>Bugs with new version of pyfits fixed</li>
+</ul>
+</div>
+<div class="section" id="id15">
+<h4>Miscellaneous<a class="headerlink" href="#id15" title="Permalink to this headline">¶</a></h4>
+<ul class="simple">
+<li>FITS keywords updated for standard flux calibration (standard name,
+standard file path, mean flambda calibration). Target ra, dec, x, y,
+step number, ORBS version and ORBS option file name also added.</li>
+</ul>
+</div>
+<div class="section" id="full-precision">
+<h4>Full precision<a class="headerlink" href="#full-precision" title="Permalink to this headline">¶</a></h4>
+<ul>
+<li><p class="first"><a class="reference internal" href="process_module.html#process.InterferogramMerger.find_alignment" title="process.InterferogramMerger.find_alignment"><tt class="xref py py-meth docutils literal"><span class="pre">find_alignment()</span></tt></a> default
+behaviour changed. The alignement pass for tip and tilt angles is
+not anymore by default. It is still possible to do it by adding this
+line in the option file:</p>
+<div class="highlight-python"><pre>TUNE InterferogramMerger.find_alignment.FULL_PRECISION 1</pre>
+</div>
+</li>
 </ul>
 </div>
 </div>
@@ -935,7 +981,7 @@ in orbs/scripts.</li>
         <li class="right" >
           <a href="process_module.html" title="Process module"
              >previous</a> |</li>
-        <li><a href="index.html">Orbs 3.7.2.2 documentation</a> &raquo;</li> 
+        <li><a href="index.html">Orbs 3.7.2.3 documentation</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
