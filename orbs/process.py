@@ -1229,7 +1229,7 @@ class RawData(Cube):
             frame_bias_level = None
         
         # bias substraction
-        if (master_bias is not None):
+        if master_bias is not None:
             bias_coeff = 1.0
             if (optimize_dark_coeff):
                 if frame_bias_level is not None:
@@ -1297,14 +1297,16 @@ class RawData(Cube):
             # else: simple dark substraction
             else:
                 frame -= (master_dark * exposition_time)
+                
 
         # computing flat image
         if master_flat is not None:
             if (dark_int_time is not None) and (flat_int_time is not None):
                 dark_flat_coeff = float(flat_int_time / float(dark_int_time))
                 dark_master_flat = master_dark * dark_flat_coeff
-                master_flat = master_flat - dark_master_flat - master_bias
-            else:
+                master_flat = master_flat - dark_master_flat
+                
+            if master_bias is not None:
                 master_flat -= master_bias
                 
             # flat normalization
@@ -1314,7 +1316,7 @@ class RawData(Cube):
             # avoid dividing by zeros
             master_flat[flat_zeros] = 1.
             frame /= master_flat
-            # zeros are replaced by NaN in the final frame
+            # zeros are replaced by NaNs in the final frame
             frame[flat_zeros] = np.nan
 
         return frame
@@ -1584,29 +1586,32 @@ class RawData(Cube):
             
         # load master dark (bias is substracted and master dark is
         # divided by the dark integration time)
-        if (dark_path is not None and master_bias is not None):
+        if dark_path is not None:
+            if optimize_dark_coeff and master_bias is None:
+                self._print_warning('No optimization possible without the master bias')
             master_dark, master_dark_temp = self._load_dark(
                 dark_path, return_temperature=True, combine=combine,
                 reject=reject)
             master_dark_uncorrected = np.copy(master_dark)
             if optimize_dark_coeff:
                 # remove bias
-                if master_dark_temp is None:
+                if master_dark_temp is None and master_bias is not None:
                     self._print_warning("The temperature of the master dark could not be defined. The dark level will have to be guessed (less precise)")
                     master_dark -= master_bias
-                elif bias_calibration_params is not None:
+                elif (bias_calibration_params is not None
+                      and master_bias is not None):
                     master_bias_coeff = self.get_bias_coeff_from_T(
                         master_bias_temp, master_bias_level,
                         master_dark_temp, bias_calibration_params)
                     master_dark -= master_bias * master_bias_coeff
-            else:
+            elif master_bias is not None:
                 master_dark -= master_bias
 
             # master dark in counts/s
             master_dark /= dark_int_time
             
-            master_dark_level = orb.utils.robust_median(master_dark[x_min:x_max,
-                                                          y_min:y_max])
+            master_dark_level = orb.utils.robust_median(master_dark[
+                x_min:x_max, y_min:y_max])
             self._print_msg('Master dark median level at the center of the frame: %f'%master_dark_level)
                 
         else:
@@ -1887,7 +1892,10 @@ class CalibrationLaser(Cube):
             dimz = column_data.shape[1]
             BORDER = 40
             max_array_column = np.empty((dimy), dtype=float)
-            interpol_nm_axis = interpolate.interp1d(np.arange(dimz), nm_axis)
+            interpol_nm_axis = interpolate.interp1d(
+                np.arange(dimz), nm_axis,
+                bounds_error=False, fill_value=np.nan)
+            
             # FFT of the interferogram
             column_spectrum = orb.utils.cube_raw_fft(column_data, apod=None)
             if (int(order) & 1):
@@ -1939,7 +1947,8 @@ class CalibrationLaser(Cube):
         # create the fft axis in nm
         k_max = ((order + 1.)/2.)/step
         k_min = (order/2.)/step
-        k_axis = (np.arange(self.dimz, dtype=float) * ((k_max - k_min) / float(self.dimz - 1)) + k_min)
+        k_axis = (np.arange(self.dimz, dtype=float)
+                  * ((k_max - k_min) / float(self.dimz - 1)) + k_min)
 
         nm_axis = (1./k_axis)[::-1]
         if not (int(order) & 1):
@@ -2634,7 +2643,7 @@ class Interferogram(Cube):
           `phase_map_path` and `phase_coeffs` which can be computed
           using :class:`process.Phase`.
         
-        .. Note:: The spectrum computation walks through 8 steps:
+        .. Note:: Spectrum computation walks through 8 steps:
         
            1. Mean interferogram subtraction to suppress the
               zero-frequency term in the spectrum
@@ -2845,7 +2854,7 @@ class Interferogram(Cube):
             mean_spectrum = orb.utils.transform_interferogram(
                 mean_interf, nm_laser, nm_laser, step, order, '2.0', zpd_shift,
                 n_phase=n_phase, ext_phase=mean_phase_vector,
-                return_phase=False, balanced=balanced)
+                return_phase=False, balanced=balanced, wavenumber=wavenumber)
 
             if np.mean(mean_spectrum) < 0:
                 self._print_msg("Negative polarity : 0th order phase map has been corrected (add PI)")
@@ -2876,7 +2885,8 @@ class Interferogram(Cube):
         # in case no external phase is provided
         if n_phase != 0 and filter_file_path is not None:
             (filter_nm, filter_trans,
-             filter_min, filter_max) = orb.utils.read_filter_file(filter_file_path)
+             filter_min, filter_max) = orb.utils.read_filter_file(
+                filter_file_path)
         else:
             filter_min = None
             filter_max = None
@@ -3360,25 +3370,25 @@ class InterferogramMerger(Tools):
           use. Must be located in orbs/data/.
 
         :param project_header: (Optional) header section to be added
-          to each output files based on merged data (an empty list()
-          by default).
+          to each output files based on merged data (an empty list by
+          default).
 
-        :param cube_A_project_header: (Optional) header section to be added
-          to each output files based on pure cube A data (an empty list()
-          by default).
+        :param cube_A_project_header: (Optional) header section to be
+          added to each output files based on pure cube A data (an
+          empty list by default).
 
-        :param cube_B_project_header: (Optional) header section to be added
-          to each output files based on pure cube B data (an empty list()
-          by default).
+        :param cube_B_project_header: (Optional) header section to be
+          added to each output files based on pure cube B data (an
+          empty list by default).
 
         :param wcs_header: (Optional) header section describing WCS
-          that can be added to each created image files (an empty
-          list() by default).
+          that can be added to each created image files (an empty list
+          by default).
 
         :param alignment_coeffs: (Optional) Pre-calculated alignement
           coefficients. Setting alignment_coeffs to something else
           than 'None' will avoid alignment coeffs calculation in
-          :meth:`process.InterferogramMerger.find_alignment
+          :meth:`process.InterferogramMerger.find_alignment`
 
         :param overwrite: (Optional) If True existing FITS files will
           be overwritten (default False).

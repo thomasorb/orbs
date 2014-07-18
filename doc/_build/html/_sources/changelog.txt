@@ -17,7 +17,7 @@ Alignment
   searched in cube B. The process is now faster and must be more
   robust.
 
-* :py:meth:`~orbs.Orbs.transform_cube_B` has also been changed to
+* :py:meth:`orbs.orbs.Orbs.transform_cube_B` has also been changed to
   avoid looking for stars in the cube B.
 
 
@@ -37,7 +37,7 @@ Overwriting FITS files
   FITS file.
 * 'orbs' script can be passed the option -o to enable overwriting over
   the existing FITS files.
-* :py:class:`~orbs.Orbs`, :py:class:`~core.Cube` and all processing
+* :py:class:`orbs.orbs.Orbs`, :py:class:`~core.Cube` and all processing
   classes have been modified to use this new option and pass it to any
   self._write_fits() function.
 
@@ -163,8 +163,8 @@ v 3.4.0:  Phase correction
   :py:meth:`~process.Phase.fit_phase_map` which fit the created
   smoothed phase map of 0th order to remove noisy data.
 
-* :py:meth:`~orbs.Orbs.full_reduction` and
-  :py:meth:`~orbs.Orbs.single_reduction` use computed phase maps by
+* :py:meth:`orbs.orbs.Orbs.full_reduction` and
+  :py:meth:`orbs.orbs.Orbs.single_reduction` use computed phase maps by
   default. An external phase map of order 0 can be given if it has
   been computed (e.g. from a flat cube).
 
@@ -254,12 +254,12 @@ Various phase fit degree
 ------------------------
 
 * :py:meth:`~process.Phase.create_phase_maps` and
-  :py:meth:`~orbs.Orbs.compute_spectrum` modified to use any order of
+  :py:meth:`orbs.orbs.Orbs.compute_spectrum` modified to use any order of
   the polynomial fit to the phase
 
 * **config.orb**: New keyword PHASE_FIT_DEG to configure the desired
     degree of the polynomial fit o the
-    phase. :py:meth:`~orbs.Orbs.__init__` modified to use this
+    phase. :py:meth:`orbs.orbs.Orbs.__init__` modified to use this
     keyword.
 
 v3.4.5 (stable)
@@ -364,7 +364,7 @@ Minor modifications
 * DATA_FRAMES in :py:meth:`~process.RawData.detect_stars` changed from
   10 to 30. Help in finding more stars in some cubes.
 
-* :py:meth:`~orbs.Orbs._create_list_from_dir` now check if all the FITS
+* :py:meth:`orbs.orbs.Orbs._create_list_from_dir` now check if all the FITS
   files in the directory have the same shape.
 
 * :py:meth:`~process.RawData.correct_frame` and
@@ -375,9 +375,9 @@ Minor modifications
 * :py:meth:`~process.Spectrum.correct_filter` modified when filter min
   or max are outside the spectrum.
 
-* :py:class:`~orbs.Orbs.__init__` prints modules versions
+* :py:class:`orbs.orbs.Orbs.__init__` prints modules versions
 
-* :py:class:`~orbs.Orbs.__init__` modified. It is now possible to
+* :py:class:`orbs.orbs.Orbs.__init__` modified. It is now possible to
   change configuration options for a particular reduction using the
   option file. Keywords are the same.
 
@@ -527,8 +527,8 @@ v3.6
 Flux Calibration
 ----------------
 
-Flux calibration has been added. :py:meth:`~orbs.Orbs.calibrate_spectrum`
-replace the old function :py:meth:`~orbs.Orbs.correct_spectrum`. The path
+Flux calibration has been added. :py:meth:`orbs.orbs.Orbs.calibrate_spectrum`
+replace the old function :py:meth:`orbs.orbs.Orbs.correct_spectrum`. The path
 to a standard spectrum reduced by ORBS must be given (STDPATH). This
 can be achieved by reducing a standard cube using the option
 --standard. The standard name must also be given in the option file
@@ -709,7 +709,7 @@ Enhanced phase map fit
 Miscellaneous
 -------------
 
-* :py:meth:`~orbs.Orbs.__init__` simplified by the use of
+* :py:meth:`orbs.orbs.Orbs.__init__` simplified by the use of
   :py:class:`orb.core.OptionFile` previously used only by
   :py:class:`orcs.orcs.SpectralCube()`
 
@@ -752,3 +752,38 @@ Full precision
   line in the option file::
 
     TUNE InterferogramMerger.find_alignment.FULL_PRECISION 1
+
+
+3.7.3
+=====
+
+SITELLE data
+------------
+
+Sitelle image mode
+~~~~~~~~~~~~~~~~~~
+
+Using the SITELLE's configuration file config.sitelle.orb and thus
+having the keyword INSTRUMENT_NAME set to SITELLE enables the sitelle
+mode. The only modification which has to be done was to pass two new
+options to :py:meth:`orb.Tools._create_list_from_dir`: image_mode and
+chip_index (see ORB documentation). This is done during ORBS init:
+:py:meth:`orbs.orbs.Orbs.__init__`.
+
+Prebinning
+~~~~~~~~~~
+
+Used for faster computation of big data set. It
+can also be useful if the user simply wants binned data. At the user
+level only one option must be passed to the option file::
+
+  PREBINNING 2 # Data is prebinned by 2
+
+.. warning:: The real binning of the original data must be kept to the
+   same values. The user must no modify the the values of BINCAM1 and
+   BINCAM2.
+
+Modification of :py:meth:`orbs.orbs.Orbs.__init__` which gives the
+prebinning option to :py:meth:`orb.Tools._create_list_from_dir`. The
+final data binning is also handled at the init level : the real
+binning of each camera is multiplied by the prebinning size.

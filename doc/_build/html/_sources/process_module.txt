@@ -10,6 +10,7 @@ RawData class
    :members:
    :private-members:
    :show-inheritance:
+   :special-members:
 
 Interferogram class
 -------------------
@@ -18,6 +19,7 @@ Interferogram class
    :members:
    :private-members:
    :show-inheritance:
+   :special-members:
 
 InterferogramMerger class
 -------------------------
@@ -26,6 +28,7 @@ InterferogramMerger class
    :members:
    :private-members:
    :show-inheritance:
+   :special-members:
 
 CalibrationLaser class
 ----------------------
@@ -34,6 +37,7 @@ CalibrationLaser class
    :members:
    :private-members:
    :show-inheritance:
+   :special-members:
 
 Spectrum class
 --------------
@@ -42,6 +46,7 @@ Spectrum class
    :members:
    :private-members:
    :show-inheritance:
+   :special-members:
 
 Phase class
 -----------
@@ -50,6 +55,7 @@ Phase class
    :members:
    :private-members:
    :show-inheritance:
+   :special-members:
 
 Standard class
 --------------
@@ -58,3 +64,4 @@ Standard class
    :members:
    :private-members:
    :show-inheritance:
+   :special-members:

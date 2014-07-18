@@ -404,7 +404,8 @@ class Orbs(Tools):
             else:
                 self.config[key] = bool(int(self._get_config_parameter(key)))
 
-        def store_option_parameter(option_key, key, cast, folder=False):
+        def store_option_parameter(option_key, key, cast, folder=False,
+                                   camera_index=None, optional=True):
             value = self.optionfile.get(key, cast)
             if value is not None:
                 if not folder:
@@ -412,8 +413,25 @@ class Orbs(Tools):
                 else:
                     list_file_path =os.path.join(
                         self._get_project_dir(), key + ".list")
+                    
+                    if self.config["INSTRUMENT_NAME"] == 'SITELLE':
+                        image_mode = 'sitelle'
+                        chip_index = camera_index
+                    else:
+                        image_mode = None
+                        chip_index = None
+
+                    if 'prebinning' in self.options:
+                        prebinning = self.options['prebinning']
+                    else:
+                        prebinning = None
+                    
                     self.options[option_key] = self._create_list_from_dir(
-                        value, list_file_path)
+                        value, list_file_path,
+                        image_mode=image_mode, chip_index=chip_index,
+                        prebinning=prebinning)
+            elif not optional:
+                self._print_error('option {} must be set'.format(key))
 
         self.option_file_path = option_file_path
         self.config_file_name = config_file_name
@@ -447,6 +465,7 @@ class Orbs(Tools):
                 self._print_msg(line[:-1], no_hdr=True)
 
         # read config file to get instrumental parameters
+        store_config_parameter("INSTRUMENT_NAME", str)
         store_config_parameter("INIT_ANGLE", float)
         store_config_parameter("INIT_DX", float)
         store_config_parameter("INIT_DY", float)
@@ -504,14 +523,14 @@ class Orbs(Tools):
         
         # Parse the option file to get reduction parameters
         self.optionfile = OptionFile(option_file_path)
-        store_option_parameter('object_name', 'OBJECT', str)
-        store_option_parameter('filter_name', 'FILTER', str)
-        store_option_parameter('bin_cam_1', 'BINCAM1', int)
-        store_option_parameter('bin_cam_2', 'BINCAM2', int)
-        store_option_parameter('step', 'SPESTEP', float)
-        store_option_parameter('step_number', 'SPESTNB', int)
-        store_option_parameter('order', 'SPEORDR', float)
-        store_option_parameter('exp_time', 'SPEEXPT', float)
+        store_option_parameter('object_name', 'OBJECT', str, optional=False)
+        store_option_parameter('filter_name', 'FILTER', str, optional=False)
+        store_option_parameter('bin_cam_1', 'BINCAM1', int, optional=False)
+        store_option_parameter('bin_cam_2', 'BINCAM2', int, optional=False)
+        store_option_parameter('step', 'SPESTEP', float, optional=False)
+        store_option_parameter('step_number', 'SPESTNB', int, optional=False)
+        store_option_parameter('order', 'SPEORDR', float, optional=False)
+        store_option_parameter('exp_time', 'SPEEXPT', float, optional=False)
         store_option_parameter('dark_time', 'SPEDART', float)
         store_option_parameter('obs_date', 'OBSDATE', str)
         store_option_parameter('target_ra', 'TARGETR', str)
@@ -532,6 +551,14 @@ class Orbs(Tools):
         store_option_parameter('try_catalogue', 'TRYCAT', bool)
         store_option_parameter('wavenumber', 'WAVENUMBER', bool)
         store_option_parameter('wavelength_calibration', 'WAVE_CALIB', bool)
+        store_option_parameter('prebinning', 'PREBINNING', int)
+        # recompute the real data binning
+        if 'prebinning' in self.options:
+            if self.options['prebinning'] is not None:
+                self.options['bin_cam_1'] = (self.options['bin_cam_1']
+                                             * self.options['prebinning'])
+                self.options['bin_cam_2'] = (self.options['bin_cam_2']
+                                             * self.options['prebinning'])
         
         fringes = self.optionfile.get_fringes()
         if fringes is not None:
@@ -559,8 +586,12 @@ class Orbs(Tools):
         if ("step" in self.options) and ("order" in self.options):
             self.options["nm_min"] = (1. / ((self.options["order"] + 1.) / 
                                             (2. * self.options["step"])))
-            self.options["nm_max"] = (1. / (self.options["order"] / 
-                                            (2. * self.options["step"])))
+            if self.options["order"] > 0:
+                self.options["nm_max"] = (1. / (self.options["order"] / 
+                                                (2. * self.options["step"])))
+            else:
+                self.options["nm_max"] = np.inf
+                self._print_error('Order 0 is still not handled by ORBS! Sorry...')
 
         if (("object_name" not in self.options)
             or ("filter_name" not in self.options)):
@@ -571,16 +602,16 @@ class Orbs(Tools):
 
         # get folders paths
         self._print_msg('Reading data folders and checking files')
-        store_option_parameter('image_list_path_1', 'DIRCAM1', str, True)
-        store_option_parameter('image_list_path_2', 'DIRCAM2', str, True)
-        store_option_parameter('bias_path_1', 'DIRBIA1', str, True)
-        store_option_parameter('bias_path_2', 'DIRBIA2', str, True)
-        store_option_parameter('dark_path_1', 'DIRDRK1', str, True)
-        store_option_parameter('dark_path_2', 'DIRDRK2', str, True)
-        store_option_parameter('flat_path_1', 'DIRFLT1', str, True)
-        store_option_parameter('flat_path_2', 'DIRFLT2', str, True)
-        store_option_parameter('calib_path_1', 'DIRCAL1', str, True)
-        store_option_parameter('calib_path_2', 'DIRCAL2', str, True)
+        store_option_parameter('image_list_path_1', 'DIRCAM1', str, True, 1)
+        store_option_parameter('image_list_path_2', 'DIRCAM2', str, True, 2)
+        store_option_parameter('bias_path_1', 'DIRBIA1', str, True, 1)
+        store_option_parameter('bias_path_2', 'DIRBIA2', str, True, 2)
+        store_option_parameter('dark_path_1', 'DIRDRK1', str, True, 1)
+        store_option_parameter('dark_path_2', 'DIRDRK2', str, True, 2)
+        store_option_parameter('flat_path_1', 'DIRFLT1', str, True, 1)
+        store_option_parameter('flat_path_2', 'DIRFLT2', str, True, 2)
+        store_option_parameter('calib_path_1', 'DIRCAL1', str, True, 1)
+        store_option_parameter('calib_path_2', 'DIRCAL2', str, True, 2)
         store_option_parameter('flat_spectrum_path', 'DIRFLTS', str, True)
                     
         # Check step number and number of raw images
@@ -1156,7 +1187,7 @@ class Orbs(Tools):
             self._print_warning(
                 "Alignment step skipped (option no_star set to True)")
             
-        if (start_step <= 2):
+        if (start_step <= 2) and (not no_star):
             if not standard:
                 self.compute_cosmic_ray_map(
                     1, bad_frames_vector=bad_frames_vector)
@@ -1358,7 +1389,7 @@ class Orbs(Tools):
             self._print_warning(
                 "Alignment step skipped (option no_star set to True)")
             
-        if (start_step <= 2):
+        if (start_step <= 2) and (not no_star):
             if not standard:
                 self.compute_cosmic_ray_map(camera_number,
                                             bad_frames_vector=bad_frames_vector)

@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Orbs module &mdash; Orbs 3.7.2.3 documentation</title>
+    <title>Orbs module &mdash; Orbs 3.7.3 documentation</title>
     
     <link rel="stylesheet" href="_static/sphinxdoc.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -14,7 +14,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
-        VERSION:     '3.7.2.3',
+        VERSION:     '3.7.3',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -25,7 +25,7 @@
     <script type="text/javascript" src="_static/doctools.js"></script>
     <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="shortcut icon" href="_static/logo.ico"/>
-    <link rel="top" title="Orbs 3.7.2.3 documentation" href="index.html" />
+    <link rel="top" title="Orbs 3.7.3 documentation" href="index.html" />
     <link rel="next" title="Process module" href="process_module.html" />
     <link rel="prev" title="Quick start Guide" href="quick_start.html" /> 
   </head>
@@ -42,7 +42,7 @@
         <li class="right" >
           <a href="quick_start.html" title="Quick start Guide"
              accesskey="P">previous</a> |</li>
-        <li><a href="index.html">Orbs 3.7.2.3 documentation</a> &raquo;</li> 
+        <li><a href="index.html">Orbs 3.7.3 documentation</a> &raquo;</li> 
       </ul>
     </div>
       <div class="sphinxsidebar">
@@ -241,6 +241,30 @@ to create an option file</li>
 <p class="last">Two parameters are needed <strong>at least</strong> : the object
 name (OBJECT) and the filter name (FILTER)</p>
 </div>
+<dl class="method">
+<dt id="orbs.orbs.Orbs.__init__">
+<tt class="descname">__init__</tt><big>(</big><em>option_file_path</em>, <em>config_file_name='config.orb'</em>, <em>overwrite=False</em>, <em>silent=False</em><big>)</big><a class="headerlink" href="#orbs.orbs.Orbs.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize Orbs class.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>option_file_path</strong> &#8211; Path to the option file.</li>
+<li><strong>config_file_name</strong> &#8211; (Optional) Name of the config file to
+use. Must be located in orbs/data/.</li>
+<li><strong>overwrite</strong> &#8211; (Optional) If True, any existing FITS file
+created by Orbs will be overwritten during the reduction
+process (default False).</li>
+<li><strong>silent</strong> &#8211; (Optional) If True no messages nor warnings are
+displayed by Orbs (useful for silent init).</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
 <dl class="method">
 <dt id="orbs.orbs.Orbs._get_calibrated_spectrum_cube_path">
 <tt class="descname">_get_calibrated_spectrum_cube_path</tt><big>(</big><em>camera_number</em>, <em>apod</em>, <em>wavenumber=False</em>, <em>wavelength_calibration=True</em><big>)</big><a class="headerlink" href="#orbs.orbs.Orbs._get_calibrated_spectrum_cube_path" title="Permalink to this definition">¶</a></dt>
@@ -1560,6 +1584,29 @@ reduced data</li>
 </tbody>
 </table>
 <dl class="method">
+<dt id="orbs.orbs.Performance.__init__">
+<tt class="descname">__init__</tt><big>(</big><em>cube</em>, <em>process_name</em>, <em>camera_number</em>, <em>logfile_name=None</em><big>)</big><a class="headerlink" href="#orbs.orbs.Performance.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize class</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>cube</strong> &#8211; Reference to a cube in order to get details on the
+reduced data</li>
+<li><strong>process_name</strong> &#8211; Name of the running process checked</li>
+<li><strong>camera_number</strong> &#8211; Number of the camera which cube is
+processed (can be 1, 2 or 0 for merged data)</li>
+<li><strong>logfile_name</strong> &#8211; (Optional) Give a specific name to the
+logfile (default None).</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
 <dt id="orbs.orbs.Performance.get_max_mem">
 <tt class="descname">get_max_mem</tt><big>(</big><big>)</big><a class="headerlink" href="#orbs.orbs.Performance.get_max_mem" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return max memory used by the process in bytes</p>
@@ -1603,7 +1650,7 @@ run this function alone.</p>
         <li class="right" >
           <a href="quick_start.html" title="Quick start Guide"
              >previous</a> |</li>
-        <li><a href="index.html">Orbs 3.7.2.3 documentation</a> &raquo;</li> 
+        <li><a href="index.html">Orbs 3.7.3 documentation</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">

@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Process module &mdash; Orbs 3.7.2.3 documentation</title>
+    <title>Process module &mdash; Orbs 3.7.3 documentation</title>
     
     <link rel="stylesheet" href="_static/sphinxdoc.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -14,7 +14,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
-        VERSION:     '3.7.2.3',
+        VERSION:     '3.7.3',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -25,7 +25,7 @@
     <script type="text/javascript" src="_static/doctools.js"></script>
     <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="shortcut icon" href="_static/logo.ico"/>
-    <link rel="top" title="Orbs 3.7.2.3 documentation" href="index.html" />
+    <link rel="top" title="Orbs 3.7.3 documentation" href="index.html" />
     <link rel="next" title="Changelog" href="changelog.html" />
     <link rel="prev" title="Orbs module" href="orbs_module.html" /> 
   </head>
@@ -42,7 +42,7 @@
         <li class="right" >
           <a href="orbs_module.html" title="Orbs module"
              accesskey="P">previous</a> |</li>
-        <li><a href="index.html">Orbs 3.7.2.3 documentation</a> &raquo;</li> 
+        <li><a href="index.html">Orbs 3.7.3 documentation</a> &raquo;</li> 
       </ul>
     </div>
       <div class="sphinxsidebar">
@@ -1107,7 +1107,7 @@ using <a class="reference internal" href="#process.Phase" title="process.Phase">
 </div>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
-<p>The spectrum computation walks through 8 steps:</p>
+<p>Spectrum computation walks through 8 steps:</p>
 <ol class="last arabic simple">
 <li>Mean interferogram subtraction to suppress the
 zero-frequency term in the spectrum</li>
@@ -1314,6 +1314,65 @@ cubes of the two cameras of SpIOMM/SITELLE.</p>
 <p class="last">In this class the letter &#8216;A&#8217; refers to the camera 1 and the
 letter &#8216;B&#8217; to the camera 2</p>
 </div>
+<dl class="method">
+<dt id="process.InterferogramMerger.__init__">
+<tt class="descname">__init__</tt><big>(</big><em>image_list_path_A=None</em>, <em>image_list_path_B=None</em>, <em>bin_A=None</em>, <em>bin_B=None</em>, <em>pix_size_A=None</em>, <em>pix_size_B=None</em>, <em>data_prefix='temp_data_'</em>, <em>alignment_coeffs=None</em>, <em>project_header=</em><span class="optional">[</span><span class="optional">]</span>, <em>config_file_name='config.orb'</em>, <em>cube_A_project_header=</em><span class="optional">[</span><span class="optional">]</span>, <em>cube_B_project_header=</em><span class="optional">[</span><span class="optional">]</span>, <em>wcs_header=</em><span class="optional">[</span><span class="optional">]</span>, <em>overwrite=False</em>, <em>tuning_parameters={}</em>, <em>indexer=None</em>, <em>logfile_name=None</em><big>)</big><a class="headerlink" href="#process.InterferogramMerger.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize InterferogramMerger class</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>image_list_path_A</strong> &#8211; (Optional) Path to the image list of
+the camera 1</li>
+<li><strong>image_list_path_B</strong> &#8211; (Optional) Path to the image list of
+the camera 2</li>
+<li><strong>bin_A</strong> &#8211; (Optional) Binning factor of the camera A</li>
+<li><strong>bin_B</strong> &#8211; (Optional) Binning factor of the camera B</li>
+<li><strong>pix_size_A</strong> &#8211; (Optional) Pixel size of the camera A</li>
+<li><strong>pix_size_A</strong> &#8211; (Optional) Pixel size of the camera B</li>
+<li><strong>data_prefix</strong> &#8211; (Optional) Header and path of the files
+created by the class</li>
+<li><strong>config_file_name</strong> &#8211; (Optional) name of the config file to
+use. Must be located in orbs/data/.</li>
+<li><strong>project_header</strong> &#8211; (Optional) header section to be added
+to each output files based on merged data (an empty list by
+default).</li>
+<li><strong>cube_A_project_header</strong> &#8211; (Optional) header section to be
+added to each output files based on pure cube A data (an
+empty list by default).</li>
+<li><strong>cube_B_project_header</strong> &#8211; (Optional) header section to be
+added to each output files based on pure cube B data (an
+empty list by default).</li>
+<li><strong>wcs_header</strong> &#8211; (Optional) header section describing WCS
+that can be added to each created image files (an empty list
+by default).</li>
+<li><strong>alignment_coeffs</strong> &#8211; (Optional) Pre-calculated alignement
+coefficients. Setting alignment_coeffs to something else
+than &#8216;None&#8217; will avoid alignment coeffs calculation in
+<a class="reference internal" href="#process.InterferogramMerger.find_alignment" title="process.InterferogramMerger.find_alignment"><tt class="xref py py-meth docutils literal"><span class="pre">process.InterferogramMerger.find_alignment()</span></tt></a></li>
+<li><strong>overwrite</strong> &#8211; (Optional) If True existing FITS files will
+be overwritten (default False).</li>
+<li><strong>tuning_parameters</strong> &#8211; (Optional) Some parameters of the
+methods can be tuned externally using this dictionary. The
+dictionary must contains the full parameter name
+(class.method.parameter_name) and its value. For example :
+{&#8216;InterferogramMerger.find_alignment.BOX_SIZE&#8217;: 7}. Note
+that only some parameters can be tuned. This possibility is
+implemented into the method itself with the method
+<tt class="xref py py-meth docutils literal"><span class="pre">orb.core.Tools._get_tuning_parameter()</span></tt>.</li>
+<li><strong>indexer</strong> &#8211; (Optional) Must be a <tt class="xref py py-class docutils literal"><span class="pre">orb.core.Indexer</span></tt>
+instance. If not None created files can be indexed by this
+instance.</li>
+<li><strong>logfile_name</strong> &#8211; (Optional) Give a specific name to the
+logfile (default None).</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
 <dl class="method">
 <dt id="process.InterferogramMerger._get_added_light_vector_header">
 <tt class="descname">_get_added_light_vector_header</tt><big>(</big><big>)</big><a class="headerlink" href="#process.InterferogramMerger._get_added_light_vector_header" title="Permalink to this definition">¶</a></dt>
@@ -2369,6 +2428,40 @@ defined modulo PI).</p>
 <em class="property">class </em><tt class="descclassname">process.</tt><tt class="descname">Standard</tt><big>(</big><em>std_name</em>, <em>data_prefix='temp_data'</em>, <em>no_log=False</em>, <em>tuning_parameters={}</em>, <em>config_file_name='config.orb'</em>, <em>logfile_name=None</em><big>)</big><a class="headerlink" href="#process.Standard" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">orb.core.Tools</span></tt></p>
 <dl class="method">
+<dt id="process.Standard.__init__">
+<tt class="descname">__init__</tt><big>(</big><em>std_name</em>, <em>data_prefix='temp_data'</em>, <em>no_log=False</em>, <em>tuning_parameters={}</em>, <em>config_file_name='config.orb'</em>, <em>logfile_name=None</em><big>)</big><a class="headerlink" href="#process.Standard.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize Standard class.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>std_name</strong> &#8211; Name of the standard.</li>
+<li><strong>data_prefix</strong> &#8211; (Optional) Prefix used to determine the
+header of the name of each created file (default
+&#8216;temp_data&#8217;)</li>
+<li><strong>no_log</strong> &#8211; (Optional) If True no log file is created
+(default False).</li>
+<li><strong>tuning_parameters</strong> &#8211; (Optional) Some parameters of the
+methods can be tuned externally using this dictionary. The
+dictionary must contains the full parameter name
+(class.method.parameter_name) and its value. For example :
+{&#8216;InterferogramMerger.find_alignment.BOX_SIZE&#8217;: 7}. Note
+that only some parameters can be tuned. This possibility is
+implemented into the method itself with the method
+<tt class="xref py py-meth docutils literal"><span class="pre">orb.core.Tools._get_tuning_parameter()</span></tt>.</li>
+<li><strong>config_file_name</strong> &#8211; (Optional) name of the config file to
+use. Must be located in orbs/data/ (default &#8216;config.orb&#8217;).</li>
+<li><strong>logfile_name</strong> &#8211; (Optional) Give a specific name to the
+logfile (default None).</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
 <dt id="process.Standard.compute_image_calibration">
 <tt class="descname">compute_image_calibration</tt><big>(</big><em>images_list_path</em>, <em>filter_name</em>, <em>exp_time</em>, <em>std_coords</em>, <em>init_fwhm_arc</em>, <em>fov</em>, <em>profile_name='gaussian'</em>, <em>moffat_beta=3.5</em>, <em>prim_surf=16000</em>, <em>verbose=False</em><big>)</big><a class="headerlink" href="#process.Standard.compute_image_calibration" title="Permalink to this definition">¶</a></dt>
 <dd><p>Compute &#8216;flambda&#8217; calibration coefficient for a spectrum cube
@@ -2490,7 +2583,7 @@ in erg/cm^2/s/A.</p>
         <li class="right" >
           <a href="orbs_module.html" title="Orbs module"
              >previous</a> |</li>
-        <li><a href="index.html">Orbs 3.7.2.3 documentation</a> &raquo;</li> 
+        <li><a href="index.html">Orbs 3.7.3 documentation</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">

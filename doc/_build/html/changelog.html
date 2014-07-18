@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Changelog &mdash; Orbs 3.7.2.3 documentation</title>
+    <title>Changelog &mdash; Orbs 3.7.3 documentation</title>
     
     <link rel="stylesheet" href="_static/sphinxdoc.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -14,7 +14,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
-        VERSION:     '3.7.2.3',
+        VERSION:     '3.7.3',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -25,7 +25,7 @@
     <script type="text/javascript" src="_static/doctools.js"></script>
     <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="shortcut icon" href="_static/logo.ico"/>
-    <link rel="top" title="Orbs 3.7.2.3 documentation" href="index.html" />
+    <link rel="top" title="Orbs 3.7.3 documentation" href="index.html" />
     <link rel="prev" title="Process module" href="process_module.html" /> 
   </head>
   <body>
@@ -38,7 +38,7 @@
         <li class="right" >
           <a href="process_module.html" title="Process module"
              accesskey="P">previous</a> |</li>
-        <li><a href="index.html">Orbs 3.7.2.3 documentation</a> &raquo;</li> 
+        <li><a href="index.html">Orbs 3.7.3 documentation</a> &raquo;</li> 
       </ul>
     </div>
       <div class="sphinxsidebar">
@@ -173,6 +173,14 @@
 <li><a class="reference internal" href="#full-precision">Full precision</a></li>
 </ul>
 </li>
+<li><a class="reference internal" href="#id16">3.7.3</a><ul>
+<li><a class="reference internal" href="#sitelle-data">SITELLE data</a><ul>
+<li><a class="reference internal" href="#sitelle-image-mode">Sitelle image mode</a></li>
+<li><a class="reference internal" href="#prebinning">Prebinning</a></li>
+</ul>
+</li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>
@@ -222,7 +230,7 @@ completly modified. There&#8217;s no more need for a list of detected
 stars in the cube B (or camera 2). Stars found in cube A are
 searched in cube B. The process is now faster and must be more
 robust.</li>
-<li><tt class="xref py py-meth docutils literal"><span class="pre">transform_cube_B()</span></tt> has also been changed to
+<li><a class="reference internal" href="orbs_module.html#orbs.orbs.Orbs.transform_cube_B" title="orbs.orbs.Orbs.transform_cube_B"><tt class="xref py py-meth docutils literal"><span class="pre">orbs.orbs.Orbs.transform_cube_B()</span></tt></a> has also been changed to
 avoid looking for stars in the cube B.</li>
 </ul>
 </div>
@@ -242,7 +250,7 @@ rays on stars.</li>
 FITS file.</li>
 <li>&#8216;orbs&#8217; script can be passed the option -o to enable overwriting over
 the existing FITS files.</li>
-<li><tt class="xref py py-class docutils literal"><span class="pre">Orbs</span></tt>, <tt class="xref py py-class docutils literal"><span class="pre">Cube</span></tt> and all processing
+<li><a class="reference internal" href="orbs_module.html#orbs.orbs.Orbs" title="orbs.orbs.Orbs"><tt class="xref py py-class docutils literal"><span class="pre">orbs.orbs.Orbs</span></tt></a>, <tt class="xref py py-class docutils literal"><span class="pre">Cube</span></tt> and all processing
 classes have been modified to use this new option and pass it to any
 self._write_fits() function.</li>
 </ul>
@@ -372,8 +380,8 @@ phase values are defined modulo PI) and
 <a class="reference internal" href="process_module.html#process.Phase.fit_phase_map" title="process.Phase.fit_phase_map"><tt class="xref py py-meth docutils literal"><span class="pre">fit_phase_map()</span></tt></a> which fit the created
 smoothed phase map of 0th order to remove noisy data.</p>
 </li>
-<li><p class="first"><tt class="xref py py-meth docutils literal"><span class="pre">full_reduction()</span></tt> and
-<tt class="xref py py-meth docutils literal"><span class="pre">single_reduction()</span></tt> use computed phase maps by
+<li><p class="first"><a class="reference internal" href="orbs_module.html#orbs.orbs.Orbs.full_reduction" title="orbs.orbs.Orbs.full_reduction"><tt class="xref py py-meth docutils literal"><span class="pre">orbs.orbs.Orbs.full_reduction()</span></tt></a> and
+<a class="reference internal" href="orbs_module.html#orbs.orbs.Orbs.single_reduction" title="orbs.orbs.Orbs.single_reduction"><tt class="xref py py-meth docutils literal"><span class="pre">orbs.orbs.Orbs.single_reduction()</span></tt></a> use computed phase maps by
 default. An external phase map of order 0 can be given if it has
 been computed (e.g. from a flat cube).</p>
 </li>
@@ -469,13 +477,13 @@ a good fit of all the detected stars.</li>
 <h4>Various phase fit degree<a class="headerlink" href="#various-phase-fit-degree" title="Permalink to this headline">¶</a></h4>
 <ul>
 <li><p class="first"><a class="reference internal" href="process_module.html#process.Phase.create_phase_maps" title="process.Phase.create_phase_maps"><tt class="xref py py-meth docutils literal"><span class="pre">create_phase_maps()</span></tt></a> and
-<tt class="xref py py-meth docutils literal"><span class="pre">compute_spectrum()</span></tt> modified to use any order of
+<a class="reference internal" href="orbs_module.html#orbs.orbs.Orbs.compute_spectrum" title="orbs.orbs.Orbs.compute_spectrum"><tt class="xref py py-meth docutils literal"><span class="pre">orbs.orbs.Orbs.compute_spectrum()</span></tt></a> modified to use any order of
 the polynomial fit to the phase</p>
 </li>
 <li><dl class="first docutils">
 <dt><strong>config.orb</strong>: New keyword PHASE_FIT_DEG to configure the desired</dt>
 <dd><p class="first last">degree of the polynomial fit o the
-phase. <tt class="xref py py-meth docutils literal"><span class="pre">__init__()</span></tt> modified to use this
+phase. <a class="reference internal" href="orbs_module.html#orbs.orbs.Orbs.__init__" title="orbs.orbs.Orbs.__init__"><tt class="xref py py-meth docutils literal"><span class="pre">orbs.orbs.Orbs.__init__()</span></tt></a> modified to use this
 keyword.</p>
 </dd>
 </dl>
@@ -589,7 +597,7 @@ the IRAF function combine.</p>
 <ul class="simple">
 <li>DATA_FRAMES in <tt class="xref py py-meth docutils literal"><span class="pre">detect_stars()</span></tt> changed from
 10 to 30. Help in finding more stars in some cubes.</li>
-<li><tt class="xref py py-meth docutils literal"><span class="pre">_create_list_from_dir()</span></tt> now check if all the FITS
+<li><tt class="xref py py-meth docutils literal"><span class="pre">orbs.orbs.Orbs._create_list_from_dir()</span></tt> now check if all the FITS
 files in the directory have the same shape.</li>
 <li><a class="reference internal" href="process_module.html#process.RawData.correct_frame" title="process.RawData.correct_frame"><tt class="xref py py-meth docutils literal"><span class="pre">correct_frame()</span></tt></a> and
 <tt class="xref py py-meth docutils literal"><span class="pre">create_interferogram()</span></tt> modified to
@@ -597,8 +605,8 @@ correct for bias, flat and dark even if one of them are not given
 (before, without biases no correction at all would have been made)</li>
 <li><tt class="xref py py-meth docutils literal"><span class="pre">correct_filter()</span></tt> modified when filter min
 or max are outside the spectrum.</li>
-<li><tt class="xref py py-class docutils literal"><span class="pre">__init__</span></tt> prints modules versions</li>
-<li><tt class="xref py py-class docutils literal"><span class="pre">__init__</span></tt> modified. It is now possible to
+<li><a class="reference internal" href="orbs_module.html#orbs.orbs.Orbs.__init__" title="orbs.orbs.Orbs.__init__"><tt class="xref py py-class docutils literal"><span class="pre">orbs.orbs.Orbs.__init__</span></tt></a> prints modules versions</li>
+<li><a class="reference internal" href="orbs_module.html#orbs.orbs.Orbs.__init__" title="orbs.orbs.Orbs.__init__"><tt class="xref py py-class docutils literal"><span class="pre">orbs.orbs.Orbs.__init__</span></tt></a> modified. It is now possible to
 change configuration options for a particular reduction using the
 option file. Keywords are the same.</li>
 <li><a class="reference internal" href="process_module.html#process.RawData.correct_frame" title="process.RawData.correct_frame"><tt class="xref py py-meth docutils literal"><span class="pre">correct_frame()</span></tt></a> modified to avoid strange
@@ -734,8 +742,8 @@ updated to use this better information and filter bad fitted stars.</p>
 <h3>3.6.0<a class="headerlink" href="#id7" title="Permalink to this headline">¶</a></h3>
 <div class="section" id="flux-calibration">
 <h4>Flux Calibration<a class="headerlink" href="#flux-calibration" title="Permalink to this headline">¶</a></h4>
-<p>Flux calibration has been added. <tt class="xref py py-meth docutils literal"><span class="pre">calibrate_spectrum()</span></tt>
-replace the old function <tt class="xref py py-meth docutils literal"><span class="pre">correct_spectrum()</span></tt>. The path
+<p>Flux calibration has been added. <a class="reference internal" href="orbs_module.html#orbs.orbs.Orbs.calibrate_spectrum" title="orbs.orbs.Orbs.calibrate_spectrum"><tt class="xref py py-meth docutils literal"><span class="pre">orbs.orbs.Orbs.calibrate_spectrum()</span></tt></a>
+replace the old function <tt class="xref py py-meth docutils literal"><span class="pre">orbs.orbs.Orbs.correct_spectrum()</span></tt>. The path
 to a standard spectrum reduced by ORBS must be given (STDPATH). This
 can be achieved by reducing a standard cube using the option
 &#8211;standard. The standard name must also be given in the option file
@@ -915,7 +923,7 @@ better results and use the residual map on phase fit.</li>
 <div class="section" id="miscellaneous">
 <h4>Miscellaneous<a class="headerlink" href="#miscellaneous" title="Permalink to this headline">¶</a></h4>
 <ul class="simple">
-<li><tt class="xref py py-meth docutils literal"><span class="pre">__init__()</span></tt> simplified by the use of
+<li><a class="reference internal" href="orbs_module.html#orbs.orbs.Orbs.__init__" title="orbs.orbs.Orbs.__init__"><tt class="xref py py-meth docutils literal"><span class="pre">orbs.orbs.Orbs.__init__()</span></tt></a> simplified by the use of
 <tt class="xref py py-class docutils literal"><span class="pre">orb.core.OptionFile</span></tt> previously used only by
 <tt class="xref py py-class docutils literal"><span class="pre">orcs.orcs.SpectralCube()</span></tt></li>
 <li>doc updated</li>
@@ -963,6 +971,39 @@ line in the option file:</p>
 </ul>
 </div>
 </div>
+<div class="section" id="id16">
+<h3>3.7.3<a class="headerlink" href="#id16" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="sitelle-data">
+<h4>SITELLE data<a class="headerlink" href="#sitelle-data" title="Permalink to this headline">¶</a></h4>
+<div class="section" id="sitelle-image-mode">
+<h5>Sitelle image mode<a class="headerlink" href="#sitelle-image-mode" title="Permalink to this headline">¶</a></h5>
+<p>Using the SITELLE&#8217;s configuration file config.sitelle.orb and thus
+having the keyword INSTRUMENT_NAME set to SITELLE enables the sitelle
+mode. The only modification which has to be done was to pass two new
+options to <tt class="xref py py-meth docutils literal"><span class="pre">orb.Tools._create_list_from_dir()</span></tt>: image_mode and
+chip_index (see ORB documentation). This is done during ORBS init:
+<a class="reference internal" href="orbs_module.html#orbs.orbs.Orbs.__init__" title="orbs.orbs.Orbs.__init__"><tt class="xref py py-meth docutils literal"><span class="pre">orbs.orbs.Orbs.__init__()</span></tt></a>.</p>
+</div>
+<div class="section" id="prebinning">
+<h5>Prebinning<a class="headerlink" href="#prebinning" title="Permalink to this headline">¶</a></h5>
+<p>Used for faster computation of big data set. It
+can also be useful if the user simply wants binned data. At the user
+level only one option must be passed to the option file:</p>
+<div class="highlight-python"><pre>PREBINNING 2 # Data is prebinned by 2</pre>
+</div>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p class="last">The real binning of the original data must be kept to the
+same values. The user must no modify the the values of BINCAM1 and
+BINCAM2.</p>
+</div>
+<p>Modification of <a class="reference internal" href="orbs_module.html#orbs.orbs.Orbs.__init__" title="orbs.orbs.Orbs.__init__"><tt class="xref py py-meth docutils literal"><span class="pre">orbs.orbs.Orbs.__init__()</span></tt></a> which gives the
+prebinning option to <tt class="xref py py-meth docutils literal"><span class="pre">orb.Tools._create_list_from_dir()</span></tt>. The
+final data binning is also handled at the init level : the real
+binning of each camera is multiplied by the prebinning size.</p>
+</div>
+</div>
+</div>
 </div>
 </div>
 
@@ -981,7 +1022,7 @@ line in the option file:</p>
         <li class="right" >
           <a href="process_module.html" title="Process module"
              >previous</a> |</li>
-        <li><a href="index.html">Orbs 3.7.2.3 documentation</a> &raquo;</li> 
+        <li><a href="index.html">Orbs 3.7.3 documentation</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
