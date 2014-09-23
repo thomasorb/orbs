@@ -787,3 +787,34 @@ Modification of :py:meth:`orbs.orbs.Orbs.__init__` which gives the
 prebinning option to :py:meth:`orb.Tools._create_list_from_dir`. The
 final data binning is also handled at the init level : the real
 binning of each camera is multiplied by the prebinning size.
+
+3.7.4
+=====
+
+Enhanced flux calibration
+-------------------------
+
+* Flux calibration is now much more precise because the whole spectrum
+  are no more rescaled only from deep frames or energy map but on the
+  whole conservation of the energy from the input to the output. This
+  relies on the use of both deep frame and energy maps and assert,
+  just before the calibration that E(I) / M(I) = E(S) / M(S) if we
+  consider that E() is the energy map and M() is the deep frame of the
+  interferogram cube I or the spectral cube S. Both
+  :py:meth:`~process.InterferogramMerger.extract_stars_spectrum` and
+  :py:meth:`~process.Spectrum.calibrate` have been modified to take
+  that into account.
+
+* Bug fix in :py:meth:`~process.InterferogramMerger.extract_stars_spectrum`.
+
+Astropy
+-------
+
+Astropy (http://www.astropy.org/) is definitly needed, pyfits and
+pywcs standalone modules are not needed anymore by ORBS (but they
+still can be used by other modules ;) even modules imported by ORBS so
+becarefull before removing them)
+
+* PYFITS: now imported from astropy.io.fits
+* PYWCS: now imported from astropy.wcs
+

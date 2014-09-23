@@ -36,11 +36,22 @@ class TcsReader(Tools):
 
     airmass = list()
     
-    def read_tcs_file(self, tcs_path):
+    def read_tcs_file(self, tcs_path, show=False):
         with self.open_file(tcs_path, 'r') as f:
             for iline in f:
                 if "Masse d'air" in iline:
                     self.airmass.append(float(iline.split()[-1]))
+
+        self.write_fits('airmass.log.fits', np.array(self.airmass),
+                        overwrite=True)
+
+        if show:
+            import pylab as pl
+            pl.figure(figsize=(15,7))
+            pl.plot(self.airmass)
+            pl.xlim((0, len(self.airmass)))
+            pl.ylim((2, 1))
+            pl.show()
 
         self._print_msg('[Airmass] min: {}, max: {}, mean:{}'.format(
             np.min(self.airmass), np.max(self.airmass), np.mean(self.airmass)))
@@ -54,19 +65,23 @@ def usage():
 def main():
 
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "h",
+        opts, args = getopt.getopt(sys.argv[1:], "hs",
                                    ["help"])
     except getopt.GetoptError, err:
         print str(err)
         usage()
         sys.exit(2)
 
- 
+
+    show = False
+    
     # Check options    
     for opt, arg in opts:
         if opt in ("-h", "--help"):
             usage()
             quit()
+        if opt in ("-s"):
+            show = True
        
     if len(args) != 1:
         usage()
@@ -75,7 +90,7 @@ def main():
     # Check folder and update header
     
     tcsreader = TcsReader()
-    tcsreader.read_tcs_file(args[0])
+    tcsreader.read_tcs_file(args[0], show=show)
     
 
 if __name__ == "__main__":

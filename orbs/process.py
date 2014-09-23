@@ -33,21 +33,16 @@ __version__ = version.__version__
 from orb.core import Tools, Cube, ProgressBar, TextColor
 import orb.utils
 import orb.astrometry
-from orb.astrometry import Astrometry
+import orb.constants
+from orb.astrometry import Astrometry, Gaussian
 
 import os
 import numpy as np
 import math
 from scipy import optimize, interpolate
 
-try:
-    import astropy.io.fits as pyfits
-except:
-    import pyfits
-    import warnings
-    warnings.warn('PyFITS is now a part of Astropy (http://www.astropy.org/). PyFITS support as a standalone module will be stopped soon. It is better to install Astropy. You can still keep PyFITS for other applications.', FutureWarning)
-    
-import pywcs
+import astropy.io.fits as pyfits
+import astropy.wcs as pywcs
 
 
 ##################################################
@@ -930,7 +925,7 @@ class RawData(Cube):
     def create_hot_pixel_map(self, dark_image, bias_image):
         """Create a hot pixel map from a cube of dark frame
 
-        :param bias_image: Master bias frame
+        :param bias_image: Master bias frame (can be set to None)
         :param dark_image: Master dark frame
         
         .. note:: A hot pixel map is a mask like frame (1 for a hot
@@ -940,7 +935,8 @@ class RawData(Cube):
 
         self._print_msg("Creating hot pixel map")
 
-        dark_image = np.copy(dark_image) - np.copy(bias_image)
+        if bias_image is not None:
+            dark_image = np.copy(dark_image) - np.copy(bias_image)
         hp_map = np.zeros_like(dark_image).astype(np.uint8)
         dark_mean = np.mean(dark_image)
         dark_std = np.std(dark_image)
@@ -1587,12 +1583,11 @@ class RawData(Cube):
         # load master dark (bias is substracted and master dark is
         # divided by the dark integration time)
         if dark_path is not None:
-            if optimize_dark_coeff and master_bias is None:
-                self._print_warning('No optimization possible without the master bias')
             master_dark, master_dark_temp = self._load_dark(
                 dark_path, return_temperature=True, combine=combine,
                 reject=reject)
             master_dark_uncorrected = np.copy(master_dark)
+            
             if optimize_dark_coeff:
                 # remove bias
                 if master_dark_temp is None and master_bias is not None:
@@ -1604,6 +1599,7 @@ class RawData(Cube):
                         master_bias_temp, master_bias_level,
                         master_dark_temp, bias_calibration_params)
                     master_dark -= master_bias * master_bias_coeff
+                
             elif master_bias is not None:
                 master_dark -= master_bias
 
@@ -1640,7 +1636,7 @@ class RawData(Cube):
         # create hot pixel map
         hp_map_path = None
         if optimize_dark_coeff:
-            if master_dark is not None and master_bias is not None:
+            if master_dark is not None:
                 self.create_hot_pixel_map(master_dark_uncorrected, master_bias)
                 hp_map_path=self._get_hp_map_path()
             else:
@@ -2042,13 +2038,13 @@ class Interferogram(Cube):
         return (self._get_basic_header('Transmission vector')
                 + self._project_header)
     
-    def _get_added_light_vector_path(self):
-        """Return the path to the added light vector"""
-        return self._data_path_hdr + "added_light_vector.fits"
+    def _get_stray_light_vector_path(self):
+        """Return the path to the stray light vector"""
+        return self._data_path_hdr + "stray_light_vector.fits"
 
-    def _get_added_light_vector_header(self):
-        """Return the header of the added light vector"""
-        return (self._get_basic_header('Added light vector')
+    def _get_stray_light_vector_header(self):
+        """Return the header of the stray light vector"""
+        return (self._get_basic_header('stray light vector')
                 + self._project_header)
 
     def _get_extracted_star_spectra_path(self):
@@ -2280,7 +2276,7 @@ class Interferogram(Cube):
                                   bad_frames_vector=[],
                                   aperture_photometry=True):
         """Create a sky transmission vector computed from star
-        photometry and an added light vector computed from the median
+        photometry and an stray light vector computed from the median
         of the frames.
 
         :param star_list_path: Path to a list of star positions.
@@ -2304,7 +2300,7 @@ class Interferogram(Cube):
         .. note:: The sky transmission vector gives the absorption
           caused by clouds or airmass variation.
 
-        .. note:: The added light vector gives the counts added
+        .. note:: The stray light vector gives the counts added
           homogeneously to each frame caused by a cloud reflecting
           light coming from the ground, the moon or the sun.
 
@@ -2335,12 +2331,12 @@ class Interferogram(Cube):
             self._print_msg('Star flux evaluated from fit parameters')
             photometry_type = 'flux'
 
-        ## Computing added light vector
-        self._print_msg("Computing added light vector")
+        ## Computing stray light vector
+        self._print_msg("Computing stray light vector")
         # Multiprocessing server init
         job_server, ncpus = self._init_pp_server() 
         
-        added_light_vector = np.empty(self.dimz, dtype=float)
+        stray_light_vector = np.empty(self.dimz, dtype=float)
         progress = ProgressBar(self.dimz)
         for ik in range(0, self.dimz, ncpus):
             # No more jobs than frames to compute
@@ -2354,7 +2350,7 @@ class Interferogram(Cube):
                     for ijob in range(ncpus)]
 
             for ijob, job in jobs:
-                added_light_vector[ik+ijob] = job()
+                stray_light_vector[ik+ijob] = job()
                 
             progress.update(ik, info='Computing frame %d'%ik)
             
@@ -2394,12 +2390,12 @@ class Interferogram(Cube):
                              if (bad_frame < step_number and bad_frame >= 0)]
         
         transmission_vector[bad_frames_vector] = np.nan
-        added_light_vector[bad_frames_vector] = np.nan
+        stray_light_vector[bad_frames_vector] = np.nan
         
         transmission_vector = orb.utils.correct_vector(
             transmission_vector, bad_value=0., polyfit=True, deg=3)
-        added_light_vector = orb.utils.correct_vector(
-            added_light_vector, bad_value=0., polyfit=True, deg=3)
+        stray_light_vector = orb.utils.correct_vector(
+            stray_light_vector, bad_value=0., polyfit=True, deg=3)
         
         # correct for ZPD
         zmedian = self.get_zmedian(nozero=True)
@@ -2416,16 +2412,16 @@ class Interferogram(Cube):
         transmission_vector[zpd_min:zpd_max] = 0.
         transmission_vector = orb.utils.correct_vector(
             transmission_vector, bad_value=0., polyfit=True, deg=3)
-        added_light_vector[zpd_min:zpd_max] = 0.
-        added_light_vector = orb.utils.correct_vector(
-            added_light_vector, bad_value=0., polyfit=True, deg=3)
+        stray_light_vector[zpd_min:zpd_max] = 0.
+        stray_light_vector = orb.utils.correct_vector(
+            stray_light_vector, bad_value=0., polyfit=True, deg=3)
         
         
         # smooth
         if SMOOTH_DEG > 0:
             transmission_vector = orb.utils.smooth(transmission_vector,
                                                    deg=SMOOTH_DEG)
-            added_light_vector = orb.utils.smooth(added_light_vector,
+            stray_light_vector = orb.utils.smooth(stray_light_vector,
                                                   deg=SMOOTH_DEG)
             
         # normalization of the transmission vector
@@ -2440,25 +2436,25 @@ class Interferogram(Cube):
             self.indexer['transmission_vector'] = (
                 self._get_transmission_vector_path())
         
-        self.write_fits(self._get_added_light_vector_path(),
-                        added_light_vector,
-                        fits_header= self._get_added_light_vector_header(),
+        self.write_fits(self._get_stray_light_vector_path(),
+                        stray_light_vector,
+                        fits_header= self._get_stray_light_vector_header(),
                         overwrite=self.overwrite)
         if self.indexer is not None:
-            self.indexer['added_light_vector'] = (
-                self._get_added_light_vector_path())
+            self.indexer['stray_light_vector'] = (
+                self._get_stray_light_vector_path())
 
     def correct_interferogram(self, transmission_vector_path,
-                              added_light_vector_path):
+                              stray_light_vector_path):
         """Correct an interferogram cube for for variations
-        of sky transission and added light.
+        of sky transission and stray light.
 
         :param sky_transmission_vector_path: Path to the transmission
           vector.All the interferograms of the cube are divided by
           this vector. The vector must have the same size as the 3rd
           axis of the cube (the OPD axis).
 
-        :param sky_added_light_vector_path: Path to the added light
+        :param stray_light_vector_path: Path to the stray light
           vector. This vector is substracted from the interferograms
           of all the cube. The vector must have the same size as the
           3rd axis of the cube (the OPD axis).
@@ -2466,23 +2462,32 @@ class Interferogram(Cube):
         .. note:: The sky transmission vector gives the absorption
           caused by clouds or airmass variation.
 
-        .. note:: The added light vector gives the counts added
+        .. note:: The stray light vector gives the counts added
           homogeneously to each frame caused by a cloud reflecting
           light coming from the ground, the moon or the sun.
 
         .. seealso:: :py:meth:`process.Interferogram.create_correction_vectors`
         """
         
-        def _correct_frame(frame, transmission_coeff, added_light_coeff):
+        def _correct_frame(frame, transmission_coeff, stray_light_coeff):
             if not np.all(frame==0.):
-                return (frame - added_light_coeff) / transmission_coeff
+                return (frame - stray_light_coeff) / transmission_coeff
             else:
                 return frame
 
         self._print_msg('Correcting interferogram', color=True)
 
+        # Avoid transmission correction (useful for testing purpose)
+        NO_TRANSMISSION_CORRECTION = bool(int(
+            self._get_tuning_parameter('NO_TRANSMISSION_CORRECTION', 0)))
+        if NO_TRANSMISSION_CORRECTION:
+            self._print_warning('No transmission correction')
+            
         transmission_vector = self.read_fits(transmission_vector_path)
-        added_light_vector = self.read_fits(added_light_vector_path)
+        if NO_TRANSMISSION_CORRECTION:
+            transmission_vector.fill(1.)
+            
+        stray_light_vector = self.read_fits(stray_light_vector_path)
         
         # Multiprocessing server init
         job_server, ncpus = self._init_pp_server() 
@@ -2503,7 +2508,7 @@ class Interferogram(Cube):
                 _correct_frame,
                 args=(np.array(self.get_data_frame(ik+ijob)),
                       transmission_vector[ik+ijob],
-                      added_light_vector[ik+ijob]),
+                      stray_light_vector[ik+ijob]),
                 modules=('import numpy as np',)))
                     for ijob in range(ncpus)]
 
@@ -3001,7 +3006,7 @@ class Interferogram(Cube):
 
     def extract_stars_spectrum(self, star_list_path, fwhm_arc, fov,
                                transmission_vector_path,
-                               added_light_vector_path,
+                               stray_light_vector_path,
                                calibration_laser_map_path, step,
                                order, nm_laser, filter_file_path,
                                step_nb, window_type=None,
@@ -3033,7 +3038,7 @@ class Interferogram(Cube):
           transmission. Must have the same size as the interferograms
           of the cube.
 
-        :param added_light_vector_path: added light vector. Must have
+        :param stray_light_vector_path: stray light vector. Must have
           the same size as the interferograms of the cube.
 
         :param calibration_laser_map_path: Path to the calibration
@@ -3136,13 +3141,20 @@ class Interferogram(Cube):
             
         transmission_vector = np.squeeze(
             self.read_fits(transmission_vector_path))
-        added_light_vector = np.squeeze(
-            self.read_fits(added_light_vector_path))
+        stray_light_vector = np.squeeze(
+            self.read_fits(stray_light_vector_path))
+
+        # compute equivalent surface to substract stray light
+        # correctly from the integrated flux
+        surf_eq = (4. * math.pi *  orb.utils.robust_median(
+            (astrom_A.fit_results[:,:,'fwhm']
+             / orb.constants.FWHM_COEFF)**2.))
         
         star_interf_list = list()
         for istar in range(astrom.star_list.shape[0]):
             star_interf_list.append([
-                (photom[istar,:] / transmission_vector) - added_light_vector,
+                (photom[istar,:] / transmission_vector)
+                - stray_light_vector * surf_eq,
                 star_list[istar]])
 
         ## COMPUTING STARS SPECTRUM
@@ -3156,7 +3168,8 @@ class Interferogram(Cube):
             
         ## Searching ZPD shift 
         zpd_shift = orb.utils.find_zpd(self.get_zmedian(nozero=True),
-                                       return_zpd_shift=True, step_number=step_nb)
+                                       return_zpd_shift=True,
+                                       step_number=step_nb)
         
         
         self._print_msg('Auto-phase: phase will be computed for each star independantly (No use of external phase)')
@@ -3164,7 +3177,6 @@ class Interferogram(Cube):
         ## Spectrum computation
 
         # Print some information about the spectrum transformation
-        
         self._print_msg("Apodization function: %s"%window_type)
         self._print_msg("Zeros smoothing degree: %d"%smoothing_deg)
         self._print_msg("Folding order: %f"%order)
@@ -3293,6 +3305,7 @@ class Interferogram(Cube):
                 self._get_extracted_star_spectra_path())
 
         return star_spectrum_list
+    
     
 ##################################################
 #### CLASS InterferogramMerger ###################
@@ -3472,17 +3485,17 @@ class InterferogramMerger(Tools):
                 + self._get_basic_frame_header(
                     self.cube_A.dimx, self.cube_A.dimy))
 
-    def _get_added_light_vector_path(self):
-        """Return the path to the added light vector.
+    def _get_stray_light_vector_path(self):
+        """Return the path to the stray light vector.
 
         The external illuminaton vector records lights coming from
         reflections over clouds, the moon or the sun.
         """
-        return self._data_path_hdr + "added_light_vector.fits"
+        return self._data_path_hdr + "stray_light_vector.fits"
 
-    def _get_added_light_vector_header(self):
-        """Return the header of the added light vector."""
-        return (self._get_basic_header('Added light vector')
+    def _get_stray_light_vector_header(self):
+        """Return the header of the stray light vector."""
+        return (self._get_basic_header('stray light vector')
                 + self._project_header)
    
     def _get_ext_illumination_vector_path(self):
@@ -3501,17 +3514,30 @@ class InterferogramMerger(Tools):
         return (self._get_basic_header('External illumination vector')
                 + self._project_header)
     
-    def _get_transmission_vector_path(self):
+    def _get_transmission_vector_path(self, err=False):
         """Return the path to the transmission vector.
 
-        The transmission vector is the vector used to correct
-        interferograms for the variations of the sky transmission."""
-        return self._data_path_hdr + "transmission_vector.fits"
+        Transmission vector is the vector used to correct
+        interferograms for the variations of the sky transmission.
 
-    def _get_transmission_vector_header(self):
-        """Return the header of the transmission vector."""
-        return (self._get_basic_header('Transmission vector')
-                + self._project_header)
+        :param err: (Optional) True if error vector (default False).
+        """
+        if not err:
+            return self._data_path_hdr + "transmission_vector.fits"
+        else:
+            return self._data_path_hdr + "transmission_vector_err.fits"
+
+    def _get_transmission_vector_header(self, err=False):
+        """Return the header of the transmission vector.
+
+        :param err: (Optional) True if error vector (default False).
+        """
+        if not err:
+            return (self._get_basic_header('Transmission vector')
+                    + self._project_header)
+        else:
+            return (self._get_basic_header('Transmission vector error')
+                    + self._project_header)
 
 
     def _get_calibration_stars_path(self):
@@ -3757,7 +3783,7 @@ class InterferogramMerger(Tools):
             astrom.reset_star_list(star_list_B)
             star_list_B_fit = astrom.fit_stars_in_frame(
                 0, fix_height=False, fix_fwhm=fix_fwhm,
-                no_aperture_photometry=True,
+                no_aperture_photometry=True, estimate_local_noise=True,
                 precise_guess=precise_guess, local_background=True,
                 multi_fit=True, enable_rotation=True)
  
@@ -3792,9 +3818,10 @@ class InterferogramMerger(Tools):
                 dist_list.append(dist)
                 
             mean_dist = np.mean(np.array(dist_list))
+            
             if progress is not None:
                 progress.update(
-                    0, "fitted stars : %d%%, mean distance  : %.2f"%(
+                    0, "fitted stars : %d%%, mean distance  : %.4f"%(
                         float(fitted_stars)/float(star_list_A.shape[0])*100.,
                         mean_dist))
             
@@ -3838,8 +3865,8 @@ class InterferogramMerger(Tools):
         self._print_msg("Computing alignment parameters")
 
         # defining FOV of the camera B
-        ccd_size_A = self.bin_A * self.cube_A.dimx * self.pix_size_A
-        ccd_size_B = self.bin_B * self.cube_B.dimx * self.pix_size_B
+        ccd_size_A = self.bin_A * self.cube_A.dimx * self.pix_size_A #um
+        ccd_size_B = self.bin_B * self.cube_B.dimx * self.pix_size_B #um
         scale = fov_A / ccd_size_A # absolute scale [arcsec/um]
         fov_B = scale * ccd_size_B
         
@@ -3906,6 +3933,7 @@ class InterferogramMerger(Tools):
                 guess_list.append(np.array([init_dx+x_range[idx],
                                             init_dy+y_range[idy],
                                             init_angle]))
+               
         # Init of the multiprocessing server
         job_server, ncpus = self._init_pp_server()
         ncpus_max = ncpus
@@ -3941,11 +3969,11 @@ class InterferogramMerger(Tools):
         self._close_pp_server(job_server)
         progress.end()
 
-
         # Guess matrix is smoothed and its minimum value is taken as
         # the best estimate
         smooth_deg = int(STEP_DEG)
         guess_matrix = orb.utils.low_pass_image_filter(guess_matrix, smooth_deg)
+        
         # Save guess matrix
         self.write_fits(self._get_guess_matrix_path(),
                         guess_matrix,
@@ -3954,6 +3982,7 @@ class InterferogramMerger(Tools):
 
         guess_matrix[np.nonzero(np.isnan(guess_matrix))] = np.median(
             guess_matrix)
+        
         rough_dx, rough_dy =  np.unravel_index(
             np.argmin(guess_matrix), guess_matrix.shape)
         
@@ -3976,7 +4005,7 @@ class InterferogramMerger(Tools):
                                        self.rc,
                                        self.zoom_factor,
                                        progress, False, False, True),
-                                 ftol=1e-1, xtol=1e-1, disp=False,
+                                 ftol=1e-2, xtol=1e-2, disp=False,
                                  full_output=True))
         progress.end()
         
@@ -4015,53 +4044,59 @@ class InterferogramMerger(Tools):
             self._print_warning("Poor ratio of fitted stars in both cubes (%d%%) for the first optimization pass. Check alignment parameters."%int(fitted_star_nb / float(astrom.star_list.shape[0]) * 100.))
                 
         ## SECOND OPTIMIZATION PASS (dx, dy,dr, da, db)
+        self._print_msg("Second optimization pass")
         if full_precision:
-            self._print_msg("Second optimization pass")
             guess = [self.dx, self.dy, self.dr, 0.,0.]
-            progress = ProgressBar(0)
-            fmin_output = (
-                optimize.fmin_powell(_match_stars_in_frame_B, guess, 
-                                     args=(astrom, mean_params_A,
-                                           self.rc,
-                                           self.zoom_factor,
-                                           progress, False, True, False),
-                                     ftol=1e-3, xtol=1e-3, disp=False,
-                                     full_output=True))
-            progress.end()
+        else:
+            guess = [self.dx, self.dy, self.dr]
+        progress = ProgressBar(0)
+        fmin_output = (
+            optimize.fmin_powell(_match_stars_in_frame_B, guess, 
+                                 args=(astrom, mean_params_A,
+                                       self.rc,
+                                       self.zoom_factor,
+                                       progress, False, True, True),
+                                 ftol=1e-3, xtol=1e-3, disp=False,
+                                 full_output=True))
+        progress.end()
 
+        if full_precision:
             [self.dx, self.dy, self.dr, self.da, self.db] = fmin_output[0]
-            self._print_msg("Second optimization pass: alignment parameters:")
-            self.print_alignment_coeffs()
+        else:
+            [self.dx, self.dy, self.dr] = fmin_output[0]
+            
+        self._print_msg("Second optimization pass: alignment parameters:")
+        self.print_alignment_coeffs()
 
-            # CHECK minimum of the optimisation
-            min_dist_found = fmin_output[1]
-            if min_dist_found < WARNING_DIST:
-                self._print_msg("Mean position difference: %f pixels"%min_dist_found)
-            elif min_dist_found < ERROR_DIST:
-                self._print_warning("Mean position difference is bad (%f pixels), please check alignment parameters."%min_dist_found)
-            else:
-                self._print_error("Mean position difference is too bad (%f pixels), please check alignment parameters."%min_dist_found)
+        # CHECK minimum of the optimisation
+        min_dist_found = fmin_output[1]
+        if min_dist_found < WARNING_DIST:
+            self._print_msg("Mean position difference: %f pixels"%min_dist_found)
+        elif min_dist_found < ERROR_DIST:
+            self._print_warning("Mean position difference is bad (%f pixels), please check alignment parameters."%min_dist_found)
+        else:
+            self._print_error("Mean position difference is too bad (%f pixels), please check alignment parameters."%min_dist_found)
 
-            # CHECK second optimization pass :
-            # If less than 50 % (ERROR_RATIO) of the stars can be fitted
-            # with the found alignement parameters the parameters are
-            # certainly wrong and the program stops on an error. If less
-            # than 80 % (WARNING_RATIO) but more than 50 % of the stars can
-            # be fitted only a warning is printed.
+        # CHECK second optimization pass :
+        # If less than 50 % (ERROR_RATIO) of the stars can be fitted
+        # with the found alignement parameters the parameters are
+        # certainly wrong and the program stops on an error. If less
+        # than 80 % (WARNING_RATIO) but more than 50 % of the stars can
+        # be fitted only a warning is printed.
 
-            fitted_star_nb = _match_stars_in_frame_B(
-                np.array([self.dx, self.dy, self.dr, self.da, self.db]),
-                astrom, mean_params_A, 
-                self.rc, self.zoom_factor,
-                None, True, True, True)
+        fitted_star_nb = _match_stars_in_frame_B(
+            np.array([self.dx, self.dy, self.dr, self.da, self.db]),
+            astrom, mean_params_A, 
+            self.rc, self.zoom_factor,
+            None, True, True, True)
 
-            if ((fitted_star_nb / float(astrom.star_list.shape[0]))
-                < ERROR_RATIO):
-                self._print_error("Not enough fitted stars in both cubes (%d%%) for the second optimization pass. Alignment parameters are certainly wrong."%int(fitted_star_nb / float(astrom.star_list.shape[0]) * 100.))
+        if ((fitted_star_nb / float(astrom.star_list.shape[0]))
+            < ERROR_RATIO):
+            self._print_error("Not enough fitted stars in both cubes (%d%%) for the second optimization pass. Alignment parameters are certainly wrong."%int(fitted_star_nb / float(astrom.star_list.shape[0]) * 100.))
 
-            elif ((fitted_star_nb / float(astrom.star_list.shape[0]))
-                < WARNING_RATIO):
-                self._print_warning("Poor ratio of fitted stars in both cubes (%d%%) for the second optimization pass. Check alignment parameters."%int(fitted_star_nb / float(astrom.star_list.shape[0]) * 100.))
+        elif ((fitted_star_nb / float(astrom.star_list.shape[0]))
+            < WARNING_RATIO):
+            self._print_warning("Poor ratio of fitted stars in both cubes (%d%%) for the second optimization pass. Check alignment parameters."%int(fitted_star_nb / float(astrom.star_list.shape[0]) * 100.))
 
         self._print_msg(
             "Final number of fitted stars in both cubes : %d %%"%int(
@@ -4455,9 +4490,9 @@ class InterferogramMerger(Tools):
                  -Frame_{n,2}}{transmission vector[n]}
         """
 
-        def _get_added_light_coeff(frameA, frameB, transmission_factor,
+        def _get_stray_light_coeff(frameA, frameB, transmission_factor,
                                    modulation_ratio, ext_level):
-            """Return the added light coefficient. This light comes
+            """Return the stray light coefficient. This light comes
             from reflections over clouds, the sun or the moon.
             
             :param frameA: Frame of the camera 1
@@ -4471,22 +4506,24 @@ class InterferogramMerger(Tools):
               the two cameras. It depends on the gain and the quantum
               efficiency of the CCD.
 
-            :param ext_level: Level of added light (external
+            :param ext_level: Level of stray light (external
               illumination) in the camera B (if level is negative,
-              the added light is thus in the camera A)
+              the stray light is thus in the camera A)
             """
+            ## This must be done by adding frames instead of doing all this
+            ## which has exactly the same effect
             if np.any(frameB) and np.any(frameA):
                 result_frame = ((((frameB / modulation_ratio) - frameA)
                                  / transmission_factor) - ext_level)
-                added_light_coeff = orb.utils.robust_mean(
+                stray_light_coeff = orb.utils.robust_mean(
                     orb.utils.sigmacut(frameB - (result_frame / 2.))) / modulation_ratio
             else:
-                added_light_coeff = 0.
-            return added_light_coeff
+                stray_light_coeff = 0.
+            return stray_light_coeff
             
         def _create_merged_frame(frameA, frameB, transmission_factor,
                                  modulation_ratio, ext_level,
-                                 added_light_coeff, add_frameB, frameA_mask,
+                                 stray_light_coeff, add_frameB, frameA_mask,
                                  frameB_mask):
             """Create the merged frame given the frames of both cubes
             and the correction factor.
@@ -4504,9 +4541,9 @@ class InterferogramMerger(Tools):
 
             :param ext_level: Level of light coming from an external
               source in the camera B but not in the camera A (if level
-              is negative, the added light is thus in the camera A)
+              is negative, the stray light is thus in the camera A)
               
-            :param added_light_coeff: Level of added light coming from
+            :param stray_light_coeff: Level of stray light coming from
               the reflection over clouds, the sun or the moon.
                
             :param add_frameB: If False the frame B is not added. The
@@ -4522,18 +4559,26 @@ class InterferogramMerger(Tools):
             if add_frameB:
                 result_frame = ((((frameB / modulation_ratio) - frameA)
                                  / transmission_factor) - ext_level)
+                
+                flux_frame = ((((frameB / modulation_ratio) + frameA)
+                                 / transmission_factor) - ext_level)
             else:
                 if np.any(frameA):
-                    result_frame = ((frameA - added_light_coeff)
+                    result_frame = ((frameA - stray_light_coeff)
                                     / transmission_factor) + ext_level
                 else:
                     result_frame = frameA
+                flux_frame = result_frame
 
             result_frame_mask = frameA_mask + frameB_mask
             result_frame[np.nonzero(frameA == 0.)] = 0.
             result_frame[np.nonzero(frameB == 0.)] = 0.
+            flux_frame[np.nonzero(frameA == 0.)] = 0.
+            flux_frame[np.nonzero(frameB == 0.)] = 0.
+            flux_frame[np.nonzero(np.isnan(flux_frame))] = 0.
+            flux_frame[np.nonzero(np.isinf(flux_frame))] = 0.
             
-            return result_frame, result_frame_mask
+            return result_frame, result_frame_mask, flux_frame
 
         def _create_merged_stars_frame(dimx, dimy, photom_A, photom_B,
                                        star_list, transmission_factor,
@@ -4562,9 +4607,9 @@ class InterferogramMerger(Tools):
               the two cameras. It depends on the gain and the quantum
               efficiency of the CCD.
               
-            :param ext_level: Level of added light (external
+            :param ext_level: Level of stray light (external
               illumination) in the camera B (if the level is negative,
-              the added light is thus in the camera A)
+              the stray light is thus in the camera A)
             """
             result_frame = np.zeros((dimx, dimy), dtype=float)
             
@@ -4661,6 +4706,12 @@ class InterferogramMerger(Tools):
         EXTENDED_EMISSION = bool(int(
             self._get_tuning_parameter('EXTENDED_EMISSION', 0)))
 
+        # Avoid transmission correction (useful for testing purpose)
+        NO_TRANSMISSION_CORRECTION = bool(int(
+            self._get_tuning_parameter('NO_TRANSMISSION_CORRECTION', 0)))
+        if NO_TRANSMISSION_CORRECTION:
+            self._print_warning('No transmission correction')
+
 
         local_background = True
         
@@ -4718,6 +4769,14 @@ class InterferogramMerger(Tools):
         fwhm_arc_A = orb.utils.robust_mean(mean_params_A[:,'fwhm_arc'])
         fwhm_arc_B = orb.utils.robust_mean(mean_params_B[:,'fwhm_arc'])
 
+        self._print_msg(
+            'mean FWHM of the stars in camera 1: {} arc-seconds'.format(
+                fwhm_arc_A))
+        self._print_msg(
+            'mean FWHM of the stars in camera 2: {} arc-seconds'.format(
+                fwhm_arc_B))
+        
+
         ## COMPUTING STARS PHOTOMETRY #############################
         self._print_msg("Computing stars photometry")
         astrom_A = Astrometry(self.cube_A, fwhm_arc_A, fov,
@@ -4770,6 +4829,7 @@ class InterferogramMerger(Tools):
         
         self._print_msg('ZPD index: %d'%zpd_index)
 
+
         ## MODULATION RATIO #######################################
         # Calculating the mean modulation ratio (to correct for
         # difference of camera gain and transmission of the optical
@@ -4798,9 +4858,19 @@ class InterferogramMerger(Tools):
                 args=(photom_A_nozpd, photom_B_nozpd, ext_zpd_min, ext_zpd_max),
                 ftol=1e-3, xtol=1e-3, disp=False)
 
+
+            flux_error = np.nanmean(
+                photom_A * modulation_ratio - photom_B, axis=1)
+            flux_sum = np.nanmean(
+                photom_A * modulation_ratio + photom_B, axis=1)
+         
+            flux_error_ratio = orb.utils.robust_mean(
+                np.abs(flux_error/flux_sum),
+                weights=flux_sum/np.nansum(flux_sum))
+  
             self._print_msg(
-                "Optimized modulation ratio: %f"%(
-                    modulation_ratio))
+                "Optimized modulation ratio: %f (std: %f)"%(
+                    modulation_ratio, modulation_ratio * flux_error_ratio))
         
         elif FIXED_MODULATION_RATIO is None:
             # If the optimization does not work we try a more robust
@@ -4861,40 +4931,43 @@ class InterferogramMerger(Tools):
             no_fit=True)
         astrom_merged.load_fit_results(astrom_merged._get_fit_results_path())
         photom_merged = astrom_merged.fit_results[:,:,photometry_type]
-            
+        photom_merged_err = astrom_merged.fit_results[
+            :,:,photometry_type + '_err']
+
         ## TRANSMISSION VECTOR ####################################
         self._print_msg("Computing transmission vector")
 
         transmission_vector_list = list()
         red_chisq_list = list()
-        flux_err_list = list()
+        trans_err_list = list()
         
         # normalization of the merged photometry vector
         for istar in range(astrom_A.star_list.shape[0]):
             if not np.all(np.isnan(photom_merged)):
                 trans = np.copy(photom_merged[istar,:])
-                trans /= orb.utils.robust_mean(orb.utils.sigmacut(trans))
+                trans_err = np.copy(photom_merged_err[istar,:])
+                trans_mean = orb.utils.robust_mean(orb.utils.sigmacut(trans))
+                trans /= trans_mean
+                trans_err /= trans_mean
                 transmission_vector_list.append(trans)
                 red_chisq = orb.utils.robust_mean(
                     orb.utils.sigmacut(astrom_A.fit_results[
                         istar, :, 'reduced-chi-square']))
-                flux_err = (
-                    astrom_A.fit_results[istar, :, 'amplitude_err']
-                    / astrom_A.fit_results[istar, :, 'amplitude'])
-                flux_err_list.append(flux_err)
+                
+                trans_err_list.append(trans_err)
                 red_chisq_list.append(red_chisq)
 
         # reject stars with a bad reduced-chi-square
         mean_red_chisq = orb.utils.robust_mean(
             orb.utils.sigmacut(red_chisq_list))
         temp_list_trans = list()
-        temp_list_flux_err = list()
+        temp_list_trans_err = list()
         for istar in range(len(transmission_vector_list)):
             if red_chisq_list[istar] < mean_red_chisq * RED_CHISQ_COEFF:
                 temp_list_trans.append(transmission_vector_list[istar])
-                temp_list_flux_err.append(flux_err_list[istar])
+                temp_list_trans_err.append(trans_err_list[istar])
         transmission_vector_list = temp_list_trans
-        flux_err_list = temp_list_flux_err
+        transmission_vector_list_err = temp_list_trans_err
 
         if len(transmission_vector_list) <  MIN_STAR_NUMBER:
             self._print_error("Too much stars have been rejected. The transmission vector cannot be computed !")
@@ -4903,26 +4976,31 @@ class InterferogramMerger(Tools):
             "Transmission vector will be computed using %d stars"%len(
                 transmission_vector_list))
         transmission_vector_list = np.array(transmission_vector_list)
-        flux_err_list = np.array(flux_err_list)
+        transmission_vector_list_err = np.array(transmission_vector_list_err)
         
         # Create transmission vector
         transmission_vector = np.empty((self.cube_A.dimz), dtype=float)
+        transmission_vector_err = np.empty_like(transmission_vector)
+        transmission_vector.fill(np.nan)
+        transmission_vector_err.fill(np.nan)
+        
         for ik in range(self.cube_A.dimz):
             trans_ik = transmission_vector_list[:,ik]
+            trans_err_ik = transmission_vector_list_err[:,ik]
             
             if len(np.nonzero(trans_ik)[0]) > 0:
                 if len(trans_ik) >= MIN_STAR_NUMBER:
-                    transmission_vector[ik] = orb.utils.robust_mean(orb.utils.sigmacut(
-                        trans_ik, sigma=SIGMA_CUT_COEFF))
-                else:
-                    transmission_vector[ik] = np.nan
-            else:
-                transmission_vector[ik] = np.nan
-            
+                    trans_cut, trans_cut_index = orb.utils.sigmacut(
+                        trans_ik, sigma=SIGMA_CUT_COEFF, return_index_list=True)
+                    transmission_vector[ik] = orb.utils.robust_mean(
+                        trans_cut)
+                    trans_cut_err = trans_err_ik[trans_cut_index]
+                    transmission_vector_err[ik] = np.sqrt(
+                        orb.utils.robust_mean(trans_cut_err**2.))
+        
         # Transmission is corrected for bad values
-        transmission_vector = orb.utils.correct_vector(transmission_vector,
-                                             bad_value=0., polyfit=True,
-                                             deg=3)
+        transmission_vector = orb.utils.correct_vector(
+            transmission_vector, bad_value=0., polyfit=True, deg=3)
 
         # correct vector for ZPD
         if TRANS_ZPD_SIZE > 0:
@@ -4946,9 +5024,14 @@ class InterferogramMerger(Tools):
                 transmission_vector = orb.utils.smooth(transmission_vector,
                                                        deg=SMOOTH_DEG)
 
-        # Normalization of the star transmission vector
+        # Normalization of the star transmission vector to 1.5% clip
         nz = np.nonzero(transmission_vector)
-        transmission_vector[nz] /= np.median(np.abs(transmission_vector))
+        max_trans = orb.cutils.part_value(transmission_vector[nz], 0.985)
+        transmission_vector[nz] /= max_trans
+
+        if NO_TRANSMISSION_CORRECTION:
+            transmission_vector.fill(1.)
+            transmission_vector_err.fill(0.)
         
         # Save transmission vector
         self.write_fits(
@@ -4959,6 +5042,16 @@ class InterferogramMerger(Tools):
         if self.indexer is not None:
             self.indexer[
                 'transmission_vector'] = self._get_transmission_vector_path()
+
+        self.write_fits(
+            self._get_transmission_vector_path(err=True), 
+            transmission_vector_err.reshape(
+                (transmission_vector_err.shape[0],1)),
+            fits_header=self._get_transmission_vector_header(err=True),
+            overwrite=self.overwrite)
+        if self.indexer is not None:
+            self.indexer['transmission_vector_err'] = (
+                self._get_transmission_vector_path(err=True))
         
         # Create BAD FRAMES VECTOR from transmission vector
         bad_frames_vector = np.zeros((self.cube_A.dimz), dtype=int)
@@ -5023,12 +5116,18 @@ class InterferogramMerger(Tools):
             self.indexer['ext_illumination_vector'] = (
                 self._get_ext_illumination_vector_path())
 
-        ## ADDED LIGHT VECTOR #####################################
-        # Note that this vector is used only if frame B is not added
-        # (add_frameB == False)
+        ## STRAY LIGHT VECTOR #####################################
+        # This vector is used to compute stray light in both
+        # detectors.
 
         if not add_frameB:
-            self._print_msg("Computing added light vector")
+            self._print_msg("Computing stray light vector")
+            
+            self._print_error('To be reimplemented. Check get_stray_light_coeff.')
+            # Stray light computing must be reimplemeted because it
+            # must be computed the same way the flux_vector is
+            # computed during frames merging...
+            
             # Init of the multiprocessing server
             job_server, ncpus = self._init_pp_server()
             framesA = np.empty(
@@ -5037,7 +5136,7 @@ class InterferogramMerger(Tools):
                 (self.cube_A.dimx, self.cube_A.dimy, ncpus), dtype=float)
             ncpus_max = ncpus
 
-            added_light_vector = np.empty(self.cube_A.dimz, dtype=float)
+            stray_light_vector = np.empty(self.cube_A.dimz, dtype=float)
             progress = ProgressBar(self.cube_A.dimz)
             for ik in range(0, self.cube_A.dimz, ncpus):
                 # no more jobs than frames to compute
@@ -5049,7 +5148,7 @@ class InterferogramMerger(Tools):
                     framesB[:,:,ijob] = self.cube_B.get_data_frame(ik + ijob)
 
                 jobs = [(ijob, job_server.submit(
-                    _get_added_light_coeff, 
+                    _get_stray_light_coeff, 
                     args=(framesA[:,:,ijob],
                           framesB[:,:,ijob], 
                           transmission_vector[ik + ijob],
@@ -5059,49 +5158,56 @@ class InterferogramMerger(Tools):
                     for ijob in range(ncpus)]
 
                 for ijob, job in jobs:
-                    added_light_vector[ik+ijob] = job()
+                    stray_light_vector[ik+ijob] = job()
 
                 progress.update(ik, info="frame: %d"%ik)
             self._close_pp_server(job_server)
             progress.end()
 
             # correct vector for nan values and zeros
-            added_light_vector = orb.utils.correct_vector(
-                added_light_vector, bad_value=0., polyfit=True, deg=3)
+            stray_light_vector = orb.utils.correct_vector(
+                stray_light_vector, bad_value=0., polyfit=True, deg=3)
 
             # correct vector for ZPD
             poly_fit = np.polyfit([ext_zpd_min, ext_zpd_max],
-                                  [added_light_vector[ext_zpd_min],
-                                   added_light_vector[ext_zpd_max]], 1)
-            added_light_vector[ext_zpd_min:ext_zpd_max] = np.polyval(
+                                  [stray_light_vector[ext_zpd_min],
+                                   stray_light_vector[ext_zpd_max]], 1)
+            stray_light_vector[ext_zpd_min:ext_zpd_max] = np.polyval(
                 poly_fit, np.arange(ext_zpd_min, ext_zpd_max, 1))
 
             # vector smoothing
             if SMOOTH_DEG > 0:
-                added_light_vector = orb.utils.smooth(added_light_vector,
+                stray_light_vector = orb.utils.smooth(stray_light_vector,
                                                       deg=SMOOTH_DEG)
 
-            # Save added light vector
+            # Save stray light vector
             self.write_fits(
-                self._get_added_light_vector_path(), 
-                np.reshape(added_light_vector, (added_light_vector.shape[0],1)),
-                fits_header=self._get_added_light_vector_header(),
+                self._get_stray_light_vector_path(), 
+                np.reshape(stray_light_vector, (stray_light_vector.shape[0],1)),
+                fits_header=self._get_stray_light_vector_header(),
                 overwrite=self.overwrite)
 
             if self.indexer is not None:
-                self.indexer['added_light_vector'] = (
-                    self._get_added_light_vector_path())
+                self.indexer['stray_light_vector'] = (
+                    self._get_stray_light_vector_path())
+        
         else:
-            added_light_vector = np.empty_like(transmission_vector)
-            added_light_vector.fill(np.nan)
+            # stray light vector will be computed from frame merging
+            stray_light_vector = np.empty_like(transmission_vector)
+            stray_light_vector.fill(np.nan)
+        
 
         ## MERGE FRAMES ###########################################
-        
         self._print_msg("Merging cubes")
         
         # Init of the multiprocessing server
         job_server, ncpus = self._init_pp_server()
-     
+
+
+        flux_frame = np.zeros((self.cube_A.dimx, self.cube_A.dimy),
+                              dtype=float)
+        flux_frame_nb = 0
+        flux_vector = np.zeros(self.cube_A.dimz, dtype=float)
         result_frames = np.empty((self.cube_A.dimx, self.cube_A.dimy, ncpus),
                                  dtype=float)
         result_mask_frames = np.empty((self.cube_A.dimx, self.cube_A.dimy,
@@ -5122,6 +5228,7 @@ class InterferogramMerger(Tools):
         
         ncpus_max = ncpus
         progress = ProgressBar(int(self.cube_A.dimz/ncpus_max))
+        
         for ik in range(0, self.cube_A.dimz, ncpus):
             # no more jobs than frames to compute
             if (ik + ncpus >= self.cube_A.dimz):
@@ -5159,7 +5266,7 @@ class InterferogramMerger(Tools):
                           transmission_vector[ik + ijob],
                           modulation_ratio,
                           ext_level_vector[ik + ijob],
-                          added_light_vector[ik + ijob],
+                          stray_light_vector[ik + ijob],
                           add_frameB,
                           framesA_mask[:,:,ijob],
                           framesB_mask[:,:,ijob]),
@@ -5171,7 +5278,16 @@ class InterferogramMerger(Tools):
                     result_frames[:,:,ijob] = job()
                 else:
                     (result_frames[:,:,ijob],
-                     result_mask_frames[:,:,ijob]) = job()
+                     result_mask_frames[:,:,ijob],
+                     flux_frame_temp) = job()
+                    
+                    if np.any(flux_frame_temp != 0.):
+                        flux_frame += flux_frame_temp
+                        flux_frame_nb += 1
+                        flux_vector[ik + ijob] = orb.utils.robust_median(
+                            flux_frame_temp)
+                    else:
+                        flux_vector[ik + ijob] = np.nan
              
             for ijob in range(ncpus):
                 if create_stars_cube:
@@ -5200,7 +5316,8 @@ class InterferogramMerger(Tools):
         self._close_pp_server(job_server)
         progress.end()
         image_list_file.close
-          
+        flux_frame /= flux_frame_nb
+
         if self.indexer is not None:
             if create_stars_cube:
                 self.indexer['stars_interfero_frame_list'] = (
@@ -5216,10 +5333,29 @@ class InterferogramMerger(Tools):
         # reduction to another. It is here scaled relatively to frameB
         # because on SpIOMM cam2 has kept the same gain and cam1 has
         # not.
+        
+        # remove pedestal of flux vector, 1.5% clip
+        stray_light_vector = flux_vector - orb.cutils.part_value(
+            flux_vector[np.nonzero(~np.isnan(flux_vector))], 0.015)
+       
+        # Save stray light vector
+        self.write_fits(
+            self._get_stray_light_vector_path(), 
+            stray_light_vector,
+            fits_header=self._get_stray_light_vector_header(),
+            overwrite=self.overwrite)
+        
+        if self.indexer is not None:
+            self.indexer['stray_light_vector'] = (
+                self._get_stray_light_vector_path())
+                
+        self._print_msg('Mean flux of stray light: {} ADU'.format(
+           np.nanmean(stray_light_vector)))
+       
         merged_cube = Cube(image_list_file_path)
         energy_map = merged_cube.get_interf_energy_map()
-        deep_frame = frameA + frameB / modulation_ratio
-        
+        deep_frame = (flux_frame - np.nanmean(stray_light_vector))
+    
         self.write_fits(self._get_energy_map_path(), energy_map, 
                         fits_header=
                         self._get_energy_map_header(),
@@ -5256,11 +5392,11 @@ class InterferogramMerger(Tools):
         self._print_msg("Cubes merged")
 
 
-
     def extract_stars_spectrum(self, star_list_path, fwhm_arc, fov,
                                modulation_ratio_path,
                                transmission_vector_path,
                                ext_illumination_vector_path,
+                               stray_light_vector_path,
                                calibration_laser_map_path, step,
                                order, nm_laser, filter_file_path,
                                step_nb, window_type=None,
@@ -5300,6 +5436,9 @@ class InterferogramMerger(Tools):
           illumination.  This is a small correction for the difference
           of incoming light between both cameras. Must have the same
           size as the interferograms of the cube.
+
+        :param stray_light_vector_path: Stray light vector. Must have
+          the same size as the interferograms of the cube.
 
         :param calibration_laser_map_path: Path to the calibration
           laser map.
@@ -5381,7 +5520,12 @@ class InterferogramMerger(Tools):
                               # define phase over the total number of
                               # points of the interferograms
 
-        RECOMPUTE_TRANSMISSION_VECTOR = bool(int(self._get_tuning_parameter('RECOMPUTE_TRANSMISSION_VECTOR', 0)))
+        RECOMPUTE_TRANSMISSION_VECTOR = bool(int(
+            self._get_tuning_parameter('RECOMPUTE_TRANSMISSION_VECTOR', 0)))
+        SMOOTH_DEG = int(
+            self._get_tuning_parameter('SMOOTH_DEG', 0))
+        POLYFIT_DEG = int(
+            self._get_tuning_parameter('POLYFIT_DEG', 0))
         
 
         # Loading flat spectrum cube
@@ -5389,7 +5533,42 @@ class InterferogramMerger(Tools):
             flat_cube = Cube(flat_spectrum_path)
         else:
             flat_cube = None
-    
+
+        if isinstance(star_list_path, str):
+            star_list = orb.astrometry.load_star_list(star_list_path)
+        else:
+            star_list = star_list_path
+            
+        # creating deep frames for cube A and B
+        frameA = self.cube_A.get_mean_image()
+        frameB = self.cube_B.get_mean_image()
+        
+        # fit stars on deep frames to get a better guess on position
+        # and FWHM
+        mean_astrom_A = Astrometry(
+            frameA, fwhm_arc, fov, profile_name=profile_name,
+            logfile_name=self._logfile_name,
+            tuning_parameters=self._tuning_parameters)
+        mean_astrom_A.reset_star_list(star_list)
+        mean_params_A = mean_astrom_A.fit_stars_in_frame(
+            0, precise_guess=True, local_background=True,
+            fix_fwhm=False, fix_height=False, multi_fit=True)
+        
+        mean_astrom_B = Astrometry(
+            frameB, fwhm_arc, fov, profile_name=profile_name,
+            logfile_name=self._logfile_name,
+            tuning_parameters=self._tuning_parameters)
+        mean_astrom_B.reset_star_list(star_list)
+        mean_params_B = mean_astrom_B.fit_stars_in_frame(
+            0, precise_guess=True, local_background=True,
+            fix_fwhm=False, fix_height=False, multi_fit=True)
+
+        star_list_A = mean_params_A.get_star_list()
+        star_list_B = mean_params_A.get_star_list()
+
+        fwhm_arc_A = orb.utils.robust_mean(mean_params_A[:,'fwhm_arc'])
+        fwhm_arc_B = orb.utils.robust_mean(mean_params_B[:,'fwhm_arc'])
+
         ## COMPUTING STARS INTERFEROGRAM
         self._print_msg("Computing stars photometry")
         
@@ -5399,13 +5578,8 @@ class InterferogramMerger(Tools):
         else:
             self._print_msg('Star flux evaluated by profile fitting')
             photometry_type = 'flux'
-
-        if isinstance(star_list_path, str):
-            star_list = orb.astrometry.load_star_list(star_list_path)
-        else:
-            star_list = star_list_path
         
-        astrom_A = Astrometry(self.cube_A, fwhm_arc, fov,
+        astrom_A = Astrometry(self.cube_A, fwhm_arc_A, fov,
                               profile_name=profile_name,
                               moffat_beta=moffat_beta,
                               data_prefix=self._data_prefix + 'cam1.',
@@ -5413,7 +5587,7 @@ class InterferogramMerger(Tools):
                               tuning_parameters=self._tuning_parameters)
         astrom_A.reset_star_list(star_list)
 
-        astrom_B = Astrometry(self.cube_B, fwhm_arc, fov,
+        astrom_B = Astrometry(self.cube_B, fwhm_arc_B, fov,
                               profile_name=profile_name,
                               moffat_beta=moffat_beta,
                               data_prefix=self._data_prefix + 'cam2.',
@@ -5422,13 +5596,13 @@ class InterferogramMerger(Tools):
         astrom_B.reset_star_list(star_list)
 
         # Fit stars and get stars photometry
-        astrom_A.fit_stars_in_cube(local_background=False,
-                                   fix_aperture_size=False,
+        astrom_A.fit_stars_in_cube(local_background=True,
+                                   fix_aperture_size=True,
                                    precise_guess=True,
                                    aper_coeff=aper_coeff,
                                    multi_fit=True)
-        astrom_B.fit_stars_in_cube(local_background=False,
-                                   fix_aperture_size=False,
+        astrom_B.fit_stars_in_cube(local_background=True,
+                                   fix_aperture_size=True,
                                    precise_guess=True,
                                    aper_coeff=aper_coeff,
                                    multi_fit=True)
@@ -5449,22 +5623,53 @@ class InterferogramMerger(Tools):
             self.read_fits(transmission_vector_path))
         ext_illumination_vector = np.squeeze(
             self.read_fits(ext_illumination_vector_path))
+        stray_light_vector = np.squeeze(
+            self.read_fits(stray_light_vector_path))
 
         star_interf_list = list()
+        star_flux_list = list()
+
+            
         for istar in range(astrom_A.star_list.shape[0]):
             modulation_ratio = (orb.utils.robust_median(photom_B[istar,:]
-                                              / photom_A[istar,:]))
+                                                        / photom_A[istar,:]))
+            
+        
             self._print_msg('[Star %d] recomputed modulation ratio: %f'%(
                 istar, modulation_ratio))
+            
             if RECOMPUTE_TRANSMISSION_VECTOR:
                 transmission_vector = ((photom_B[istar,:]/modulation_ratio)
                                        + photom_A[istar,:])
-                transmission_vector /= orb.utils.robust_median(transmission_vector)
+                if SMOOTH_DEG > 0:
+                    transmission_vector = orb.utils.smooth(transmission_vector,
+                                                           deg=SMOOTH_DEG)
                 
+                if POLYFIT_DEG > 0:
+                    transmission_vector = orb.utils.polyfit1d(
+                        transmission_vector, POLYFIT_DEG)
+                
+                    
+                transmission_vector /= orb.cutils.part_value(
+                    transmission_vector.flatten(), 0.99)
+
+
+
+            # compute equivalent surface to substract ext_illumination
+            # and stray light correctly from the integrated flux
+            surf_eq = (4. * math.pi *  orb.utils.robust_median(
+                (astrom_A.fit_results[:,:,'fwhm']
+                 / orb.constants.FWHM_COEFF)**2.))
+            
             star_interf_list.append([
                 (((photom_B[istar,:]/modulation_ratio) - photom_A[istar,:])
-                 / transmission_vector) - ext_illumination_vector,
+                 / transmission_vector) - ext_illumination_vector * surf_eq,
                 star_list[istar]])
+            star_flux_list.append(
+                (((photom_B[istar,:]/modulation_ratio) + photom_A[istar,:])
+                 / transmission_vector)
+                - ext_illumination_vector * surf_eq
+                - stray_light_vector  * surf_eq)
 
         ## COMPUTING STARS SPECTRUM
             
@@ -5563,7 +5768,7 @@ class InterferogramMerger(Tools):
                 calibration_laser_map[int(star_x), int(star_y)],
                 step, order, window_type, zpd_shift,
                 bad_frames_vector=bad_frames_vector,
-                n_phase=n_phase,
+                n_phase=0,
                 ext_phase=ext_phase,
                 balanced=True,
                 weights=weights,
@@ -5573,10 +5778,12 @@ class InterferogramMerger(Tools):
             if np.mean(star_spectrum) < 0.:
                 star_spectrum = -star_spectrum
 
-            # rescale
-            scale = (orb.utils.spectrum_mean_energy(star_spectrum)
-                     / orb.utils.interf_mean_energy(star_interf))
-            star_spectrum *= scale
+            # rescale to make sure that the same quantity of energy
+            # correponds to a given number of counts
+            scale_factor = (orb.utils.robust_mean(star_flux_list[istar])/
+                            orb.utils.robust_mean(star_spectrum))
+            
+            star_spectrum *= scale_factor
             
             # filter correction
             if filter_correct:
@@ -5625,6 +5832,8 @@ class InterferogramMerger(Tools):
 
             self._print_msg('Star %d mean flux: %f ADU'%(
                     istar, orb.utils.robust_mean(star_spectrum)))
+            self._print_msg('Star %d mean modulation efficiency: %f %%'%(
+                    istar, 1./scale_factor*100.))
             
             star_spectrum_list.append(star_spectrum)
         star_spectrum_list = np.array(star_spectrum_list)
@@ -5669,6 +5878,20 @@ class Spectrum(Cube):
             return self._data_path_hdr + "calibrated_stars_spectrum.list"
         else:
             return self._data_path_hdr + "calibrated_spectrum.list"
+
+    def _get_modulation_efficiency_map_path(self):
+        """Return path to the modulation efficiency map."""
+        return self._data_path_hdr + "modulation_efficiency_map.fits"
+
+    def _get_modulation_efficiency_map_header(self):
+        """Return the header of the modulation efficiency map."""
+        
+        header = self._get_basic_header('Modulation efficiency map')
+       
+        return (header
+                + self._project_header
+                + self._calibration_laser_header
+                + self._get_basic_frame_header(self.dimx, self.dimy))
 
     def _get_calibrated_spectrum_frame_path(self, frame_index,
                                             stars_cube=False):
@@ -5785,18 +6008,21 @@ class Spectrum(Cube):
                    update=True, end=True)
 
         # delete unused keywords created by pywcs
-        del hdr['RESTFRQ']
-        del hdr['RESTWAV']
-        del hdr['LONPOLE']
-        del hdr['LATPOLE']
+        if 'RESTFRQ' in hdr:
+            del hdr['RESTFRQ']
+        if 'RESTWAV' in hdr:
+            del hdr['RESTWAV']
+        if 'LONPOLE' in hdr:
+            del hdr['LONPOLE']
+        if 'LATPOLE' in hdr:
+            del hdr['LATPOLE']
         return hdr
         
 
     def calibrate(self, filter_file_path, step, order,
                   stars_cube=False, correct_wcs=None,
-                  flux_calibration_vector=None, energy_map_path=None,
-                  deep_frame_path=None, mean_scaling=True,
-                  mean_flux=True, wavenumber=False,
+                  flux_calibration_vector=None,
+                  deep_frame_path=None, mean_flux=True, wavenumber=False,
                   calibration_laser_map_path=None, nm_laser=None,
                   standard_header=None):
         
@@ -5822,34 +6048,11 @@ class Spectrum(Cube):
           :py:meth:`process.Spectrum.get_flux_calibration_vector`. Each
           spectrum will be multiplied by this vector to be flux
           calibrated.
-
-        :param energy_map_path: (Optional) Path to a map of the mean
-          number of counts for each pixel. Useful to keep the same
-          modulation energy in each pixel from the input to the output
-          of the reduction process. The energy map is created during
-          the merging process (see
-          :py:meth:`process.InterferogramMerger.merge`). This
-          rescaling do not correct for the modulation efficiency. If
-          the calibration of the interferogram images is good enough
-          you may prefer to give the path to the deep frame (see
-          option deep_frame_path). If both deep_frame_path and
-          energy_map_path are given, only the deep frame will be used.
        
         :param deep_frame_path: (Optional) Path to the deep frame of
-          the interferogram cube. Useful to keep the same total energy
-          from the input to the output of the reduction process. This
-          must be used instead of the energy map to get a good relation
-          between the number of photon counts in the interferograms
-          and in the spectrum and to correct for the modulation
-          efficiency but the calibration of the interferogram images
-          must be very good. If both deep_frame_path and
-          energy_map_path are given, only the deep frame will be used.
-
-        :param mean_scaling: (Optional) If True scaling of data is
-          realized by averaging the scale coefficient over all pixels
-          instead of rescaling pixel to pixel. This procedure avoid
-          distorsion of the image around stars (default True).
-
+          the interferogram cube. Useful to get the mean modulation
+          efficiency and rescale flux.
+    
         :param mean_flux: (Optional) If True, the flux calibration
           vector gives only a mean flux for all the wavelength and
           does not correct for the filter. In this case the filter
@@ -5901,7 +6104,7 @@ class Spectrum(Cube):
         def _correct_spectrum_column(spectrum_col, filter_function,
                                      min_index, max_index,
                                      flux_calibration_vector,
-                                     scale_map_col, scale_factor, scale_type,
+                                     scale_factor,
                                      calibration_laser_col, nm_laser,
                                      step, order, wavenumber):
             """
@@ -5910,22 +6113,7 @@ class Spectrum(Cube):
             corrected.
             """
             # rescaling:
-            if scale_factor is None and scale_type is not None:
-                for iy in range(spectrum_col.shape[0]):
-                    if scale_type == 'energy':
-                        mean_scale = orb.utils.spectrum_mean_energy(
-                            spectrum_col[iy,:])
-                    elif scale_type == 'intensity':
-                        mean_scale = orb.utils.robust_mean(spectrum_col[iy,:])
-                    else: raise Exception('bad scale type')
-                    if (mean_scale != 0.
-                        and not np.isnan(mean_scale)
-                        and np.any(spectrum_col[iy,:])):
-                        spectrum_col[iy,:] = (
-                            spectrum_col[iy,:] / mean_scale * scale_map_col[iy])
-                    else:
-                        spectrum_col[iy,:] = np.nan
-            else:
+            if scale_factor is not None:
                 spectrum_col *= scale_factor
 
             # filter correction
@@ -6019,16 +6207,12 @@ class Spectrum(Cube):
             spectrum_scale_map_box = spectrum_scale_map[x_min:x_max,
                                                         y_min:y_max]
             ref_scale_map_box = ref_scale_map[x_min:x_max, y_min:y_max]
-
             return (orb.utils.robust_mean(orb.utils.sigmacut(ref_scale_map_box
                                          / spectrum_scale_map_box)),
                     orb.utils.robust_std(orb.utils.sigmacut(ref_scale_map_box
                                         / spectrum_scale_map_box)))
-
-
-        mean_scaling = bool(int(self._get_tuning_parameter('MEAN_SCALING',
-                                                           mean_scaling)))
         
+                
         # Get FFT parameters
         hdu = self.read_fits(self.image_list[0],
                              return_hdu_only=True)
@@ -6079,36 +6263,32 @@ class Spectrum(Cube):
         else:
             self._print_warning("No WCS correction")
 
-        if energy_map_path is not None and deep_frame_path is None:
-            energy_map = self.read_fits(energy_map_path)
-            self._print_warning("Energy scaling (energy map)")
-            scale_type = 'energy'
-            scale_map = energy_map
-            if mean_scaling:
-                scale_factor, scale_factor_std = get_mean_scale_map(
-                    energy_map, self.get_spectrum_energy_map())
-                self._print_msg("Mean scale factor: %f, std: %f"%(
-                    scale_factor, scale_factor_std))
-            else:
-                scale_factor = None
-        elif deep_frame_path is not None:
-            deep_frame = self.read_fits(deep_frame_path)
-            self._print_msg("Intensity scaling (deep frame)")
-            scale_type = 'intensity'
-            scale_map = deep_frame
-            if mean_scaling:
-                scale_factor, scale_factor_std = get_mean_scale_map(
-                    deep_frame, self.get_mean_image())
-                self._print_msg("Mean scale factor: %f, std: %f"%(
-                    scale_factor, scale_factor_std))
-            else:
-                scale_factor = None
-                
+        if deep_frame_path is not None:
+            
+            deep_frame_interf = self.read_fits(deep_frame_path)
+            deep_frame_spectrum = self.get_mean_image()
+        
+            self.write_fits(
+                self._get_modulation_efficiency_map_path(),
+                deep_frame_spectrum/deep_frame_interf,
+                fits_header=self._get_modulation_efficiency_map_header(),
+                overwrite=self.overwrite)
+                            
+            if self.indexer is not None:
+                self.indexer['modulation_efficiency_map'] = (
+                    self._get_modulation_efficiency_map_path())
+            
+            scale_factor, scale_factor_std = get_mean_scale_map(
+                deep_frame_interf, deep_frame_spectrum)
+            self._print_msg("Mean scale factor: %f, std: %f"%(
+                scale_factor, scale_factor_std))
+            self._print_msg("Mean modulation efficiency: %f %%"%(
+                1./scale_factor * 100))
+   
         else:
             self._print_warning(
                 "No rescaling done: flux calibration might be bad")
-            scale_type = None
-            scale_map = np.ones((self.dimx, self.dimy), dtype=float)
+            scale_factor = None
 
         # Init of the multiprocessing server    
         for iquad in range(0, self.QUAD_NB):
@@ -6117,7 +6297,6 @@ class Spectrum(Cube):
             iquad_data = self.get_data(x_min, x_max, 
                                        y_min, y_max, 
                                        0, self.dimz)
-            iquad_scale_map = scale_map[x_min:x_max, y_min:y_max]
             iquad_calibration_laser_map = calibration_laser_map[
                 x_min:x_max, y_min:y_max]
             job_server, ncpus = self._init_pp_server()
@@ -6140,8 +6319,7 @@ class Spectrum(Cube):
                         filter_function,
                         filter_min, filter_max,
                         flux_calibration_vector,
-                        iquad_scale_map[ii+ijob,:],
-                        scale_factor, scale_type,
+                        scale_factor, 
                         iquad_calibration_laser_map[ii+ijob,:],
                         nm_laser, step, order, wavenumber),
                     modules=("numpy as np", "import orb.utils"))) 
@@ -6313,11 +6491,30 @@ class Spectrum(Cube):
 
         th_spectrum[np.nonzero(np.isnan(re_spectrum))] = np.nan
 
-        ## ## Plot Real spectrum vs Theoretical spectrum
+        ## Plot Real spectrum vs Theoretical spectrum
         ## import pylab as pl
-        ## pl.plot(th_spectrum/orb.utils.robust_mean(th_spectrum))
-        ## pl.plot(re_spectrum/orb.utils.robust_mean(re_spectrum))
+        ## fig = pl.figure(figsize=(14,5))
+        ## ax_re = fig.add_subplot(1,1,1)
+        ## plot_axis = std_nm_axis[np.nonzero(~np.isnan(re_spectrum))]
+        ## ax_re.plot(std_nm_axis, re_spectrum,
+        ##            linewidth=2., linestyle='-', color='0.',
+        ##            label='Observed spectrum')
+        ## ax_th = ax_re.twinx()
+        ## ax_th.plot(std_nm_axis, th_spectrum,
+        ##            linewidth=2., linestyle='--', color='0.5',
+        ##            label='Standard spectrum')
+        ## ax_re.set_xlim([np.nanmin(plot_axis), np.nanmax(plot_axis)])
+        ## ax_re.set_ylim([0,np.nanmean(re_spectrum) * 1.3])
+        ## ax_th.set_ylim([0,np.nanmean(th_spectrum) * 1.3])
+        ## ax_re.set_ylabel('Flux [ADU s$^{-1}$]')
+        ## ax_th.set_ylabel('Flux [erg s$^{-1}$ cm$^{-2}$ $\AA^{-1}$]')
+        ## handles_re, labels_re = ax_re.get_legend_handles_labels()
+        ## handles_th, labels_th = ax_th.get_legend_handles_labels()
+        ## ax_re.legend(handles_re+handles_th, labels_re+labels_th,
+        ##              loc='lower right')
+        ## pl.title('{}'.format(std_name))
         ## pl.show()
+        ## quit()
         
         if mean_vector:
             self._print_msg('Mean flux calibration')
@@ -6601,7 +6798,8 @@ class Phase(Cube):
         ## Create filter min and max map
         if filter_file_path is not None:
             (filter_nm, filter_trans,
-             filter_min, filter_max) = orb.utils.read_filter_file(filter_file_path)
+             filter_min, filter_max) = orb.utils.read_filter_file(
+                filter_file_path)
         else:
             nm_axis = orb.utils.create_nm_axis(self.dimz, step, order)
             nm_range = nm_axis[-1] - nm_axis[0]
@@ -6689,7 +6887,8 @@ class Phase(Cube):
         flat_res_map = res_map[np.nonzero(res_map)].flatten()
         res_map_med = np.median(flat_res_map)
         res_map_std = orb.utils.robust_std(flat_res_map)
-        flat_res_map = flat_res_map[np.nonzero(flat_res_map < res_map_med + 0.5 * res_map_std)]
+        flat_res_map = flat_res_map[np.nonzero(
+            flat_res_map < res_map_med + 0.5 * res_map_std)]
         res_threshold = (THRESHOLD_COEFF
                          * np.median(flat_res_map))
         
@@ -6807,7 +7006,7 @@ class Phase(Cube):
         # Load map
         phase_map = self.read_fits(phase_map_path)
 
-        # Sooth map
+        # Smooth map
         mask = np.nonzero(phase_map == 0)
         phase_map = smooth_phase(phase_map, deg=int(SMOOTH_DEG_COEFF * (phase_map.shape[0] + phase_map.shape[1])/2.))
         phase_map[mask] = 0.
@@ -6823,128 +7022,6 @@ class Phase(Cube):
                         overwrite=self.overwrite)
         if self.indexer is not None:
             self.indexer['phase_map_smoothed_0'] = phase_map_path
-
-
-    ## def fit_phase_map(self, phase_map_path, bla):
-    ##     """Fit the phase map.
-
-    ##     Help remove most of the noise. This process is useful if the phase
-    ##     map has been computed from astronomical data without a high SNR.
-
-    ##     :param phase_map_path: Path to the phase map
-    ##     """
-
-    ##     def smooth_fit_parameter(coeffs_list, order, smooth_deg):
-    ##         """
-    ##         Smooth the fitting parameters for a paticular order of the
-    ##         polynomial fit.
-    ##         """
-    ##         coeffs = coeffs_list[:,order]
-    ##         w = np.ones_like(coeffs)
-    ##         mask = np.nonzero(coeffs == 0)
-    ##         w[mask] = 1e-20
-    ##         return orb.utils.polyfit1d(coeffs, smooth_deg, w=w, return_coeffs=False)
-
-
-    ##     FIT_DEG = 1 # Degree of the polynomial used fo the fit
-        
-    ##     MAX_FIT_ERROR = 0.1 # Maximum fit error over which a warning
-    ##                         # is raised
-
-    ##     SMOOTH_DEG = 1 # Degree of the polynomial for smoothing the
-    ##                    # fit parameters
-                       
-    ##     BORDER = 0.1 # percentage of the image length removed on the
-    ##                  # border to fit the phase map (cannot be more
-    ##                  # than 0.5)
-
-    ##     phase_map = self.read_fits(phase_map_path)
-    ##     coeffs_list = list()
-
-    ##     ## Mask definition : the pixel used for fitting the phase map
-    ##     mask_map = np.zeros_like(phase_map)
-    ##     # border points are removed
-    ##     border = (self.dimx + self.dimy)/2. * BORDER 
-    ##     mask_map[border:-border,border:-border:] = 1.
-    ##     # zeros points are removed
-    ##     mask_map[np.nonzero(phase_map == 0)] = 0.
-    ##     mask = np.nonzero(mask_map)
-
-    ##     self.write_fits('bla.fits', mask_map) ; quit()
-
-    ##     ## Phase map fit
-    ##     self._print_msg("Fitting phase map", color=True)
-    ##     progress = ProgressBar(phase_map.shape[1])
-    ##     for ij in range(phase_map.shape[1]):
-    ##         ipmap = phase_map[:,ij]
-    ##         imask = mask_map[:,ij]
-    ##         if not np.any(ipmap):
-    ##             coeffs_list.append((np.zeros(FIT_DEG + 1, dtype=float), [1e20]))
-    ##         else:
-    ##             w = np.copy(imask)
-    ##             w[np.nonzero(imask == 0)] = 1e-20
-    ##             # do not fit too noisy data (there must be more than
-    ##             # half good points on the vector)
-    ##             if (len(np.nonzero(w > 0.5)[0])
-    ##                 > 0.5 * phase_map.shape[1]
-    ##                 - (phase_map.shape[1] * BORDER * 2.)):
-    ##                 vect, coeffs = orb.utils.polyfit1d(ipmap, FIT_DEG, w=w,
-    ##                                                    return_coeffs=True)
-    ##                 coeffs_list.append((coeffs[0], coeffs[1][0]))
-    ##             else:
-    ##                 coeffs_list.append((np.zeros(FIT_DEG + 1, dtype=float),
-    ##                                     [1e20]))
-    ##         progress.update(ij, info="fitting phase map")
-    ##     progress.end()
-
-    ##     ## Smooth fit parameters 
-    ##     coeffs_list = np.array([icoeffs[0] for icoeffs in coeffs_list])
-    ##     params_fit_list = list()
-    ##     for ideg in range(FIT_DEG + 1):
-    ##         params_fit_list.append(smooth_fit_parameter(
-    ##             coeffs_list, ideg, SMOOTH_DEG))
-    ##     params_fit_list = np.array(params_fit_list)
-        
-    ##     ## Reconstructing the phase map
-    ##     fitted_phase_map = np.zeros_like(phase_map)
-    ##     for ij in range(phase_map.shape[1]):
-    ##         fitted_phase_map[:,ij] = np.polynomial.polynomial.polyval(
-    ##             np.arange(phase_map.shape[0]), params_fit_list[:, ij])
-               
-    ##     ## Error computation
-    ##     # Creation of the error map: The error map gives the 
-    ##     # Squared Error for each point used in the fit point. 
-    ##     error_map = (phase_map - fitted_phase_map)**2
-    ##     error_map[np.nonzero(mask_map == 0)] = 0.
-        
-    ##     # The square root of the mean of this map is then normalized
-    ##     # by the range of the values fitted. This gives the Normalized
-    ##     # root-mean-square deviation
-    ##     fit_error =(((np.mean(error_map[mask]))**0.5)
-    ##                  / (np.max(phase_map[mask]) - np.min(phase_map[mask])))
-        
-    ##     self._print_msg(
-    ##         "Normalized root-mean-square deviation on the fit: %f%%"%(
-    ##             fit_error*100.))
-
-    ##     if fit_error > MAX_FIT_ERROR:
-    ##         self._print_warning("Normalized root-mean-square deviation on the fit is too high (%f > %f): phase correction will certainly be uncorrect !"%(fit_error, MAX_FIT_ERROR))
-        
-    ##     ## save fitted phase map and error map
-    ##     error_map_path = self._get_phase_map_path(0, phase_map_type='error')
-    ##     fitted_map_path = self._get_phase_map_path(0, phase_map_type='fitted')
-    ##     self.write_fits(error_map_path, error_map, 
-    ##                     fits_header=
-    ##                     self._get_phase_map_header(0, phase_map_type='error'),
-    ##                     overwrite=self.overwrite)
-    ##     if self.indexer != None:
-    ##         self.indexer['phase_map_fitted_error_0'] = error_map_path
-    ##     self.write_fits(fitted_map_path, fitted_phase_map, 
-    ##                     fits_header=
-    ##                     self._get_phase_map_header(0, phase_map_type='fitted'),
-    ##                     overwrite=self.overwrite)
-    ##     if self.indexer != None:
-    ##         self.indexer['phase_map_fitted_0'] = fitted_map_path
     
     def fit_phase_map(self, phase_map_path, residual_map_path):
         """Fit the phase map.

@@ -1,4 +1,4 @@
-#!/usr/bin/python
+ #!/usr/bin/python
 # *-* coding: utf-8 *-*
 # Author: Thomas Martin <thomas.martin.1@ulaval.ca>
 # File: orbs.py
@@ -38,19 +38,14 @@ import resource
 
 import scipy
 import numpy as np
-
-
-try:
-    import astropy
-    import astropy.io.fits as pyfits
-except:
-    import pyfits
-    import warnings
-    warnings.warn('PyFITS is now a part of Astropy (http://www.astropy.org/). PyFITS support as a standalone module will be stopped soon. It is better to install Astropy. You can still keep PyFITS for other applications.', FutureWarning)
     
+import astropy
+import astropy.wcs as pywcs
+import astropy.io.fits as pyfits
+
 import pp
 import bottleneck as bn
-import pywcs
+
 
 from orb.core import Tools, Cube, Indexer, OptionFile
 from process import RawData, InterferogramMerger, Interferogram
@@ -278,6 +273,9 @@ class Orbs(Tools):
           enter in one of the cameras and not the other this must be
           set to 1. This way this external light can be tracked by the
           merge process.
+
+        * SATURATION_THRESHOLD: Saturation threshold for star
+          detection. 35000 by default.
     """
     
     options = dict()
@@ -359,6 +357,8 @@ class Orbs(Tools):
         * wavenumber: WAVENUMBER
 
         * wavelength_calibration: WAVE_CALIB
+
+        * saturation_threshold: SATURATION_THRESHOLD
     """
     tuning_parameters = dict()
     """Dictionary containg the tuning parameters of some methods
@@ -417,6 +417,9 @@ class Orbs(Tools):
                     if self.config["INSTRUMENT_NAME"] == 'SITELLE':
                         image_mode = 'sitelle'
                         chip_index = camera_index
+                    elif self.config["INSTRUMENT_NAME"] == 'SpIOMM':
+                        image_mode = 'spiomm'
+                        chip_index = None
                     else:
                         image_mode = None
                         chip_index = None
@@ -430,6 +433,7 @@ class Orbs(Tools):
                         value, list_file_path,
                         image_mode=image_mode, chip_index=chip_index,
                         prebinning=prebinning)
+                    
             elif not optional:
                 self._print_error('option {} must be set'.format(key))
 
@@ -448,15 +452,9 @@ class Orbs(Tools):
         # Print modules versions
         self._print_msg("Numpy version: %s"%np.__version__)
         self._print_msg("Scipy version: %s"%scipy.__version__)
-        
-        try:
-            self._print_msg("Pyfits version: %s"%pyfits.__version__)
-        except:
-            self._print_msg("Astropy version: %s"%astropy.__version__)
-        
+        self._print_msg("Astropy version: %s"%astropy.__version__)
         self._print_msg("Parallel Python version: %s"%pp.version)
         self._print_msg("Bottleneck version: %s"%bn.__version__)
-        self._print_msg("PyWCS version: %s"%pywcs.__version__)
         
         # Print the entire config file for log
         with self.open_file(self._get_config_file_path(), 'r') as conf_file:
@@ -520,6 +518,7 @@ class Orbs(Tools):
         self.options["try_catalogue"] = False
         self.options['wavelength_calibration'] = True
         self.options['wavenumber'] = False
+        self.options['saturation_threshold'] = 35000
         
         # Parse the option file to get reduction parameters
         self.optionfile = OptionFile(option_file_path)
@@ -551,6 +550,8 @@ class Orbs(Tools):
         store_option_parameter('try_catalogue', 'TRYCAT', bool)
         store_option_parameter('wavenumber', 'WAVENUMBER', bool)
         store_option_parameter('wavelength_calibration', 'WAVE_CALIB', bool)
+        store_option_parameter('saturation_threshold',
+                               'SATURATION_THRESHOLD', float)
         store_option_parameter('prebinning', 'PREBINNING', int)
         # recompute the real data binning
         if 'prebinning' in self.options:
@@ -1454,7 +1455,7 @@ class Orbs(Tools):
 
 
     def detect_stars(self, cube, camera_number, min_star_number,
-                     saturation_threshold=35000, return_fwhm_pix=False):
+                     saturation_threshold=None, return_fwhm_pix=False):
         """Detect stars in a cube and save the star list in a file.
 
         This method is a simple wrapper around
@@ -1465,9 +1466,10 @@ class Orbs(Tools):
         :param min_star_number: Minimum number of star to detect
 
         :param saturation_threshold: (Optional) Number of counts above
-          which the star can be considered as saturated. Very low by
+          which the star can be considered as saturated. Low by
           default because at the ZPD the intensity of a star can be
-          twice the intensity far from it (default 35000).
+          twice the intensity far from it. If None the default
+          configuration option is used: 35000 (default None).
 
         :param return_fwhm_pix: (Optional) If True, the returned fwhm
           will be given in pixels instead of arcseconds (default
@@ -1490,6 +1492,9 @@ class Orbs(Tools):
             mean_fwhm = self.config['INIT_FWHM']
 
         else:
+            if saturation_threshold is None:
+                saturation_threshold = self.options['saturation_threshold']
+                
             self._print_msg('Autodetecting stars', color=True)
             astrom = self._init_astrometry(cube, camera_number)
             star_list_path, mean_fwhm = astrom.detect_stars(
@@ -2115,7 +2120,7 @@ class Orbs(Tools):
                               image_list_path=None,
                               min_star_number=15, bad_frames_vector=[]):
         """Correct a single-camera interferogram cube for variations
-        of sky transission and added light.
+        of sky transission and stray light.
 
         :param camera_number: Camera number (can be 1 or 2).
 
@@ -2133,7 +2138,7 @@ class Orbs(Tools):
         .. note:: The sky transmission vector gives the absorption
           caused by clouds or airmass variation.
 
-        .. note:: The added light vector gives the counts added
+        .. note:: The stray light vector gives the counts added
           homogeneously to each frame caused by a cloud reflecting
           light coming from the ground, the moon or the sun.
 
@@ -2192,11 +2197,11 @@ class Orbs(Tools):
             bad_frames_vector=bad_frames_vector)
 
         sky_transmission_vector_path = cube._get_transmission_vector_path()
-        sky_added_light_vector_path = cube._get_added_light_vector_path()
+        stray_light_vector_path = cube._get_stray_light_vector_path()
 
         # correct interferograms
         cube.correct_interferogram(sky_transmission_vector_path,
-                                   sky_added_light_vector_path)
+                                   stray_light_vector_path)
         perf_stats = perf.print_stats()
         del cube, perf
         return perf_stats
@@ -2719,20 +2724,13 @@ class Orbs(Tools):
             astrom = self._init_astrometry(spectrum, camera_number)
             correct_wcs = astrom.register(full_deep_frame=True)
 
-        # Get Scale Map
-        if camera_number == 0 and cam1_scale:
-            self._print_warning('Flux rescaled relatively to camera 1')
-            energy_map_path = self.indexer.get_path('energy_map', 1)
-        else:
-            energy_map_path = self.indexer.get_path('energy_map', camera_number)
-
         # Get deep frame
         if camera_number == 0 and cam1_scale:
             self._print_warning('Flux rescaled relatively to camera 1')
             deep_frame_path = self.indexer.get_path('deep_frame', 1)
         else:
             deep_frame_path = self.indexer.get_path('deep_frame', camera_number)
-
+        
         # check wavelength calibration
         if not self.options['wavelength_calibration']:
             calibration_laser_map_path = self._get_calibration_laser_map(
@@ -2745,7 +2743,6 @@ class Orbs(Tools):
             filter_path, step, order, stars_cube=stars_cube,
             correct_wcs=correct_wcs,
             flux_calibration_vector=flux_calibration_vector,
-            energy_map_path=energy_map_path,
             deep_frame_path=deep_frame_path,
             wavenumber=self.options['wavenumber'],
             calibration_laser_map_path=calibration_laser_map_path,
@@ -2761,7 +2758,7 @@ class Orbs(Tools):
                                min_star_number=15,
                                aperture_photometry=True, n_phase=None,
                                auto_phase=False, filter_correct=True,
-                               aper_coeff=3., blur=False):
+                               aper_coeff=3.):
         
         """Extract the spectrum of the stars in a list of stars location
         list by photometry.
@@ -2807,12 +2804,7 @@ class Orbs(Tools):
           aperture radius is Rap = aper_coeff * FWHM. Better when
           between 1.5 to reduce the variation of the collected photons
           with varying FWHM and 3. to account for the flux in the
-          wings (default 3., better for star with a high SNR).
-
-        :param blur: (Optional) If True, blur frame (low pass
-          filtering) before fitting stars. It can be used to enhance
-          the quality of the fitted flux of undersampled data (default
-          False). Useful only if aperture_photometry is True.
+          wings (default 3., better for star with a high SNR).   
         """
 
         self._print_msg('Extracting stars spectra', color=True)
@@ -2891,7 +2883,7 @@ class Orbs(Tools):
                 tuning_parameters=self.tuning_parameters,
                 logfile_name=self._logfile_name)
 
-            perf = Performance(cube.cube_A, "Extract stars spectrum", 1)
+            perf = Performance(cube.cube_A, "Extract stars spectrum", 0)
 
             stars_spectrum = cube.extract_stars_spectrum(
                 star_list_path,
@@ -2899,6 +2891,7 @@ class Orbs(Tools):
                 cube._get_modulation_ratio_path(),
                 cube._get_transmission_vector_path(),
                 cube._get_ext_illumination_vector_path(),
+                cube._get_stray_light_vector_path(),
                 calibration_laser_map_path, self.options['step'],
                 self.options['order'], self.config["CALIB_NM_LASER"],
                 self._get_filter_file_path(self.options["filter_name"]),
@@ -2913,7 +2906,7 @@ class Orbs(Tools):
                 n_phase=n_phase, 
                 auto_phase=auto_phase, filter_correct=filter_correct,
                 flat_spectrum_path=flat_spectrum_path,
-                aper_coeff=aper_coeff, blur=blur)
+                aper_coeff=aper_coeff)
 
             perf.print_stats()
         else:
@@ -2933,7 +2926,7 @@ class Orbs(Tools):
                 star_list_path,
                 self.config["INIT_FWHM"], self.config["FIELD_OF_VIEW"],
                 cube._get_transmission_vector_path(),
-                cube._get_added_light_vector_path(),
+                cube._get_stray_light_vector_path(),
                 calibration_laser_map_path, self.options['step'],
                 self.options['order'], self.config["CALIB_NM_LASER"],
                 self._get_filter_file_path(self.options["filter_name"]),
@@ -2945,7 +2938,7 @@ class Orbs(Tools):
                 moffat_beta=self.config["MOFFAT_BETA"],
                 filter_correct=filter_correct,
                 flat_spectrum_path=flat_spectrum_path,
-                aper_coeff=aper_coeff, blur=blur)
+                aper_coeff=aper_coeff)
             
         return stars_spectrum
 
@@ -2985,11 +2978,12 @@ class Orbs(Tools):
         else:
             axis = orb.utils.create_cm1_axis(
                 spectrum.dimz,  self.options['step'], self.options['order'])
-            
+        
         spectrum_header.extend(
             self._get_basic_spectrum_cube_header(
                 axis, wavenumber= wavenumber),
             strip=True, update=False, end=True)
+        
         spectrum_header.set('FILETYPE', 'Calibrated Spectrum Cube')
 
         apod = spectrum_header['APODIZ']
@@ -3037,7 +3031,7 @@ class Orbs(Tools):
             camera_number, window_type, star_list_path=std_list,
             min_star_number=self.config['DETECT_STAR_NB'],
             aperture_photometry=aperture_photometry,
-            n_phase=n_phase, auto_phase=auto_phase, filter_correct=False)[0]
+            n_phase=n_phase, auto_phase=auto_phase, filter_correct=True)[0]
 
         nm_axis = orb.utils.create_nm_axis(
             std_spectrum.shape[0], self.options['step'], self.options['order'])

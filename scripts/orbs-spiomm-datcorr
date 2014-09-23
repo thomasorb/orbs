@@ -23,6 +23,7 @@
 ############ ORBS SpIOMM Data Corrector ############
 ####################################################
 
+import os
 from orb.core import Tools
 import orb.utils
 
@@ -68,8 +69,7 @@ cam2_list = os.listdir('./CAM2/')
 
 # create lists (FINAL_NAME, PATH)
 cam1_list = [(ifile, ifile) for ifile in cam1_list if ('.fits' in ifile)]
-cam2_list = [(ifile, ifile) for ifile in cam2_list
-             if (('.fits' in ifile) and ('bias' not in ifile))]
+cam2_list = [(ifile, ifile) for ifile in cam2_list if ('.fits' in ifile)]
 
 # filter doubles
 cam1_list = filter_doubles(cam1_list)
@@ -95,20 +95,5 @@ for ifile in cam2_list:
     # get bias level
     oldpath = 'CAM2' + os.sep + ifile[1]
     frame, hdr = Tools().read_fits(oldpath, return_header=True)
-    bias_path = os.path.splitext(oldpath)
-    bias_path = bias_path[0] + '_bias' + bias_path[1]
-    dimx = float(frame.shape[0])
-    dimy = float(frame.shape[1])
-    x_min, x_max, y_min, y_max = orb.utils.get_box_coords(
-        dimx/2., dimy/2., max((dimx, dimy))*CENTER_SIZE_COEFF,
-        0, dimx, 0, dimy)
-    if os.path.exists(bias_path):
-        bias_frame = Tools().read_fits(bias_path)
-        
-        hdr['BIAS-LVL'] = (
-            orb.utils.robust_median(
-                bias_frame[x_min:x_max, y_min:y_max]),
-            'Bias level (moment, at the center of the frame)')
-        
     Tools().write_fits(newpath, frame, fits_header=hdr, overwrite=True)
         

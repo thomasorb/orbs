@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Process module &mdash; Orbs 3.7.3 documentation</title>
+    <title>Process module &mdash; Orbs 3.7.4 documentation</title>
     
     <link rel="stylesheet" href="_static/sphinxdoc.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -14,7 +14,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
-        VERSION:     '3.7.3',
+        VERSION:     '3.7.4',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -25,7 +25,7 @@
     <script type="text/javascript" src="_static/doctools.js"></script>
     <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="shortcut icon" href="_static/logo.ico"/>
-    <link rel="top" title="Orbs 3.7.3 documentation" href="index.html" />
+    <link rel="top" title="Orbs 3.7.4 documentation" href="index.html" />
     <link rel="next" title="Changelog" href="changelog.html" />
     <link rel="prev" title="Orbs module" href="orbs_module.html" /> 
   </head>
@@ -42,7 +42,7 @@
         <li class="right" >
           <a href="orbs_module.html" title="Orbs module"
              accesskey="P">previous</a> |</li>
-        <li><a href="index.html">Orbs 3.7.3 documentation</a> &raquo;</li> 
+        <li><a href="index.html">Orbs 3.7.4 documentation</a> &raquo;</li> 
       </ul>
     </div>
       <div class="sphinxsidebar">
@@ -697,7 +697,7 @@ cosmic ray. This cube is stored as a virtual
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>bias_image</strong> &#8211; Master bias frame</li>
+<li><strong>bias_image</strong> &#8211; Master bias frame (can be set to None)</li>
 <li><strong>dark_image</strong> &#8211; Master dark frame</li>
 </ul>
 </td>
@@ -808,18 +808,6 @@ frames creation. Can be &#8216;average&#8217; or &#8216;median&#8217; (default
 ready to be transformed to a spectrum by a Fast Fourier
 Transform (FFT).</p>
 </div>
-<dl class="method">
-<dt id="process.Interferogram._get_added_light_vector_header">
-<tt class="descname">_get_added_light_vector_header</tt><big>(</big><big>)</big><a class="headerlink" href="#process.Interferogram._get_added_light_vector_header" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the header of the added light vector</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.Interferogram._get_added_light_vector_path">
-<tt class="descname">_get_added_light_vector_path</tt><big>(</big><big>)</big><a class="headerlink" href="#process.Interferogram._get_added_light_vector_path" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the path to the added light vector</p>
-</dd></dl>
-
 <dl class="method">
 <dt id="process.Interferogram._get_corrected_interferogram_frame_header">
 <tt class="descname">_get_corrected_interferogram_frame_header</tt><big>(</big><big>)</big><a class="headerlink" href="#process.Interferogram._get_corrected_interferogram_frame_header" title="Permalink to this definition">¶</a></dt>
@@ -972,6 +960,18 @@ phase cube (default False).</li>
 </tr>
 </tbody>
 </table>
+</dd></dl>
+
+<dl class="method">
+<dt id="process.Interferogram._get_stray_light_vector_header">
+<tt class="descname">_get_stray_light_vector_header</tt><big>(</big><big>)</big><a class="headerlink" href="#process.Interferogram._get_stray_light_vector_header" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the header of the stray light vector</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="process.Interferogram._get_stray_light_vector_path">
+<tt class="descname">_get_stray_light_vector_path</tt><big>(</big><big>)</big><a class="headerlink" href="#process.Interferogram._get_stray_light_vector_path" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the path to the stray light vector</p>
 </dd></dl>
 
 <dl class="method">
@@ -1139,9 +1139,9 @@ calibration cube.</li>
 
 <dl class="method">
 <dt id="process.Interferogram.correct_interferogram">
-<tt class="descname">correct_interferogram</tt><big>(</big><em>transmission_vector_path</em>, <em>added_light_vector_path</em><big>)</big><a class="headerlink" href="#process.Interferogram.correct_interferogram" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">correct_interferogram</tt><big>(</big><em>transmission_vector_path</em>, <em>stray_light_vector_path</em><big>)</big><a class="headerlink" href="#process.Interferogram.correct_interferogram" title="Permalink to this definition">¶</a></dt>
 <dd><p>Correct an interferogram cube for for variations
-of sky transission and added light.</p>
+of sky transission and stray light.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -1151,7 +1151,7 @@ of sky transission and added light.</p>
 vector.All the interferograms of the cube are divided by
 this vector. The vector must have the same size as the 3rd
 axis of the cube (the OPD axis).</li>
-<li><strong>sky_added_light_vector_path</strong> &#8211; Path to the added light
+<li><strong>stray_light_vector_path</strong> &#8211; Path to the stray light
 vector. This vector is substracted from the interferograms
 of all the cube. The vector must have the same size as the
 3rd axis of the cube (the OPD axis).</li>
@@ -1167,7 +1167,7 @@ caused by clouds or airmass variation.</p>
 </div>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
-<p class="last">The added light vector gives the counts added
+<p class="last">The stray light vector gives the counts added
 homogeneously to each frame caused by a cloud reflecting
 light coming from the ground, the moon or the sun.</p>
 </div>
@@ -1181,7 +1181,7 @@ light coming from the ground, the moon or the sun.</p>
 <dt id="process.Interferogram.create_correction_vectors">
 <tt class="descname">create_correction_vectors</tt><big>(</big><em>star_list_path</em>, <em>fwhm_arc</em>, <em>fov</em>, <em>profile_name='gaussian'</em>, <em>moffat_beta=3.5</em>, <em>step_number=None</em>, <em>bad_frames_vector=</em><span class="optional">[</span><span class="optional">]</span>, <em>aperture_photometry=True</em><big>)</big><a class="headerlink" href="#process.Interferogram.create_correction_vectors" title="Permalink to this definition">¶</a></dt>
 <dd><p>Create a sky transmission vector computed from star
-photometry and an added light vector computed from the median
+photometry and an stray light vector computed from the median
 of the frames.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -1213,7 +1213,7 @@ caused by clouds or airmass variation.</p>
 </div>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
-<p class="last">The added light vector gives the counts added
+<p class="last">The stray light vector gives the counts added
 homogeneously to each frame caused by a cloud reflecting
 light coming from the ground, the moon or the sun.</p>
 </div>
@@ -1229,7 +1229,7 @@ better precision (because both cubes are used to compute it)</p>
 
 <dl class="method">
 <dt id="process.Interferogram.extract_stars_spectrum">
-<tt class="descname">extract_stars_spectrum</tt><big>(</big><em>star_list_path</em>, <em>fwhm_arc</em>, <em>fov</em>, <em>transmission_vector_path</em>, <em>added_light_vector_path</em>, <em>calibration_laser_map_path</em>, <em>step</em>, <em>order</em>, <em>nm_laser</em>, <em>filter_file_path</em>, <em>step_nb</em>, <em>window_type=None</em>, <em>bad_frames_vector=None</em>, <em>smoothing_deg=2</em>, <em>aperture=True</em>, <em>profile_name='gaussian'</em>, <em>moffat_beta=3.5</em>, <em>filter_correct=True</em>, <em>flat_spectrum_path=None</em>, <em>aper_coeff=3.0</em><big>)</big><a class="headerlink" href="#process.Interferogram.extract_stars_spectrum" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">extract_stars_spectrum</tt><big>(</big><em>star_list_path</em>, <em>fwhm_arc</em>, <em>fov</em>, <em>transmission_vector_path</em>, <em>stray_light_vector_path</em>, <em>calibration_laser_map_path</em>, <em>step</em>, <em>order</em>, <em>nm_laser</em>, <em>filter_file_path</em>, <em>step_nb</em>, <em>window_type=None</em>, <em>bad_frames_vector=None</em>, <em>smoothing_deg=2</em>, <em>aperture=True</em>, <em>profile_name='gaussian'</em>, <em>moffat_beta=3.5</em>, <em>filter_correct=True</em>, <em>flat_spectrum_path=None</em>, <em>aper_coeff=3.0</em><big>)</big><a class="headerlink" href="#process.Interferogram.extract_stars_spectrum" title="Permalink to this definition">¶</a></dt>
 <dd><p>Extract the spectrum of the stars in a list of stars location
 list by photometry.</p>
 <p>This method may be used after
@@ -1250,7 +1250,7 @@ along x axis.</li>
 <li><strong>transmission_vector_path</strong> &#8211; Variation of the sky
 transmission. Must have the same size as the interferograms
 of the cube.</li>
-<li><strong>added_light_vector_path</strong> &#8211; added light vector. Must have
+<li><strong>stray_light_vector_path</strong> &#8211; stray light vector. Must have
 the same size as the interferograms of the cube.</li>
 <li><strong>calibration_laser_map_path</strong> &#8211; Path to the calibration
 laser map.</li>
@@ -1371,20 +1371,6 @@ logfile (default None).</li>
 </tr>
 </tbody>
 </table>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.InterferogramMerger._get_added_light_vector_header">
-<tt class="descname">_get_added_light_vector_header</tt><big>(</big><big>)</big><a class="headerlink" href="#process.InterferogramMerger._get_added_light_vector_header" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the header of the added light vector.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.InterferogramMerger._get_added_light_vector_path">
-<tt class="descname">_get_added_light_vector_path</tt><big>(</big><big>)</big><a class="headerlink" href="#process.InterferogramMerger._get_added_light_vector_path" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the path to the added light vector.</p>
-<p>The external illuminaton vector records lights coming from
-reflections over clouds, the moon or the sun.</p>
 </dd></dl>
 
 <dl class="method">
@@ -1551,6 +1537,20 @@ containing only the photometrical data for the stars.</p>
 </dd></dl>
 
 <dl class="method">
+<dt id="process.InterferogramMerger._get_stray_light_vector_header">
+<tt class="descname">_get_stray_light_vector_header</tt><big>(</big><big>)</big><a class="headerlink" href="#process.InterferogramMerger._get_stray_light_vector_header" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the header of the stray light vector.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="process.InterferogramMerger._get_stray_light_vector_path">
+<tt class="descname">_get_stray_light_vector_path</tt><big>(</big><big>)</big><a class="headerlink" href="#process.InterferogramMerger._get_stray_light_vector_path" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the path to the stray light vector.</p>
+<p>The external illuminaton vector records lights coming from
+reflections over clouds, the moon or the sun.</p>
+</dd></dl>
+
+<dl class="method">
 <dt id="process.InterferogramMerger._get_transformed_interfero_frame_header">
 <tt class="descname">_get_transformed_interfero_frame_header</tt><big>(</big><big>)</big><a class="headerlink" href="#process.InterferogramMerger._get_transformed_interfero_frame_header" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return the header of the transformed interferogram frames.</p>
@@ -1578,16 +1578,32 @@ containing only the photometrical data for the stars.</p>
 
 <dl class="method">
 <dt id="process.InterferogramMerger._get_transmission_vector_header">
-<tt class="descname">_get_transmission_vector_header</tt><big>(</big><big>)</big><a class="headerlink" href="#process.InterferogramMerger._get_transmission_vector_header" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">_get_transmission_vector_header</tt><big>(</big><em>err=False</em><big>)</big><a class="headerlink" href="#process.InterferogramMerger._get_transmission_vector_header" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return the header of the transmission vector.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>err</strong> &#8211; (Optional) True if error vector (default False).</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="method">
 <dt id="process.InterferogramMerger._get_transmission_vector_path">
-<tt class="descname">_get_transmission_vector_path</tt><big>(</big><big>)</big><a class="headerlink" href="#process.InterferogramMerger._get_transmission_vector_path" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">_get_transmission_vector_path</tt><big>(</big><em>err=False</em><big>)</big><a class="headerlink" href="#process.InterferogramMerger._get_transmission_vector_path" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return the path to the transmission vector.</p>
-<p>The transmission vector is the vector used to correct
+<p>Transmission vector is the vector used to correct
 interferograms for the variations of the sky transmission.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>err</strong> &#8211; (Optional) True if error vector (default False).</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="method">
@@ -1636,7 +1652,7 @@ Frame_{n,2}}{Frame_{n,1} + Frame_{n,2}}\]</div>
 
 <dl class="method">
 <dt id="process.InterferogramMerger.extract_stars_spectrum">
-<tt class="descname">extract_stars_spectrum</tt><big>(</big><em>star_list_path</em>, <em>fwhm_arc</em>, <em>fov</em>, <em>modulation_ratio_path</em>, <em>transmission_vector_path</em>, <em>ext_illumination_vector_path</em>, <em>calibration_laser_map_path</em>, <em>step</em>, <em>order</em>, <em>nm_laser</em>, <em>filter_file_path</em>, <em>step_nb</em>, <em>window_type=None</em>, <em>bad_frames_vector=None</em>, <em>phase_map_0_path=None</em>, <em>phase_coeffs=None</em>, <em>smoothing_deg=2</em>, <em>aperture=True</em>, <em>profile_name='gaussian'</em>, <em>moffat_beta=3.5</em>, <em>n_phase=None</em>, <em>auto_phase=False</em>, <em>filter_correct=True</em>, <em>flat_spectrum_path=None</em>, <em>aper_coeff=3.0</em><big>)</big><a class="headerlink" href="#process.InterferogramMerger.extract_stars_spectrum" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">extract_stars_spectrum</tt><big>(</big><em>star_list_path</em>, <em>fwhm_arc</em>, <em>fov</em>, <em>modulation_ratio_path</em>, <em>transmission_vector_path</em>, <em>ext_illumination_vector_path</em>, <em>stray_light_vector_path</em>, <em>calibration_laser_map_path</em>, <em>step</em>, <em>order</em>, <em>nm_laser</em>, <em>filter_file_path</em>, <em>step_nb</em>, <em>window_type=None</em>, <em>bad_frames_vector=None</em>, <em>phase_map_0_path=None</em>, <em>phase_coeffs=None</em>, <em>smoothing_deg=2</em>, <em>aperture=True</em>, <em>profile_name='gaussian'</em>, <em>moffat_beta=3.5</em>, <em>n_phase=None</em>, <em>auto_phase=False</em>, <em>filter_correct=True</em>, <em>flat_spectrum_path=None</em>, <em>aper_coeff=3.0</em><big>)</big><a class="headerlink" href="#process.InterferogramMerger.extract_stars_spectrum" title="Permalink to this definition">¶</a></dt>
 <dd><p>Extract the spectrum of the stars in a list of stars location
 list by photometry.</p>
 <p>This method may be used after
@@ -1662,6 +1678,8 @@ of the cube.</li>
 illumination.  This is a small correction for the difference
 of incoming light between both cameras. Must have the same
 size as the interferograms of the cube.</li>
+<li><strong>stray_light_vector_path</strong> &#8211; Stray light vector. Must have
+the same size as the interferograms of the cube.</li>
 <li><strong>calibration_laser_map_path</strong> &#8211; Path to the calibration
 laser map.</li>
 <li><strong>order</strong> &#8211; Folding order</li>
@@ -2116,6 +2134,18 @@ name is changed (default False).</td>
 </dd></dl>
 
 <dl class="method">
+<dt id="process.Spectrum._get_modulation_efficiency_map_header">
+<tt class="descname">_get_modulation_efficiency_map_header</tt><big>(</big><big>)</big><a class="headerlink" href="#process.Spectrum._get_modulation_efficiency_map_header" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the header of the modulation efficiency map.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="process.Spectrum._get_modulation_efficiency_map_path">
+<tt class="descname">_get_modulation_efficiency_map_path</tt><big>(</big><big>)</big><a class="headerlink" href="#process.Spectrum._get_modulation_efficiency_map_path" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return path to the modulation efficiency map.</p>
+</dd></dl>
+
+<dl class="method">
 <dt id="process.Spectrum._get_stars_coords_path">
 <tt class="descname">_get_stars_coords_path</tt><big>(</big><big>)</big><a class="headerlink" href="#process.Spectrum._get_stars_coords_path" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return path to the list of stars coordinates used to correct WCS</p>
@@ -2142,7 +2172,7 @@ new WCS parameters.</li>
 
 <dl class="method">
 <dt id="process.Spectrum.calibrate">
-<tt class="descname">calibrate</tt><big>(</big><em>filter_file_path</em>, <em>step</em>, <em>order</em>, <em>stars_cube=False</em>, <em>correct_wcs=None</em>, <em>flux_calibration_vector=None</em>, <em>energy_map_path=None</em>, <em>deep_frame_path=None</em>, <em>mean_scaling=True</em>, <em>mean_flux=True</em>, <em>wavenumber=False</em>, <em>calibration_laser_map_path=None</em>, <em>nm_laser=None</em>, <em>standard_header=None</em><big>)</big><a class="headerlink" href="#process.Spectrum.calibrate" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">calibrate</tt><big>(</big><em>filter_file_path</em>, <em>step</em>, <em>order</em>, <em>stars_cube=False</em>, <em>correct_wcs=None</em>, <em>flux_calibration_vector=None</em>, <em>deep_frame_path=None</em>, <em>mean_flux=True</em>, <em>wavenumber=False</em>, <em>calibration_laser_map_path=None</em>, <em>nm_laser=None</em>, <em>standard_header=None</em><big>)</big><a class="headerlink" href="#process.Spectrum.calibrate" title="Permalink to this definition">¶</a></dt>
 <dd><p>Calibrate spectrum cube: correct for filter transmission
 function, correct WCS parameters and flux calibration.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -2164,30 +2194,9 @@ calibrated in erg/cm^2/s/A as the one given by
 <a class="reference internal" href="#process.Spectrum.get_flux_calibration_vector" title="process.Spectrum.get_flux_calibration_vector"><tt class="xref py py-meth docutils literal"><span class="pre">process.Spectrum.get_flux_calibration_vector()</span></tt></a>. Each
 spectrum will be multiplied by this vector to be flux
 calibrated.</li>
-<li><strong>energy_map_path</strong> &#8211; (Optional) Path to a map of the mean
-number of counts for each pixel. Useful to keep the same
-modulation energy in each pixel from the input to the output
-of the reduction process. The energy map is created during
-the merging process (see
-<a class="reference internal" href="#process.InterferogramMerger.merge" title="process.InterferogramMerger.merge"><tt class="xref py py-meth docutils literal"><span class="pre">process.InterferogramMerger.merge()</span></tt></a>). This
-rescaling do not correct for the modulation efficiency. If
-the calibration of the interferogram images is good enough
-you may prefer to give the path to the deep frame (see
-option deep_frame_path). If both deep_frame_path and
-energy_map_path are given, only the deep frame will be used.</li>
 <li><strong>deep_frame_path</strong> &#8211; (Optional) Path to the deep frame of
-the interferogram cube. Useful to keep the same total energy
-from the input to the output of the reduction process. This
-must be used instead of the energy map to get a good relation
-between the number of photon counts in the interferograms
-and in the spectrum and to correct for the modulation
-efficiency but the calibration of the interferogram images
-must be very good. If both deep_frame_path and
-energy_map_path are given, only the deep frame will be used.</li>
-<li><strong>mean_scaling</strong> &#8211; (Optional) If True scaling of data is
-realized by averaging the scale coefficient over all pixels
-instead of rescaling pixel to pixel. This procedure avoid
-distorsion of the image around stars (default True).</li>
+the interferogram cube. Useful to get the mean modulation
+efficiency and rescale flux.</li>
 <li><strong>mean_flux</strong> &#8211; (Optional) If True, the flux calibration
 vector gives only a mean flux for all the wavelength and
 does not correct for the filter. In this case the filter
@@ -2583,7 +2592,7 @@ in erg/cm^2/s/A.</p>
         <li class="right" >
           <a href="orbs_module.html" title="Orbs module"
              >previous</a> |</li>
-        <li><a href="index.html">Orbs 3.7.3 documentation</a> &raquo;</li> 
+        <li><a href="index.html">Orbs 3.7.4 documentation</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">

@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Changelog &mdash; Orbs 3.7.3 documentation</title>
+    <title>Changelog &mdash; Orbs 3.7.4 documentation</title>
     
     <link rel="stylesheet" href="_static/sphinxdoc.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -14,7 +14,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
-        VERSION:     '3.7.3',
+        VERSION:     '3.7.4',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -25,7 +25,7 @@
     <script type="text/javascript" src="_static/doctools.js"></script>
     <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="shortcut icon" href="_static/logo.ico"/>
-    <link rel="top" title="Orbs 3.7.3 documentation" href="index.html" />
+    <link rel="top" title="Orbs 3.7.4 documentation" href="index.html" />
     <link rel="prev" title="Process module" href="process_module.html" /> 
   </head>
   <body>
@@ -38,7 +38,7 @@
         <li class="right" >
           <a href="process_module.html" title="Process module"
              accesskey="P">previous</a> |</li>
-        <li><a href="index.html">Orbs 3.7.3 documentation</a> &raquo;</li> 
+        <li><a href="index.html">Orbs 3.7.4 documentation</a> &raquo;</li> 
       </ul>
     </div>
       <div class="sphinxsidebar">
@@ -179,6 +179,11 @@
 <li><a class="reference internal" href="#prebinning">Prebinning</a></li>
 </ul>
 </li>
+</ul>
+</li>
+<li><a class="reference internal" href="#id17">3.7.4</a><ul>
+<li><a class="reference internal" href="#enhanced-flux-calibration">Enhanced flux calibration</a></li>
+<li><a class="reference internal" href="#astropy">Astropy</a></li>
 </ul>
 </li>
 </ul>
@@ -1004,6 +1009,36 @@ binning of each camera is multiplied by the prebinning size.</p>
 </div>
 </div>
 </div>
+<div class="section" id="id17">
+<h3>3.7.4<a class="headerlink" href="#id17" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="enhanced-flux-calibration">
+<h4>Enhanced flux calibration<a class="headerlink" href="#enhanced-flux-calibration" title="Permalink to this headline">¶</a></h4>
+<ul class="simple">
+<li>Flux calibration is now much more precise because the whole spectrum
+are no more rescaled only from deep frames or energy map but on the
+whole conservation of the energy from the input to the output. This
+relies on the use of both deep frame and energy maps and assert,
+just before the calibration that E(I) / M(I) = E(S) / M(S) if we
+consider that E() is the energy map and M() is the deep frame of the
+interferogram cube I or the spectral cube S. Both
+<a class="reference internal" href="process_module.html#process.InterferogramMerger.extract_stars_spectrum" title="process.InterferogramMerger.extract_stars_spectrum"><tt class="xref py py-meth docutils literal"><span class="pre">extract_stars_spectrum()</span></tt></a> and
+<a class="reference internal" href="process_module.html#process.Spectrum.calibrate" title="process.Spectrum.calibrate"><tt class="xref py py-meth docutils literal"><span class="pre">calibrate()</span></tt></a> have been modified to take
+that into account.</li>
+<li>Bug fix in <a class="reference internal" href="process_module.html#process.InterferogramMerger.extract_stars_spectrum" title="process.InterferogramMerger.extract_stars_spectrum"><tt class="xref py py-meth docutils literal"><span class="pre">extract_stars_spectrum()</span></tt></a>.</li>
+</ul>
+</div>
+<div class="section" id="astropy">
+<h4>Astropy<a class="headerlink" href="#astropy" title="Permalink to this headline">¶</a></h4>
+<p>Astropy (<a class="reference external" href="http://www.astropy.org/">http://www.astropy.org/</a>) is definitly needed, pyfits and
+pywcs standalone modules are not needed anymore by ORBS (but they
+still can be used by other modules ;) even modules imported by ORBS so
+becarefull before removing them)</p>
+<ul class="simple">
+<li>PYFITS: now imported from astropy.io.fits</li>
+<li>PYWCS: now imported from astropy.wcs</li>
+</ul>
+</div>
+</div>
 </div>
 </div>
 
@@ -1022,7 +1057,7 @@ binning of each camera is multiplied by the prebinning size.</p>
         <li class="right" >
           <a href="process_module.html" title="Process module"
              >previous</a> |</li>
-        <li><a href="index.html">Orbs 3.7.3 documentation</a> &raquo;</li> 
+        <li><a href="index.html">Orbs 3.7.4 documentation</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">

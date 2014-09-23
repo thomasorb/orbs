@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Orbs module &mdash; Orbs 3.7.3 documentation</title>
+    <title>Orbs module &mdash; Orbs 3.7.4 documentation</title>
     
     <link rel="stylesheet" href="_static/sphinxdoc.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -14,7 +14,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
-        VERSION:     '3.7.3',
+        VERSION:     '3.7.4',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -25,7 +25,7 @@
     <script type="text/javascript" src="_static/doctools.js"></script>
     <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="shortcut icon" href="_static/logo.ico"/>
-    <link rel="top" title="Orbs 3.7.3 documentation" href="index.html" />
+    <link rel="top" title="Orbs 3.7.4 documentation" href="index.html" />
     <link rel="next" title="Process module" href="process_module.html" />
     <link rel="prev" title="Quick start Guide" href="quick_start.html" /> 
   </head>
@@ -42,7 +42,7 @@
         <li class="right" >
           <a href="quick_start.html" title="Quick start Guide"
              accesskey="P">previous</a> |</li>
-        <li><a href="index.html">Orbs 3.7.3 documentation</a> &raquo;</li> 
+        <li><a href="index.html">Orbs 3.7.4 documentation</a> &raquo;</li> 
       </ul>
     </div>
       <div class="sphinxsidebar">
@@ -876,6 +876,8 @@ correct for varying dark level of the camera 2 of SpIOMM</li>
 enter in one of the cameras and not the other this must be
 set to 1. This way this external light can be tracked by the
 merge process.</li>
+<li>SATURATION_THRESHOLD: Saturation threshold for star
+detection. 35000 by default.</li>
 </ul>
 </div></blockquote>
 </div>
@@ -885,7 +887,7 @@ merge process.</li>
 <dt id="orbs.orbs.Orbs.correct_interferogram">
 <tt class="descname">correct_interferogram</tt><big>(</big><em>camera_number</em>, <em>star_list_path=None</em>, <em>stars_fwhm=None</em>, <em>image_list_path=None</em>, <em>min_star_number=15</em>, <em>bad_frames_vector=</em><span class="optional">[</span><span class="optional">]</span><big>)</big><a class="headerlink" href="#orbs.orbs.Orbs.correct_interferogram" title="Permalink to this definition">¶</a></dt>
 <dd><p>Correct a single-camera interferogram cube for variations
-of sky transission and added light.</p>
+of sky transission and stray light.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -912,7 +914,7 @@ caused by clouds or airmass variation.</p>
 </div>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
-<p class="last">The added light vector gives the counts added
+<p class="last">The stray light vector gives the counts added
 homogeneously to each frame caused by a cloud reflecting
 light coming from the ground, the moon or the sun.</p>
 </div>
@@ -953,7 +955,7 @@ that must be added to the bad frames vector (default None).</li>
 
 <dl class="method">
 <dt id="orbs.orbs.Orbs.detect_stars">
-<tt class="descname">detect_stars</tt><big>(</big><em>cube</em>, <em>camera_number</em>, <em>min_star_number</em>, <em>saturation_threshold=35000</em>, <em>return_fwhm_pix=False</em><big>)</big><a class="headerlink" href="#orbs.orbs.Orbs.detect_stars" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">detect_stars</tt><big>(</big><em>cube</em>, <em>camera_number</em>, <em>min_star_number</em>, <em>saturation_threshold=None</em>, <em>return_fwhm_pix=False</em><big>)</big><a class="headerlink" href="#orbs.orbs.Orbs.detect_stars" title="Permalink to this definition">¶</a></dt>
 <dd><p>Detect stars in a cube and save the star list in a file.</p>
 <p>This method is a simple wrapper around
 <tt class="xref py py-meth docutils literal"><span class="pre">orb.astrometry.Astrometry.detect_stars()</span></tt></p>
@@ -965,9 +967,10 @@ that must be added to the bad frames vector (default None).</li>
 <li><strong>cube</strong> &#8211; an orbs.Cube instance</li>
 <li><strong>min_star_number</strong> &#8211; Minimum number of star to detect</li>
 <li><strong>saturation_threshold</strong> &#8211; (Optional) Number of counts above
-which the star can be considered as saturated. Very low by
+which the star can be considered as saturated. Low by
 default because at the ZPD the intensity of a star can be
-twice the intensity far from it (default 35000).</li>
+twice the intensity far from it. If None the default
+configuration option is used: 35000 (default None).</li>
 <li><strong>return_fwhm_pix</strong> &#8211; (Optional) If True, the returned fwhm
 will be given in pixels instead of arcseconds (default
 False).</li>
@@ -987,7 +990,7 @@ False).</li>
 
 <dl class="method">
 <dt id="orbs.orbs.Orbs.extract_stars_spectrum">
-<tt class="descname">extract_stars_spectrum</tt><big>(</big><em>camera_number</em>, <em>window_type</em>, <em>star_list_path=None</em>, <em>stars_fwhm_arc=2.0</em>, <em>min_star_number=15</em>, <em>aperture_photometry=True</em>, <em>n_phase=None</em>, <em>auto_phase=False</em>, <em>filter_correct=True</em>, <em>aper_coeff=3.0</em>, <em>blur=False</em><big>)</big><a class="headerlink" href="#orbs.orbs.Orbs.extract_stars_spectrum" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">extract_stars_spectrum</tt><big>(</big><em>camera_number</em>, <em>window_type</em>, <em>star_list_path=None</em>, <em>stars_fwhm_arc=2.0</em>, <em>min_star_number=15</em>, <em>aperture_photometry=True</em>, <em>n_phase=None</em>, <em>auto_phase=False</em>, <em>filter_correct=True</em>, <em>aper_coeff=3.0</em><big>)</big><a class="headerlink" href="#orbs.orbs.Orbs.extract_stars_spectrum" title="Permalink to this definition">¶</a></dt>
 <dd><p>Extract the spectrum of the stars in a list of stars location
 list by photometry.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -1028,10 +1031,6 @@ aperture radius is Rap = aper_coeff * FWHM. Better when
 between 1.5 to reduce the variation of the collected photons
 with varying FWHM and 3. to account for the flux in the
 wings (default 3., better for star with a high SNR).</li>
-<li><strong>blur</strong> &#8211; (Optional) If True, blur frame (low pass
-filtering) before fitting stars. It can be used to enhance
-the quality of the fitted flux of undersampled data (default
-False). Useful only if aperture_photometry is True.</li>
 </ul>
 </td>
 </tr>
@@ -1364,6 +1363,7 @@ others created during initialization needed by processing classes.</p>
 <li>try_catalogue: TRYCAT</li>
 <li>wavenumber: WAVENUMBER</li>
 <li>wavelength_calibration: WAVE_CALIB</li>
+<li>saturation_threshold: SATURATION_THRESHOLD</li>
 </ul>
 </div>
 </dd></dl>
@@ -1650,7 +1650,7 @@ run this function alone.</p>
         <li class="right" >
           <a href="quick_start.html" title="Quick start Guide"
              >previous</a> |</li>
-        <li><a href="index.html">Orbs 3.7.3 documentation</a> &raquo;</li> 
+        <li><a href="index.html">Orbs 3.7.4 documentation</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
