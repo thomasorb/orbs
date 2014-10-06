@@ -93,7 +93,7 @@ class Orbs(Tools):
 
     :HOUR_UT: UT hour of the observation (HH:MM:SS)
 
-    :BADFRMS: List of bad frames indexes
+    :BAD_FRAMES: List of bad frames indexes
 
     :TARGETR: RA of the target (hour:min:sec)
         
@@ -304,7 +304,7 @@ class Orbs(Tools):
         
         * obs_date: OBSDATE
         
-        * bad_frames: BADFRMS
+        * bad_frames: BAD_FRAMES
         
         * target_ra: TARGETR
         
@@ -2227,9 +2227,15 @@ class Orbs(Tools):
                     'cam2.calibration_laser_map']
             else:
                 self._print_error("Camera number must be 0,1 or 2")
-                
+
+        if calibration_laser_map_path is None:
+            self._print_warning("No calibration laser map found")
+            return None
+            
         if not os.path.exists(calibration_laser_map_path):
-            self._print_error("Calibration laser map not found ({} does not exist)".format(calibration_laser_map_path))
+            self._print_warning("Calibration laser map not found ({} does not exist)".format(calibration_laser_map_path))
+            return None
+            
         return calibration_laser_map_path
 
 
@@ -2353,7 +2359,11 @@ class Orbs(Tools):
                 for iorder in range(1, self.config["PHASE_FIT_DEG"] + 1):
                     phase_map_path = self.indexer.get_path(
                         'phase_map_%d'%iorder, camera_number)
-                    if os.path.exists(phase_map_path):
+                    if phase_map_path is None:
+                        self._print_warning("No phase map found for the order %d. Phase correction will not use phase maps and will be less accurate !"%iorder)
+                        phase_map_correction = False
+                        
+                    elif os.path.exists(phase_map_path):
                         phase_map_paths.append(phase_map_path)
                     else:
                         self._print_warning("No phase map found for the order %d. Phase correction will not use phase maps and will be less accurate !"%iorder)
@@ -2363,7 +2373,10 @@ class Orbs(Tools):
             if residual_map_path is None:
                 residual_map_path = self.indexer.get_path(
                     'phase_map_residual', camera_number)
-                if not os.path.exists(residual_map_path):
+                if residual_map_path is None:
+                    self._print_warning("No residual map path found. Phase correction will not use phase maps and will be less accurate !")
+                    phase_map_correction = False
+                elif not os.path.exists(residual_map_path):
                     self._print_warning("No residual map path found. Phase correction will not use phase maps and will be less accurate !")
                     phase_map_correction = False
 
@@ -2758,7 +2771,7 @@ class Orbs(Tools):
                                min_star_number=15,
                                aperture_photometry=True, n_phase=None,
                                auto_phase=False, filter_correct=True,
-                               aper_coeff=3.):
+                               aper_coeff=3., saturation=None):
         
         """Extract the spectrum of the stars in a list of stars location
         list by photometry.
@@ -2804,7 +2817,10 @@ class Orbs(Tools):
           aperture radius is Rap = aper_coeff * FWHM. Better when
           between 1.5 to reduce the variation of the collected photons
           with varying FWHM and 3. to account for the flux in the
-          wings (default 3., better for star with a high SNR).   
+          wings (default 3., better for star with a high SNR).
+          
+        :param saturation: (Optional) If not None, all pixels above
+          the saturation level are removed from the fit (default None).
         """
 
         self._print_msg('Extracting stars spectra', color=True)
@@ -2863,8 +2879,13 @@ class Orbs(Tools):
                     residual_map_path=residual_map_path)
                 
         # get bad frames vector
-        bad_frames_vector = self.create_bad_frames_vector(camera_number)
-
+        if "bad_frames" in self.options:
+            bad_frames_list = self.options["bad_frames"]
+            
+        bad_frames_vector = self.create_bad_frames_vector(
+            camera_number,
+            bad_frames_list=bad_frames_list)
+        
         # check parameters
         if 'apodization_function' in self.options and window_type is None:
             window_type = self.options['apodization_function']
@@ -2906,7 +2927,8 @@ class Orbs(Tools):
                 n_phase=n_phase, 
                 auto_phase=auto_phase, filter_correct=filter_correct,
                 flat_spectrum_path=flat_spectrum_path,
-                aper_coeff=aper_coeff)
+                aper_coeff=aper_coeff,
+                saturation=saturation)
 
             perf.print_stats()
         else:
@@ -2938,7 +2960,8 @@ class Orbs(Tools):
                 moffat_beta=self.config["MOFFAT_BETA"],
                 filter_correct=filter_correct,
                 flat_spectrum_path=flat_spectrum_path,
-                aper_coeff=aper_coeff)
+                aper_coeff=aper_coeff,
+                saturation=saturation)
             
         return stars_spectrum
 

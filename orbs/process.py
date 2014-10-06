@@ -3014,7 +3014,8 @@ class Interferogram(Cube):
                                smoothing_deg=2,
                                aperture=True, profile_name='gaussian',
                                moffat_beta=3.5, filter_correct=True,
-                               flat_spectrum_path=None, aper_coeff=3.):
+                               flat_spectrum_path=None, aper_coeff=3.,
+                               saturation=None):
         
         """
         Extract the spectrum of the stars in a list of stars location
@@ -3091,6 +3092,9 @@ class Interferogram(Cube):
           between 1.5 to reduce the variation of the collected photons
           with varying FWHM and 3. to account for the flux in the
           wings (default 3., better for star with a high SNR).
+
+        :param saturation: (Optional) If not None, all pixels above
+          the saturation level are removed from the fit (default None).
         """
         
         PHASE_LEN_COEFF = 0.8 # Ratio of the number of points used to
@@ -3131,7 +3135,8 @@ class Interferogram(Cube):
                                  fix_aperture_size=False,
                                  precise_guess=True,
                                  aper_coeff=aper_coeff,
-                                 multi_fit=True)
+                                 multi_fit=True,
+                                 saturation=saturation)
         
         astrom.load_fit_results(astrom._get_fit_results_path())
         photom = astrom.fit_results[:,:,photometry_type]
@@ -3147,7 +3152,7 @@ class Interferogram(Cube):
         # compute equivalent surface to substract stray light
         # correctly from the integrated flux
         surf_eq = (4. * math.pi *  orb.utils.robust_median(
-            (astrom_A.fit_results[:,:,'fwhm']
+            (astrom.fit_results[:,:,'fwhm']
              / orb.constants.FWHM_COEFF)**2.))
         
         star_interf_list = list()
@@ -5406,7 +5411,8 @@ class InterferogramMerger(Tools):
                                aperture=True, profile_name='gaussian',
                                moffat_beta=3.5, n_phase=None,
                                auto_phase=False, filter_correct=True,
-                               flat_spectrum_path=None, aper_coeff=3.):
+                               flat_spectrum_path=None, aper_coeff=3.,
+                               saturation=None):
         
         """
         Extract the spectrum of the stars in a list of stars location
@@ -5514,7 +5520,10 @@ class InterferogramMerger(Tools):
           aperture radius is Rap = aper_coeff * FWHM. Better when
           between 1.5 to reduce the variation of the collected photons
           with varying FWHM and 3. to account for the flux in the
-          wings (default 3., better for star with a high SNR).   
+          wings (default 3., better for star with a high SNR).
+
+        :param saturation: (Optional) If not None, allpixels above the
+          saturation level are removed from the fit (default None).
         """
         PHASE_LEN_COEFF = 0.5 # Ratio of the number of points used to
                               # define phase over the total number of
@@ -5600,12 +5609,14 @@ class InterferogramMerger(Tools):
                                    fix_aperture_size=True,
                                    precise_guess=True,
                                    aper_coeff=aper_coeff,
-                                   multi_fit=True)
+                                   multi_fit=True,
+                                   saturation=saturation)
         astrom_B.fit_stars_in_cube(local_background=True,
                                    fix_aperture_size=True,
                                    precise_guess=True,
                                    aper_coeff=aper_coeff,
-                                   multi_fit=True)
+                                   multi_fit=True,
+                                   saturation=saturation)
         
         astrom_A.load_fit_results(astrom_A._get_fit_results_path())
         astrom_B.load_fit_results(astrom_B._get_fit_results_path())
@@ -7214,7 +7225,7 @@ class Standard(Tools):
     def compute_image_calibration(self, images_list_path, filter_name,
                                   exp_time, std_coords, init_fwhm_arc,
                                   fov, profile_name='gaussian',
-                                  moffat_beta=3.5, prim_surf=16000,
+                                  moffat_beta=3.5, prim_surf=17554,
                                   verbose=False):
 
         """
@@ -7280,6 +7291,7 @@ class Standard(Tools):
         # compute mean flux of the star in the filter band
         std_flux = (np.sum(interp_spec * filter_trans)
                     / np.sum(filter_trans))
+        
 
         self._print_msg('Mean flux of the star in the filter band: %e [erg/s/cm^2/A]'%std_flux)
 
@@ -7300,9 +7312,12 @@ class Standard(Tools):
             std_master_frame = std.get_data_frame(0)
         elif std.dimz <= 3:
             std_master_frame = np.median(std[:,:,:], axis=2)
-        else:
+        elif std.dimz <= 15:
             std_master_frame = orb.utils.create_master_frame(
                 std[:,:,:], silent=True)
+        else: # large number of frames to combine
+            std_master_frame = orb.utils.create_master_frame(
+                std[:,:,:], silent=True, reject='minmax')
 
         astrom = Astrometry(std_master_frame, init_fwhm_arc,
                             fov, profile_name=profile_name,
