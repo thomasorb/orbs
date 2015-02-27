@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Changelog &mdash; Orbs 3.7.4 documentation</title>
+    <title>Changelog &mdash; Orbs 3.7.5 documentation</title>
     
     <link rel="stylesheet" href="_static/sphinxdoc.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -14,7 +14,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
-        VERSION:     '3.7.4',
+        VERSION:     '3.7.5',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -25,7 +25,7 @@
     <script type="text/javascript" src="_static/doctools.js"></script>
     <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="shortcut icon" href="_static/logo.ico"/>
-    <link rel="top" title="Orbs 3.7.4 documentation" href="index.html" />
+    <link rel="top" title="Orbs 3.7.5 documentation" href="index.html" />
     <link rel="prev" title="Process module" href="process_module.html" /> 
   </head>
   <body>
@@ -36,9 +36,12 @@
           <a href="genindex.html" title="General Index"
              accesskey="I">index</a></li>
         <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
           <a href="process_module.html" title="Process module"
              accesskey="P">previous</a> |</li>
-        <li><a href="index.html">Orbs 3.7.4 documentation</a> &raquo;</li> 
+        <li><a href="index.html">Orbs 3.7.5 documentation</a> &raquo;</li> 
       </ul>
     </div>
       <div class="sphinxsidebar">
@@ -186,6 +189,14 @@
 <li><a class="reference internal" href="#astropy">Astropy</a></li>
 </ul>
 </li>
+<li><a class="reference internal" href="#id18">3.7.5</a><ul>
+<li><a class="reference internal" href="#id19">Miscellaneous</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#v3-8-start-of-cfht-integration">v3.8 Start of CFHT integration</a><ul>
+<li><a class="reference internal" href="#id20">3.8.0</a></li>
 </ul>
 </li>
 </ul>
@@ -713,7 +724,8 @@ process t avoid too deviant values.</p>
 (in the option file). To tune a &#8216;tunable&#8217; parameter you must use the
 keyword TUNE, give the full name of the method parameter
 (class.method.parameter_name) and its new value:</p>
-<div class="highlight-python"><pre>TUNE InterferogramMerger.find_alignement.BOX_SIZE_COEFF 7.</pre>
+<div class="highlight-python"><div class="highlight"><pre>TUNE InterferogramMerger.find_alignement.BOX_SIZE_COEFF 7.
+</pre></div>
 </div>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
@@ -970,7 +982,8 @@ step number, ORBS version and ORBS option file name also added.</li>
 behaviour changed. The alignement pass for tip and tilt angles is
 not anymore by default. It is still possible to do it by adding this
 line in the option file:</p>
-<div class="highlight-python"><pre>TUNE InterferogramMerger.find_alignment.FULL_PRECISION 1</pre>
+<div class="highlight-python"><div class="highlight"><pre>TUNE InterferogramMerger.find_alignment.FULL_PRECISION 1
+</pre></div>
 </div>
 </li>
 </ul>
@@ -994,7 +1007,8 @@ chip_index (see ORB documentation). This is done during ORBS init:
 <p>Used for faster computation of big data set. It
 can also be useful if the user simply wants binned data. At the user
 level only one option must be passed to the option file:</p>
-<div class="highlight-python"><pre>PREBINNING 2 # Data is prebinned by 2</pre>
+<div class="highlight-python"><div class="highlight"><pre>PREBINNING 2 # Data is prebinned by 2
+</pre></div>
 </div>
 <div class="admonition warning">
 <p class="first admonition-title">Warning</p>
@@ -1032,12 +1046,43 @@ that into account.</li>
 <p>Astropy (<a class="reference external" href="http://www.astropy.org/">http://www.astropy.org/</a>) is definitly needed, pyfits and
 pywcs standalone modules are not needed anymore by ORBS (but they
 still can be used by other modules ;) even modules imported by ORBS so
-becarefull before removing them)</p>
+be carefull before removing them)</p>
 <ul class="simple">
 <li>PYFITS: now imported from astropy.io.fits</li>
 <li>PYWCS: now imported from astropy.wcs</li>
 </ul>
 </div>
+</div>
+<div class="section" id="id18">
+<h3>3.7.5<a class="headerlink" href="#id18" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="id19">
+<h4>Miscellaneous<a class="headerlink" href="#id19" title="Permalink to this headline">¶</a></h4>
+<ul class="simple">
+<li><a class="reference internal" href="process_module.html#process.RawData.correct_frame" title="process.RawData.correct_frame"><tt class="xref py py-meth docutils literal"><span class="pre">correct_frame()</span></tt></a>: Hot pixels correction
+algorithm changed for a standard median correction (hot pixel value
+is replaced by the median of the neighbouring pixels).</li>
+<li><a class="reference internal" href="process_module.html#process.InterferogramMerger.merge" title="process.InterferogramMerger.merge"><tt class="xref py py-meth docutils literal"><span class="pre">merge()</span></tt></a>: Merging operation
+when the frames of the camera B are not used do not rely anymore on
+the computed stray light vector because of the impossibility to
+determine correctly the base level of this vector.</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="section" id="v3-8-start-of-cfht-integration">
+<h2>v3.8 Start of CFHT integration<a class="headerlink" href="#v3-8-start-of-cfht-integration" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id20">
+<h3>3.8.0<a class="headerlink" href="#id20" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>script <strong>orbs</strong> can take a &#8216;SITELLE job file&#8217; as input. It creates an option file from it and launch orbs from this option file.</li>
+<li>script <strong>orbs</strong> can be lauched in SITELLE or SPIOMM mode. This way
+is ensures that the configuration file will be the good one (instead
+of relying on the default behaviour)</li>
+<li><a class="reference internal" href="orbs_module.html#orbs.orbs.Orbs" title="orbs.orbs.Orbs"><tt class="xref py py-class docutils literal"><span class="pre">orbs.orbs.Orbs</span></tt></a> can be passed lists instead of directory paths for
+object, dark, flat ...</li>
+<li><a class="reference internal" href="orbs_module.html#orbs.orbs.Orbs" title="orbs.orbs.Orbs"><tt class="xref py py-class docutils literal"><span class="pre">orbs.orbs.Orbs</span></tt></a> can be passed a special configuration file and
+this choice is reflected on all the processes it launches.</li>
+</ul>
 </div>
 </div>
 </div>
@@ -1055,14 +1100,17 @@ becarefull before removing them)</p>
           <a href="genindex.html" title="General Index"
              >index</a></li>
         <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
           <a href="process_module.html" title="Process module"
              >previous</a> |</li>
-        <li><a href="index.html">Orbs 3.7.4 documentation</a> &raquo;</li> 
+        <li><a href="index.html">Orbs 3.7.5 documentation</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
         &copy; Copyright 2014, Thomas Martin (thomas.martin.1@ulaval.ca).
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.3.
     </div>
   </body>
 </html>

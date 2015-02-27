@@ -1,5 +1,0 @@
-#!/bin/bash
-
-cython cutils.pyx
-gcc -c -fPIC -I/usr/local/lib/python2.7/dist-packages/numpy/core/include/numpy/ cutils.c
-gcc -shared cutils.o -o cutils.so

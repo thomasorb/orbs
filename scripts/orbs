@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python -W ignore::VisibleDeprecationWarning
 # *-* coding: utf-8 *-*
 # Author: Thomas Martin <thomas.martin.1@ulaval.ca>
 
@@ -43,9 +43,185 @@ orbs_path = os.path.normpath(('%s'%os.sep).join(str(script_path[0]).split(os.sep
 sys.path.append(orbs_path)
 
 import orb
-from orb.core import Tools
+from orb.core import Tools, OptionFile
 import orbs
 from orbs.orbs import Orbs
+
+
+def check_option_file(to, path):
+    """Check the option file type.
+
+    If the option file is a job file for SITELLE, parse the file
+    and create an option file readable by ORBS.
+
+    :param to: an orb.Tools instance
+    :param path: path of the option file to check
+    """
+    def get_value(to, opt, hdr, key, optional=False):
+        if key in ofile.options:
+            return str(ofile.options[key]).strip()
+        elif key in hdr:
+            return str(hdr[key]).strip()
+        elif not optional: to._print_error('{} must be defined in the header of the object files or in the job file'.format(key))
+            
+        else:
+            to._print_warning('{} appears to be missing but is optional'.format(key))
+            return ''
+    
+    def add_key(to, params, opt, hdr, job_key, opt_key, optional=False):
+        value = get_value(to, opt, hdr, job_key, optional=optional)
+        if len(value) == 0:
+            if not optional: to._print_error(
+                'Bad value for {}'.format(job_key))
+        else: params[opt_key] = value
+        return params
+
+    protected_keys = ['OBS', 'FLAT', 'DARK']
+    ofile = OptionFile(path, protected_keys=protected_keys,
+                       config_file_name=to.config_file_name)
+    
+    if 'SITELLE_JOB_FILE' in ofile.header_line:
+
+        option_file_path = os.path.split(path)[1] + '.opt'
+        option_file_params = dict() # parameters to write in the option file
+        out_params = dict() # output parameters passed to orbs.full_reduction()
+        
+        with to.open_file(option_file_path, 'w') as f:
+            # create option file header
+            f.write('## ORBS Option file\n# Auto-generated from SITELLE job file: {}\n'.format(path))
+
+            ## get first object file
+            hdu = to.read_fits(ofile.options['OBS'], return_hdu_only=True)
+            hdr = hdu[0].header
+
+            option_file_params = add_key(to, option_file_params, ofile.options,
+                    hdr, 'OBJECT', 'OBJECT')
+            option_file_params = add_key(to, option_file_params, ofile.options,
+                    hdr, 'FILTER', 'FILTER')
+            # check that binning is the same in both axes
+            if hdr['CCDBIN1'] != hdr['CCDBIN2']:
+                to._print_error('CCD Binning appears to be different for both axes')
+            option_file_params = add_key(to, option_file_params, ofile.options,
+                    hdr, 'CCDBIN1', 'BINCAM1')
+            option_file_params = add_key(to, option_file_params, ofile.options,
+                    hdr, 'CCDBIN1', 'BINCAM2')
+            
+            # step size in nm
+            step_fringe = float(get_value(to, ofile.options, hdr, 'SITSTPSZ'))
+            fringe_sz = float(get_value(to, ofile.options, hdr, 'SITFRGNM'))
+            option_file_params['SPESTEP'] = step_fringe * fringe_sz
+            
+            option_file_params = add_key(to, option_file_params, ofile.options,
+                    hdr, 'SITSTEPS', 'SPESTNB')
+            option_file_params = add_key(to, option_file_params, ofile.options,
+                    hdr, 'SITORDER', 'SPEORDR')
+            option_file_params = add_key(to, option_file_params, ofile.options,
+                    hdr, 'EXPTIME', 'SPEEXPT')
+
+            # get dark integration time
+            dark_hdr = to.read_fits(
+                ofile.options['DARK'], return_hdu_only=True)[0].header
+            
+            option_file_params['SPEDART'] = dark_hdr['EXPTIME']
+        
+            option_file_params = add_key(to, option_file_params, ofile.options,
+                    hdr, 'DATE-OBS', 'OBSDATE')
+            option_file_params = add_key(to, option_file_params, ofile.options,
+                    hdr, 'TIME-OBS', 'HOUR_UT')
+            
+            option_file_params = add_key(to, option_file_params, ofile.options,
+                    hdr, 'RA', 'TARGETR', optional=True)
+            option_file_params = add_key(to, option_file_params, ofile.options,
+                    hdr, 'DEC', 'TARGETD', optional=True)
+
+            # get center of the first chip to define target position in image
+            sec_cam1 = hdr['DSEC1']
+            sec_cam1 = sec_cam1[1:-1].split(',')
+            sec_cam1x = np.array(sec_cam1[0].split(':'), dtype=int)
+            sec_cam1y = np.array(sec_cam1[1].split(':'), dtype=int)
+            
+            option_file_params['TARGETX'] = (
+                float(sec_cam1x[1]-sec_cam1x[0]) / 2.)
+            option_file_params['TARGETY'] = (
+                float(sec_cam1y[1]-sec_cam1y[0]) / 2.)
+
+            # get calibration laser map path
+            if 'CALIB_MAP_PATH' in ofile.options:
+                out_params['calibration_laser_map_path'] = ofile.options['CALIB_MAP_PATH']
+            
+            
+            # get standard star params
+            option_file_params = add_key(to, option_file_params, ofile.options,
+                    hdr, 'STANDARD', 'STDPATH')
+
+            std_path = option_file_params['STDPATH']
+            if os.path.exists(std_path):
+                std_hdr = to.read_fits(std_path, return_hdu_only=True)[0].header
+                if 'OBJECT' in std_hdr:
+                    option_file_params['STDNAME'] = std_hdr['OBJECT']
+                else:
+                    to._print_error('OBJECT key is not in standard file header ({})'.format(std_path))
+            else:
+                to._print_error('Standard star file does not exist ({})'.format(std_path))
+
+
+            option_file_params = add_key(to, option_file_params, ofile.options,
+                    hdr, 'APOD', 'APOD', optional=True)
+            option_file_params = add_key(to, option_file_params, ofile.options,
+                    hdr, 'WAVENUMBER', 'WAVENUMBER', optional=True)
+            option_file_params = add_key(to, option_file_params, ofile.options,
+                    hdr, 'WAVE_CALIB', 'WAVE_CALIB', optional=True)
+
+            # get prebinning
+            if 'PREBINNING' in ofile.options:
+                prebin = ofile.options['PREBINNING']
+                option_file_params['PREBINNING'] = ofile.options['PREBINNING']
+            else:
+                prebin = None
+            
+            
+            ## generate list of files
+            def generate_file_list(to, path, options, key, ftype, chip_index, prebin):
+                l = list()
+                for k in options:
+                    if [''.join(i for i in k if not i.isdigit())][0] == key:
+                        l.append(options[k])
+                        
+                l = to.sort_image_list(l, 'sitelle')
+
+                fpath = '{}.{}.cam{}.list'.format(path, ftype, chip_index)
+                with to.open_file(fpath, 'w') as flist:
+                    flist.write('# {} {}\n'.format('sitelle', chip_index))
+                    if prebin is not None:
+                        flist.write('# prebinning {}\n'.format(int(prebin)))
+                    for i in l: flist.write('{}\n'.format(i))
+                # TODO: check files
+
+                return fpath
+            
+            # CAM1
+            option_file_params['DIRCAM1'] = generate_file_list(to, option_file_path, ofile.options, 'OBS', 'object', 1, prebin)
+            # CAM2
+            option_file_params['DIRCAM2'] = generate_file_list(to, option_file_path, ofile.options, 'OBS', 'object', 2, prebin)
+            # FLAT1
+            option_file_params['DIRFLT1'] = generate_file_list(to, option_file_path, ofile.options, 'FLAT', 'flat', 1, prebin)
+            # FLAT2
+            option_file_params['DIRFLT2'] = generate_file_list(to, option_file_path, ofile.options, 'FLAT', 'flat', 2, prebin)
+            # DARK1
+            option_file_params['DIRDRK1'] = generate_file_list(to, option_file_path, ofile.options, 'DARK', 'dark', 1, prebin)
+            # DARK2
+            option_file_params['DIRDRK2'] = generate_file_list(to, option_file_path, ofile.options, 'DARK', 'dark', 2, prebin)
+            
+            
+                
+            
+            # write params in the option file           
+            for key in option_file_params:
+                f.write('{} {}\n'.format(key, option_file_params[key]))
+                
+            return option_file_path, out_params
+    else:
+        return path, dict()
 
 
 def usage(): 
@@ -104,6 +280,11 @@ def usage():
      data or data without any stars. the default alignement parameters
      (defined in the configuration file) are used.
 
+  --nocam2: Use camera 2 only to compute transmission vector but do
+     not merge frames. Use it for the full reduction process if camera
+     2 frames are too noisy or if the fringing effect must be
+     removed. This option is used at the merging step.
+
   --alt_merge: Alternative merging process. Star photometry is not
      used during the merging process. Might be more noisy but useful
      if for some reason the correction vectors cannot be well computed
@@ -136,7 +317,7 @@ def usage():
      space, 5 numbers comma separated):
      e.g. --align=25.2,36.5,-85.8,0.1,0.5
 
-  --start_step=: Starting step. Use it to recover from an error at a
+ --start_step=: Starting step. Use it to recover from an error at a
      certain step without having to run the whole process one more
      time. Note that the step designation is different for the full
      reduction (2 cameras) and the single camera reduction (1
@@ -184,11 +365,11 @@ def main():
     try:
         opts, args = getopt.getopt(sys.argv[1:], "c:m:b:a:p:12qov",
                                    ["calib=","bad=","apod=","single1",
-                                    "single2", "quadrants","init_angle=",
+                                    "single2", "quadrants", "init_angle=",
                                     "start_step=","stars","overwrite","phase=",
                                     "nostar", "phasemap=", "flat", "align=",
                                     "version", "nosky", "alt_merge", "standard",
-                                    "noprint"])
+                                    "noprint", "nocam2", "mode="])
     except getopt.GetoptError, err:
         print str(err)
         usage()
@@ -204,6 +385,7 @@ def main():
     no_star = False
     flat = False
     standard = False
+    add_frameB = True
     
     n_phase = None
     calibration_laser_map_path = None
@@ -213,6 +395,7 @@ def main():
     init_angle = None
     start_step = 1
     alignment_coeffs = None
+    config_file_name = 'config.orb'
     
     start_time = time.time()
 
@@ -220,11 +403,25 @@ def main():
     if (len(args) > 0):
         if not os.path.exists(args[0]):
             raise Exception('Option file %s does not exist'%args[0])
+
+    ########################
+    # Get config file name #
+    ########################
     
+    for opt, arg in opts:
+        if opt == "--mode":
+            if arg == 'sitelle':
+                config_file_name = 'config.sitelle.orb'
+            elif arg == 'spiomm':
+                config_file_name = 'config.spiomm.orb'
+            else:
+                raise Exception("Mode option must be 'sitelle' or 'spiomm'")
+
     if (len(args) > 0):
-        to = Tools(logfile_name=os.path.basename(str(args[0])) + '.log')
+        to = Tools(logfile_name=os.path.basename(str(args[0])) + '.log',
+                   config_file_name=config_file_name)
     else:
-        to = Tools()
+        to = Tools(config_file_name=config_file_name)
         
     #################
     # Check options #
@@ -261,6 +458,9 @@ def main():
             
         if opt in ("-q", "--quadrants"):
             quadrants = True
+
+        if opt == "--nocam2":
+            add_frameB = False
             
         if opt == "--stars":
             stars = True
@@ -434,8 +634,16 @@ def main():
     ###################################
     
     if (len(args) > 0):
-        to._print_msg("Option file : %s"%str(args[0]), color=True)
-        project = Orbs(str(args[0]), overwrite=overwrite)
+        # check wheter the option file si a job file or a 'real' option file
+        option_file_path, out_params = check_option_file(to, args[0])
+
+        if 'calibration_laser_map_path' in out_params:
+            calibration_laser_map_path = out_params['calibration_laser_map_path']
+        
+        # load option file
+        to._print_msg("Option file : %s"%option_file_path, color=True)
+        project = Orbs(option_file_path, overwrite=overwrite,
+                       config_file_name=config_file_name)
         if init_angle != None:
             project.set_init_angle(init_angle)
             
@@ -469,7 +677,7 @@ def main():
                 phase_map_0_path=phase_map_0_path,
                 alignment_coeffs=alignment_coeffs,
                 no_sky=no_sky, alt_merge=alt_merge,
-                standard=standard)
+                standard=standard, add_frameB=add_frameB)
         end_time = time.time()
         to._print_msg("Script finished at : " + time.ctime(end_time), color=True)
         to._print_msg("Total time : " + str((end_time - start_time) / 3600.) + " hours", color=True)         

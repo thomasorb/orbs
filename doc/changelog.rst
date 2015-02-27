@@ -813,8 +813,40 @@ Astropy
 Astropy (http://www.astropy.org/) is definitly needed, pyfits and
 pywcs standalone modules are not needed anymore by ORBS (but they
 still can be used by other modules ;) even modules imported by ORBS so
-becarefull before removing them)
+be carefull before removing them)
 
 * PYFITS: now imported from astropy.io.fits
 * PYWCS: now imported from astropy.wcs
 
+3.7.5
+=====
+
+Miscellaneous
+-------------
+
+* :py:meth:`~process.RawData.correct_frame`: Hot pixels correction
+  algorithm changed for a standard median correction (hot pixel value
+  is replaced by the median of the neighbouring pixels).
+
+* :py:meth:`~process.InterferogramMerger.merge`: Merging operation
+  when the frames of the camera B are not used do not rely anymore on
+  the computed stray light vector because of the impossibility to
+  determine correctly the base level of this vector.
+
+v3.8 Start of CFHT integration
+******************************
+
+3.8.0
+=====
+
+* script **orbs** can take a 'SITELLE job file' as input. It creates an option file from it and launch orbs from this option file.
+
+* script **orbs** can be lauched in SITELLE or SPIOMM mode. This way
+  is ensures that the configuration file will be the good one (instead
+  of relying on the default behaviour)
+
+* :py:class:`orbs.orbs.Orbs` can be passed lists instead of directory paths for
+  object, dark, flat ...
+
+* :py:class:`orbs.orbs.Orbs` can be passed a special configuration file and
+  this choice is reflected on all the processes it launches.

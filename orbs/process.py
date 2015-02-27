@@ -193,7 +193,8 @@ class RawData(Cube):
 
         .. seealso:: :py:meth:`orb.utils.create_master_frame`
         """
-        bias_cube = Cube(bias_list_path)
+        bias_cube = Cube(bias_list_path,
+                         config_file_name=self.config_file_name)
         self._print_msg('Creating Master Bias')
         # try to read temperatures in the header of each bias and
         # return the mean
@@ -269,7 +270,8 @@ class RawData(Cube):
 
         .. seealso:: :py:meth:`orb.utils.create_master_frame`
         """
-        dark_cube = Cube(dark_list_path)
+        dark_cube = Cube(dark_list_path,
+                         config_file_name=self.config_file_name)
         self._print_msg('Creating Master Dark')
 
         # try to read temperatures in the header of each dark and
@@ -345,7 +347,8 @@ class RawData(Cube):
 
         .. seealso:: :py:meth:`orb.utils.create_master_frame`
         """
-        flat_cube = Cube(flat_list_path)
+        flat_cube = Cube(flat_list_path,
+                         config_file_name=self.config_file_name)
         self._print_msg('Creating Master Flat')
         
         # resizing if nescessary
@@ -468,7 +471,8 @@ class RawData(Cube):
                             readout_noise=readout_noise,
                             dark_current_level=dark_current_level,
                             logfile_name=self._logfile_name,
-                            tuning_parameters=self._tuning_parameters)
+                            tuning_parameters=self._tuning_parameters,
+                            config_file_name=self.config_file_name)
         astrom.load_star_list(star_list_path)
 
         # get alignment vectors
@@ -910,7 +914,8 @@ class RawData(Cube):
         # Instanciating cosmic ray map cube
         if (cr_map_list_path is None):
                 cr_map_list_path = self._get_cr_map_list_path()
-        cr_map_cube = Cube(cr_map_list_path)
+        cr_map_cube = Cube(cr_map_list_path,
+                           config_file_name=self.config_file_name)
         cr_map = cr_map_cube.get_all_data()
         cr_map_vector = np.sum(np.sum(cr_map, axis=0), axis=0)
         median_rc = np.median(cr_map_vector)
@@ -996,7 +1001,8 @@ class RawData(Cube):
             bias_path, return_temperature=True, combine=combine,
             reject=reject)
         
-        bias_cube = Cube(bias_path)
+        bias_cube = Cube(bias_path,
+                         config_file_name=self.config_file_name)
         
         min_x = int(bias_cube.dimx * BORDER_COEFF)
         max_x = int(bias_cube.dimx * (1. - BORDER_COEFF))
@@ -1009,7 +1015,8 @@ class RawData(Cube):
         
         readout_noise = orb.utils.robust_mean(readout_noise)
         
-        dark_cube = Cube(dark_path)
+        dark_cube = Cube(dark_path,
+                         config_file_name=self.config_file_name)
 
         dark_current_level = [orb.utils.robust_median(
             (dark_cube[:,:,ik] - bias_image)[min_x:max_x, min_y:max_y])
@@ -1161,7 +1168,8 @@ class RawData(Cube):
           
         """
         
-        def _optimize_dark_coeff(frame, dark_frame, hp_map, only_hp=False):
+        def _optimize_dark_coeff(frame, dark_frame, hp_map,
+                                 only_hp=False):
             """Return an optimized coefficient to apply to the dark
             integration time.
             
@@ -1172,15 +1180,15 @@ class RawData(Cube):
             :param frame: The frame to correct
             
             :param hp_map: Hot pixels map
-            
+                    
             :param only_hp: if True optimize the dark coefficient for
               the hot pixels of the frame. If False optimize the dark
-              coefficient for the 'normal' pixels of the frame (defaul
+              coefficient for the 'normal' pixels of the frame (default
               False).
             """
             def _coeff_test(dark_coeff, frame, dark_frame, hp_map, only_hp):
                 test_frame = frame - (dark_frame * dark_coeff)
-                if (hp_map is not None):
+                if hp_map is not None:
                     if only_hp:
                         hp_frame = test_frame[np.nonzero(hp_map)]
                         # we try to minimize the std of the hot pixels in
@@ -1196,6 +1204,8 @@ class RawData(Cube):
                         std = orb.utils.robust_std(non_hp_frame)
                         
                 return std
+
+            
 
             guess = [1.0]        
             result = optimize.fmin_powell(_coeff_test, guess,
@@ -1244,7 +1254,7 @@ class RawData(Cube):
         # computing dark image (bias substracted)
         if (master_dark is not None
             and exposition_time is not None):
-
+            
             if optimize_dark_coeff:
                 # load hot pixels map
                 if hp_map_path is None:
@@ -1253,8 +1263,10 @@ class RawData(Cube):
                     hp_map = self.read_fits(hp_map_path)
                 # remove border on hp map
                 hp_map_corr = np.copy(hp_map)
-                hp_map_corr[0:self.dimx/5., 0:self.dimx/5.] = 0.
-                hp_map_corr[4.*self.dimx/5.:, 4.*self.dimx/5.:] = 0.
+                hp_map_corr[0:self.dimx/5., :] = 0.
+                hp_map_corr[:, 0:self.dimx/5.] = 0.
+                hp_map_corr[4.*self.dimx/5.:, :] = 0.
+                hp_map_corr[:, 4.*self.dimx/5.:] = 0.
                     
                 # If we can use calibrated parameters, the dark frame
                 # is scaled using the temperature difference between
@@ -1267,7 +1279,7 @@ class RawData(Cube):
                         frame_temp, dark_activation_energy)
                     
                     dark_coeff *= exposition_time
-                
+                    
                 # If no calibrated params are given the dark
                 # coefficient to apply is guessed using an
                 # optimization routine.
@@ -1278,16 +1290,20 @@ class RawData(Cube):
                     
                 temporary_frame = frame - (master_dark * dark_coeff)
 
-                # hot pixels only are now corrected using a special
-                # dark coefficient that minimize their std
-                hp_dark_coeff = _optimize_dark_coeff(frame, master_dark, 
-                                                     hp_map_corr,
-                                                     only_hp=True)
-                hp_frame = (frame
-                            - master_dark * hp_dark_coeff
-                            - orb.utils.robust_median(master_dark) * dark_coeff)
-                temporary_frame[np.nonzero(hp_map)] = hp_frame[
-                    np.nonzero(hp_map)]
+                # hot pixels correction
+                temporary_frame = orb.utils.correct_hot_pixels(
+                    temporary_frame, hp_map)
+                
+                ## # hot pixels only are now corrected using a special
+                ## # dark coefficient that minimize their std
+                ## hp_dark_coeff = _optimize_dark_coeff(
+                ##     frame, master_dark, hp_map_corr, only_hp=True)
+                ## hp_frame = (frame
+                ##             - master_dark * hp_dark_coeff
+                ##             - orb.utils.robust_median(master_dark) * dark_coeff)
+                ## temporary_frame[np.nonzero(hp_map)] = hp_frame[
+                ##     np.nonzero(hp_map)]
+                
                 frame = temporary_frame 
 
             # else: simple dark substraction
@@ -1665,7 +1681,8 @@ class RawData(Cube):
         if (cr_map_list_path is None):
             cr_map_list_path = self._get_cr_map_list_path()
             if os.path.exists(cr_map_list_path):
-                cr_map_cube = Cube(cr_map_list_path)
+                cr_map_cube = Cube(cr_map_list_path,
+                                    config_file_name=self.config_file_name)
             else:
                 self._print_warning("No cosmic ray map loaded")
                 
@@ -1757,7 +1774,8 @@ class RawData(Cube):
         # check median level of frames (Because bad bias frames can
         # cause a negative median level for the frames of camera 2)
         self._print_msg('Checking frames level')
-        interf_cube = Cube(self._get_interfero_list_path())
+        interf_cube = Cube(self._get_interfero_list_path(),
+                           config_file_name=self.config_file_name)
         zmedian = interf_cube.get_zmedian()
         corr_level = -np.min(zmedian) + 10. # correction level
 
@@ -2366,7 +2384,8 @@ class Interferogram(Cube):
                             star_list_path=star_list_path,
                             logfile_name=self._logfile_name,
                             box_size_coeff=7,
-                            tuning_parameters=self._tuning_parameters)
+                            tuning_parameters=self._tuning_parameters,
+                            config_file_name=self.config_file_name)
 
         astrom.fit_stars_in_cube(local_background=False,
                                  fix_aperture_size=True,
@@ -3103,7 +3122,8 @@ class Interferogram(Cube):
         
         # Loading flat spectrum cube
         if flat_spectrum_path is not None:
-            flat_cube = Cube(flat_spectrum_path)
+            flat_cube = Cube(flat_spectrum_path,
+                             config_file_name=self.config_file_name)
         else:
             flat_cube = None
     
@@ -3127,7 +3147,8 @@ class Interferogram(Cube):
                             moffat_beta=moffat_beta,
                             data_prefix=self._data_prefix + 'cam1.',
                             logfile_name=self._logfile_name,
-                            tuning_parameters=self._tuning_parameters)
+                            tuning_parameters=self._tuning_parameters,
+                            config_file_name=self.config_file_name)
         astrom.reset_star_list(star_list)
 
         # Fit stars and get stars photometry
@@ -3444,10 +3465,12 @@ class InterferogramMerger(Tools):
 
         if image_list_path_A is not None:
             self.cube_A = Cube(image_list_path_A,
-                               project_header=cube_A_project_header)
+                               project_header=cube_A_project_header,
+                               config_file_name=self.config_file_name)
         if image_list_path_B is not None:
             self.cube_B = Cube(image_list_path_B,
-                               project_header=cube_B_project_header)
+                               project_header=cube_B_project_header,
+                               config_file_name=self.config_file_name)
 
         self.bin_A = bin_A
         self.bin_B = bin_B
@@ -3895,7 +3918,8 @@ class InterferogramMerger(Tools):
             frameA, fwhm_arc_A, fov_A, profile_name=profile_name,
             star_list_path=star_list_path,
             logfile_name=self._logfile_name,
-            tuning_parameters=self._tuning_parameters).fit_stars_in_frame(
+            tuning_parameters=self._tuning_parameters,
+            config_file_name=self.config_file_name).fit_stars_in_frame(
             0, precise_guess=True, multi_fit=True)
         
         fwhm_arc_A = orb.utils.robust_mean(mean_params_A[:,'fwhm_arc'])
@@ -3911,7 +3935,8 @@ class InterferogramMerger(Tools):
             frameB, fwhm_arc_B, fov_B, profile_name=profile_name,
             box_size_coeff=BOX_SIZE_COEFF,
             logfile_name=self._logfile_name,
-            tuning_parameters=self._tuning_parameters)
+            tuning_parameters=self._tuning_parameters,
+            config_file_name=self.config_file_name)
         
         
         ## ROUGH ALIGNMENT (only dx and dy)
@@ -4518,17 +4543,18 @@ class InterferogramMerger(Tools):
             ## This must be done by adding frames instead of doing all this
             ## which has exactly the same effect
             if np.any(frameB) and np.any(frameA):
-                result_frame = ((((frameB / modulation_ratio) - frameA)
+                result_frame = ((((frameB / modulation_ratio) + frameA)
                                  / transmission_factor) - ext_level)
-                stray_light_coeff = orb.utils.robust_mean(
-                    orb.utils.sigmacut(frameB - (result_frame / 2.))) / modulation_ratio
+                stray_light_coeff = orb.utils.robust_median(result_frame) / 2.
+            
             else:
-                stray_light_coeff = 0.
+                stray_light_coeff = np.nan
+                
             return stray_light_coeff
             
         def _create_merged_frame(frameA, frameB, transmission_factor,
                                  modulation_ratio, ext_level,
-                                 stray_light_coeff, add_frameB, frameA_mask,
+                                 add_frameB, frameA_mask,
                                  frameB_mask):
             """Create the merged frame given the frames of both cubes
             and the correction factor.
@@ -4548,9 +4574,6 @@ class InterferogramMerger(Tools):
               source in the camera B but not in the camera A (if level
               is negative, the stray light is thus in the camera A)
               
-            :param stray_light_coeff: Level of stray light coming from
-              the reflection over clouds, the sun or the moon.
-               
             :param add_frameB: If False the frame B is not added. The
               resulting frame is thus the frame A divided by the
               transmission factor (generally not recommanded)
@@ -4567,13 +4590,25 @@ class InterferogramMerger(Tools):
                 
                 flux_frame = ((((frameB / modulation_ratio) + frameA)
                                  / transmission_factor) - ext_level)
-            else:
+            else: # frame B is not added
                 if np.any(frameA):
-                    result_frame = ((frameA - stray_light_coeff)
-                                    / transmission_factor) + ext_level
+                    cont_frame = ((frameB / modulation_ratio) + frameA
+                                  - ext_level) / 2.
+                    
+                    result_frame = ((frameA - np.nanmean(cont_frame))
+                                    / transmission_factor)
                 else:
                     result_frame = frameA
-                flux_frame = result_frame
+                    cont_frame = frameA
+                    
+                flux_frame = cont_frame
+                
+                ## if np.any(frameA):
+                ##     result_frame = ((frameA - stray_light_coeff)
+                ##                     / transmission_factor) + ext_level
+                ## else:
+                ##     result_frame = frameA
+                ## flux_frame = result_frame
 
             result_frame_mask = frameA_mask + frameB_mask
             result_frame[np.nonzero(frameA == 0.)] = 0.
@@ -4756,7 +4791,8 @@ class InterferogramMerger(Tools):
             star_list_path=star_list_path, readout_noise=readout_noise_1,
             dark_current_level=dark_current_level_1,
             logfile_name=self._logfile_name,
-            tuning_parameters=self._tuning_parameters).fit_stars_in_frame(
+            tuning_parameters=self._tuning_parameters,
+            config_file_name=self.config_file_name).fit_stars_in_frame(
             0, precise_guess=True, local_background=local_background,
             fix_fwhm=fix_fwhm, fix_height=False)
         mean_params_B = Astrometry(
@@ -4764,7 +4800,8 @@ class InterferogramMerger(Tools):
             star_list_path=star_list_path, readout_noise=readout_noise_2,
             dark_current_level=dark_current_level_2,
             logfile_name=self._logfile_name,
-            tuning_parameters=self._tuning_parameters).fit_stars_in_frame(
+            tuning_parameters=self._tuning_parameters,
+            config_file_name=self.config_file_name).fit_stars_in_frame(
             0, precise_guess=True, local_background=local_background,
             fix_fwhm=fix_fwhm, fix_height=False)
 
@@ -4792,7 +4829,8 @@ class InterferogramMerger(Tools):
                               dark_current_level=dark_current_level_1,
                               logfile_name=self._logfile_name,
                               tuning_parameters=self._tuning_parameters,
-                              check_mask=True)
+                              check_mask=True,
+                              config_file_name=self.config_file_name)
         astrom_A.reset_star_list(star_list_A)
 
         astrom_B = Astrometry(self.cube_B, fwhm_arc_B, fov,
@@ -4803,7 +4841,8 @@ class InterferogramMerger(Tools):
                               dark_current_level=dark_current_level_2,
                               logfile_name=self._logfile_name,
                               tuning_parameters=self._tuning_parameters,
-                              check_mask=True)
+                              check_mask=True,
+                              config_file_name=self.config_file_name)
         astrom_B.reset_star_list(star_list_B)
 
         # Fit stars and get stars photometry
@@ -4926,7 +4965,8 @@ class InterferogramMerger(Tools):
                                    dark_current_level=dark_current_level_2,
                                    logfile_name=self._logfile_name,
                                    tuning_parameters=self._tuning_parameters,
-                                   check_mask=False)
+                                   check_mask=False,
+                                   config_file_name=self.config_file_name)
         astrom_merged.reset_star_list(star_list_B)
         
         astrom_merged.fit_stars_in_cube(
@@ -5125,81 +5165,69 @@ class InterferogramMerger(Tools):
         # This vector is used to compute stray light in both
         # detectors.
 
-        if not add_frameB:
-            self._print_msg("Computing stray light vector")
+        ## if not add_frameB:
+        ##     self._print_msg("Computing stray light vector")
             
-            self._print_error('To be reimplemented. Check get_stray_light_coeff.')
-            # Stray light computing must be reimplemeted because it
-            # must be computed the same way the flux_vector is
-            # computed during frames merging...
-            
-            # Init of the multiprocessing server
-            job_server, ncpus = self._init_pp_server()
-            framesA = np.empty(
-                (self.cube_A.dimx, self.cube_A.dimy, ncpus), dtype=float)
-            framesB = np.empty(
-                (self.cube_A.dimx, self.cube_A.dimy, ncpus), dtype=float)
-            ncpus_max = ncpus
+        ##     # Init of the multiprocessing server
+        ##     job_server, ncpus = self._init_pp_server()
+        ##     framesA = np.empty(
+        ##         (self.cube_A.dimx, self.cube_A.dimy, ncpus), dtype=float)
+        ##     framesB = np.empty(
+        ##         (self.cube_A.dimx, self.cube_A.dimy, ncpus), dtype=float)
+        ##     ncpus_max = ncpus
 
-            stray_light_vector = np.empty(self.cube_A.dimz, dtype=float)
-            progress = ProgressBar(self.cube_A.dimz)
-            for ik in range(0, self.cube_A.dimz, ncpus):
-                # no more jobs than frames to compute
-                if (ik + ncpus >= self.cube_A.dimz):
-                    ncpus = self.cube_A.dimz - ik
+        ##     stray_light_vector = np.empty(self.cube_A.dimz, dtype=float)
+        ##     progress = ProgressBar(self.cube_A.dimz)
+        ##     for ik in range(0, self.cube_A.dimz, ncpus):
+        ##         # no more jobs than frames to compute
+        ##         if (ik + ncpus >= self.cube_A.dimz):
+        ##             ncpus = self.cube_A.dimz - ik
 
-                for ijob in range(ncpus):
-                    framesA[:,:,ijob] = self.cube_A.get_data_frame(ik + ijob)
-                    framesB[:,:,ijob] = self.cube_B.get_data_frame(ik + ijob)
+        ##         for ijob in range(ncpus):
+        ##             framesA[:,:,ijob] = self.cube_A.get_data_frame(ik + ijob)
+        ##             framesB[:,:,ijob] = self.cube_B.get_data_frame(ik + ijob)
 
-                jobs = [(ijob, job_server.submit(
-                    _get_stray_light_coeff, 
-                    args=(framesA[:,:,ijob],
-                          framesB[:,:,ijob], 
-                          transmission_vector[ik + ijob],
-                          modulation_ratio,
-                          ext_level_vector[ik + ijob]),
-                    modules=("numpy as np", 'import orb.utils')))    
-                    for ijob in range(ncpus)]
+        ##         jobs = [(ijob, job_server.submit(
+        ##             _get_stray_light_coeff, 
+        ##             args=(framesA[:,:,ijob],
+        ##                   framesB[:,:,ijob], 
+        ##                   transmission_vector[ik + ijob],
+        ##                   modulation_ratio,
+        ##                   ext_level_vector[ik + ijob]),
+        ##             modules=("numpy as np", 'import orb.utils')))    
+        ##             for ijob in range(ncpus)]
 
-                for ijob, job in jobs:
-                    stray_light_vector[ik+ijob] = job()
+        ##         for ijob, job in jobs:
+        ##             stray_light_vector[ik+ijob] = job()
 
-                progress.update(ik, info="frame: %d"%ik)
-            self._close_pp_server(job_server)
-            progress.end()
+        ##         progress.update(ik, info="frame: %d"%ik)
+        ##     self._close_pp_server(job_server)
+        ##     progress.end()
 
-            # correct vector for nan values and zeros
-            stray_light_vector = orb.utils.correct_vector(
-                stray_light_vector, bad_value=0., polyfit=True, deg=3)
+        ##     # correct vector for nan values and zeros
+        ##     stray_light_vector = orb.utils.correct_vector(
+        ##         stray_light_vector, bad_value=0., polyfit=True, deg=3)
 
-            # correct vector for ZPD
-            poly_fit = np.polyfit([ext_zpd_min, ext_zpd_max],
-                                  [stray_light_vector[ext_zpd_min],
-                                   stray_light_vector[ext_zpd_max]], 1)
-            stray_light_vector[ext_zpd_min:ext_zpd_max] = np.polyval(
-                poly_fit, np.arange(ext_zpd_min, ext_zpd_max, 1))
+        ##     # remove pedestal
+        ##     stray_light_vector -= orb.cutils.part_value(
+        ##         stray_light_vector[np.nonzero(~np.isnan(
+        ##             stray_light_vector))], 0.015)
 
-            # vector smoothing
-            if SMOOTH_DEG > 0:
-                stray_light_vector = orb.utils.smooth(stray_light_vector,
-                                                      deg=SMOOTH_DEG)
+        ##     # Save stray light vector
+        ##     self.write_fits(
+        ##         self._get_stray_light_vector_path(), 
+        ##         np.reshape(stray_light_vector, (stray_light_vector.shape[0],1)),
+        ##         fits_header=self._get_stray_light_vector_header(),
+        ##         overwrite=self.overwrite)
 
-            # Save stray light vector
-            self.write_fits(
-                self._get_stray_light_vector_path(), 
-                np.reshape(stray_light_vector, (stray_light_vector.shape[0],1)),
-                fits_header=self._get_stray_light_vector_header(),
-                overwrite=self.overwrite)
-
-            if self.indexer is not None:
-                self.indexer['stray_light_vector'] = (
-                    self._get_stray_light_vector_path())
+        ##     if self.indexer is not None:
+        ##         self.indexer['stray_light_vector'] = (
+        ##             self._get_stray_light_vector_path())
         
-        else:
-            # stray light vector will be computed from frame merging
-            stray_light_vector = np.empty_like(transmission_vector)
-            stray_light_vector.fill(np.nan)
+        ## else:
+        ##     # stray light vector will be computed from frame merging
+        ##     stray_light_vector = np.empty_like(transmission_vector)
+        ##     stray_light_vector.fill(np.nan)
         
 
         ## MERGE FRAMES ###########################################
@@ -5271,7 +5299,6 @@ class InterferogramMerger(Tools):
                           transmission_vector[ik + ijob],
                           modulation_ratio,
                           ext_level_vector[ik + ijob],
-                          stray_light_vector[ik + ijob],
                           add_frameB,
                           framesA_mask[:,:,ijob],
                           framesB_mask[:,:,ijob]),
@@ -5338,26 +5365,30 @@ class InterferogramMerger(Tools):
         # reduction to another. It is here scaled relatively to frameB
         # because on SpIOMM cam2 has kept the same gain and cam1 has
         # not.
-        
-        # remove pedestal of flux vector, 1.5% clip
-        stray_light_vector = flux_vector - orb.cutils.part_value(
-            flux_vector[np.nonzero(~np.isnan(flux_vector))], 0.015)
+
+        if add_frameB:
+            # remove pedestal of flux vector, 1.5% clip
+            stray_light_vector = flux_vector - orb.cutils.part_value(
+                flux_vector[np.nonzero(~np.isnan(flux_vector))], 0.015)
        
-        # Save stray light vector
-        self.write_fits(
-            self._get_stray_light_vector_path(), 
-            stray_light_vector,
-            fits_header=self._get_stray_light_vector_header(),
-            overwrite=self.overwrite)
+            # Save stray light vector
+            self.write_fits(
+                self._get_stray_light_vector_path(), 
+                stray_light_vector,
+                fits_header=self._get_stray_light_vector_header(),
+                overwrite=self.overwrite)
         
-        if self.indexer is not None:
-            self.indexer['stray_light_vector'] = (
-                self._get_stray_light_vector_path())
+            if self.indexer is not None:
+                self.indexer['stray_light_vector'] = (
+                    self._get_stray_light_vector_path())
                 
-        self._print_msg('Mean flux of stray light: {} ADU'.format(
-           np.nanmean(stray_light_vector)))
+            self._print_msg('Mean flux of stray light: {} ADU'.format(
+                np.nanmean(stray_light_vector)))
+        else:
+            stray_light_vector = np.zeros_like(flux_vector)
        
-        merged_cube = Cube(image_list_file_path)
+        merged_cube = Cube(image_list_file_path,
+                           config_file_name=self.config_file_name)
         energy_map = merged_cube.get_interf_energy_map()
         deep_frame = (flux_frame - np.nanmean(stray_light_vector))
     
@@ -5539,7 +5570,8 @@ class InterferogramMerger(Tools):
 
         # Loading flat spectrum cube
         if flat_spectrum_path is not None:
-            flat_cube = Cube(flat_spectrum_path)
+            flat_cube = Cube(flat_spectrum_path,
+                             config_file_name=self.config_file_name)
         else:
             flat_cube = None
 
@@ -5557,7 +5589,8 @@ class InterferogramMerger(Tools):
         mean_astrom_A = Astrometry(
             frameA, fwhm_arc, fov, profile_name=profile_name,
             logfile_name=self._logfile_name,
-            tuning_parameters=self._tuning_parameters)
+            tuning_parameters=self._tuning_parameters,
+            config_file_name=self.config_file_name)
         mean_astrom_A.reset_star_list(star_list)
         mean_params_A = mean_astrom_A.fit_stars_in_frame(
             0, precise_guess=True, local_background=True,
@@ -5566,7 +5599,8 @@ class InterferogramMerger(Tools):
         mean_astrom_B = Astrometry(
             frameB, fwhm_arc, fov, profile_name=profile_name,
             logfile_name=self._logfile_name,
-            tuning_parameters=self._tuning_parameters)
+            tuning_parameters=self._tuning_parameters,
+            config_file_name=self.config_file_name)
         mean_astrom_B.reset_star_list(star_list)
         mean_params_B = mean_astrom_B.fit_stars_in_frame(
             0, precise_guess=True, local_background=True,
@@ -5593,7 +5627,8 @@ class InterferogramMerger(Tools):
                               moffat_beta=moffat_beta,
                               data_prefix=self._data_prefix + 'cam1.',
                               logfile_name=self._logfile_name,
-                              tuning_parameters=self._tuning_parameters)
+                              tuning_parameters=self._tuning_parameters,
+                              config_file_name=self.config_file_name)
         astrom_A.reset_star_list(star_list)
 
         astrom_B = Astrometry(self.cube_B, fwhm_arc_B, fov,
@@ -5601,7 +5636,8 @@ class InterferogramMerger(Tools):
                               moffat_beta=moffat_beta,
                               data_prefix=self._data_prefix + 'cam2.',
                               logfile_name=self._logfile_name,
-                              tuning_parameters=self._tuning_parameters)
+                              tuning_parameters=self._tuning_parameters,
+                              config_file_name=self.config_file_name)
         astrom_B.reset_star_list(star_list)
 
         # Fit stars and get stars photometry
@@ -5640,10 +5676,13 @@ class InterferogramMerger(Tools):
         star_interf_list = list()
         star_flux_list = list()
 
-            
+
+        # compute modulation ratio
+        modulation_ratio_list = list()
         for istar in range(astrom_A.star_list.shape[0]):
             modulation_ratio = (orb.utils.robust_median(photom_B[istar,:]
                                                         / photom_A[istar,:]))
+            modulation_ratio_list.append(modulation_ratio)
             
         
             self._print_msg('[Star %d] recomputed modulation ratio: %f'%(
@@ -5672,18 +5711,55 @@ class InterferogramMerger(Tools):
                 (astrom_A.fit_results[:,:,'fwhm']
                  / orb.constants.FWHM_COEFF)**2.))
             
-            star_interf_list.append([
-                (((photom_B[istar,:]/modulation_ratio) - photom_A[istar,:])
-                 / transmission_vector) - ext_illumination_vector * surf_eq,
-                star_list[istar]])
             star_flux_list.append(
                 (((photom_B[istar,:]/modulation_ratio) + photom_A[istar,:])
                  / transmission_vector)
                 - ext_illumination_vector * surf_eq
                 - stray_light_vector  * surf_eq)
 
-        ## COMPUTING STARS SPECTRUM
+        # PHOTOMETRY ON MERGED FRAMES #############################
+        astrom_merged = Astrometry(self.cube_B, fwhm_arc_B, fov,
+                                   profile_name=profile_name,
+                                   moffat_beta=moffat_beta,
+                                   data_prefix=self._data_prefix + 'merged.',
+                                   logfile_name=self._logfile_name,
+                                   tuning_parameters=self._tuning_parameters,
+                                   check_mask=False,
+                                   config_file_name=self.config_file_name)
+        astrom_merged.reset_star_list(star_list_B)
+
+        modulation_ratio = orb.utils.robust_mean(
+            orb.utils.sigmacut(modulation_ratio_list))
+        
+        astrom_merged.fit_stars_in_cube(
+            local_background=True,
+            fix_aperture_size=True,
+            add_cube=[self.cube_A, -modulation_ratio],
+            no_fit=True,
+            aper_coeff=aper_coeff)
+        
+        astrom_merged.load_fit_results(astrom_merged._get_fit_results_path())
+        photom_merged = astrom_merged.fit_results[:,:,'aperture_flux']
+        photom_merged_err = astrom_merged.fit_results[
+            :, :, 'aperture_flux_err']
+
+        star_interf_list = list()
+        for istar in range(len(star_list)):
             
+            # compute equivalent surface to substract ext_illumination
+            # and stray light correctly from the integrated flux
+            surf_eq = (4. * math.pi *  orb.utils.robust_median(
+                (astrom_A.fit_results[:,:,'fwhm']
+                 / orb.constants.FWHM_COEFF)**2.))
+
+            # compute interferograms
+            star_interf_list.append([
+                (photom_merged[istar,:]
+                 / transmission_vector) - ext_illumination_vector * surf_eq,
+                star_list[istar]])
+
+        ## COMPUTING STARS SPECTRUM
+        
         # Loading calibration laser map
         self._print_msg("loading calibration laser map")
         calibration_laser_map = self.read_fits(calibration_laser_map_path)
@@ -6496,7 +6572,8 @@ class Spectrum(Cube):
         re_spectrum[filter_max_pix:] = np.nan
         
         # Get standard spectrum in erg/cm^2/s/A
-        std = Standard(std_name, logfile_name=self._logfile_name)
+        std = Standard(std_name, logfile_name=self._logfile_name,
+                       config_file_name=self.config_file_name)
         th_spectrum = std.get_spectrum(std_step, std_order,
                                        re_spectrum.shape[0])
 
@@ -6663,7 +6740,7 @@ class Phase(Cube):
 
     def create_phase_maps(self, calibration_laser_map_path, filter_file_path,
                           nm_laser, step, order, interferogram_length=None,
-                          fit_order=2):
+                          fit_order=2, flat_cube=False):
         """Create phase maps. One phase map is created for each order
         of the polynomial fit (e.g. 3 maps are created when fit_order
         = 2)
@@ -6692,6 +6769,10 @@ class Phase(Cube):
 
         :param fit_order: (Optional) Order of the polynomial used to
           fit the phase (default 2).
+
+        :param flat_cube: (Optional) If True, data is considered to be
+          a flat cube so that the source delivers a high SNR at all
+          wavelengths. In this case no filtering is done.
 
         .. note:: A phase map is a map of the coefficients of the
           polynomial fit to the phase for a given order of the
@@ -6796,6 +6877,10 @@ class Phase(Cube):
                                   # be between 20% and 80% of the
                                   # total band
 
+        # Degree of a median filter applied to the phase map. 0 by default.
+        MEDIAN_FILTER_DEG = int(self._get_tuning_parameter(
+            'MEDIAN_FILTER_DEG', 0))
+
         # defining interferogram length
         if interferogram_length is None:
             interferogram_length = self.dimz
@@ -6893,25 +6978,29 @@ class Phase(Cube):
         
         if self.indexer is not None:
             self.indexer['phase_map_residual'] = res_map_path
-            
-        # remove bad fitted phase values
-        flat_res_map = res_map[np.nonzero(res_map)].flatten()
-        res_map_med = np.median(flat_res_map)
-        res_map_std = orb.utils.robust_std(flat_res_map)
-        flat_res_map = flat_res_map[np.nonzero(
-            flat_res_map < res_map_med + 0.5 * res_map_std)]
-        res_threshold = (THRESHOLD_COEFF
-                         * np.median(flat_res_map))
-        
-        if res_threshold > MAX_RES_THRESHOLD:
-            self._print_warning("Residual threshold is too high (%f > %f) : phase correction might be bad !"%(res_threshold, MAX_RES_THRESHOLD))
-            res_threshold = np.median(flat_res_map)
-            
-        self._print_msg("Residual threshold on phase fit: %f"%res_threshold)
-        mask_map = np.ones_like(res_map)
-        mask_map[np.nonzero(res_map > res_threshold)] = 0.
-        for iorder in range(fit_order + 1):
-            phase_maps[:,:,iorder] *= mask_map
+
+        if not flat_cube:
+            # remove bad fitted phase values
+            flat_res_map = res_map[np.nonzero(res_map)].flatten()
+            res_map_med = np.median(flat_res_map)
+            res_map_std = orb.utils.robust_std(flat_res_map)
+            flat_res_map = flat_res_map[np.nonzero(
+                flat_res_map < res_map_med + 0.5 * res_map_std)]
+            res_threshold = (THRESHOLD_COEFF
+                             * np.median(flat_res_map))
+
+            if res_threshold > MAX_RES_THRESHOLD:
+                self._print_warning("Residual threshold is too high (%f > %f) : phase correction might be bad !"%(res_threshold, MAX_RES_THRESHOLD))
+                res_threshold = np.median(flat_res_map)
+
+            self._print_msg("Residual threshold on phase fit: %f"%res_threshold)
+            mask_map = np.ones_like(res_map)
+            mask_map[np.nonzero(res_map > res_threshold)] = 0.
+
+            for iorder in range(fit_order + 1):
+                phase_maps[:,:,iorder] *= mask_map
+        else:
+            self._print_warning('No bad fit filter. Cube is considered to be a flat cube with a high SNR everywhere.')
 
         ## Correct 0th order phase map
             
@@ -6925,6 +7014,14 @@ class Phase(Cube):
         phase_map_0 = correct_phase_values(phase_map_0, use_mean=True)
         phase_map_0[mask] = 0.
         phase_maps[:,:,0] = phase_map_0
+
+        # Median filtering of the 0th order phase map
+        if MEDIAN_FILTER_DEG > 0:
+            self._print_warning('Median filtering of the phase map (degree: {})'.format(MEDIAN_FILTER_DEG))
+            import scipy.ndimage.filters
+            phase_maps[:,:,0] = scipy.ndimage.filters.median_filter(
+                phase_maps[:,:,0], size=(MEDIAN_FILTER_DEG*2+1,
+                                         MEDIAN_FILTER_DEG*2+1))
         
         # SAVE MAPS
         for iorder in range(fit_order + 1):
@@ -7098,40 +7195,20 @@ class Phase(Cube):
 #################################################
 class Standard(Tools):
 
-    def __init__(self, std_name, data_prefix="temp_data", no_log=False,
-                 tuning_parameters=dict(), config_file_name='config.orb',
-                 logfile_name=None):
+    def __init__(self, std_name, logfile_name=None, **kwargs):
         """Initialize Standard class.
 
         :param std_name: Name of the standard.
 
-        :param data_prefix: (Optional) Prefix used to determine the
-          header of the name of each created file (default
-          'temp_data')
-
-        :param no_log: (Optional) If True no log file is created
-          (default False).
-
-        :param tuning_parameters: (Optional) Some parameters of the
-          methods can be tuned externally using this dictionary. The
-          dictionary must contains the full parameter name
-          (class.method.parameter_name) and its value. For example :
-          {'InterferogramMerger.find_alignment.BOX_SIZE': 7}. Note
-          that only some parameters can be tuned. This possibility is
-          implemented into the method itself with the method
-          :py:meth:`orb.core.Tools._get_tuning_parameter`.
-
-        :param config_file_name: (Optional) name of the config file to
-          use. Must be located in orbs/data/ (default 'config.orb').
-
         :param logfile_name: (Optional) Give a specific name to the
           logfile (default None).
+
+        :param kwargs: Kwargs are :meth:`core.Tools` properties.
         """
+        Tools.__init__(self, **kwargs)
+        
         if logfile_name is not None:
             self._logfile_name = logfile_name
-            
-        self.config_file_name=config_file_name
-        self.ncpus = int(self._get_config_parameter("NCPUS"))
             
         std_file_path, std_type = self._get_standard_file_path(std_name)
 
@@ -7142,13 +7219,7 @@ class Standard(Tools):
         else:
             self._print_error(
                 "Bad type of standard file. Must be 'MASSEY', 'CALSPEC' or 'MISC'")
-        if (os.name == 'nt'):
-            TextColor.disable()
-        self._data_prefix = data_prefix
-        self._msg_class_hdr = self._get_msg_class_hdr()
-        self._data_path_hdr = self._get_data_path_hdr()
-        self._no_log = no_log
-        self._tuning_parameters = tuning_parameters
+       
 
     def _get_data_prefix(self):
         return (os.curdir + os.sep + 'STANDARD' + os.sep
@@ -7307,7 +7378,8 @@ class Standard(Tools):
             self._print_msg('Flux of photons: %e [ph/cm^2/s/A]'%ph_flux)
         
         ## Photometry
-        std = Cube(images_list_path)
+        std = Cube(images_list_path,
+                   config_file_name=self.config_file_name)
         if std.dimz == 1:
             std_master_frame = std.get_data_frame(0)
         elif std.dimz <= 3:
@@ -7325,7 +7397,8 @@ class Standard(Tools):
                             data_prefix=self._data_prefix,
                             logfile_name=self._logfile_name,
                             tuning_parameters=self._tuning_parameters,
-                            silent=True)
+                            silent=True,
+                            config_file_name=self.config_file_name)
 
         astrom.reset_star_list(np.array([std_coords]))
         fit_results = astrom.fit_stars_in_frame(0, local_background=False,

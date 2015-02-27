@@ -3,6 +3,9 @@ Orbs module
 
 .. contents::
 
+
+.. py:module:: orbs.orbs
+
 Orbs class
 ----------
 

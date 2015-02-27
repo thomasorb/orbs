@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Process module &mdash; Orbs 3.7.4 documentation</title>
+    <title>Process module &mdash; Orbs 3.7.5 documentation</title>
     
     <link rel="stylesheet" href="_static/sphinxdoc.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -14,7 +14,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
-        VERSION:     '3.7.4',
+        VERSION:     '3.7.5',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -25,7 +25,7 @@
     <script type="text/javascript" src="_static/doctools.js"></script>
     <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="shortcut icon" href="_static/logo.ico"/>
-    <link rel="top" title="Orbs 3.7.4 documentation" href="index.html" />
+    <link rel="top" title="Orbs 3.7.5 documentation" href="index.html" />
     <link rel="next" title="Changelog" href="changelog.html" />
     <link rel="prev" title="Orbs module" href="orbs_module.html" /> 
   </head>
@@ -37,12 +37,15 @@
           <a href="genindex.html" title="General Index"
              accesskey="I">index</a></li>
         <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
           <a href="changelog.html" title="Changelog"
              accesskey="N">next</a> |</li>
         <li class="right" >
           <a href="orbs_module.html" title="Orbs module"
              accesskey="P">previous</a> |</li>
-        <li><a href="index.html">Orbs 3.7.4 documentation</a> &raquo;</li> 
+        <li><a href="index.html">Orbs 3.7.5 documentation</a> &raquo;</li> 
       </ul>
     </div>
       <div class="sphinxsidebar">
@@ -117,7 +120,7 @@
 <h2><a class="toc-backref" href="#id2">RawData class</a><a class="headerlink" href="#rawdata-class" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt id="process.RawData">
-<em class="property">class </em><tt class="descclassname">process.</tt><tt class="descname">RawData</tt><big>(</big><em>image_list_path</em>, <em>data_prefix='temp_data_'</em>, <em>config_file_name='config.orb'</em>, <em>project_header=</em><span class="optional">[</span><span class="optional">]</span>, <em>wcs_header=</em><span class="optional">[</span><span class="optional">]</span>, <em>calibration_laser_header=</em><span class="optional">[</span><span class="optional">]</span>, <em>overwrite=False</em>, <em>silent_init=False</em>, <em>no_log=False</em>, <em>tuning_parameters={}</em>, <em>indexer=None</em>, <em>logfile_name=None</em><big>)</big><a class="headerlink" href="#process.RawData" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><tt class="descclassname">process.</tt><tt class="descname">RawData</tt><big>(</big><em>image_list_path</em>, <em>image_mode='classic'</em>, <em>chip_index=1</em>, <em>binning=1</em>, <em>data_prefix='temp_data_'</em>, <em>config_file_name='config.orb'</em>, <em>project_header=[]</em>, <em>wcs_header=[]</em>, <em>calibration_laser_header=[]</em>, <em>overwrite=False</em>, <em>silent_init=False</em>, <em>no_log=False</em>, <em>tuning_parameters={}</em>, <em>indexer=None</em>, <em>logfile_name=None</em><big>)</big><a class="headerlink" href="#process.RawData" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">orb.core.Cube</span></tt></p>
 <p>ORBS raw data processing class.</p>
 <div class="admonition note">
@@ -429,7 +432,7 @@ frame is considered as bad</p>
 
 <dl class="method">
 <dt id="process.RawData.correct">
-<tt class="descname">correct</tt><big>(</big><em>bias_path=None</em>, <em>dark_path=None</em>, <em>flat_path=None</em>, <em>cr_map_list_path=None</em>, <em>alignment_vector_path=None</em>, <em>dark_int_time=None</em>, <em>flat_int_time=None</em>, <em>exposition_time=None</em>, <em>bad_frames_vector=</em><span class="optional">[</span><span class="optional">]</span>, <em>optimize_dark_coeff=False</em>, <em>dark_activation_energy=None</em>, <em>bias_calibration_params=None</em>, <em>negative_values=False</em>, <em>z_range=</em><span class="optional">[</span><span class="optional">]</span>, <em>order=1</em>, <em>zeros=False</em>, <em>combine='average'</em>, <em>reject='avsigclip'</em>, <em>flat_smooth_deg=0</em><big>)</big><a class="headerlink" href="#process.RawData.correct" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">correct</tt><big>(</big><em>bias_path=None</em>, <em>dark_path=None</em>, <em>flat_path=None</em>, <em>cr_map_list_path=None</em>, <em>alignment_vector_path=None</em>, <em>dark_int_time=None</em>, <em>flat_int_time=None</em>, <em>exposition_time=None</em>, <em>bad_frames_vector=[]</em>, <em>optimize_dark_coeff=False</em>, <em>dark_activation_energy=None</em>, <em>bias_calibration_params=None</em>, <em>negative_values=False</em>, <em>z_range=[]</em>, <em>order=1</em>, <em>zeros=False</em>, <em>combine='average'</em>, <em>reject='avsigclip'</em>, <em>flat_smooth_deg=0</em><big>)</big><a class="headerlink" href="#process.RawData.correct" title="Permalink to this definition">¶</a></dt>
 <dd><p>Correct raw data for bias, dark, flat, cosmic rays and
 alignment using the precomputed alignment vector and the
 cosmic ray map.</p>
@@ -654,7 +657,7 @@ image.</p>
 
 <dl class="method">
 <dt id="process.RawData.create_cosmic_ray_map">
-<tt class="descname">create_cosmic_ray_map</tt><big>(</big><em>z_coeff=3.0</em>, <em>step_number=None</em>, <em>bad_frames_vector=</em><span class="optional">[</span><span class="optional">]</span>, <em>star_list_path=None</em>, <em>stars_fwhm_pix=2.0</em><big>)</big><a class="headerlink" href="#process.RawData.create_cosmic_ray_map" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">create_cosmic_ray_map</tt><big>(</big><em>z_coeff=3.0</em>, <em>step_number=None</em>, <em>bad_frames_vector=[]</em>, <em>star_list_path=None</em>, <em>stars_fwhm_pix=2.0</em><big>)</big><a class="headerlink" href="#process.RawData.create_cosmic_ray_map" title="Permalink to this definition">¶</a></dt>
 <dd><p>Find the cosmic rays in the raw images and creates 
 the cosmic ray map used to compute the interferogram.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -798,7 +801,7 @@ frames creation. Can be &#8216;average&#8217; or &#8216;median&#8217; (default
 <h2><a class="toc-backref" href="#id3">Interferogram class</a><a class="headerlink" href="#interferogram-class" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt id="process.Interferogram">
-<em class="property">class </em><tt class="descclassname">process.</tt><tt class="descname">Interferogram</tt><big>(</big><em>image_list_path</em>, <em>data_prefix='temp_data_'</em>, <em>config_file_name='config.orb'</em>, <em>project_header=</em><span class="optional">[</span><span class="optional">]</span>, <em>wcs_header=</em><span class="optional">[</span><span class="optional">]</span>, <em>calibration_laser_header=</em><span class="optional">[</span><span class="optional">]</span>, <em>overwrite=False</em>, <em>silent_init=False</em>, <em>no_log=False</em>, <em>tuning_parameters={}</em>, <em>indexer=None</em>, <em>logfile_name=None</em><big>)</big><a class="headerlink" href="#process.Interferogram" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><tt class="descclassname">process.</tt><tt class="descname">Interferogram</tt><big>(</big><em>image_list_path</em>, <em>image_mode='classic'</em>, <em>chip_index=1</em>, <em>binning=1</em>, <em>data_prefix='temp_data_'</em>, <em>config_file_name='config.orb'</em>, <em>project_header=[]</em>, <em>wcs_header=[]</em>, <em>calibration_laser_header=[]</em>, <em>overwrite=False</em>, <em>silent_init=False</em>, <em>no_log=False</em>, <em>tuning_parameters={}</em>, <em>indexer=None</em>, <em>logfile_name=None</em><big>)</big><a class="headerlink" href="#process.Interferogram" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">orb.core.Cube</span></tt></p>
 <p>ORBS interferogram processing class.</p>
 <div class="admonition note">
@@ -1179,7 +1182,7 @@ light coming from the ground, the moon or the sun.</p>
 
 <dl class="method">
 <dt id="process.Interferogram.create_correction_vectors">
-<tt class="descname">create_correction_vectors</tt><big>(</big><em>star_list_path</em>, <em>fwhm_arc</em>, <em>fov</em>, <em>profile_name='gaussian'</em>, <em>moffat_beta=3.5</em>, <em>step_number=None</em>, <em>bad_frames_vector=</em><span class="optional">[</span><span class="optional">]</span>, <em>aperture_photometry=True</em><big>)</big><a class="headerlink" href="#process.Interferogram.create_correction_vectors" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">create_correction_vectors</tt><big>(</big><em>star_list_path</em>, <em>fwhm_arc</em>, <em>fov</em>, <em>profile_name='gaussian'</em>, <em>moffat_beta=3.5</em>, <em>step_number=None</em>, <em>bad_frames_vector=[]</em>, <em>aperture_photometry=True</em><big>)</big><a class="headerlink" href="#process.Interferogram.create_correction_vectors" title="Permalink to this definition">¶</a></dt>
 <dd><p>Create a sky transmission vector computed from star
 photometry and an stray light vector computed from the median
 of the frames.</p>
@@ -1229,7 +1232,7 @@ better precision (because both cubes are used to compute it)</p>
 
 <dl class="method">
 <dt id="process.Interferogram.extract_stars_spectrum">
-<tt class="descname">extract_stars_spectrum</tt><big>(</big><em>star_list_path</em>, <em>fwhm_arc</em>, <em>fov</em>, <em>transmission_vector_path</em>, <em>stray_light_vector_path</em>, <em>calibration_laser_map_path</em>, <em>step</em>, <em>order</em>, <em>nm_laser</em>, <em>filter_file_path</em>, <em>step_nb</em>, <em>window_type=None</em>, <em>bad_frames_vector=None</em>, <em>smoothing_deg=2</em>, <em>aperture=True</em>, <em>profile_name='gaussian'</em>, <em>moffat_beta=3.5</em>, <em>filter_correct=True</em>, <em>flat_spectrum_path=None</em>, <em>aper_coeff=3.0</em><big>)</big><a class="headerlink" href="#process.Interferogram.extract_stars_spectrum" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">extract_stars_spectrum</tt><big>(</big><em>star_list_path</em>, <em>fwhm_arc</em>, <em>fov</em>, <em>transmission_vector_path</em>, <em>stray_light_vector_path</em>, <em>calibration_laser_map_path</em>, <em>step</em>, <em>order</em>, <em>nm_laser</em>, <em>filter_file_path</em>, <em>step_nb</em>, <em>window_type=None</em>, <em>bad_frames_vector=None</em>, <em>smoothing_deg=2</em>, <em>aperture=True</em>, <em>profile_name='gaussian'</em>, <em>moffat_beta=3.5</em>, <em>filter_correct=True</em>, <em>flat_spectrum_path=None</em>, <em>aper_coeff=3.0</em>, <em>saturation=None</em><big>)</big><a class="headerlink" href="#process.Interferogram.extract_stars_spectrum" title="Permalink to this definition">¶</a></dt>
 <dd><p>Extract the spectrum of the stars in a list of stars location
 list by photometry.</p>
 <p>This method may be used after
@@ -1290,6 +1293,8 @@ aperture radius is Rap = aper_coeff * FWHM. Better when
 between 1.5 to reduce the variation of the collected photons
 with varying FWHM and 3. to account for the flux in the
 wings (default 3., better for star with a high SNR).</li>
+<li><strong>saturation</strong> &#8211; (Optional) If not None, all pixels above
+the saturation level are removed from the fit (default None).</li>
 </ul>
 </td>
 </tr>
@@ -1304,7 +1309,7 @@ wings (default 3., better for star with a high SNR).</li>
 <h2><a class="toc-backref" href="#id4">InterferogramMerger class</a><a class="headerlink" href="#interferogrammerger-class" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt id="process.InterferogramMerger">
-<em class="property">class </em><tt class="descclassname">process.</tt><tt class="descname">InterferogramMerger</tt><big>(</big><em>image_list_path_A=None</em>, <em>image_list_path_B=None</em>, <em>bin_A=None</em>, <em>bin_B=None</em>, <em>pix_size_A=None</em>, <em>pix_size_B=None</em>, <em>data_prefix='temp_data_'</em>, <em>alignment_coeffs=None</em>, <em>project_header=</em><span class="optional">[</span><span class="optional">]</span>, <em>config_file_name='config.orb'</em>, <em>cube_A_project_header=</em><span class="optional">[</span><span class="optional">]</span>, <em>cube_B_project_header=</em><span class="optional">[</span><span class="optional">]</span>, <em>wcs_header=</em><span class="optional">[</span><span class="optional">]</span>, <em>overwrite=False</em>, <em>tuning_parameters={}</em>, <em>indexer=None</em>, <em>logfile_name=None</em><big>)</big><a class="headerlink" href="#process.InterferogramMerger" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><tt class="descclassname">process.</tt><tt class="descname">InterferogramMerger</tt><big>(</big><em>image_list_path_A=None</em>, <em>image_list_path_B=None</em>, <em>bin_A=None</em>, <em>bin_B=None</em>, <em>pix_size_A=None</em>, <em>pix_size_B=None</em>, <em>data_prefix='temp_data_'</em>, <em>alignment_coeffs=None</em>, <em>project_header=[]</em>, <em>config_file_name='config.orb'</em>, <em>cube_A_project_header=[]</em>, <em>cube_B_project_header=[]</em>, <em>wcs_header=[]</em>, <em>overwrite=False</em>, <em>tuning_parameters={}</em>, <em>indexer=None</em>, <em>logfile_name=None</em><big>)</big><a class="headerlink" href="#process.InterferogramMerger" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">orb.core.Tools</span></tt></p>
 <p>ORBS interferogram merging class.</p>
 <p>The InterferogramMerger class is aimed to merge the interferogram
@@ -1316,7 +1321,7 @@ letter &#8216;B&#8217; to the camera 2</p>
 </div>
 <dl class="method">
 <dt id="process.InterferogramMerger.__init__">
-<tt class="descname">__init__</tt><big>(</big><em>image_list_path_A=None</em>, <em>image_list_path_B=None</em>, <em>bin_A=None</em>, <em>bin_B=None</em>, <em>pix_size_A=None</em>, <em>pix_size_B=None</em>, <em>data_prefix='temp_data_'</em>, <em>alignment_coeffs=None</em>, <em>project_header=</em><span class="optional">[</span><span class="optional">]</span>, <em>config_file_name='config.orb'</em>, <em>cube_A_project_header=</em><span class="optional">[</span><span class="optional">]</span>, <em>cube_B_project_header=</em><span class="optional">[</span><span class="optional">]</span>, <em>wcs_header=</em><span class="optional">[</span><span class="optional">]</span>, <em>overwrite=False</em>, <em>tuning_parameters={}</em>, <em>indexer=None</em>, <em>logfile_name=None</em><big>)</big><a class="headerlink" href="#process.InterferogramMerger.__init__" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">__init__</tt><big>(</big><em>image_list_path_A=None</em>, <em>image_list_path_B=None</em>, <em>bin_A=None</em>, <em>bin_B=None</em>, <em>pix_size_A=None</em>, <em>pix_size_B=None</em>, <em>data_prefix='temp_data_'</em>, <em>alignment_coeffs=None</em>, <em>project_header=[]</em>, <em>config_file_name='config.orb'</em>, <em>cube_A_project_header=[]</em>, <em>cube_B_project_header=[]</em>, <em>wcs_header=[]</em>, <em>overwrite=False</em>, <em>tuning_parameters={}</em>, <em>indexer=None</em>, <em>logfile_name=None</em><big>)</big><a class="headerlink" href="#process.InterferogramMerger.__init__" title="Permalink to this definition">¶</a></dt>
 <dd><p>Initialize InterferogramMerger class</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -1652,7 +1657,7 @@ Frame_{n,2}}{Frame_{n,1} + Frame_{n,2}}\]</div>
 
 <dl class="method">
 <dt id="process.InterferogramMerger.extract_stars_spectrum">
-<tt class="descname">extract_stars_spectrum</tt><big>(</big><em>star_list_path</em>, <em>fwhm_arc</em>, <em>fov</em>, <em>modulation_ratio_path</em>, <em>transmission_vector_path</em>, <em>ext_illumination_vector_path</em>, <em>stray_light_vector_path</em>, <em>calibration_laser_map_path</em>, <em>step</em>, <em>order</em>, <em>nm_laser</em>, <em>filter_file_path</em>, <em>step_nb</em>, <em>window_type=None</em>, <em>bad_frames_vector=None</em>, <em>phase_map_0_path=None</em>, <em>phase_coeffs=None</em>, <em>smoothing_deg=2</em>, <em>aperture=True</em>, <em>profile_name='gaussian'</em>, <em>moffat_beta=3.5</em>, <em>n_phase=None</em>, <em>auto_phase=False</em>, <em>filter_correct=True</em>, <em>flat_spectrum_path=None</em>, <em>aper_coeff=3.0</em><big>)</big><a class="headerlink" href="#process.InterferogramMerger.extract_stars_spectrum" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">extract_stars_spectrum</tt><big>(</big><em>star_list_path</em>, <em>fwhm_arc</em>, <em>fov</em>, <em>modulation_ratio_path</em>, <em>transmission_vector_path</em>, <em>ext_illumination_vector_path</em>, <em>stray_light_vector_path</em>, <em>calibration_laser_map_path</em>, <em>step</em>, <em>order</em>, <em>nm_laser</em>, <em>filter_file_path</em>, <em>step_nb</em>, <em>window_type=None</em>, <em>bad_frames_vector=None</em>, <em>phase_map_0_path=None</em>, <em>phase_coeffs=None</em>, <em>smoothing_deg=2</em>, <em>aperture=True</em>, <em>profile_name='gaussian'</em>, <em>moffat_beta=3.5</em>, <em>n_phase=None</em>, <em>auto_phase=False</em>, <em>filter_correct=True</em>, <em>flat_spectrum_path=None</em>, <em>aper_coeff=3.0</em>, <em>saturation=None</em><big>)</big><a class="headerlink" href="#process.InterferogramMerger.extract_stars_spectrum" title="Permalink to this definition">¶</a></dt>
 <dd><p>Extract the spectrum of the stars in a list of stars location
 list by photometry.</p>
 <p>This method may be used after
@@ -1739,6 +1744,8 @@ aperture radius is Rap = aper_coeff * FWHM. Better when
 between 1.5 to reduce the variation of the collected photons
 with varying FWHM and 3. to account for the flux in the
 wings (default 3., better for star with a high SNR).</li>
+<li><strong>saturation</strong> &#8211; (Optional) If not None, allpixels above the
+saturation level are removed from the fit (default None).</li>
 </ul>
 </td>
 </tr>
@@ -1815,7 +1822,7 @@ using the SIZE_COEFF constant)</p>
 
 <dl class="method">
 <dt id="process.InterferogramMerger.merge">
-<tt class="descname">merge</tt><big>(</big><em>star_list_path</em>, <em>step_number</em>, <em>fwhm_arc</em>, <em>fov</em>, <em>add_frameB=True</em>, <em>smooth_vector=True</em>, <em>create_stars_cube=False</em>, <em>profile_name='gaussian'</em>, <em>moffat_beta=3.5</em>, <em>bad_frames_vector=</em><span class="optional">[</span><span class="optional">]</span>, <em>compute_ext_light=True</em>, <em>aperture_photometry=True</em>, <em>readout_noise_1=10.0</em>, <em>dark_current_level_1=0.0</em>, <em>readout_noise_2=10.0</em>, <em>dark_current_level_2=0.0</em><big>)</big><a class="headerlink" href="#process.InterferogramMerger.merge" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">merge</tt><big>(</big><em>star_list_path</em>, <em>step_number</em>, <em>fwhm_arc</em>, <em>fov</em>, <em>add_frameB=True</em>, <em>smooth_vector=True</em>, <em>create_stars_cube=False</em>, <em>profile_name='gaussian'</em>, <em>moffat_beta=3.5</em>, <em>bad_frames_vector=[]</em>, <em>compute_ext_light=True</em>, <em>aperture_photometry=True</em>, <em>readout_noise_1=10.0</em>, <em>dark_current_level_1=0.0</em>, <em>readout_noise_2=10.0</em>, <em>dark_current_level_2=0.0</em><big>)</big><a class="headerlink" href="#process.InterferogramMerger.merge" title="Permalink to this definition">¶</a></dt>
 <dd><p>Merge the cube of the camera 1 and the transformed cube of the
 camera 2.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -1930,7 +1937,7 @@ formula:</p>
 <h2><a class="toc-backref" href="#id5">CalibrationLaser class</a><a class="headerlink" href="#calibrationlaser-class" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt id="process.CalibrationLaser">
-<em class="property">class </em><tt class="descclassname">process.</tt><tt class="descname">CalibrationLaser</tt><big>(</big><em>image_list_path</em>, <em>data_prefix='temp_data_'</em>, <em>config_file_name='config.orb'</em>, <em>project_header=</em><span class="optional">[</span><span class="optional">]</span>, <em>wcs_header=</em><span class="optional">[</span><span class="optional">]</span>, <em>calibration_laser_header=</em><span class="optional">[</span><span class="optional">]</span>, <em>overwrite=False</em>, <em>silent_init=False</em>, <em>no_log=False</em>, <em>tuning_parameters={}</em>, <em>indexer=None</em>, <em>logfile_name=None</em><big>)</big><a class="headerlink" href="#process.CalibrationLaser" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><tt class="descclassname">process.</tt><tt class="descname">CalibrationLaser</tt><big>(</big><em>image_list_path</em>, <em>image_mode='classic'</em>, <em>chip_index=1</em>, <em>binning=1</em>, <em>data_prefix='temp_data_'</em>, <em>config_file_name='config.orb'</em>, <em>project_header=[]</em>, <em>wcs_header=[]</em>, <em>calibration_laser_header=[]</em>, <em>overwrite=False</em>, <em>silent_init=False</em>, <em>no_log=False</em>, <em>tuning_parameters={}</em>, <em>indexer=None</em>, <em>logfile_name=None</em><big>)</big><a class="headerlink" href="#process.CalibrationLaser" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">orb.core.Cube</span></tt></p>
 <p>ORBS calibration laser processing class.</p>
 <p>CalibrationLaser class is aimed to compute the calibration laser map that
@@ -2018,7 +2025,7 @@ gaussian is fitted (default True).</li>
 <h2><a class="toc-backref" href="#id6">Spectrum class</a><a class="headerlink" href="#spectrum-class" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt id="process.Spectrum">
-<em class="property">class </em><tt class="descclassname">process.</tt><tt class="descname">Spectrum</tt><big>(</big><em>image_list_path</em>, <em>data_prefix='temp_data_'</em>, <em>config_file_name='config.orb'</em>, <em>project_header=</em><span class="optional">[</span><span class="optional">]</span>, <em>wcs_header=</em><span class="optional">[</span><span class="optional">]</span>, <em>calibration_laser_header=</em><span class="optional">[</span><span class="optional">]</span>, <em>overwrite=False</em>, <em>silent_init=False</em>, <em>no_log=False</em>, <em>tuning_parameters={}</em>, <em>indexer=None</em>, <em>logfile_name=None</em><big>)</big><a class="headerlink" href="#process.Spectrum" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><tt class="descclassname">process.</tt><tt class="descname">Spectrum</tt><big>(</big><em>image_list_path</em>, <em>image_mode='classic'</em>, <em>chip_index=1</em>, <em>binning=1</em>, <em>data_prefix='temp_data_'</em>, <em>config_file_name='config.orb'</em>, <em>project_header=[]</em>, <em>wcs_header=[]</em>, <em>calibration_laser_header=[]</em>, <em>overwrite=False</em>, <em>silent_init=False</em>, <em>no_log=False</em>, <em>tuning_parameters={}</em>, <em>indexer=None</em>, <em>logfile_name=None</em><big>)</big><a class="headerlink" href="#process.Spectrum" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">orb.core.Cube</span></tt></p>
 <p>ORBS spectrum processing class.</p>
 <p>This class is used to correct the spectrum computed by the
@@ -2232,7 +2239,7 @@ wavelength axis in nm. The second column contains the
 transmission coefficients. Comments are preceded with a #.
 Filter edges can be specified using the keywords :
 FILTER_MIN and FILTER_MAX:</p>
-<div class="last highlight-python"><pre>## ORBS filter file 
+<div class="last highlight-python"><div class="highlight"><pre>## ORBS filter file 
 # Author: Thomas Martin &lt;thomas.martin.1@ulaval.ca&gt;
 # Filter name : SpIOMM_R
 # Wavelength in nm | Transmission percentage
@@ -2242,7 +2249,8 @@ FILTER_MIN and FILTER_MAX:</p>
 999.7999878 0.009733387269
 999.5999756 -0.0004460749624
 999.4000244 0.01378122438
-999.2000122 0.002538740868</pre>
+999.2000122 0.002538740868
+</pre></div>
 </div>
 </div>
 </dd></dl>
@@ -2290,7 +2298,7 @@ standard data.</p>
 <h2><a class="toc-backref" href="#id7">Phase class</a><a class="headerlink" href="#phase-class" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt id="process.Phase">
-<em class="property">class </em><tt class="descclassname">process.</tt><tt class="descname">Phase</tt><big>(</big><em>image_list_path</em>, <em>data_prefix='temp_data_'</em>, <em>config_file_name='config.orb'</em>, <em>project_header=</em><span class="optional">[</span><span class="optional">]</span>, <em>wcs_header=</em><span class="optional">[</span><span class="optional">]</span>, <em>calibration_laser_header=</em><span class="optional">[</span><span class="optional">]</span>, <em>overwrite=False</em>, <em>silent_init=False</em>, <em>no_log=False</em>, <em>tuning_parameters={}</em>, <em>indexer=None</em>, <em>logfile_name=None</em><big>)</big><a class="headerlink" href="#process.Phase" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><tt class="descclassname">process.</tt><tt class="descname">Phase</tt><big>(</big><em>image_list_path</em>, <em>image_mode='classic'</em>, <em>chip_index=1</em>, <em>binning=1</em>, <em>data_prefix='temp_data_'</em>, <em>config_file_name='config.orb'</em>, <em>project_header=[]</em>, <em>wcs_header=[]</em>, <em>calibration_laser_header=[]</em>, <em>overwrite=False</em>, <em>silent_init=False</em>, <em>no_log=False</em>, <em>tuning_parameters={}</em>, <em>indexer=None</em>, <em>logfile_name=None</em><big>)</big><a class="headerlink" href="#process.Phase" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">orb.core.Cube</span></tt></p>
 <p>ORBS phase processing class.</p>
 <p>Used to create the phase maps used to correct phase in spectra.</p>
@@ -2347,7 +2355,7 @@ None, &#8216;smoothed&#8217;, &#8216;fitted&#8217;, &#8216;error&#8217; or &#821
 
 <dl class="method">
 <dt id="process.Phase.create_phase_maps">
-<tt class="descname">create_phase_maps</tt><big>(</big><em>calibration_laser_map_path</em>, <em>filter_file_path</em>, <em>nm_laser</em>, <em>step</em>, <em>order</em>, <em>interferogram_length=None</em>, <em>fit_order=2</em><big>)</big><a class="headerlink" href="#process.Phase.create_phase_maps" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">create_phase_maps</tt><big>(</big><em>calibration_laser_map_path</em>, <em>filter_file_path</em>, <em>nm_laser</em>, <em>step</em>, <em>order</em>, <em>interferogram_length=None</em>, <em>fit_order=2</em>, <em>flat_cube=False</em><big>)</big><a class="headerlink" href="#process.Phase.create_phase_maps" title="Permalink to this definition">¶</a></dt>
 <dd><p>Create phase maps. One phase map is created for each order
 of the polynomial fit (e.g. 3 maps are created when fit_order
 = 2)</p>
@@ -2374,6 +2382,9 @@ have the same number of points as the interferogram (default
 None).</li>
 <li><strong>fit_order</strong> &#8211; (Optional) Order of the polynomial used to
 fit the phase (default 2).</li>
+<li><strong>flat_cube</strong> &#8211; (Optional) If True, data is considered to be
+a flat cube so that the source delivers a high SNR at all
+wavelengths. In this case no filtering is done.</li>
 </ul>
 </td>
 </tr>
@@ -2434,11 +2445,11 @@ defined modulo PI).</p>
 <h2><a class="toc-backref" href="#id8">Standard class</a><a class="headerlink" href="#standard-class" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt id="process.Standard">
-<em class="property">class </em><tt class="descclassname">process.</tt><tt class="descname">Standard</tt><big>(</big><em>std_name</em>, <em>data_prefix='temp_data'</em>, <em>no_log=False</em>, <em>tuning_parameters={}</em>, <em>config_file_name='config.orb'</em>, <em>logfile_name=None</em><big>)</big><a class="headerlink" href="#process.Standard" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><tt class="descclassname">process.</tt><tt class="descname">Standard</tt><big>(</big><em>std_name</em>, <em>logfile_name=None</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#process.Standard" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">orb.core.Tools</span></tt></p>
 <dl class="method">
 <dt id="process.Standard.__init__">
-<tt class="descname">__init__</tt><big>(</big><em>std_name</em>, <em>data_prefix='temp_data'</em>, <em>no_log=False</em>, <em>tuning_parameters={}</em>, <em>config_file_name='config.orb'</em>, <em>logfile_name=None</em><big>)</big><a class="headerlink" href="#process.Standard.__init__" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">__init__</tt><big>(</big><em>std_name</em>, <em>logfile_name=None</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#process.Standard.__init__" title="Permalink to this definition">¶</a></dt>
 <dd><p>Initialize Standard class.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -2446,23 +2457,9 @@ defined modulo PI).</p>
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>std_name</strong> &#8211; Name of the standard.</li>
-<li><strong>data_prefix</strong> &#8211; (Optional) Prefix used to determine the
-header of the name of each created file (default
-&#8216;temp_data&#8217;)</li>
-<li><strong>no_log</strong> &#8211; (Optional) If True no log file is created
-(default False).</li>
-<li><strong>tuning_parameters</strong> &#8211; (Optional) Some parameters of the
-methods can be tuned externally using this dictionary. The
-dictionary must contains the full parameter name
-(class.method.parameter_name) and its value. For example :
-{&#8216;InterferogramMerger.find_alignment.BOX_SIZE&#8217;: 7}. Note
-that only some parameters can be tuned. This possibility is
-implemented into the method itself with the method
-<tt class="xref py py-meth docutils literal"><span class="pre">orb.core.Tools._get_tuning_parameter()</span></tt>.</li>
-<li><strong>config_file_name</strong> &#8211; (Optional) name of the config file to
-use. Must be located in orbs/data/ (default &#8216;config.orb&#8217;).</li>
 <li><strong>logfile_name</strong> &#8211; (Optional) Give a specific name to the
 logfile (default None).</li>
+<li><strong>kwargs</strong> &#8211; Kwargs are <tt class="xref py py-meth docutils literal"><span class="pre">core.Tools()</span></tt> properties.</li>
 </ul>
 </td>
 </tr>
@@ -2472,7 +2469,7 @@ logfile (default None).</li>
 
 <dl class="method">
 <dt id="process.Standard.compute_image_calibration">
-<tt class="descname">compute_image_calibration</tt><big>(</big><em>images_list_path</em>, <em>filter_name</em>, <em>exp_time</em>, <em>std_coords</em>, <em>init_fwhm_arc</em>, <em>fov</em>, <em>profile_name='gaussian'</em>, <em>moffat_beta=3.5</em>, <em>prim_surf=16000</em>, <em>verbose=False</em><big>)</big><a class="headerlink" href="#process.Standard.compute_image_calibration" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">compute_image_calibration</tt><big>(</big><em>images_list_path</em>, <em>filter_name</em>, <em>exp_time</em>, <em>std_coords</em>, <em>init_fwhm_arc</em>, <em>fov</em>, <em>profile_name='gaussian'</em>, <em>moffat_beta=3.5</em>, <em>prim_surf=17554</em>, <em>verbose=False</em><big>)</big><a class="headerlink" href="#process.Standard.compute_image_calibration" title="Permalink to this definition">¶</a></dt>
 <dd><p>Compute &#8216;flambda&#8217; calibration coefficient for a spectrum cube
 from a set of images of a standard star.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -2587,17 +2584,20 @@ in erg/cm^2/s/A.</p>
           <a href="genindex.html" title="General Index"
              >index</a></li>
         <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
           <a href="changelog.html" title="Changelog"
              >next</a> |</li>
         <li class="right" >
           <a href="orbs_module.html" title="Orbs module"
              >previous</a> |</li>
-        <li><a href="index.html">Orbs 3.7.4 documentation</a> &raquo;</li> 
+        <li><a href="index.html">Orbs 3.7.5 documentation</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
         &copy; Copyright 2014, Thomas Martin (thomas.martin.1@ulaval.ca).
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.3.
     </div>
   </body>
 </html>

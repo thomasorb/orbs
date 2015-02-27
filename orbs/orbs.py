@@ -1,4 +1,4 @@
- #!/usr/bin/python
+#!/usr/bin/python
 # *-* coding: utf-8 *-*
 # Author: Thomas Martin <thomas.martin.1@ulaval.ca>
 # File: orbs.py
@@ -276,6 +276,9 @@ class Orbs(Tools):
 
         * SATURATION_THRESHOLD: Saturation threshold for star
           detection. 35000 by default.
+
+        * PREBINNING: Prebinning of the frames, useful for a quick
+          reduction.
     """
     
     options = dict()
@@ -359,6 +362,8 @@ class Orbs(Tools):
         * wavelength_calibration: WAVE_CALIB
 
         * saturation_threshold: SATURATION_THRESHOLD
+
+        * prebinning: PREBINNING
     """
     tuning_parameters = dict()
     """Dictionary containg the tuning parameters of some methods
@@ -428,11 +433,25 @@ class Orbs(Tools):
                         prebinning = self.options['prebinning']
                     else:
                         prebinning = None
+
+                    # check if path is a directory or a file list
+                    if os.path.exists(value):
+                        if os.path.isdir(value):
+                            self.options[option_key] = (
+                                self._create_list_from_dir(
+                                    value, list_file_path,
+                                    image_mode=image_mode,
+                                    chip_index=chip_index,
+                                    prebinning=prebinning))
+                            
+                        else:
+                             self.options[option_key] = value
+                             
+                    else: self._print_error('Given path does not exist {}'.format(value))
+
                     
-                    self.options[option_key] = self._create_list_from_dir(
-                        value, list_file_path,
-                        image_mode=image_mode, chip_index=chip_index,
-                        prebinning=prebinning)
+                    
+                    
                     
             elif not optional:
                 self._print_error('option {} must be set'.format(key))
@@ -521,7 +540,8 @@ class Orbs(Tools):
         self.options['saturation_threshold'] = 35000
         
         # Parse the option file to get reduction parameters
-        self.optionfile = OptionFile(option_file_path)
+        self.optionfile = OptionFile(option_file_path,
+                                     config_file_name=config_file_name)
         store_option_parameter('object_name', 'OBJECT', str, optional=False)
         store_option_parameter('filter_name', 'FILTER', str, optional=False)
         store_option_parameter('bin_cam_1', 'BINCAM1', int, optional=False)
@@ -619,9 +639,11 @@ class Orbs(Tools):
         if (('image_list_path_1' in self.options)
             and ('image_list_path_2' in self.options)):
             dimz1 = Cube(self.options['image_list_path_1'],
-                         silent_init=True).dimz
+                         silent_init=True,
+                         config_file_name=self.config_file_name).dimz
             dimz2 = Cube(self.options['image_list_path_2'],
-                             silent_init=True).dimz
+                         silent_init=True,
+                         config_file_name=self.config_file_name).dimz
             if dimz1 != dimz2:
                 self._print_error('The number of images of CAM1 and CAM2 are not the same (%d != %d)'%(dimz1, dimz2))
             if self.options['step_number'] < dimz1:
@@ -630,7 +652,8 @@ class Orbs(Tools):
 
         # Init Indexer
         self.indexer = Indexer(data_prefix=self.options['object_name']
-                               + '_' + self.options['filter_name'] + '.')
+                               + '_' + self.options['filter_name'] + '.',
+                               config_file_name=self.config_file_name)
         self.indexer.load_index()
 
     def _get_calibration_standard_fits_header(self):
@@ -854,27 +877,29 @@ class Orbs(Tools):
         if (camera_number == 1):
             if ("image_list_path_1" in self.options):
                 self.indexer.set_file_group('cam1')
-                cube =  RawData(
+                cube = RawData(
                     self.options["image_list_path_1"], 
                     data_prefix=self._get_data_prefix(1),
                     project_header=self._get_project_fits_header(1),
                     overwrite=self.overwrite,
                     tuning_parameters=self.tuning_parameters,
                     indexer=self.indexer,
-                    logfile_name=self._logfile_name)
+                    logfile_name=self._logfile_name,
+                    config_file_name=self.config_file_name)
             else:
                 self._print_error("No image list file for camera 1 given, please check option file")
         elif (camera_number == 2):
             if ("image_list_path_2" in self.options):
                 self.indexer.set_file_group('cam2')
-                cube =  RawData(
+                cube = RawData(
                     self.options["image_list_path_2"], 
                     data_prefix=self._get_data_prefix(2),
                     project_header=self._get_project_fits_header(2),
                     overwrite=self.overwrite,
                     tuning_parameters=self.tuning_parameters,
                     indexer=self.indexer,
-                    logfile_name=self._logfile_name)
+                    logfile_name=self._logfile_name,
+                    config_file_name=self.config_file_name)
             else:
                 self._print_error("No image list file for camera 2 given, please check option file")
         else:
@@ -970,7 +995,8 @@ class Orbs(Tools):
                           logfile_name=self._logfile_name,
                           tuning_parameters=self.tuning_parameters,
                           target_radec=target_radec, target_xy=target_xy,
-                          wcs_rotation=wcs_rotation)
+                          wcs_rotation=wcs_rotation,
+                          config_file_name=self.config_file_name)
 
 
     def _get_interfero_list_path(self, camera_number, corrected=False):
@@ -997,7 +1023,7 @@ class Orbs(Tools):
         else: self._print_error('Camera number must be 0, 1 or 2')
 
     def set_init_angle(self, init_angle):
-        """Change config variable :py:const:`~orbs.Orbs.INIT_ANGLE`. 
+        """Change config variable :py:const:`orbs.orbs.Orbs.INIT_ANGLE`. 
 
         You can also change it by editing the file
         :file:`orbs/data/config.orb`.
@@ -1008,7 +1034,7 @@ class Orbs(Tools):
            the class.
 
         :param init_angle: the new value 
-           of :py:const:`~orbs.Orbs.INIT_ANGLE`
+           of :py:const:`orbs.orbs.Orbs.INIT_ANGLE`
         """
         self.config["INIT_ANGLE"] = init_angle
 
@@ -1023,7 +1049,8 @@ class Orbs(Tools):
         :param bad_frames_list: (Optional) List of bad frames indexes
           that must be added to the bad frames vector (default None).
         """
-        interf_cube = Cube(self._get_interfero_list_path(camera_number))
+        interf_cube = Cube(self._get_interfero_list_path(camera_number),
+                           config_file_name=self.config_file_name)
         bad_frames_vector = np.zeros(interf_cube.dimz)
         
         if camera_number == 0:
@@ -1052,7 +1079,8 @@ class Orbs(Tools):
                        create_stars_cube=False, n_phase=None,
                        no_star=False, phase_map_only=False,
                        no_sky=False, alt_merge=False,
-                       save_as_quads=False, standard=False):
+                       save_as_quads=False, standard=False,
+                       add_frameB=True):
         
         """Run the whole reduction process for two cameras using
         default options
@@ -1082,7 +1110,7 @@ class Orbs(Tools):
         :param create_stars_cube: (Optional) Compute only the spectrum
            of the detected stars in the cube. The interferogram of
            each star is created using a 2D gaussian fit (see:
-           :py:meth:`~orbs.Orbs.merge_interferograms`).
+           :py:meth:`orbs.orbs.Orbs.merge_interferograms`).
            
         :param n_phase: (Optional) Number of points around ZPD to use
            for phase correction during spectrum computation. If 0, no
@@ -1098,7 +1126,7 @@ class Orbs(Tools):
           configuration file (data/config.orb) (default False).
 
         :param phase_map_only: (Optional) The reduction stops to the
-          phase map step (7). This option is best used to reduce flat
+          phase map step (7). This option is used to reduce a flat
           cube in order to obtain a high resolution phase map. The
           phase map (zeroth order of the polynomial fit) is computed
           from the phase cube. Note that a phase map cannot be created
@@ -1110,7 +1138,7 @@ class Orbs(Tools):
           coefficients are given the alignment step is skipped and the
           images of the cube B are transformed using the given
           alignment coefficients. Must a vector giving [dx, dy, dr,
-          da, db] (see: :py:meth:`~orbs.Orbs.transform_cube_B`)
+          da, db] (see: :py:meth:`orbs.orbs.Orbs.transform_cube_B`)
           (Default None)
 
         :param no_sky: (Optional) If intense emission lines are
@@ -1136,35 +1164,39 @@ class Orbs(Tools):
           position MUST be defined in the option file. It must be the
           standard star position. Note that the returned spectrum will
           not be corrected for the filter (default False).
+
+        :param add_frameB: (Optional) If False use the images of the
+          camera 2 only to correct for the variations of the sky
+          transmission. Default True.
         
         .. note:: The steps are:
 
             1. Compute alignment vectors (see:
-               :py:meth:`~orbs.Orbs.compute_alignment_vector`)
+               :py:meth:`orbs.orbs.Orbs.compute_alignment_vector`)
 
             2. Compute cosmic ray maps (see:
-               :py:meth:`~orbs.Orbs.compute_cosmic_ray_map`)
+               :py:meth:`orbs.orbs.Orbs.compute_cosmic_ray_map`)
 
             3. Compute interferograms (see:
-               :py:meth:`~orbs.Orbs.compute_interferogram`)
+               :py:meth:`orbs.orbs.Orbs.compute_interferogram`)
 
             4. Transform cube B (see:
-               :py:meth:`~orbs.Orbs.transform_cube_B`)
+               :py:meth:`orbs.orbs.Orbs.transform_cube_B`)
 
             5. Merge interferograms (see:
-               :py:meth:`~orbs.Orbs.merge_interferograms`)
+               :py:meth:`orbs.orbs.Orbs.merge_interferograms`)
 
             6. Compute calibration laser map (see:
-               :py:meth:`~orbs.Orbs.compute_calibration_laser_map`)
+               :py:meth:`orbs.orbs.Orbs.compute_calibration_laser_map`)
 
             7. Compute phase map (see:
-               :py:meth:`~orbs.Orbs.compute_phase_maps`)
+               :py:meth:`orbs.orbs.Orbs.compute_phase_maps`)
 
             8. Compute spectrum (see:
-               :py:meth:`~orbs.Orbs.compute_spectrum`)
+               :py:meth:`orbs.orbs.Orbs.compute_spectrum`)
 
             9. Calibrate spectrum (see:
-               :py:meth:`~orbs.Orbs.calibrate_spectrum`)
+               :py:meth:`orbs.orbs.Orbs.calibrate_spectrum`)
 
         """
         if no_star: alt_merge = True
@@ -1213,14 +1245,16 @@ class Orbs(Tools):
 
         if (start_step <= 5):
             if alt_merge:
-                self.merge_interferograms_alt()
+                self.merge_interferograms_alt(
+                    add_frameB=add_frameB)
             else:
                 self.merge_interferograms(
                     create_stars_cube=create_stars_cube,
                     bad_frames_vector=bad_frames_vector,
                     compute_ext_light=(
                         (not no_sky and self.config['EXT_ILLUMINATION'])),
-                    min_star_number=self.config['DETECT_STAR_NB'])
+                    min_star_number=self.config['DETECT_STAR_NB'],
+                    add_frameB=add_frameB)
             self.add_missing_frames(0, stars_cube=create_stars_cube)
             
         if (start_step <= 6):   
@@ -1239,7 +1273,8 @@ class Orbs(Tools):
                     phase_cube=True,
                     balanced=True)
                 self.compute_phase_maps(
-                    0, calibration_laser_map_path=calibration_laser_map_path)
+                    0, calibration_laser_map_path=calibration_laser_map_path,
+                    flat_cube=phase_map_only)
                 if phase_map_only:
                     self.get_flat_phase_map(0)
         if n_phase == 0:
@@ -1335,28 +1370,28 @@ class Orbs(Tools):
         .. note:: The step numbers are:
 
             1. Compute alignment vectors (see:
-               :py:meth:`~orbs.Orbs.compute_alignment_vector`)
+               :py:meth:`orbs.orbs.Orbs.compute_alignment_vector`)
 
             2. Compute cosmic ray maps (see:
-               :py:meth:`~orbs.Orbs.compute_cosmic_ray_map`)
+               :py:meth:`orbs.orbs.Orbs.compute_cosmic_ray_map`)
 
             3. Compute interferograms (see:
-               :py:meth:`~orbs.Orbs.compute_interferogram`)
+               :py:meth:`orbs.orbs.Orbs.compute_interferogram`)
 
             4. Correct interferogram (see:
-               :py:meth:`~orbs.Orbs.correct_interferogram`)
+               :py:meth:`orbs.orbs.Orbs.correct_interferogram`)
                
             5. Compute calibration laser map (see:
-               :py:meth:`~orbs.Orbs.compute_calibration_laser_map`)
+               :py:meth:`orbs.orbs.Orbs.compute_calibration_laser_map`)
 
             6. Compute phase map (see:
-               :py:meth:`~orbs.Orbs.compute_phase_maps`)
+               :py:meth:`orbs.orbs.Orbs.compute_phase_maps`)
 
             7. Compute spectrum (see:
-               :py:meth:`~orbs.Orbs.compute_spectrum`)
+               :py:meth:`orbs.orbs.Orbs.compute_spectrum`)
 
             8. Calibrate spectrum (see:
-               :py:meth:`~orbs.Orbs.calibrate_spectrum`)
+               :py:meth:`orbs.orbs.Orbs.calibrate_spectrum`)
         """
         if bad_frames_vector is None and "bad_frames" in self.options:
             bad_frames_vector = self.options["bad_frames"]
@@ -1428,7 +1463,7 @@ class Orbs(Tools):
             self.compute_phase_maps(
                 camera_number,
                 calibration_laser_map_path=calibration_laser_map_path,
-                no_star=no_star)
+                no_star=no_star, flat_cube=phase_map_only)
             if phase_map_only:
                 self.get_flat_phase_map(camera_number)
                 
@@ -1585,7 +1620,8 @@ class Orbs(Tools):
         
         cube = self._init_raw_data_cube(camera_number)
         
-        perf = Performance(cube, "Alignment vector computation", camera_number)
+        perf = Performance(cube, "Alignment vector computation", camera_number,
+                           config_file_name=self.config_file_name)
         
         if star_list_path is None:
             star_list_path, mean_fwhm_arc = self.detect_stars(
@@ -1624,7 +1660,8 @@ class Orbs(Tools):
         .. seealso:: :meth:`process.RawData.create_cosmic_ray_map`
         """
         cube = self._init_raw_data_cube(camera_number)
-        perf = Performance(cube, "Cosmic ray map computation", camera_number)
+        perf = Performance(cube, "Cosmic ray map computation", camera_number,
+                           config_file_name=self.config_file_name)
         
         if "step_number" in self.options: 
             step_number = self.options["step_number"]
@@ -1698,7 +1735,8 @@ class Orbs(Tools):
         .. seealso:: :py:meth:`process.RawData.correct`
         """
         cube = self._init_raw_data_cube(camera_number)
-        perf = Performance(cube, "Interferogram computation", camera_number)
+        perf = Performance(cube, "Interferogram computation", camera_number,
+                           config_file_name=self.config_file_name)
 
         bias_path = None
         dark_path = None
@@ -1845,9 +1883,11 @@ class Orbs(Tools):
             overwrite=self.overwrite,
             tuning_parameters=self.tuning_parameters,
             indexer=self.indexer,
-            logfile_name=self._logfile_name)
+            logfile_name=self._logfile_name,
+            config_file_name=self.config_file_name)
 
-        perf = Performance(cube.cube_B, "Cube B transformation", 2)
+        perf = Performance(cube.cube_B, "Cube B transformation", 2,
+                           config_file_name=self.config_file_name)
 
         # find alignment coefficients
         if not no_star and alignment_coeffs is None:
@@ -1904,9 +1944,11 @@ class Orbs(Tools):
             overwrite=self.overwrite,
             tuning_parameters=self.tuning_parameters,
             indexer=self.indexer,
-            logfile_name=self._logfile_name)
+            logfile_name=self._logfile_name,
+            config_file_name=self.config_file_name)
         
-        perf = Performance(cube.cube_A, "Alternative merging process", 1)
+        perf = Performance(cube.cube_A, "Alternative merging process", 1,
+                           config_file_name=self.config_file_name)
 
         # Launch merging process
         cube.alternative_merge(add_frameB=add_frameB)
@@ -2003,9 +2045,11 @@ class Orbs(Tools):
             overwrite=self.overwrite,
             tuning_parameters=self.tuning_parameters,
             indexer=self.indexer,
-            logfile_name=self._logfile_name)
+            logfile_name=self._logfile_name,
+            config_file_name=self.config_file_name)
         
-        perf = Performance(cube.cube_A, "Merging process", 1)
+        perf = Performance(cube.cube_A, "Merging process", 1,
+                           config_file_name=self.config_file_name)
             
         cube.merge(star_list_path_1, step_number,
                    mean_fwhm_arc, self.config["FIELD_OF_VIEW"],
@@ -2064,9 +2108,11 @@ class Orbs(Tools):
             overwrite=self.overwrite,
             tuning_parameters=self.tuning_parameters,
             indexer=self.indexer,
-            logfile_name=self._logfile_name)
+            logfile_name=self._logfile_name,
+            config_file_name=self.config_file_name)
         perf = Performance(cube, "Calibration laser map processing",
-                           camera_number)
+                           camera_number,
+                           config_file_name=self.config_file_name)
 
         cube.create_calibration_laser_map(
             order=order, step=step, 
@@ -2103,7 +2149,8 @@ class Orbs(Tools):
                 project_header=self._get_project_fits_header(0),
                 overwrite=self.overwrite,
                 tuning_parameters=self.tuning_parameters,
-                logfile_name=self._logfile_name)
+                logfile_name=self._logfile_name,
+                config_file_name=self.config_file_name)
         else:
             cube = self._init_raw_data_cube(camera_number)
             
@@ -2169,8 +2216,10 @@ class Orbs(Tools):
             overwrite=self.overwrite,
             tuning_parameters=self.tuning_parameters,
             indexer=self.indexer,
-            logfile_name=self._logfile_name)
-        perf = Performance(cube, "Interferogram correction", camera_number)
+            logfile_name=self._logfile_name,
+            config_file_name=self.config_file_name)
+        perf = Performance(cube, "Interferogram correction", camera_number,
+                           config_file_name=self.config_file_name)
         
         # detect stars
         raw_cube = self._init_raw_data_cube(camera_number)
@@ -2401,7 +2450,8 @@ class Orbs(Tools):
                 self._get_interfero_list_path(
                     camera_number, corrected=True), 
                 tuning_parameters=self.tuning_parameters,
-                logfile_name=self._logfile_name)
+                logfile_name=self._logfile_name,
+                config_file_name=self.config_file_name)
             zpd_shift = orb.utils.find_zpd(
                 no_stars_cube.get_zmedian(nozero=True),
                 return_zpd_shift=True)
@@ -2425,9 +2475,11 @@ class Orbs(Tools):
             calibration_laser_header=self._get_calibration_laser_fits_header(),
             overwrite=self.overwrite,
             tuning_parameters=self.tuning_parameters,
-            indexer=self.indexer)
+            indexer=self.indexer,
+            config_file_name=self.config_file_name)
         
-        perf = Performance(cube, "Spectrum computation", camera_number)
+        perf = Performance(cube, "Spectrum computation", camera_number,
+                           config_file_name=self.config_file_name)
         
         if (camera_number == 1): 
             if "bin_cam_1" in self.options: 
@@ -2518,7 +2570,7 @@ class Orbs(Tools):
                            interferogram_length=None,
                            phase_list_path=None,
                            calibration_laser_map_path=None, fit=True,
-                           no_star=False):
+                           no_star=False, flat_cube=False):
         
         """Create a phase map.
 
@@ -2558,7 +2610,10 @@ class Orbs(Tools):
           that the interferogram could not be corrected for sky
           transmission variations. The interferogram cube used will
           thus be the uncorrected one (default False).
-          
+
+        :param flat_cube: (Optional) If True, cube is considered to be
+          a flat cube with a high SNR at all wavelengths.
+        
         .. seealso:: :meth:`process.Phase.create_phase_maps`
         
         """
@@ -2600,7 +2655,8 @@ class Orbs(Tools):
                 interfero_list_path = self._get_interfero_list_path(
                     camera_number, corrected=False)
             cube = Interferogram(interfero_list_path, silent_init=True,
-                                 logfile_name=self._logfile_name)
+                                 logfile_name=self._logfile_name,
+                                 config_file_name=self.config_file_name)
             interferogram_length = cube.dimz
             del cube
 
@@ -2614,16 +2670,19 @@ class Orbs(Tools):
             overwrite=self.overwrite,
             tuning_parameters=self.tuning_parameters,
             indexer=self.indexer,
-            logfile_name=self._logfile_name)
+            logfile_name=self._logfile_name,
+            config_file_name=self.config_file_name)
         
-        perf = Performance(phase, "Phase map creation", camera_number)
+        perf = Performance(phase, "Phase map creation", camera_number,
+                           config_file_name=self.config_file_name)
         # create phase map
         phase.create_phase_maps(
             calibration_laser_map_path,
             filter_path,
             self.config["CALIB_NM_LASER"], step, order,
             interferogram_length=interferogram_length,
-            fit_order=self.config["PHASE_FIT_DEG"])
+            fit_order=self.config["PHASE_FIT_DEG"],
+            flat_cube=flat_cube)
 
         # smooth the 0th order phase map
         phase_map_path = phase._get_phase_map_path(0)
@@ -2711,8 +2770,10 @@ class Orbs(Tools):
             overwrite=self.overwrite,
             tuning_parameters=self.tuning_parameters,
             indexer=self.indexer,
-            logfile_name=self._logfile_name)
-        perf = Performance(spectrum, "Spectrum calibration", camera_number)
+            logfile_name=self._logfile_name,
+            config_file_name=self.config_file_name)
+        perf = Performance(spectrum, "Spectrum calibration", camera_number,
+                           config_file_name=self.config_file_name)
 
         # Get flux calibration vector
         if ('standard_path' in self.options
@@ -2873,7 +2934,8 @@ class Orbs(Tools):
 
             if (phase_map_0_path is not None and residual_map_path is not None
                 and len(phase_map_paths) > 0):
-                cube = Interferogram('')
+                cube = Interferogram(
+                    '', config_file_name=self.config_file_name)
                 phase_coeffs = cube.compute_phase_coeffs_vector(
                     phase_map_paths,
                     residual_map_path=residual_map_path)
@@ -2902,9 +2964,11 @@ class Orbs(Tools):
                 alignment_coeffs=None,
                 overwrite=self.overwrite,
                 tuning_parameters=self.tuning_parameters,
-                logfile_name=self._logfile_name)
+                logfile_name=self._logfile_name,
+                config_file_name=self.config_file_name)
 
-            perf = Performance(cube.cube_A, "Extract stars spectrum", 0)
+            perf = Performance(cube.cube_A, "Extract stars spectrum", 0,
+                               config_file_name=self.config_file_name)
 
             stars_spectrum = cube.extract_stars_spectrum(
                 star_list_path,
@@ -2942,7 +3006,8 @@ class Orbs(Tools):
                 overwrite=self.overwrite,
                 tuning_parameters=self.tuning_parameters,
                 indexer=self.indexer,
-                logfile_name=self._logfile_name)
+                logfile_name=self._logfile_name,
+                config_file_name=self.config_file_name)
             
             stars_spectrum = cube.extract_stars_spectrum(
                 star_list_path,
@@ -2987,7 +3052,8 @@ class Orbs(Tools):
         self._print_msg('Writing calibrated spectrum cube to disk', color=True)
         spectrum_list_path = self.indexer.get_path('calibrated_spectrum_list',
                                                    camera_number)
-        spectrum = Cube(spectrum_list_path)
+        spectrum = Cube(spectrum_list_path,
+                        config_file_name=self.config_file_name)
         spectrum_header = spectrum.get_frame_header(0)
 
         if 'wavenumber' in self.options:
@@ -3101,8 +3167,7 @@ class Performance(Tools):
     _sz = None
     _quad_nb = None
     
-    def __init__(self, cube, process_name, camera_number,
-                 logfile_name=None):
+    def __init__(self, cube, process_name, camera_number, **kwargs):
         """
         Initialize class
 
@@ -3114,11 +3179,10 @@ class Performance(Tools):
         :param camera_number: Number of the camera which cube is
           processed (can be 1, 2 or 0 for merged data)
 
-        :param logfile_name: (Optional) Give a specific name to the
-          logfile (default None).
+        :param kwargs: Kwargs are :meth:`core.Tools` properties.
         """
-        self._init_logfile_name(logfile_name)
-        self._msg_class_hdr = self._get_msg_class_hdr()
+        Tools.__init__(self, **kwargs)
+        
         self._start_time = time.time()
         self._process_name = process_name
         self._camera_number = camera_number

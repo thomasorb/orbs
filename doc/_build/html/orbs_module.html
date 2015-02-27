@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Orbs module &mdash; Orbs 3.7.4 documentation</title>
+    <title>Orbs module &mdash; Orbs 3.7.5 documentation</title>
     
     <link rel="stylesheet" href="_static/sphinxdoc.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -14,7 +14,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
-        VERSION:     '3.7.4',
+        VERSION:     '3.7.5',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -25,7 +25,7 @@
     <script type="text/javascript" src="_static/doctools.js"></script>
     <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="shortcut icon" href="_static/logo.ico"/>
-    <link rel="top" title="Orbs 3.7.4 documentation" href="index.html" />
+    <link rel="top" title="Orbs 3.7.5 documentation" href="index.html" />
     <link rel="next" title="Process module" href="process_module.html" />
     <link rel="prev" title="Quick start Guide" href="quick_start.html" /> 
   </head>
@@ -37,12 +37,15 @@
           <a href="genindex.html" title="General Index"
              accesskey="I">index</a></li>
         <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
           <a href="process_module.html" title="Process module"
              accesskey="N">next</a> |</li>
         <li class="right" >
           <a href="quick_start.html" title="Quick start Guide"
              accesskey="P">previous</a> |</li>
-        <li><a href="index.html">Orbs 3.7.4 documentation</a> &raquo;</li> 
+        <li><a href="index.html">Orbs 3.7.5 documentation</a> &raquo;</li> 
       </ul>
     </div>
       <div class="sphinxsidebar">
@@ -103,7 +106,7 @@
 </li>
 </ul>
 </div>
-<div class="section" id="orbs-class">
+<span class="target" id="module-orbs.orbs"></span><div class="section" id="orbs-class">
 <h2><a class="toc-backref" href="#id2">Orbs class</a><a class="headerlink" href="#orbs-class" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt id="orbs.orbs.Orbs">
@@ -146,7 +149,7 @@ parameters (each parameter is preceded by a keyword). See
 </tr>
 <tr class="field-odd field"><th class="field-name">HOUR_UT:</th><td class="field-body">UT hour of the observation (HH:MM:SS)</td>
 </tr>
-<tr class="field-even field"><th class="field-name">BADFRMS:</th><td class="field-body">List of bad frames indexes</td>
+<tr class="field-even field"><th class="field-name">BAD_FRAMES:</th><td class="field-body">List of bad frames indexes</td>
 </tr>
 <tr class="field-odd field"><th class="field-name">TARGETR:</th><td class="field-body">RA of the target (hour:min:sec)</td>
 </tr>
@@ -471,7 +474,7 @@ for merged data).</li>
 <dl class="method">
 <dt id="orbs.orbs.Orbs._init_raw_data_cube">
 <tt class="descname">_init_raw_data_cube</tt><big>(</big><em>camera_number</em><big>)</big><a class="headerlink" href="#orbs.orbs.Orbs._init_raw_data_cube" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return instance of <tt class="xref py py-class docutils literal"><span class="pre">orbs.process.RawData</span></tt> class</p>
+<dd><p>Return instance of <a class="reference internal" href="process_module.html#orbs.process.RawData" title="orbs.process.RawData"><tt class="xref py py-class docutils literal"><span class="pre">orbs.process.RawData</span></tt></a> class</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -504,7 +507,7 @@ added to the stars interferogram cube (default False).</li>
 </table>
 <div class="admonition seealso">
 <p class="first admonition-title">See also</p>
-<p class="last"><a class="reference internal" href="process_module.html#process.RawData.add_missing_frames" title="process.RawData.add_missing_frames"><tt class="xref py py-meth docutils literal"><span class="pre">process.RawData.add_missing_frames()</span></tt></a></p>
+<p class="last"><tt class="xref py py-meth docutils literal"><span class="pre">process.RawData.add_missing_frames()</span></tt></p>
 </div>
 </dd></dl>
 
@@ -556,7 +559,7 @@ considered as bad</p>
 </table>
 <div class="admonition seealso">
 <p class="first admonition-title">See also</p>
-<p class="last"><a class="reference internal" href="process_module.html#process.RawData.check_bad_frames" title="process.RawData.check_bad_frames"><tt class="xref py py-meth docutils literal"><span class="pre">process.RawData.check_bad_frames()</span></tt></a></p>
+<p class="last"><tt class="xref py py-meth docutils literal"><span class="pre">process.RawData.check_bad_frames()</span></tt></p>
 </div>
 </dd></dl>
 
@@ -594,7 +597,7 @@ arcsec. Used only when an external list of stars is given
 </div>
 <div class="admonition seealso">
 <p class="first admonition-title">See also</p>
-<p class="last"><a class="reference internal" href="process_module.html#process.RawData.create_alignment_vector" title="process.RawData.create_alignment_vector"><tt class="xref py py-meth docutils literal"><span class="pre">process.RawData.create_alignment_vector()</span></tt></a></p>
+<p class="last"><tt class="xref py py-meth docutils literal"><span class="pre">process.RawData.create_alignment_vector()</span></tt></p>
 </div>
 </dd></dl>
 
@@ -626,7 +629,7 @@ checking purpose (Default False)</li>
 
 <dl class="method">
 <dt id="orbs.orbs.Orbs.compute_cosmic_ray_map">
-<tt class="descname">compute_cosmic_ray_map</tt><big>(</big><em>camera_number</em>, <em>z_coeff=3.0</em>, <em>bad_frames_vector=</em><span class="optional">[</span><span class="optional">]</span>, <em>min_star_number=30</em><big>)</big><a class="headerlink" href="#orbs.orbs.Orbs.compute_cosmic_ray_map" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">compute_cosmic_ray_map</tt><big>(</big><em>camera_number</em>, <em>z_coeff=3.0</em>, <em>bad_frames_vector=[]</em>, <em>min_star_number=30</em><big>)</big><a class="headerlink" href="#orbs.orbs.Orbs.compute_cosmic_ray_map" title="Permalink to this definition">¶</a></dt>
 <dd><p>Run the computation of the cosmic ray map.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -648,13 +651,13 @@ rays. CR detected in thos stars will be removed.</li>
 </table>
 <div class="admonition seealso">
 <p class="first admonition-title">See also</p>
-<p class="last"><a class="reference internal" href="process_module.html#process.RawData.create_cosmic_ray_map" title="process.RawData.create_cosmic_ray_map"><tt class="xref py py-meth docutils literal"><span class="pre">process.RawData.create_cosmic_ray_map()</span></tt></a></p>
+<p class="last"><tt class="xref py py-meth docutils literal"><span class="pre">process.RawData.create_cosmic_ray_map()</span></tt></p>
 </div>
 </dd></dl>
 
 <dl class="method">
 <dt id="orbs.orbs.Orbs.compute_interferogram">
-<tt class="descname">compute_interferogram</tt><big>(</big><em>camera_number</em>, <em>bad_frames_vector=</em><span class="optional">[</span><span class="optional">]</span>, <em>optimize_dark_coeff=False</em>, <em>z_range=</em><span class="optional">[</span><span class="optional">]</span>, <em>combine='average'</em>, <em>reject='avsigclip'</em>, <em>flat_smooth_deg=0</em><big>)</big><a class="headerlink" href="#orbs.orbs.Orbs.compute_interferogram" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">compute_interferogram</tt><big>(</big><em>camera_number</em>, <em>bad_frames_vector=[]</em>, <em>optimize_dark_coeff=False</em>, <em>z_range=[]</em>, <em>combine='average'</em>, <em>reject='avsigclip'</em>, <em>flat_smooth_deg=0</em><big>)</big><a class="headerlink" href="#orbs.orbs.Orbs.compute_interferogram" title="Permalink to this definition">¶</a></dt>
 <dd><dl class="docutils">
 <dt>Run the computation of the corrected interferogram from raw</dt>
 <dd>frames</dd>
@@ -688,7 +691,7 @@ frames creation. Can be &#8216;average&#8217; or &#8216;median&#8217; (default
 <tt class="xref py py-meth docutils literal"><span class="pre">process.RawData._create_master_frame()</span></tt>.</li>
 <li><strong>flat_smooth_deg</strong> &#8211; (Optional) If &gt; 0 smooth the master
 flat (help removing possible fringe pattern) (default
-0). See <a class="reference internal" href="process_module.html#process.RawData._load_flat" title="process.RawData._load_flat"><tt class="xref py py-meth docutils literal"><span class="pre">process.RawData._load_flat()</span></tt></a>.</li>
+0). See <tt class="xref py py-meth docutils literal"><span class="pre">process.RawData._load_flat()</span></tt>.</li>
 </ul>
 </td>
 </tr>
@@ -696,13 +699,13 @@ flat (help removing possible fringe pattern) (default
 </table>
 <div class="admonition seealso">
 <p class="first admonition-title">See also</p>
-<p class="last"><a class="reference internal" href="process_module.html#process.RawData.correct" title="process.RawData.correct"><tt class="xref py py-meth docutils literal"><span class="pre">process.RawData.correct()</span></tt></a></p>
+<p class="last"><tt class="xref py py-meth docutils literal"><span class="pre">process.RawData.correct()</span></tt></p>
 </div>
 </dd></dl>
 
 <dl class="method">
 <dt id="orbs.orbs.Orbs.compute_phase_maps">
-<tt class="descname">compute_phase_maps</tt><big>(</big><em>camera_number</em>, <em>interferogram_length=None</em>, <em>phase_list_path=None</em>, <em>calibration_laser_map_path=None</em>, <em>fit=True</em>, <em>no_star=False</em><big>)</big><a class="headerlink" href="#orbs.orbs.Orbs.compute_phase_maps" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">compute_phase_maps</tt><big>(</big><em>camera_number</em>, <em>interferogram_length=None</em>, <em>phase_list_path=None</em>, <em>calibration_laser_map_path=None</em>, <em>fit=True</em>, <em>no_star=False</em>, <em>flat_cube=False</em><big>)</big><a class="headerlink" href="#orbs.orbs.Orbs.compute_phase_maps" title="Permalink to this definition">¶</a></dt>
 <dd><p>Create a phase map.</p>
 <p>The phase map is a map of the zeroth order coefficient of the
 polynomial fit to the phase. The dimensions of the phase map
@@ -738,6 +741,8 @@ have been computed without the star dependant processes so
 that the interferogram could not be corrected for sky
 transmission variations. The interferogram cube used will
 thus be the uncorrected one (default False).</li>
+<li><strong>flat_cube</strong> &#8211; (Optional) If True, cube is considered to be
+a flat cube with a high SNR at all wavelengths.</li>
 </ul>
 </td>
 </tr>
@@ -821,7 +826,7 @@ thus be the uncorrected one (default False).</li>
 </table>
 <div class="admonition seealso">
 <p class="first admonition-title">See also</p>
-<p class="last"><a class="reference internal" href="process_module.html#process.Interferogram.compute_spectrum" title="process.Interferogram.compute_spectrum"><tt class="xref py py-meth docutils literal"><span class="pre">process.Interferogram.compute_spectrum()</span></tt></a></p>
+<p class="last"><tt class="xref py py-meth docutils literal"><span class="pre">process.Interferogram.compute_spectrum()</span></tt></p>
 </div>
 <div class="admonition seealso">
 <p class="first admonition-title">See also</p>
@@ -878,6 +883,8 @@ set to 1. This way this external light can be tracked by the
 merge process.</li>
 <li>SATURATION_THRESHOLD: Saturation threshold for star
 detection. 35000 by default.</li>
+<li>PREBINNING: Prebinning of the frames, useful for a quick
+reduction.</li>
 </ul>
 </div></blockquote>
 </div>
@@ -885,7 +892,7 @@ detection. 35000 by default.</li>
 
 <dl class="method">
 <dt id="orbs.orbs.Orbs.correct_interferogram">
-<tt class="descname">correct_interferogram</tt><big>(</big><em>camera_number</em>, <em>star_list_path=None</em>, <em>stars_fwhm=None</em>, <em>image_list_path=None</em>, <em>min_star_number=15</em>, <em>bad_frames_vector=</em><span class="optional">[</span><span class="optional">]</span><big>)</big><a class="headerlink" href="#orbs.orbs.Orbs.correct_interferogram" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">correct_interferogram</tt><big>(</big><em>camera_number</em>, <em>star_list_path=None</em>, <em>stars_fwhm=None</em>, <em>image_list_path=None</em>, <em>min_star_number=15</em>, <em>bad_frames_vector=[]</em><big>)</big><a class="headerlink" href="#orbs.orbs.Orbs.correct_interferogram" title="Permalink to this definition">¶</a></dt>
 <dd><p>Correct a single-camera interferogram cube for variations
 of sky transission and stray light.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -928,7 +935,7 @@ precision (because both cubes are used to compute it)</p>
 </div>
 <div class="admonition seealso">
 <p class="first admonition-title">See also</p>
-<p class="last"><a class="reference internal" href="process_module.html#process.Interferogram.create_correction_vectors" title="process.Interferogram.create_correction_vectors"><tt class="xref py py-meth docutils literal"><span class="pre">process.Interferogram.create_correction_vectors()</span></tt></a></p>
+<p class="last"><tt class="xref py py-meth docutils literal"><span class="pre">process.Interferogram.create_correction_vectors()</span></tt></p>
 </div>
 </dd></dl>
 
@@ -990,7 +997,7 @@ False).</li>
 
 <dl class="method">
 <dt id="orbs.orbs.Orbs.extract_stars_spectrum">
-<tt class="descname">extract_stars_spectrum</tt><big>(</big><em>camera_number</em>, <em>window_type</em>, <em>star_list_path=None</em>, <em>stars_fwhm_arc=2.0</em>, <em>min_star_number=15</em>, <em>aperture_photometry=True</em>, <em>n_phase=None</em>, <em>auto_phase=False</em>, <em>filter_correct=True</em>, <em>aper_coeff=3.0</em><big>)</big><a class="headerlink" href="#orbs.orbs.Orbs.extract_stars_spectrum" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">extract_stars_spectrum</tt><big>(</big><em>camera_number</em>, <em>window_type</em>, <em>star_list_path=None</em>, <em>stars_fwhm_arc=2.0</em>, <em>min_star_number=15</em>, <em>aperture_photometry=True</em>, <em>n_phase=None</em>, <em>auto_phase=False</em>, <em>filter_correct=True</em>, <em>aper_coeff=3.0</em>, <em>saturation=None</em><big>)</big><a class="headerlink" href="#orbs.orbs.Orbs.extract_stars_spectrum" title="Permalink to this definition">¶</a></dt>
 <dd><p>Extract the spectrum of the stars in a list of stars location
 list by photometry.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -1031,6 +1038,8 @@ aperture radius is Rap = aper_coeff * FWHM. Better when
 between 1.5 to reduce the variation of the collected photons
 with varying FWHM and 3. to account for the flux in the
 wings (default 3., better for star with a high SNR).</li>
+<li><strong>saturation</strong> &#8211; (Optional) If not None, all pixels above
+the saturation level are removed from the fit (default None).</li>
 </ul>
 </td>
 </tr>
@@ -1040,7 +1049,7 @@ wings (default 3., better for star with a high SNR).</li>
 
 <dl class="method">
 <dt id="orbs.orbs.Orbs.full_reduction">
-<tt class="descname">full_reduction</tt><big>(</big><em>calibration_laser_map_path=None</em>, <em>phase_map_0_path=None</em>, <em>bad_frames_vector=</em><span class="optional">[</span><span class="optional">]</span>, <em>alignment_coeffs=None</em>, <em>apodization_function=None</em>, <em>start_step=1</em>, <em>create_stars_cube=False</em>, <em>n_phase=None</em>, <em>no_star=False</em>, <em>phase_map_only=False</em>, <em>no_sky=False</em>, <em>alt_merge=False</em>, <em>save_as_quads=False</em>, <em>standard=False</em><big>)</big><a class="headerlink" href="#orbs.orbs.Orbs.full_reduction" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">full_reduction</tt><big>(</big><em>calibration_laser_map_path=None</em>, <em>phase_map_0_path=None</em>, <em>bad_frames_vector=[]</em>, <em>alignment_coeffs=None</em>, <em>apodization_function=None</em>, <em>start_step=1</em>, <em>create_stars_cube=False</em>, <em>n_phase=None</em>, <em>no_star=False</em>, <em>phase_map_only=False</em>, <em>no_sky=False</em>, <em>alt_merge=False</em>, <em>save_as_quads=False</em>, <em>standard=False</em>, <em>add_frameB=True</em><big>)</big><a class="headerlink" href="#orbs.orbs.Orbs.full_reduction" title="Permalink to this definition">¶</a></dt>
 <dd><p>Run the whole reduction process for two cameras using
 default options</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -1068,7 +1077,7 @@ run the whole process one more time.</li>
 <li><strong>create_stars_cube</strong> &#8211; (Optional) Compute only the spectrum
 of the detected stars in the cube. The interferogram of
 each star is created using a 2D gaussian fit (see:
-<tt class="xref py py-meth docutils literal"><span class="pre">merge_interferograms()</span></tt>).</li>
+<a class="reference internal" href="#orbs.orbs.Orbs.merge_interferograms" title="orbs.orbs.Orbs.merge_interferograms"><tt class="xref py py-meth docutils literal"><span class="pre">orbs.orbs.Orbs.merge_interferograms()</span></tt></a>).</li>
 <li><strong>n_phase</strong> &#8211; (Optional) Number of points around ZPD to use
 for phase correction during spectrum computation. If 0, no
 phase correction will be done and the resulting spectrum
@@ -1081,7 +1090,7 @@ be used only on non-astronomical data. The cubes are merged
 using the default alignment parameters recorded in the
 configuration file (data/config.orb) (default False).</li>
 <li><strong>phase_map_only</strong> &#8211; (Optional) The reduction stops to the
-phase map step (7). This option is best used to reduce flat
+phase map step (7). This option is used to reduce a flat
 cube in order to obtain a high resolution phase map. The
 phase map (zeroth order of the polynomial fit) is computed
 from the phase cube. Note that a phase map cannot be created
@@ -1092,7 +1101,7 @@ computed first (default False).</li>
 coefficients are given the alignment step is skipped and the
 images of the cube B are transformed using the given
 alignment coefficients. Must a vector giving [dx, dy, dr,
-da, db] (see: <tt class="xref py py-meth docutils literal"><span class="pre">transform_cube_B()</span></tt>)
+da, db] (see: <a class="reference internal" href="#orbs.orbs.Orbs.transform_cube_B" title="orbs.orbs.Orbs.transform_cube_B"><tt class="xref py py-meth docutils literal"><span class="pre">orbs.orbs.Orbs.transform_cube_B()</span></tt></a>)
 (Default None)</li>
 <li><strong>no_sky</strong> &#8211; (Optional) If intense emission lines are
 present in the whole area, no &#8216;sky&#8217; like pixels (dominated
@@ -1114,6 +1123,9 @@ the standard instead of returning a full cube. Target
 position MUST be defined in the option file. It must be the
 standard star position. Note that the returned spectrum will
 not be corrected for the filter (default False).</li>
+<li><strong>add_frameB</strong> &#8211; (Optional) If False use the images of the
+camera 2 only to correct for the variations of the sky
+transmission. Default True.</li>
 </ul>
 </td>
 </tr>
@@ -1124,23 +1136,23 @@ not be corrected for the filter (default False).</li>
 <p>The steps are:</p>
 <ol class="last arabic simple">
 <li>Compute alignment vectors (see:
-<tt class="xref py py-meth docutils literal"><span class="pre">compute_alignment_vector()</span></tt>)</li>
+<a class="reference internal" href="#orbs.orbs.Orbs.compute_alignment_vector" title="orbs.orbs.Orbs.compute_alignment_vector"><tt class="xref py py-meth docutils literal"><span class="pre">orbs.orbs.Orbs.compute_alignment_vector()</span></tt></a>)</li>
 <li>Compute cosmic ray maps (see:
-<tt class="xref py py-meth docutils literal"><span class="pre">compute_cosmic_ray_map()</span></tt>)</li>
+<a class="reference internal" href="#orbs.orbs.Orbs.compute_cosmic_ray_map" title="orbs.orbs.Orbs.compute_cosmic_ray_map"><tt class="xref py py-meth docutils literal"><span class="pre">orbs.orbs.Orbs.compute_cosmic_ray_map()</span></tt></a>)</li>
 <li>Compute interferograms (see:
-<tt class="xref py py-meth docutils literal"><span class="pre">compute_interferogram()</span></tt>)</li>
+<a class="reference internal" href="#orbs.orbs.Orbs.compute_interferogram" title="orbs.orbs.Orbs.compute_interferogram"><tt class="xref py py-meth docutils literal"><span class="pre">orbs.orbs.Orbs.compute_interferogram()</span></tt></a>)</li>
 <li>Transform cube B (see:
-<tt class="xref py py-meth docutils literal"><span class="pre">transform_cube_B()</span></tt>)</li>
+<a class="reference internal" href="#orbs.orbs.Orbs.transform_cube_B" title="orbs.orbs.Orbs.transform_cube_B"><tt class="xref py py-meth docutils literal"><span class="pre">orbs.orbs.Orbs.transform_cube_B()</span></tt></a>)</li>
 <li>Merge interferograms (see:
-<tt class="xref py py-meth docutils literal"><span class="pre">merge_interferograms()</span></tt>)</li>
+<a class="reference internal" href="#orbs.orbs.Orbs.merge_interferograms" title="orbs.orbs.Orbs.merge_interferograms"><tt class="xref py py-meth docutils literal"><span class="pre">orbs.orbs.Orbs.merge_interferograms()</span></tt></a>)</li>
 <li>Compute calibration laser map (see:
-<tt class="xref py py-meth docutils literal"><span class="pre">compute_calibration_laser_map()</span></tt>)</li>
+<a class="reference internal" href="#orbs.orbs.Orbs.compute_calibration_laser_map" title="orbs.orbs.Orbs.compute_calibration_laser_map"><tt class="xref py py-meth docutils literal"><span class="pre">orbs.orbs.Orbs.compute_calibration_laser_map()</span></tt></a>)</li>
 <li>Compute phase map (see:
-<tt class="xref py py-meth docutils literal"><span class="pre">compute_phase_maps()</span></tt>)</li>
+<a class="reference internal" href="#orbs.orbs.Orbs.compute_phase_maps" title="orbs.orbs.Orbs.compute_phase_maps"><tt class="xref py py-meth docutils literal"><span class="pre">orbs.orbs.Orbs.compute_phase_maps()</span></tt></a>)</li>
 <li>Compute spectrum (see:
-<tt class="xref py py-meth docutils literal"><span class="pre">compute_spectrum()</span></tt>)</li>
+<a class="reference internal" href="#orbs.orbs.Orbs.compute_spectrum" title="orbs.orbs.Orbs.compute_spectrum"><tt class="xref py py-meth docutils literal"><span class="pre">orbs.orbs.Orbs.compute_spectrum()</span></tt></a>)</li>
 <li>Calibrate spectrum (see:
-<tt class="xref py py-meth docutils literal"><span class="pre">calibrate_spectrum()</span></tt>)</li>
+<a class="reference internal" href="#orbs.orbs.Orbs.calibrate_spectrum" title="orbs.orbs.Orbs.calibrate_spectrum"><tt class="xref py py-meth docutils literal"><span class="pre">orbs.orbs.Orbs.calibrate_spectrum()</span></tt></a>)</li>
 </ol>
 </div>
 </dd></dl>
@@ -1179,7 +1191,7 @@ dark frames.</p>
 </table>
 <div class="admonition seealso">
 <p class="first admonition-title">See also</p>
-<p class="last"><a class="reference internal" href="process_module.html#process.RawData.get_noise_values" title="process.RawData.get_noise_values"><tt class="xref py py-meth docutils literal"><span class="pre">process.RawData.get_noise_values()</span></tt></a></p>
+<p class="last"><tt class="xref py py-meth docutils literal"><span class="pre">process.RawData.get_noise_values()</span></tt></p>
 </div>
 </dd></dl>
 
@@ -1224,7 +1236,7 @@ be corrected even if n_phase is set to 0. (default True).</li>
 
 <dl class="method">
 <dt id="orbs.orbs.Orbs.merge_interferograms">
-<tt class="descname">merge_interferograms</tt><big>(</big><em>add_frameB=True</em>, <em>star_list_path_1=None</em>, <em>min_star_number=15</em>, <em>smooth_vector=True</em>, <em>create_stars_cube=False</em>, <em>stars_fwhm_1_arc=2.0</em>, <em>bad_frames_vector=</em><span class="optional">[</span><span class="optional">]</span>, <em>compute_ext_light=True</em><big>)</big><a class="headerlink" href="#orbs.orbs.Orbs.merge_interferograms" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">merge_interferograms</tt><big>(</big><em>add_frameB=True</em>, <em>star_list_path_1=None</em>, <em>min_star_number=15</em>, <em>smooth_vector=True</em>, <em>create_stars_cube=False</em>, <em>stars_fwhm_1_arc=2.0</em>, <em>bad_frames_vector=[]</em>, <em>compute_ext_light=True</em><big>)</big><a class="headerlink" href="#orbs.orbs.Orbs.merge_interferograms" title="Permalink to this definition">¶</a></dt>
 <dd><p>Merge the images of the camera 1 with the transformed
 images of the camera 2.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -1336,7 +1348,7 @@ others created during initialization needed by processing classes.</p>
 <li>exp_time: SPEEXPT</li>
 <li>dark_time: SPEDART</li>
 <li>obs_date: OBSDATE</li>
-<li>bad_frames: BADFRMS</li>
+<li>bad_frames: BAD_FRAMES</li>
 <li>target_ra: TARGETR</li>
 <li>target_dec: TARGETD</li>
 <li>target_x: TARGETX</li>
@@ -1364,6 +1376,7 @@ others created during initialization needed by processing classes.</p>
 <li>wavenumber: WAVENUMBER</li>
 <li>wavelength_calibration: WAVE_CALIB</li>
 <li>saturation_threshold: SATURATION_THRESHOLD</li>
+<li>prebinning: PREBINNING</li>
 </ul>
 </div>
 </dd></dl>
@@ -1384,7 +1397,7 @@ overwritten</p>
 <dl class="method">
 <dt id="orbs.orbs.Orbs.set_init_angle">
 <tt class="descname">set_init_angle</tt><big>(</big><em>init_angle</em><big>)</big><a class="headerlink" href="#orbs.orbs.Orbs.set_init_angle" title="Permalink to this definition">¶</a></dt>
-<dd><p>Change config variable <tt class="xref py py-const docutils literal"><span class="pre">INIT_ANGLE</span></tt>.</p>
+<dd><p>Change config variable <tt class="xref py py-const docutils literal"><span class="pre">orbs.orbs.Orbs.INIT_ANGLE</span></tt>.</p>
 <p>You can also change it by editing the file
 <tt class="file docutils literal"><span class="pre">orbs/data/config.orb</span></tt>.</p>
 <div class="admonition note">
@@ -1399,7 +1412,7 @@ the class.</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>init_angle</strong> &#8211; the new value 
-of <tt class="xref py py-const docutils literal"><span class="pre">INIT_ANGLE</span></tt></td>
+of <tt class="xref py py-const docutils literal"><span class="pre">orbs.orbs.Orbs.INIT_ANGLE</span></tt></td>
 </tr>
 </tbody>
 </table>
@@ -1470,21 +1483,21 @@ file (default False).</li>
 <p>The step numbers are:</p>
 <ol class="last arabic simple">
 <li>Compute alignment vectors (see:
-<tt class="xref py py-meth docutils literal"><span class="pre">compute_alignment_vector()</span></tt>)</li>
+<a class="reference internal" href="#orbs.orbs.Orbs.compute_alignment_vector" title="orbs.orbs.Orbs.compute_alignment_vector"><tt class="xref py py-meth docutils literal"><span class="pre">orbs.orbs.Orbs.compute_alignment_vector()</span></tt></a>)</li>
 <li>Compute cosmic ray maps (see:
-<tt class="xref py py-meth docutils literal"><span class="pre">compute_cosmic_ray_map()</span></tt>)</li>
+<a class="reference internal" href="#orbs.orbs.Orbs.compute_cosmic_ray_map" title="orbs.orbs.Orbs.compute_cosmic_ray_map"><tt class="xref py py-meth docutils literal"><span class="pre">orbs.orbs.Orbs.compute_cosmic_ray_map()</span></tt></a>)</li>
 <li>Compute interferograms (see:
-<tt class="xref py py-meth docutils literal"><span class="pre">compute_interferogram()</span></tt>)</li>
+<a class="reference internal" href="#orbs.orbs.Orbs.compute_interferogram" title="orbs.orbs.Orbs.compute_interferogram"><tt class="xref py py-meth docutils literal"><span class="pre">orbs.orbs.Orbs.compute_interferogram()</span></tt></a>)</li>
 <li>Correct interferogram (see:
-<tt class="xref py py-meth docutils literal"><span class="pre">correct_interferogram()</span></tt>)</li>
+<a class="reference internal" href="#orbs.orbs.Orbs.correct_interferogram" title="orbs.orbs.Orbs.correct_interferogram"><tt class="xref py py-meth docutils literal"><span class="pre">orbs.orbs.Orbs.correct_interferogram()</span></tt></a>)</li>
 <li>Compute calibration laser map (see:
-<tt class="xref py py-meth docutils literal"><span class="pre">compute_calibration_laser_map()</span></tt>)</li>
+<a class="reference internal" href="#orbs.orbs.Orbs.compute_calibration_laser_map" title="orbs.orbs.Orbs.compute_calibration_laser_map"><tt class="xref py py-meth docutils literal"><span class="pre">orbs.orbs.Orbs.compute_calibration_laser_map()</span></tt></a>)</li>
 <li>Compute phase map (see:
-<tt class="xref py py-meth docutils literal"><span class="pre">compute_phase_maps()</span></tt>)</li>
+<a class="reference internal" href="#orbs.orbs.Orbs.compute_phase_maps" title="orbs.orbs.Orbs.compute_phase_maps"><tt class="xref py py-meth docutils literal"><span class="pre">orbs.orbs.Orbs.compute_phase_maps()</span></tt></a>)</li>
 <li>Compute spectrum (see:
-<tt class="xref py py-meth docutils literal"><span class="pre">compute_spectrum()</span></tt>)</li>
+<a class="reference internal" href="#orbs.orbs.Orbs.compute_spectrum" title="orbs.orbs.Orbs.compute_spectrum"><tt class="xref py py-meth docutils literal"><span class="pre">orbs.orbs.Orbs.compute_spectrum()</span></tt></a>)</li>
 <li>Calibrate spectrum (see:
-<tt class="xref py py-meth docutils literal"><span class="pre">calibrate_spectrum()</span></tt>)</li>
+<a class="reference internal" href="#orbs.orbs.Orbs.calibrate_spectrum" title="orbs.orbs.Orbs.calibrate_spectrum"><tt class="xref py py-meth docutils literal"><span class="pre">orbs.orbs.Orbs.calibrate_spectrum()</span></tt></a>)</li>
 </ol>
 </div>
 </dd></dl>
@@ -1549,8 +1562,9 @@ implemented into the method itself with the method
 <tt class="xref py py-meth docutils literal"><span class="pre">orb.core.Tools._get_tuning_parameter()</span></tt>.</p>
 <p>To set a tuning parameter in the options file use the keyword
 TUNE followed by the full parameter name and its new value:</p>
-<div class="highlight-python"><pre>TUNE InterferogramMerger.find_alignment.WARNING_RATIO 0.8
-TUNE InterferogramMerger.find_alignment.BOX_SIZE_COEFF 7</pre>
+<div class="highlight-python"><div class="highlight"><pre>TUNE InterferogramMerger.find_alignment.WARNING_RATIO 0.8
+TUNE InterferogramMerger.find_alignment.BOX_SIZE_COEFF 7
+</pre></div>
 </div>
 </dd></dl>
 
@@ -1561,7 +1575,7 @@ TUNE InterferogramMerger.find_alignment.BOX_SIZE_COEFF 7</pre>
 <h2><a class="toc-backref" href="#id3">Performance class</a><a class="headerlink" href="#performance-class" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt id="orbs.orbs.Performance">
-<em class="property">class </em><tt class="descclassname">orbs.orbs.</tt><tt class="descname">Performance</tt><big>(</big><em>cube</em>, <em>process_name</em>, <em>camera_number</em>, <em>logfile_name=None</em><big>)</big><a class="headerlink" href="#orbs.orbs.Performance" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><tt class="descclassname">orbs.orbs.</tt><tt class="descname">Performance</tt><big>(</big><em>cube</em>, <em>process_name</em>, <em>camera_number</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#orbs.orbs.Performance" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">orb.core.Tools</span></tt></p>
 <p>Give some details on the efficiency of a reduction process.</p>
 <dl class="docutils">
@@ -1585,7 +1599,7 @@ reduced data</li>
 </table>
 <dl class="method">
 <dt id="orbs.orbs.Performance.__init__">
-<tt class="descname">__init__</tt><big>(</big><em>cube</em>, <em>process_name</em>, <em>camera_number</em>, <em>logfile_name=None</em><big>)</big><a class="headerlink" href="#orbs.orbs.Performance.__init__" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">__init__</tt><big>(</big><em>cube</em>, <em>process_name</em>, <em>camera_number</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#orbs.orbs.Performance.__init__" title="Permalink to this definition">¶</a></dt>
 <dd><p>Initialize class</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -1597,8 +1611,7 @@ reduced data</li>
 <li><strong>process_name</strong> &#8211; Name of the running process checked</li>
 <li><strong>camera_number</strong> &#8211; Number of the camera which cube is
 processed (can be 1, 2 or 0 for merged data)</li>
-<li><strong>logfile_name</strong> &#8211; (Optional) Give a specific name to the
-logfile (default None).</li>
+<li><strong>kwargs</strong> &#8211; Kwargs are <tt class="xref py py-meth docutils literal"><span class="pre">core.Tools()</span></tt> properties.</li>
 </ul>
 </td>
 </tr>
@@ -1645,17 +1658,20 @@ run this function alone.</p>
           <a href="genindex.html" title="General Index"
              >index</a></li>
         <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
           <a href="process_module.html" title="Process module"
              >next</a> |</li>
         <li class="right" >
           <a href="quick_start.html" title="Quick start Guide"
              >previous</a> |</li>
-        <li><a href="index.html">Orbs 3.7.4 documentation</a> &raquo;</li> 
+        <li><a href="index.html">Orbs 3.7.5 documentation</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
         &copy; Copyright 2014, Thomas Martin (thomas.martin.1@ulaval.ca).
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.3.
     </div>
   </body>
 </html>
