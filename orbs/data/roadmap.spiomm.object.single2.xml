@@ -1,0 +1,43 @@
+<?xml version="1.0"?>
+<steps>
+  <step name='compute_alignment_vector' cam='2'>
+    <arg value='2' type='int'></arg>
+  </step>
+
+  <step name='compute_cosmic_ray_map' cam='2'>
+    <arg value='2' type='int'></arg>
+  </step>
+
+  <step name='compute_interferogram' cam='2'>
+    <arg value='2' type='int'></arg>
+  </step>
+
+  <step name='correct_interferogram' cam='2'>
+    <arg value='2' type='int'></arg>
+  </step>
+
+  <step name='compute_calibration_laser_map' cam='2'>
+    <arg value='2' type='int'></arg>
+  </step>
+
+  <step name='compute_phase' cam='2'>
+    <arg value='2' type='int'></arg>
+    <kwarg name='n_phase'></kwarg>
+  </step>
+
+  <step name='compute_phase_maps' cam='2'>
+    <arg value='2' type='int'></arg>
+  </step>
+
+  <step name='compute_spectrum' cam='2'>
+    <arg value='2' type='int'></arg>
+    <kwarg name='n_phase'></kwarg>
+    <kwarg name='apodization_function'></kwarg>
+  </step>
+
+  <step name='calibrate_spectrum' cam='2'>
+    <arg value='2' type='int'></arg>
+  </step>
+
+</steps>
+

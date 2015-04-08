@@ -82,7 +82,7 @@ class OrbsCheck(Tools):
            :py:class:`orbs.Orbs` for the project to analyse.
         """
         self._print_msg("OrbsCheck initialization")
-        self._orbs = Orbs(options_file_path)
+        self._orbs = Orbs(options_file_path, 'object', 'full')
         self._nods9 = nods9
         self._graph = Graph(nods9=self._nods9)
         cube = self._orbs._init_raw_data_cube(1)
@@ -105,9 +105,12 @@ class OrbsCheck(Tools):
             
         transmission_vector = self.read_fits(
             cube._get_transmission_vector_path())
-        
-        transmission_vector_err = self.read_fits(
-            cube._get_transmission_vector_path(err=True))
+
+        if cam == 'MERGED':
+            transmission_vector_err = self.read_fits(
+                cube._get_transmission_vector_path(err=True))
+        else:
+            transmission_vector_err = None
         
         self._graph.pop_plot(transmission_vector, xlabel="Frame index",
                              ylabel="Transmission coefficient",

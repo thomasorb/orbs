@@ -1863,20 +1863,43 @@ class CalibrationLaser(Cube):
         """Return the header of the calibration laser map."""
         return (self._get_basic_header('Calibration laser map')
                 + self._calibration_laser_header)
+
+    def _get_calibration_laser_fitparams_path(self):
+        """Return the path to the file containing the fit parameters
+        of the calibration laser cube."""
+        return self._data_path_hdr + "calibration_laser_fitparams.fits"
     
-    def _get_calibration_laser_spectrum_path(self):
-        """Return the default path to the reduced calibration laser cube for
-        checking."""
-        return self._data_path_hdr + "calibration_laser_cube.fits"
+    def _get_calibration_laser_fitparams_header(self):
+        """Return the header of the file containing the fit parameters
+        of the calibration laser cube."""
+        return (self._get_basic_header('Calibration laser fit parameters')
+                + self._calibration_laser_header)
 
-    def _get_calibration_laser_spectrum_header(self, nm_axis):
-        """Return the header of the calibration spectrum cube.
+    def _get_calibration_laser_spectrum_list_path(self):
+        """Return the path to the calibration laser spectrum list."""
+        return self._data_path_hdr + "calibration_laser_spectrumlist"
+    
+    def _get_calibration_laser_spectrum_frame_path(self, index):
+        """Return the default path to the reduced calibration laser frame.
 
-        :param nm_axis: Wavelength axis in nanometers.
+        :param index: Index of the frame.
         """
-        return (self._get_basic_header('Calibration laser cube')
+        return os.path.join(self._data_path_hdr,
+                            'CALIBRATION_LASER_SPECTRUM',
+                            "calibration_laser_spectrum_{:04d}.fits".format(index))
+
+    def _get_calibration_laser_spectrum_frame_header(self, index, axis):
+        """Return the header of a calibration spectrum frame.
+
+        :param index: Index of the frame.
+        :param axis: Wavenumber axis.
+        """
+        return (self._get_basic_header('Calibration laser spectrum frame')
+                + self._project_header
                 + self._calibration_laser_header
-                + self._get_basic_spectrum_cube_header(nm_axis))
+                + self._get_basic_frame_header(self.dimx, self.dimy)
+                + self._get_basic_spectrum_frame_header(index, axis,
+                                                        wavenumber=True))
 
     def create_calibration_laser_map(self, order=30, step=9765,
                                      get_calibration_laser_spectrum=False,
@@ -1895,21 +1918,22 @@ class CalibrationLaser(Cube):
           calibration laser spectrum
 
         :param fast: (Optional) If False a sinc^2 is fitted so the fit
-          is better and the procedure becomes slower. If True a
+          is better but the procedure becomes slower. If True a
           gaussian is fitted (default True).
         """
-        
-        def _find_max_in_column(column_data, step, order, nm_axis,
+
+        def _find_max_in_column(column_data, step, order, cm1_axis,
                                 get_calibration_laser_spectrum, fast):
             """Return the fitted central position of the emission line"""
             dimy = column_data.shape[0]
             dimz = column_data.shape[1]
-            BORDER = 40
+            BORDER = int(0.1 * dimz) + 1
             max_array_column = np.empty((dimy), dtype=float)
-            interpol_nm_axis = interpolate.interp1d(
-                np.arange(dimz), nm_axis,
+            fitparams_column = np.empty((dimy, 8), dtype=float)
+            interpol_cm1_axis = interpolate.interp1d(
+                np.arange(dimz), cm1_axis,
                 bounds_error=False, fill_value=np.nan)
-            
+                        
             # FFT of the interferogram
             column_spectrum = orb.utils.cube_raw_fft(column_data, apod=None)
             if (int(order) & 1):
@@ -1927,15 +1951,16 @@ class CalibrationLaser(Cube):
 
                 # gaussian fit (fast)
                 if fast:
-                    fit_params = orb.utils.fit_lines_in_vector(
+                    fitp = orb.utils.fit_lines_in_vector(
                         spectrum_vector, [max_index], fmodel='gaussian',
                         fwhm_guess=2.4,
                         poly_order=0,
-                        signal_range=[range_min, range_max])
+                        signal_range=[range_min, range_max],
+                        wavenumber=True)
 
                 # or sinc2 fit (slow)
                 else:
-                    fit_params = orb.utils.fit_lines_in_vector(
+                    fitp = orb.utils.fit_lines_in_vector(
                         spectrum_vector, [max_index], fmodel='sinc2',
                         observation_params=[step, order],
                         fwhm_guess=2.,
@@ -1943,36 +1968,44 @@ class CalibrationLaser(Cube):
                         signal_range=[range_min, range_max],
                         wavenumber=True)
                     
-                if (fit_params != []):
-                    max_index_fit = fit_params['lines-params'][0][2]
-                    max_array_column[ij] = interpol_nm_axis(max_index_fit)
+                if (fitp != []):
+                    max_index_fit = fitp['lines-params'][0][2]
+                    max_array_column[ij] = 1e7 / interpol_cm1_axis(
+                        max_index_fit)
+                    if 'lines-params-err' in fitp:
+                        fitparams_column[ij,:] = np.array(
+                            list(fitp['lines-params'][0])
+                            + list(fitp['lines-params-err'][0]))
+                    else:
+                        fitparams_column.fill(np.nan)
+                        fitparams_column[ij,:4] = fitp['lines-params'][0]
                 else:
                     max_array_column[ij] = np.nan
+                    fitparams_column[ij,:].fill(np.nan)
+
+            # check if fit range is large enough
+            fwhm_median = np.median(fitparams_column[:,3])
+            if fwhm_median is not np.nan:
+                if (range_max - range_min) < 5. * fwhm_median:
+                    import warnings
+                    warnings.warn('fit range is not large enough: median fwhm ({}) > 5xrange ({})'.format(
+                        fwhm_median, range_max - range_min))
+                    
             if not get_calibration_laser_spectrum:
-                return max_array_column
+                return max_array_column, fitparams_column
             else:
-                return max_array_column, column_spectrum
+                return max_array_column, fitparams_column, column_spectrum
 
         self._print_msg("Computing calibration laser map")
        
         order = float(order)
         step = float(step)
         
-        # create the fft axis in nm
-        k_max = ((order + 1.)/2.)/step
-        k_min = (order/2.)/step
-        k_axis = (np.arange(self.dimz, dtype=float)
-                  * ((k_max - k_min) / float(self.dimz - 1)) + k_min)
+        # create the fft axis in cm1
+        cm1_axis = orb.utils.create_cm1_axis(
+            self.dimz, step, order)
 
-        nm_axis = (1./k_axis)[::-1]
-        if not (int(order) & 1):
-            # invert axis if order is even
-            nm_axis = nm_axis[::-1]
-
-        if get_calibration_laser_spectrum:
-            calib_spectrum = np.zeros((self.dimx, self.dimy, self.dimz),
-                                      dtype=float)
-
+        fitparams = np.empty((self.dimx, self.dimy, 8), dtype=float)
         max_array = np.empty((self.dimx, self.dimy), dtype=float)
         for iquad in range(0, self.QUAD_NB):
             x_min, x_max, y_min, y_max = self.get_quadrant_dims(iquad)
@@ -1991,7 +2024,7 @@ class CalibrationLaser(Cube):
                 jobs = [(ijob, job_server.submit(
                     _find_max_in_column, 
                     args=(iquad_data[ii+ijob,:,:],
-                          step, order, nm_axis,
+                          step, order, cm1_axis,
                           get_calibration_laser_spectrum, fast),
                     modules=("numpy as np",
                              "math",
@@ -2002,16 +2035,31 @@ class CalibrationLaser(Cube):
                 # execute jobs
                 for ijob, job in jobs:
                     if not get_calibration_laser_spectrum:
-                        max_array[x_min + ii + ijob,y_min:y_max] = job()
+                        (max_array[x_min + ii + ijob, y_min:y_max],
+                         fitparams[x_min + ii + ijob, y_min:y_max,:]) = job()
                     else:
-                        (max_array[
-                            x_min + ii + ijob,y_min:y_max],
-                         calib_spectrum[
-                             x_min + ii + ijob,y_min:y_max,:]) = job()
+                        (max_array[x_min + ii + ijob, y_min:y_max],
+                         fitparams[x_min + ii + ijob, y_min:y_max,:],
+                         iquad_data[ii+ijob,:,:]) = job()
+                        
                 progress.update(ii, info="quad %d/%d, column : %d"%(
                     iquad+1L, self.QUAD_NB, ii))
             self._close_pp_server(job_server)
             progress.end()
+
+            if get_calibration_laser_spectrum:
+                progress = ProgressBar(self.dimz)
+                ## SAVE returned data by quadrants
+                for iframe in range(self.dimz):
+                    progress.update(iframe, info='Saving data')
+                    frame_path = self._get_calibration_laser_spectrum_frame_path(
+                        iframe)
+
+                    # save data in a *.IQUAD file
+                    self.write_fits(
+                        frame_path+'.%d'%(iquad), iquad_data[:,:,iframe],
+                        silent=True, overwrite=True)
+                progress.end()
 
         # Correct non-fitted values by interpolation
         max_array = orb.utils.correct_map2d(max_array, bad_value=np.nan)
@@ -2022,15 +2070,46 @@ class CalibrationLaser(Cube):
                         fits_header=self._get_calibration_laser_map_header(),
                         overwrite=self.overwrite)
 
-        if self.indexer is not None:
-            self.indexer['calibration_laser_map'] = self._get_calibration_laser_map_path()
-            
-        if get_calibration_laser_spectrum:
-            self.write_fits(
-                self._get_calibration_laser_spectrum_path(), 
-                calib_spectrum,
-                fits_header=self._get_calibration_laser_spectrum_header(nm_axis),
+        # write fit params
+        self.write_fits(
+                self._get_calibration_laser_fitparams_path(), fitparams,
+                fits_header=self._get_calibration_laser_fitparams_header(),
                 overwrite=self.overwrite)
+
+        if self.indexer is not None:
+            self.indexer['calibration_laser_map'] = (
+                self._get_calibration_laser_map_path())
+
+        # merge *.IQUAD files
+        if get_calibration_laser_spectrum:
+            progress = ProgressBar(self.dimz)
+            for iframe in range(self.dimz):
+                progress.update(iframe, info='Merging quads')
+                frame = np.empty((self.dimx, self.dimy), dtype=float)
+                spectrum_frame_path = self._get_calibration_laser_spectrum_frame_path(
+                    iframe)
+                for iquad in range(0, self.QUAD_NB):
+                    x_min, x_max, y_min, y_max = self.get_quadrant_dims(iquad)
+                    frame[x_min:x_max, y_min:y_max] = self.read_fits(
+                        spectrum_frame_path+'.%d'%(iquad), delete_after=True)
+                self.write_fits(
+                    spectrum_frame_path, frame,
+                    silent=True,
+                    fits_header=self._get_calibration_laser_spectrum_frame_header(
+                        iframe, cm1_axis),
+                    overwrite=True)
+
+            progress.end()
+
+            # write list of spectrum files
+            list_file_path = self._get_calibration_laser_spectrum_list_path()
+            list_file = self.open_file(list_file_path)
+            for iframe in range(self.dimz):
+                spectrum_frame_path = self._get_calibration_laser_spectrum_frame_path(
+                    iframe)
+                list_file.write('%s\n'%spectrum_frame_path)
+
+            list_file.close()
 
 
 ##################################################
@@ -2328,10 +2407,10 @@ class Interferogram(Cube):
           :py:meth:`process.InterferogramMerger.merge` with a far
           better precision (because both cubes are used to compute it)
         """
-        ZPD_SIZE = 0.20 # Length ratio of the ZPD over the entire
-                        # cube. This is used to correct the external
-                        # illumination vector
-                        
+        # Length ratio of the ZPD over the entire cube. This is used
+        # to correct the external illumination vector
+        ZPD_SIZE = float(self._get_tuning_parameter('ZPD_SIZE', 0.20))
+        
         # number of pixels used on each side to smooth the
         # transmission vector
         SMOOTH_DEG = int(self._get_tuning_parameter('SMOOTH_DEG', 1))
@@ -2387,10 +2466,10 @@ class Interferogram(Cube):
                             tuning_parameters=self._tuning_parameters,
                             config_file_name=self.config_file_name)
 
-        astrom.fit_stars_in_cube(local_background=False,
-                                 fix_aperture_size=True,
-                                 precise_guess=True,
-                                 multi_fit=True)
+        ## astrom.fit_stars_in_cube(local_background=False,
+        ##                          fix_aperture_size=True,
+        ##                          precise_guess=True,
+        ##                          multi_fit=True)
         
         astrom.load_fit_results(astrom._get_fit_results_path())
         
@@ -2412,9 +2491,9 @@ class Interferogram(Cube):
         stray_light_vector[bad_frames_vector] = np.nan
         
         transmission_vector = orb.utils.correct_vector(
-            transmission_vector, bad_value=0., polyfit=True, deg=3)
+            transmission_vector, bad_value=0., polyfit=False, deg=1)
         stray_light_vector = orb.utils.correct_vector(
-            stray_light_vector, bad_value=0., polyfit=True, deg=3)
+            stray_light_vector, bad_value=0., polyfit=False, deg=1)
         
         # correct for ZPD
         zmedian = self.get_zmedian(nozero=True)
@@ -2424,7 +2503,7 @@ class Interferogram(Cube):
         
         zpd_min = zpd_index - int((ZPD_SIZE * step_number)/2.)
         zpd_max = zpd_index + int((ZPD_SIZE * step_number)/2.) + 1
-        if zpd_min < 0: zpd_min = 0
+        if zpd_min < 1: zpd_min = 1
         if zpd_max > self.dimz:
             zpd_max = self.dimz - 1
         
@@ -3825,7 +3904,8 @@ class InterferogramMerger(Tools):
                     if ((abs(star_list_B_fit[istar, 'fwhm_arc']
                            - mean_params_A[istar, 'fwhm_arc'])
                         < mean_params_A[istar, 'fwhm_arc'] / 2.)
-                        and star_list_B_fit[istar, 'snr'] > 0.):
+                        and star_list_B_fit[istar, 'snr'] > 3.):
+                
                         dist_x = star_list_B_fit[istar, 'dx']
                         dist_y = star_list_B_fit[istar, 'dy']
                         
@@ -5432,7 +5512,6 @@ class InterferogramMerger(Tools):
                                modulation_ratio_path,
                                transmission_vector_path,
                                ext_illumination_vector_path,
-                               stray_light_vector_path,
                                calibration_laser_map_path, step,
                                order, nm_laser, filter_file_path,
                                step_nb, window_type=None,
@@ -5473,10 +5552,7 @@ class InterferogramMerger(Tools):
           illumination.  This is a small correction for the difference
           of incoming light between both cameras. Must have the same
           size as the interferograms of the cube.
-
-        :param stray_light_vector_path: Stray light vector. Must have
-          the same size as the interferograms of the cube.
-
+    
         :param calibration_laser_map_path: Path to the calibration
           laser map.
           
@@ -5670,8 +5746,6 @@ class InterferogramMerger(Tools):
             self.read_fits(transmission_vector_path))
         ext_illumination_vector = np.squeeze(
             self.read_fits(ext_illumination_vector_path))
-        stray_light_vector = np.squeeze(
-            self.read_fits(stray_light_vector_path))
 
         star_interf_list = list()
         star_flux_list = list()
@@ -5714,8 +5788,8 @@ class InterferogramMerger(Tools):
             star_flux_list.append(
                 (((photom_B[istar,:]/modulation_ratio) + photom_A[istar,:])
                  / transmission_vector)
-                - ext_illumination_vector * surf_eq
-                - stray_light_vector  * surf_eq)
+                - ext_illumination_vector * surf_eq)
+                #- stray_light_vector  * surf_eq)
 
         # PHOTOMETRY ON MERGED FRAMES #############################
         astrom_merged = Astrometry(self.cube_B, fwhm_arc_B, fov,
@@ -5753,8 +5827,13 @@ class InterferogramMerger(Tools):
                  / orb.constants.FWHM_COEFF)**2.))
 
             # compute interferograms
+            if len(star_list) > 1:
+                iphotom_merged = photom_merged[istar,:]
+            else:
+                iphotom_merged = np.squeeze(photom_merged)
+                
             star_interf_list.append([
-                (photom_merged[istar,:]
+                (iphotom_merged
                  / transmission_vector) - ext_illumination_vector * surf_eq,
                 star_list[istar]])
 
@@ -6001,8 +6080,8 @@ class Spectrum(Cube):
         spectrum_dirname = os.path.dirname(self._data_path_hdr)
         spectrum_basename = os.path.basename(self._data_path_hdr)
         
-        return (spectrum_dirname + "/" + dir_header
-                + "%s/"%cube_type.upper()
+        return (spectrum_dirname + os.sep + dir_header
+                + "%s"%cube_type.upper() + os.sep
                 + spectrum_basename + stars_header 
                 + "%s%04d.fits"%(cube_type, frame_index))
 

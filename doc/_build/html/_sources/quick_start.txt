@@ -30,31 +30,14 @@ Automated reduction
 
 Running ``orbs`` from the reduction folder starts the reduction process. You just have to enter the name of the option file to be used::
 
-  orbs [-a apodization] options_file.opt
+  orbs option_file.opt start
 
-For example::
-
-  orbs -a 1.6 options.opt
-     
-
-.. note:: ``orbs`` command alone prints all the available options
+.. note:: ``orbs`` command alone prints the command usage
 
 Important options
 ~~~~~~~~~~~~~~~~~
 
-Only some of the available options are listed here.
-
-:option:`-1 --single1` Reduction of camera 1 alone
-
-:option:`-2 --single2` Reduction of camera 2 alone
-  
-:option:`-b --bad=` Bad frames that won't be used during the reduction
-     process (airplane and satellite lines are a common artifacts
-     which cannot be perfectly corrected and must be removed). It has
-     to be written with separating commas ',' (no whitespace)
-     e.g. 150,217,218,219. For a set of images use ':'
-     e.g. 150,170:180,185. Note that the starting index is 0 (in DS9
-     the starting index is 1 !).
+Only some of the most used options are listed here.
       
 :option:`-c --calib=` Calibration file path
   
@@ -62,9 +45,8 @@ Only some of the available options are listed here.
      computation (can be barthann, bartlett, blackman, blackmanharris,
      bohman, hamming, hann, nuttall, parzen)
 
-:option:`--init_angle=` Change config variable :py:const:`~orbs.Orbs.INIT_ANGLE` for this reduction only. You can also change it definitively by editing the file orbs/data/config.orb.
 
-:option:`--start_step=` Starting step. Use it to recover from an error
+:option:`--step=` Starting step. Use it to recover from an error
      at a certain step without having to run the whole process one
      more time. Note that the step designation is different for the
      full reduction (2 cameras) or the single camera reduction (1

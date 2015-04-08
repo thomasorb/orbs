@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Changelog &mdash; Orbs 3.8.1 documentation</title>
+    <title>Changelog &mdash; Orbs 3.8.2 documentation</title>
     
     <link rel="stylesheet" href="_static/sphinxdoc.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -14,7 +14,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
-        VERSION:     '3.8.1',
+        VERSION:     '3.8.2',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -23,13 +23,13 @@
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
-    <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="shortcut icon" href="_static/logo.ico"/>
-    <link rel="top" title="Orbs 3.8.1 documentation" href="index.html" />
+    <link rel="top" title="Orbs 3.8.2 documentation" href="index.html" />
     <link rel="prev" title="Process module" href="process_module.html" /> 
   </head>
-  <body>
-    <div class="related">
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
       <h3>Navigation</h3>
       <ul>
         <li class="right" style="margin-right: 10px">
@@ -41,10 +41,10 @@
         <li class="right" >
           <a href="process_module.html" title="Process module"
              accesskey="P">previous</a> |</li>
-        <li><a href="index.html">Orbs 3.8.1 documentation</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="index.html">Orbs 3.8.2 documentation</a> &raquo;</li> 
       </ul>
     </div>
-      <div class="sphinxsidebar">
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
         <div class="sphinxsidebarwrapper">
             <p class="logo"><a href="index.html">
               <img class="logo" src="_static/logo.png" alt="Logo"/>
@@ -197,6 +197,12 @@
 </li>
 <li><a class="reference internal" href="#v3-8-start-of-cfht-integration">v3.8 Start of CFHT integration</a><ul>
 <li><a class="reference internal" href="#id20">3.8.0</a></li>
+<li><a class="reference internal" href="#id21">3.8.1</a><ul>
+<li><a class="reference internal" href="#id22"><strong>orbs</strong> script</a></li>
+<li><a class="reference internal" href="#roadmaps">RoadMaps</a></li>
+<li><a class="reference internal" href="#id23">Miscellaneous</a></li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>
@@ -206,12 +212,14 @@
   <h4>Previous topic</h4>
   <p class="topless"><a href="process_module.html"
                         title="previous chapter">Process module</a></p>
-  <h3>This Page</h3>
-  <ul class="this-page-menu">
-    <li><a href="_sources/changelog.txt"
-           rel="nofollow">Show Source</a></li>
-  </ul>
-<div id="searchbox" style="display: none">
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/changelog.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
   <h3>Quick search</h3>
     <form class="search" action="search.html" method="get">
       <input type="text" name="q" />
@@ -230,7 +238,7 @@
     <div class="document">
       <div class="documentwrapper">
         <div class="bodywrapper">
-          <div class="body">
+          <div class="body" role="main">
             
   <div class="section" id="changelog">
 <h1>Changelog<a class="headerlink" href="#changelog" title="Permalink to this headline">¶</a></h1>
@@ -241,19 +249,19 @@
 <div class="section" id="alignment">
 <h4>Alignment<a class="headerlink" href="#alignment" title="Permalink to this headline">¶</a></h4>
 <ul class="simple">
-<li><a class="reference internal" href="process_module.html#process.InterferogramMerger.find_alignment" title="process.InterferogramMerger.find_alignment"><tt class="xref py py-meth docutils literal"><span class="pre">find_alignment()</span></tt></a> has been
+<li><a class="reference internal" href="process_module.html#process.InterferogramMerger.find_alignment" title="process.InterferogramMerger.find_alignment"><code class="xref py py-meth docutils literal"><span class="pre">find_alignment()</span></code></a> has been
 completly modified. There&#8217;s no more need for a list of detected
 stars in the cube B (or camera 2). Stars found in cube A are
 searched in cube B. The process is now faster and must be more
 robust.</li>
-<li><a class="reference internal" href="orbs_module.html#orbs.orbs.Orbs.transform_cube_B" title="orbs.orbs.Orbs.transform_cube_B"><tt class="xref py py-meth docutils literal"><span class="pre">orbs.orbs.Orbs.transform_cube_B()</span></tt></a> has also been changed to
+<li><a class="reference internal" href="orbs_module.html#orbs.orbs.Orbs.transform_cube_B" title="orbs.orbs.Orbs.transform_cube_B"><code class="xref py py-meth docutils literal"><span class="pre">orbs.orbs.Orbs.transform_cube_B()</span></code></a> has also been changed to
 avoid looking for stars in the cube B.</li>
 </ul>
 </div>
 <div class="section" id="cosmic-rays-detection">
 <h4>Cosmic rays detection<a class="headerlink" href="#cosmic-rays-detection" title="Permalink to this headline">¶</a></h4>
 <ul class="simple">
-<li><a class="reference internal" href="process_module.html#process.RawData.create_cosmic_ray_map" title="process.RawData.create_cosmic_ray_map"><tt class="xref py py-meth docutils literal"><span class="pre">create_cosmic_ray_map()</span></tt></a> remove a low order
+<li><a class="reference internal" href="process_module.html#process.RawData.create_cosmic_ray_map" title="process.RawData.create_cosmic_ray_map"><code class="xref py py-meth docutils literal"><span class="pre">create_cosmic_ray_map()</span></code></a> remove a low order
 polynomial on each tested interferogram vector before checking for
 cosmic rays. It helps a lot in avoiding too much detected cosmic
 rays on stars.</li>
@@ -262,11 +270,11 @@ rays on stars.</li>
 <div class="section" id="overwriting-fits-files">
 <h4>Overwriting FITS files<a class="headerlink" href="#overwriting-fits-files" title="Permalink to this headline">¶</a></h4>
 <ul class="simple">
-<li><tt class="xref py py-meth docutils literal"><span class="pre">write_fits()</span></tt> has a new option to overwrite a
+<li><code class="xref py py-meth docutils literal"><span class="pre">write_fits()</span></code> has a new option to overwrite a
 FITS file.</li>
 <li>&#8216;orbs&#8217; script can be passed the option -o to enable overwriting over
 the existing FITS files.</li>
-<li><a class="reference internal" href="orbs_module.html#orbs.orbs.Orbs" title="orbs.orbs.Orbs"><tt class="xref py py-class docutils literal"><span class="pre">orbs.orbs.Orbs</span></tt></a>, <tt class="xref py py-class docutils literal"><span class="pre">Cube</span></tt> and all processing
+<li><a class="reference internal" href="orbs_module.html#orbs.orbs.Orbs" title="orbs.orbs.Orbs"><code class="xref py py-class docutils literal"><span class="pre">orbs.orbs.Orbs</span></code></a>, <code class="xref py py-class docutils literal"><span class="pre">Cube</span></code> and all processing
 classes have been modified to use this new option and pass it to any
 self._write_fits() function.</li>
 </ul>
@@ -274,7 +282,7 @@ self._write_fits() function.</li>
 <div class="section" id="transmission-function">
 <h4>Transmission function<a class="headerlink" href="#transmission-function" title="Permalink to this headline">¶</a></h4>
 <ul class="simple">
-<li><a class="reference internal" href="process_module.html#process.InterferogramMerger.merge" title="process.InterferogramMerger.merge"><tt class="xref py py-meth docutils literal"><span class="pre">merge()</span></tt></a> has been changed to
+<li><a class="reference internal" href="process_module.html#process.InterferogramMerger.merge" title="process.InterferogramMerger.merge"><code class="xref py py-meth docutils literal"><span class="pre">merge()</span></code></a> has been changed to
 eliminate the stars with not enough flux (set to 0.25 times the
 maximum flux of the detected stars)</li>
 </ul>
@@ -283,17 +291,17 @@ maximum flux of the detected stars)</li>
 <div class="section" id="v3-1-1">
 <h3>v3.1.1<a class="headerlink" href="#v3-1-1" title="Permalink to this headline">¶</a></h3>
 <ul class="simple">
-<li><a class="reference internal" href="process_module.html#process.RawData.add_missing_frames" title="process.RawData.add_missing_frames"><tt class="xref py py-meth docutils literal"><span class="pre">add_missing_frames()</span></tt></a> : correction of a
+<li><a class="reference internal" href="process_module.html#process.RawData.add_missing_frames" title="process.RawData.add_missing_frames"><code class="xref py py-meth docutils literal"><span class="pre">add_missing_frames()</span></code></a> : correction of a
 minor bug when adding zeros frames for a single cube interferogram</li>
-<li><a class="reference internal" href="process_module.html#process.RawData.add_missing_frames" title="process.RawData.add_missing_frames"><tt class="xref py py-meth docutils literal"><span class="pre">add_missing_frames()</span></tt></a> and
-<a class="reference internal" href="process_module.html#process.InterferogramMerger.add_missing_frames" title="process.InterferogramMerger.add_missing_frames"><tt class="xref py py-meth docutils literal"><span class="pre">add_missing_frames()</span></tt></a> have been
+<li><a class="reference internal" href="process_module.html#process.RawData.add_missing_frames" title="process.RawData.add_missing_frames"><code class="xref py py-meth docutils literal"><span class="pre">add_missing_frames()</span></code></a> and
+<a class="reference internal" href="process_module.html#process.InterferogramMerger.add_missing_frames" title="process.InterferogramMerger.add_missing_frames"><code class="xref py py-meth docutils literal"><span class="pre">add_missing_frames()</span></code></a> have been
 corrected to add the correct header to the created zeros frames.</li>
 </ul>
 </div>
 <div class="section" id="v3-1-2">
 <h3>v3.1.2<a class="headerlink" href="#v3-1-2" title="Permalink to this headline">¶</a></h3>
 <ul class="simple">
-<li><a class="reference internal" href="process_module.html#process.InterferogramMerger.find_alignment" title="process.InterferogramMerger.find_alignment"><tt class="xref py py-meth docutils literal"><span class="pre">find_alignment()</span></tt></a> has been
+<li><a class="reference internal" href="process_module.html#process.InterferogramMerger.find_alignment" title="process.InterferogramMerger.find_alignment"><code class="xref py py-meth docutils literal"><span class="pre">find_alignment()</span></code></a> has been
 modified to use a larger box_size to detect stars during the rough
 alignment step. A warning is printed if less than 80 % of the stars
 can be fitted after the first optimization pass and an error is
@@ -309,7 +317,7 @@ phase correction will be done.</li>
 <div class="section" id="dark-and-bias-correction-for-spiomm-cam2">
 <h3>Dark and Bias correction for SpIOMM CAM2<a class="headerlink" href="#dark-and-bias-correction-for-spiomm-cam2" title="Permalink to this headline">¶</a></h3>
 <ul class="simple">
-<li><tt class="xref py py-meth docutils literal"><span class="pre">create_interferogram()</span></tt> : Dark and
+<li><code class="xref py py-meth docutils literal"><span class="pre">create_interferogram()</span></code> : Dark and
 Bias are now removed using their precise temperature and a
 calibrated function. The temperature of the frames (bias frames,
 dark frames and frames to be corrected) must be recorded in the
@@ -329,7 +337,7 @@ I(T) = f(T).</li>
 <div class="section" id="frames-transformation">
 <h3>Frames transformation<a class="headerlink" href="#frames-transformation" title="Permalink to this headline">¶</a></h3>
 <ul class="simple">
-<li><tt class="xref py py-meth docutils literal"><span class="pre">transform_frame()</span></tt> has been completely changed and
+<li><code class="xref py py-meth docutils literal"><span class="pre">transform_frame()</span></code> has been completely changed and
 optimized using scipy.ndimage fast routines for image
 transformation. The time consumption of the transformation step has
 been dramatically decreased : this process is now more than 10 times
@@ -352,11 +360,11 @@ alignment parameters are used during the merging process.</li>
 <div class="section" id="cosmic-ray-detection-and-correction">
 <h3>Cosmic ray detection and correction<a class="headerlink" href="#cosmic-ray-detection-and-correction" title="Permalink to this headline">¶</a></h3>
 <ul class="simple">
-<li><a class="reference internal" href="process_module.html#process.RawData.create_cosmic_ray_map" title="process.RawData.create_cosmic_ray_map"><tt class="xref py py-meth docutils literal"><span class="pre">create_cosmic_ray_map()</span></tt></a> is now capable of
+<li><a class="reference internal" href="process_module.html#process.RawData.create_cosmic_ray_map" title="process.RawData.create_cosmic_ray_map"><code class="xref py py-meth docutils literal"><span class="pre">create_cosmic_ray_map()</span></code></a> is now capable of
 detecting ver faint cosmic rays without overdetecting cosmic rays in
 stars. Planes and satellites are also detected.</li>
 <li>Cosmic rays corrected by
-<tt class="xref py py-meth docutils literal"><span class="pre">create_interferogram()</span></tt> are now replaced by
+<code class="xref py py-meth docutils literal"><span class="pre">create_interferogram()</span></code> are now replaced by
 a weighted average of the neighbourhood. Weights are defined using a
 gaussian kernel. The kernel degree (i.e. neighbourhood radius) can
 be choosen.</li>
@@ -368,36 +376,36 @@ be choosen.</li>
 <div class="section" id="v-3-4-0-phase-correction">
 <h3>v 3.4.0:  Phase correction<a class="headerlink" href="#v-3-4-0-phase-correction" title="Permalink to this headline">¶</a></h3>
 <ul>
-<li><p class="first"><a class="reference internal" href="process_module.html#process.InterferogramMerger.merge" title="process.InterferogramMerger.merge"><tt class="xref py py-meth docutils literal"><span class="pre">merge()</span></tt></a> has been modified to
+<li><p class="first"><a class="reference internal" href="process_module.html#process.InterferogramMerger.merge" title="process.InterferogramMerger.merge"><code class="xref py py-meth docutils literal"><span class="pre">merge()</span></code></a> has been modified to
 create a small data cube containing the interferograms of choosen
 stars. Those interferograms can be used by
-<a class="reference internal" href="process_module.html#process.Interferogram.compute_spectrum" title="process.Interferogram.compute_spectrum"><tt class="xref py py-meth docutils literal"><span class="pre">compute_spectrum()</span></tt></a> to recover the
+<a class="reference internal" href="process_module.html#process.Interferogram.compute_spectrum" title="process.Interferogram.compute_spectrum"><code class="xref py py-meth docutils literal"><span class="pre">compute_spectrum()</span></code></a> to recover the
 first order coefficient of the phase. This way the phase is not
 computed for each pixel but a general correction is made.</p>
 </li>
-<li><p class="first"><a class="reference internal" href="process_module.html#process.Interferogram.compute_spectrum" title="process.Interferogram.compute_spectrum"><tt class="xref py py-meth docutils literal"><span class="pre">compute_spectrum()</span></tt></a> has been modified
+<li><p class="first"><a class="reference internal" href="process_module.html#process.Interferogram.compute_spectrum" title="process.Interferogram.compute_spectrum"><code class="xref py py-meth docutils literal"><span class="pre">compute_spectrum()</span></code></a> has been modified
 to compute the mean first order coefficient given a cube of stars
 interferogram.</p>
 </li>
-<li><p class="first"><tt class="xref py py-meth docutils literal"><span class="pre">transform_frame()</span></tt> has been modified to compute the
+<li><p class="first"><code class="xref py py-meth docutils literal"><span class="pre">transform_frame()</span></code> has been modified to compute the
 phase fo each pixel given a phase map which gives the zeroth order
 of the polynomial function of the phase for each pixel and the first
 order coefficient. Both parameters (the phase map and the first
 order coefficient) must be given to avoid a pixel by pixel phase
 computation which can be unreliable.</p>
 </li>
-<li><p class="first"><a class="reference internal" href="process_module.html#process.Phase" title="process.Phase"><tt class="xref py py-class docutils literal"><span class="pre">Phase</span></tt></a>: A new class has been created to manage
+<li><p class="first"><a class="reference internal" href="process_module.html#process.Phase" title="process.Phase"><code class="xref py py-class docutils literal"><span class="pre">Phase</span></code></a>: A new class has been created to manage
 phase data cubes. Those data cubes are useful to recover the phase
 maps. Three methods have been created:
-<a class="reference internal" href="process_module.html#process.Phase.create_phase_maps" title="process.Phase.create_phase_maps"><tt class="xref py py-meth docutils literal"><span class="pre">create_phase_maps()</span></tt></a> which create the phase
-maps from a phase cube, <a class="reference internal" href="process_module.html#process.Phase.smooth_phase_map" title="process.Phase.smooth_phase_map"><tt class="xref py py-meth docutils literal"><span class="pre">smooth_phase_map()</span></tt></a>
+<a class="reference internal" href="process_module.html#process.Phase.create_phase_maps" title="process.Phase.create_phase_maps"><code class="xref py py-meth docutils literal"><span class="pre">create_phase_maps()</span></code></a> which create the phase
+maps from a phase cube, <a class="reference internal" href="process_module.html#process.Phase.smooth_phase_map" title="process.Phase.smooth_phase_map"><code class="xref py py-meth docutils literal"><span class="pre">smooth_phase_map()</span></code></a>
 which smooth the values of the phase map of 0th order (remember that
 phase values are defined modulo PI) and
-<a class="reference internal" href="process_module.html#process.Phase.fit_phase_map" title="process.Phase.fit_phase_map"><tt class="xref py py-meth docutils literal"><span class="pre">fit_phase_map()</span></tt></a> which fit the created
+<a class="reference internal" href="process_module.html#process.Phase.fit_phase_map" title="process.Phase.fit_phase_map"><code class="xref py py-meth docutils literal"><span class="pre">fit_phase_map()</span></code></a> which fit the created
 smoothed phase map of 0th order to remove noisy data.</p>
 </li>
-<li><p class="first"><a class="reference internal" href="orbs_module.html#orbs.orbs.Orbs.full_reduction" title="orbs.orbs.Orbs.full_reduction"><tt class="xref py py-meth docutils literal"><span class="pre">orbs.orbs.Orbs.full_reduction()</span></tt></a> and
-<a class="reference internal" href="orbs_module.html#orbs.orbs.Orbs.single_reduction" title="orbs.orbs.Orbs.single_reduction"><tt class="xref py py-meth docutils literal"><span class="pre">orbs.orbs.Orbs.single_reduction()</span></tt></a> use computed phase maps by
+<li><p class="first"><code class="xref py py-meth docutils literal"><span class="pre">orbs.orbs.Orbs.full_reduction()</span></code> and
+<code class="xref py py-meth docutils literal"><span class="pre">orbs.orbs.Orbs.single_reduction()</span></code> use computed phase maps by
 default. An external phase map of order 0 can be given if it has
 been computed (e.g. from a flat cube).</p>
 </li>
@@ -416,7 +424,7 @@ their phase map (spectrum is not computed)</p>
 <div class="section" id="correct-for-strange-phase-with-calibration-stars">
 <h4>Correct for strange phase with calibration stars<a class="headerlink" href="#correct-for-strange-phase-with-calibration-stars" title="Permalink to this headline">¶</a></h4>
 <ul class="simple">
-<li><a class="reference internal" href="process_module.html#process.Interferogram.compute_spectrum" title="process.Interferogram.compute_spectrum"><tt class="xref py py-meth docutils literal"><span class="pre">compute_spectrum()</span></tt></a> no longer use
+<li><a class="reference internal" href="process_module.html#process.Interferogram.compute_spectrum" title="process.Interferogram.compute_spectrum"><code class="xref py py-meth docutils literal"><span class="pre">compute_spectrum()</span></code></a> no longer use
 stars interferogram to recover the first order coefficient but use
 the mean of the first order phase map. The precision is far better.</li>
 </ul>
@@ -424,9 +432,9 @@ the mean of the first order phase map. The precision is far better.</li>
 <div class="section" id="better-stars-interferogram-at-merging-step">
 <h4>Better stars interferogram at merging step<a class="headerlink" href="#better-stars-interferogram-at-merging-step" title="Permalink to this headline">¶</a></h4>
 <ul class="simple">
-<li><a class="reference internal" href="process_module.html#process.InterferogramMerger.merge" title="process.InterferogramMerger.merge"><tt class="xref py py-meth docutils literal"><span class="pre">merge()</span></tt></a> compute better stars
-interferograms. <tt class="xref py py-meth docutils literal"><span class="pre">fit_stars_in_frame()</span></tt> and
-<tt class="xref py py-meth docutils literal"><span class="pre">fit_gaussian2d()</span></tt> have been modified to give better
+<li><a class="reference internal" href="process_module.html#process.InterferogramMerger.merge" title="process.InterferogramMerger.merge"><code class="xref py py-meth docutils literal"><span class="pre">merge()</span></code></a> compute better stars
+interferograms. <code class="xref py py-meth docutils literal"><span class="pre">fit_stars_in_frame()</span></code> and
+<code class="xref py py-meth docutils literal"><span class="pre">fit_gaussian2d()</span></code> have been modified to give better
 fitted photometry points and retry a fit if it fails because the
 stars is not centered in the box.</li>
 </ul>
@@ -440,20 +448,20 @@ stars is not centered in the box.</li>
 collect their bad frames vectors to suppress bad frames prior to the
 transformation of the interferograms.</p>
 <ul class="simple">
-<li><a class="reference internal" href="process_module.html#process.InterferogramMerger.merge" title="process.InterferogramMerger.merge"><tt class="xref py py-meth docutils literal"><span class="pre">merge()</span></tt></a> creates a bad frames
+<li><a class="reference internal" href="process_module.html#process.InterferogramMerger.merge" title="process.InterferogramMerger.merge"><code class="xref py py-meth docutils literal"><span class="pre">merge()</span></code></a> creates a bad frames
 vector using a threshold of transmission (70%).</li>
-<li><tt class="xref py py-meth docutils literal"><span class="pre">create_bad_frames_vector()</span></tt> has been created to
+<li><code class="xref py py-meth docutils literal"><span class="pre">create_bad_frames_vector()</span></code> has been created to
 collect the bad frames vector created by various processes and
 create a full bad frames vector which can be passed
-<a class="reference internal" href="process_module.html#process.Interferogram.compute_spectrum" title="process.Interferogram.compute_spectrum"><tt class="xref py py-meth docutils literal"><span class="pre">compute_spectrum()</span></tt></a> and
-<tt class="xref py py-meth docutils literal"><span class="pre">transform_interferogram()</span></tt> in order to remove all the
+<a class="reference internal" href="process_module.html#process.Interferogram.compute_spectrum" title="process.Interferogram.compute_spectrum"><code class="xref py py-meth docutils literal"><span class="pre">compute_spectrum()</span></code></a> and
+<code class="xref py py-meth docutils literal"><span class="pre">transform_interferogram()</span></code> in order to remove all the
 detected bad frames prior to transform the interferograms.</li>
 </ul>
 </div>
 <div class="section" id="zeros-smoothing">
 <h4>Zeros smoothing<a class="headerlink" href="#zeros-smoothing" title="Permalink to this headline">¶</a></h4>
 <ul class="simple">
-<li><tt class="xref py py-meth docutils literal"><span class="pre">transform_interferogram()</span></tt> has been modified to do
+<li><code class="xref py py-meth docutils literal"><span class="pre">transform_interferogram()</span></code> has been modified to do
 what we call the zeros smoothing. The objective is to reduce ringing
 due to steep transition between &#8216;normal&#8217; points and zeros. The
 interferogram is multiplied by a function which smoothes the
@@ -466,7 +474,7 @@ point of the interferogram (points multiplied by zero have their
 symmetrical point multplied by 2). The degree of smoothing can be
 choosen (smoothing_deg option). A higher degree means a smoother
 transition between one part to another but may reduce the SNR.</li>
-<li><tt class="xref py py-meth docutils literal"><span class="pre">smooth()</span></tt> can now smooth a vector using a gaussian
+<li><code class="xref py py-meth docutils literal"><span class="pre">smooth()</span></code> can now smooth a vector using a gaussian
 kernel convolution (much faster).</li>
 </ul>
 </div>
@@ -479,10 +487,10 @@ kernel convolution (much faster).</li>
 <div class="section" id="better-fit-of-stars">
 <h4>Better fit of stars<a class="headerlink" href="#better-fit-of-stars" title="Permalink to this headline">¶</a></h4>
 <ul class="simple">
-<li><tt class="xref py py-meth docutils literal"><span class="pre">fit_stars_in_frame()</span></tt> and
-<tt class="xref py py-meth docutils literal"><span class="pre">fit_gaussian2d()</span></tt> modified to give better fitting
+<li><code class="xref py py-meth docutils literal"><span class="pre">fit_stars_in_frame()</span></code> and
+<code class="xref py py-meth docutils literal"><span class="pre">fit_gaussian2d()</span></code> modified to give better fitting
 results. Especially for the method
-<a class="reference internal" href="process_module.html#process.InterferogramMerger.merge" title="process.InterferogramMerger.merge"><tt class="xref py py-meth docutils literal"><span class="pre">merge()</span></tt></a> which depends a lot on
+<a class="reference internal" href="process_module.html#process.InterferogramMerger.merge" title="process.InterferogramMerger.merge"><code class="xref py py-meth docutils literal"><span class="pre">merge()</span></code></a> which depends a lot on
 a good fit of all the detected stars.</li>
 </ul>
 </div>
@@ -492,14 +500,14 @@ a good fit of all the detected stars.</li>
 <div class="section" id="various-phase-fit-degree">
 <h4>Various phase fit degree<a class="headerlink" href="#various-phase-fit-degree" title="Permalink to this headline">¶</a></h4>
 <ul>
-<li><p class="first"><a class="reference internal" href="process_module.html#process.Phase.create_phase_maps" title="process.Phase.create_phase_maps"><tt class="xref py py-meth docutils literal"><span class="pre">create_phase_maps()</span></tt></a> and
-<a class="reference internal" href="orbs_module.html#orbs.orbs.Orbs.compute_spectrum" title="orbs.orbs.Orbs.compute_spectrum"><tt class="xref py py-meth docutils literal"><span class="pre">orbs.orbs.Orbs.compute_spectrum()</span></tt></a> modified to use any order of
+<li><p class="first"><a class="reference internal" href="process_module.html#process.Phase.create_phase_maps" title="process.Phase.create_phase_maps"><code class="xref py py-meth docutils literal"><span class="pre">create_phase_maps()</span></code></a> and
+<a class="reference internal" href="orbs_module.html#orbs.orbs.Orbs.compute_spectrum" title="orbs.orbs.Orbs.compute_spectrum"><code class="xref py py-meth docutils literal"><span class="pre">orbs.orbs.Orbs.compute_spectrum()</span></code></a> modified to use any order of
 the polynomial fit to the phase</p>
 </li>
 <li><dl class="first docutils">
 <dt><strong>config.orb</strong>: New keyword PHASE_FIT_DEG to configure the desired</dt>
 <dd><p class="first last">degree of the polynomial fit o the
-phase. <a class="reference internal" href="orbs_module.html#orbs.orbs.Orbs.__init__" title="orbs.orbs.Orbs.__init__"><tt class="xref py py-meth docutils literal"><span class="pre">orbs.orbs.Orbs.__init__()</span></tt></a> modified to use this
+phase. <a class="reference internal" href="orbs_module.html#orbs.orbs.Orbs.__init__" title="orbs.orbs.Orbs.__init__"><code class="xref py py-meth docutils literal"><span class="pre">orbs.orbs.Orbs.__init__()</span></code></a> modified to use this
 keyword.</p>
 </dd>
 </dl>
@@ -510,7 +518,7 @@ keyword.</p>
 <div class="section" id="v3-4-5-stable">
 <h3>v3.4.5 (stable)<a class="headerlink" href="#v3-4-5-stable" title="Permalink to this headline">¶</a></h3>
 <ul class="simple">
-<li>Minor modifications of <a class="reference internal" href="process_module.html#process.InterferogramMerger.merge" title="process.InterferogramMerger.merge"><tt class="xref py py-meth docutils literal"><span class="pre">merge()</span></tt></a>
+<li>Minor modifications of <a class="reference internal" href="process_module.html#process.InterferogramMerger.merge" title="process.InterferogramMerger.merge"><code class="xref py py-meth docutils literal"><span class="pre">merge()</span></code></a>
 to make it more stable</li>
 <li>PHASE_FIT_DEG in <strong>config.orb</strong> set to 1</li>
 </ul>
@@ -521,13 +529,13 @@ to make it more stable</li>
 <div class="section" id="enhanced-phase-determination">
 <h4>Enhanced phase determination<a class="headerlink" href="#enhanced-phase-determination" title="Permalink to this headline">¶</a></h4>
 <ul class="simple">
-<li><tt class="xref py py-meth docutils literal"><span class="pre">get_lr_phase()</span></tt> window changed to a NORTON_BEER 2.0
+<li><code class="xref py py-meth docutils literal"><span class="pre">get_lr_phase()</span></code> window changed to a NORTON_BEER 2.0
 to get a phase with much less artefacts: give a much more precise
 phase and thus much more precise phase maps.</li>
-<li><a class="reference internal" href="process_module.html#process.Interferogram.compute_phase_coeffs_vector" title="process.Interferogram.compute_phase_coeffs_vector"><tt class="xref py py-meth docutils literal"><span class="pre">compute_phase_coeffs_vector()</span></tt></a> use a
+<li><a class="reference internal" href="process_module.html#process.Interferogram.compute_phase_coeffs_vector" title="process.Interferogram.compute_phase_coeffs_vector"><code class="xref py py-meth docutils literal"><span class="pre">compute_phase_coeffs_vector()</span></code></a> use a
 cleaner way to get the median phase coefficient for each phase map:
 used points are choosen from the residual map created by
-<a class="reference internal" href="process_module.html#process.Phase.create_phase_maps" title="process.Phase.create_phase_maps"><tt class="xref py py-meth docutils literal"><span class="pre">create_phase_maps()</span></tt></a> and sigma-clipped before the mean
+<a class="reference internal" href="process_module.html#process.Phase.create_phase_maps" title="process.Phase.create_phase_maps"><code class="xref py py-meth docutils literal"><span class="pre">create_phase_maps()</span></code></a> and sigma-clipped before the mean
 is taken from a well defined gaussian-like distribution of phase
 coefficients.</li>
 </ul>
@@ -544,7 +552,7 @@ defined modulo PI. An addition of PI on the phase vector (thus on
 the 0th order of the polynomial) reverses the returned spectrum.</p>
 </div>
 <ul class="simple">
-<li><a class="reference internal" href="process_module.html#process.Interferogram.compute_spectrum" title="process.Interferogram.compute_spectrum"><tt class="xref py py-meth docutils literal"><span class="pre">compute_spectrum()</span></tt></a> modified to avoid the
+<li><a class="reference internal" href="process_module.html#process.Interferogram.compute_spectrum" title="process.Interferogram.compute_spectrum"><code class="xref py py-meth docutils literal"><span class="pre">compute_spectrum()</span></code></a> modified to avoid the
 spectrum to be reversed (values are negative instead of positive)
 after phase correction. Spectrum polarity is checked using a mean
 interferogram over the whole cube. If the resulting spectrum is
@@ -554,7 +562,7 @@ reversed the whole 0th order phase map is added PI.</li>
 <div class="section" id="sky-transmission-correction-in-single-camera-mode">
 <h4>Sky transmission correction in single-camera mode<a class="headerlink" href="#sky-transmission-correction-in-single-camera-mode" title="Permalink to this headline">¶</a></h4>
 <ul class="simple">
-<li><a class="reference internal" href="process_module.html#process.Interferogram.create_correction_vectors" title="process.Interferogram.create_correction_vectors"><tt class="xref py py-meth docutils literal"><span class="pre">create_correction_vectors()</span></tt></a> created to get
+<li><a class="reference internal" href="process_module.html#process.Interferogram.create_correction_vectors" title="process.Interferogram.create_correction_vectors"><code class="xref py py-meth docutils literal"><span class="pre">create_correction_vectors()</span></code></a> created to get
 the correction vectors (sky transmission and added light) and
 correct interferograms in single camera-mode. Now <strong>phase
 correction</strong> and <strong>sky transmission correction</strong> are available in
@@ -587,7 +595,7 @@ knowm from the reduction of an object taken during the same mission.</li>
 <div class="section" id="master-combination-algorithms">
 <h4>Master combination algorithms<a class="headerlink" href="#master-combination-algorithms" title="Permalink to this headline">¶</a></h4>
 <ul>
-<li><p class="first"><tt class="xref py py-meth docutils literal"><span class="pre">_create_master_frame()</span></tt> created to use
+<li><p class="first"><code class="xref py py-meth docutils literal"><span class="pre">_create_master_frame()</span></code> created to use
 better combination algorithms for the creation of master bias, master
 dark and master flat. Some pixels are rejected using a rejection
 algorithm before the images are combined using a median or an
@@ -603,29 +611,29 @@ average function. The rejection algorithms proposed are:</p>
 purpose. Note that those rejection algorithm have been inspired by
 the IRAF function combine.</p>
 </li>
-<li><p class="first"><tt class="xref py py-meth docutils literal"><span class="pre">detect_stars()</span></tt> also uses
-<tt class="xref py py-meth docutils literal"><span class="pre">_create_master_frame()</span></tt> to combine frames.</p>
+<li><p class="first"><code class="xref py py-meth docutils literal"><span class="pre">detect_stars()</span></code> also uses
+<code class="xref py py-meth docutils literal"><span class="pre">_create_master_frame()</span></code> to combine frames.</p>
 </li>
 </ul>
 </div>
 <div class="section" id="minor-modifications">
 <h4>Minor modifications<a class="headerlink" href="#minor-modifications" title="Permalink to this headline">¶</a></h4>
 <ul class="simple">
-<li>DATA_FRAMES in <tt class="xref py py-meth docutils literal"><span class="pre">detect_stars()</span></tt> changed from
+<li>DATA_FRAMES in <code class="xref py py-meth docutils literal"><span class="pre">detect_stars()</span></code> changed from
 10 to 30. Help in finding more stars in some cubes.</li>
-<li><tt class="xref py py-meth docutils literal"><span class="pre">orbs.orbs.Orbs._create_list_from_dir()</span></tt> now check if all the FITS
+<li><code class="xref py py-meth docutils literal"><span class="pre">orbs.orbs.Orbs._create_list_from_dir()</span></code> now check if all the FITS
 files in the directory have the same shape.</li>
-<li><a class="reference internal" href="process_module.html#process.RawData.correct_frame" title="process.RawData.correct_frame"><tt class="xref py py-meth docutils literal"><span class="pre">correct_frame()</span></tt></a> and
-<tt class="xref py py-meth docutils literal"><span class="pre">create_interferogram()</span></tt> modified to
+<li><a class="reference internal" href="process_module.html#process.RawData.correct_frame" title="process.RawData.correct_frame"><code class="xref py py-meth docutils literal"><span class="pre">correct_frame()</span></code></a> and
+<code class="xref py py-meth docutils literal"><span class="pre">create_interferogram()</span></code> modified to
 correct for bias, flat and dark even if one of them are not given
 (before, without biases no correction at all would have been made)</li>
-<li><tt class="xref py py-meth docutils literal"><span class="pre">correct_filter()</span></tt> modified when filter min
+<li><code class="xref py py-meth docutils literal"><span class="pre">correct_filter()</span></code> modified when filter min
 or max are outside the spectrum.</li>
-<li><a class="reference internal" href="orbs_module.html#orbs.orbs.Orbs.__init__" title="orbs.orbs.Orbs.__init__"><tt class="xref py py-class docutils literal"><span class="pre">orbs.orbs.Orbs.__init__</span></tt></a> prints modules versions</li>
-<li><a class="reference internal" href="orbs_module.html#orbs.orbs.Orbs.__init__" title="orbs.orbs.Orbs.__init__"><tt class="xref py py-class docutils literal"><span class="pre">orbs.orbs.Orbs.__init__</span></tt></a> modified. It is now possible to
+<li><a class="reference internal" href="orbs_module.html#orbs.orbs.Orbs.__init__" title="orbs.orbs.Orbs.__init__"><code class="xref py py-class docutils literal"><span class="pre">orbs.orbs.Orbs.__init__</span></code></a> prints modules versions</li>
+<li><a class="reference internal" href="orbs_module.html#orbs.orbs.Orbs.__init__" title="orbs.orbs.Orbs.__init__"><code class="xref py py-class docutils literal"><span class="pre">orbs.orbs.Orbs.__init__</span></code></a> modified. It is now possible to
 change configuration options for a particular reduction using the
 option file. Keywords are the same.</li>
-<li><a class="reference internal" href="process_module.html#process.RawData.correct_frame" title="process.RawData.correct_frame"><tt class="xref py py-meth docutils literal"><span class="pre">correct_frame()</span></tt></a> modified to avoid strange
+<li><a class="reference internal" href="process_module.html#process.RawData.correct_frame" title="process.RawData.correct_frame"><code class="xref py py-meth docutils literal"><span class="pre">correct_frame()</span></code></a> modified to avoid strange
 behaviour when dark level is too low.</li>
 </ul>
 </div>
@@ -637,7 +645,7 @@ behaviour when dark level is too low.</li>
 <h3>3.5.0<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h3>
 <div class="section" id="alignment-and-photometry">
 <h4>Alignment and photometry<a class="headerlink" href="#alignment-and-photometry" title="Permalink to this headline">¶</a></h4>
-<p><tt class="xref py py-class docutils literal"><span class="pre">Astrometry</span></tt> class created with a whole new
+<p><code class="xref py py-class docutils literal"><span class="pre">Astrometry</span></code> class created with a whole new
 astrometry module. This module is used for all astrometrical processes
 (star position detection for alignment and star
 photometry). Astrometry and photometry precision are now a lot better.</p>
@@ -649,7 +657,7 @@ photometry). Astrometry and photometry precision are now a lot better.</p>
 better correct single camera interferograms for variations of
 transmission and light refracted on clouds.</li>
 <li>2-camera reduction without merging frames (optional):
-<a class="reference internal" href="process_module.html#process.InterferogramMerger.merge" title="process.InterferogramMerger.merge"><tt class="xref py py-meth docutils literal"><span class="pre">merge()</span></tt></a> has a better way of
+<a class="reference internal" href="process_module.html#process.InterferogramMerger.merge" title="process.InterferogramMerger.merge"><code class="xref py py-meth docutils literal"><span class="pre">merge()</span></code></a> has a better way of
 correct interferograms without merging frames. Camera 2 frames are
 used to create correction vectors but are not merged to the frames
 of the camera 1.</li>
@@ -657,7 +665,7 @@ of the camera 1.</li>
 </div>
 <div class="section" id="cosmic-ray-detection">
 <h4>Cosmic Ray Detection<a class="headerlink" href="#cosmic-ray-detection" title="Permalink to this headline">¶</a></h4>
-<p><a class="reference internal" href="process_module.html#process.RawData.create_cosmic_ray_map" title="process.RawData.create_cosmic_ray_map"><tt class="xref py py-meth docutils literal"><span class="pre">create_cosmic_ray_map()</span></tt></a>. Completly changed
+<p><a class="reference internal" href="process_module.html#process.RawData.create_cosmic_ray_map" title="process.RawData.create_cosmic_ray_map"><code class="xref py py-meth docutils literal"><span class="pre">create_cosmic_ray_map()</span></code></a>. Completly changed
 and upgraded using ORUS simulated cubes. Faster and far more
 efficient. 95% of good detection over CR&#8217;s with an energy higher than
 the median CR energy. Small number of false detections. Less problems
@@ -665,7 +673,7 @@ with stars and ZPD.</p>
 </div>
 <div class="section" id="fft">
 <h4>FFT<a class="headerlink" href="#fft" title="Permalink to this headline">¶</a></h4>
-<p>&#8216;Zeros smoothing&#8217; step in <tt class="xref py py-meth docutils literal"><span class="pre">transform_interferogram()</span></tt>
+<p>&#8216;Zeros smoothing&#8217; step in <code class="xref py py-meth docutils literal"><span class="pre">transform_interferogram()</span></code>
 modified to avoid correcting very small zeros parts (CR, bad frames)
 which was creating noise.</p>
 </div>
@@ -679,7 +687,7 @@ which was creating noise.</p>
 <div class="section" id="alternative-merging-process">
 <h4>Alternative Merging Process<a class="headerlink" href="#alternative-merging-process" title="Permalink to this headline">¶</a></h4>
 <p>Addition of an alternative merging process
-(<a class="reference internal" href="process_module.html#process.InterferogramMerger.alternative_merge" title="process.InterferogramMerger.alternative_merge"><tt class="xref py py-meth docutils literal"><span class="pre">alternative_merge()</span></tt></a>): in fact,
+(<a class="reference internal" href="process_module.html#process.InterferogramMerger.alternative_merge" title="process.InterferogramMerger.alternative_merge"><code class="xref py py-meth docutils literal"><span class="pre">alternative_merge()</span></code></a>): in fact,
 this is the basic merging process which makes no use of star
 photometry. This alternative way of merging, somehow more noisy than
 the regular way, is more robust and might be the best guess if there&#8217;s
@@ -698,7 +706,7 @@ cube.</p>
 <div class="section" id="aperture-photometry">
 <h4>Aperture Photometry<a class="headerlink" href="#aperture-photometry" title="Permalink to this headline">¶</a></h4>
 <p>An aperture photometry function
-(<tt class="xref py py-meth docutils literal"><span class="pre">aperture_photometry()</span></tt>) has been designed to get
+(<code class="xref py py-meth docutils literal"><span class="pre">aperture_photometry()</span></code>) has been designed to get
 a far more robust and precise photometry of the stars during the
 &#8216;normal&#8217; merging process. Sky transmission vector precision is now a
 lot better and do not need any more smoothing.</p>
@@ -731,7 +739,7 @@ keyword TUNE, give the full name of the method parameter
 <p class="first admonition-title">Note</p>
 <p class="last">All the parameters are not tunable: this option has to be
 implemented in the method itself with the method
-<tt class="xref py py-meth docutils literal"><span class="pre">_get_tuning_parameter()</span></tt>.</p>
+<code class="xref py py-meth docutils literal"><span class="pre">_get_tuning_parameter()</span></code>.</p>
 </div>
 <div class="admonition warning">
 <p class="first admonition-title">Warning</p>
@@ -759,8 +767,8 @@ updated to use this better information and filter bad fitted stars.</p>
 <h3>3.6.0<a class="headerlink" href="#id7" title="Permalink to this headline">¶</a></h3>
 <div class="section" id="flux-calibration">
 <h4>Flux Calibration<a class="headerlink" href="#flux-calibration" title="Permalink to this headline">¶</a></h4>
-<p>Flux calibration has been added. <a class="reference internal" href="orbs_module.html#orbs.orbs.Orbs.calibrate_spectrum" title="orbs.orbs.Orbs.calibrate_spectrum"><tt class="xref py py-meth docutils literal"><span class="pre">orbs.orbs.Orbs.calibrate_spectrum()</span></tt></a>
-replace the old function <tt class="xref py py-meth docutils literal"><span class="pre">orbs.orbs.Orbs.correct_spectrum()</span></tt>. The path
+<p>Flux calibration has been added. <a class="reference internal" href="orbs_module.html#orbs.orbs.Orbs.calibrate_spectrum" title="orbs.orbs.Orbs.calibrate_spectrum"><code class="xref py py-meth docutils literal"><span class="pre">orbs.orbs.Orbs.calibrate_spectrum()</span></code></a>
+replace the old function <code class="xref py py-meth docutils literal"><span class="pre">orbs.orbs.Orbs.correct_spectrum()</span></code>. The path
 to a standard spectrum reduced by ORBS must be given (STDPATH). This
 can be achieved by reducing a standard cube using the option
 &#8211;standard. The standard name must also be given in the option file
@@ -777,7 +785,7 @@ calibrate</li>
 </ol>
 <div class="admonition seealso">
 <p class="first admonition-title">See also</p>
-<p class="last"><a class="reference internal" href="process_module.html#process.Spectrum.get_flux_calibration_vector" title="process.Spectrum.get_flux_calibration_vector"><tt class="xref py py-meth docutils literal"><span class="pre">get_flux_calibration_vector()</span></tt></a></p>
+<p class="last"><a class="reference internal" href="process_module.html#process.Spectrum.get_flux_calibration_vector" title="process.Spectrum.get_flux_calibration_vector"><code class="xref py py-meth docutils literal"><span class="pre">get_flux_calibration_vector()</span></code></a></p>
 </div>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
@@ -787,7 +795,7 @@ camera as the cube you want to reduce.</p>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
 <p class="last">A new class has been created to manage standard spectra:
-<a class="reference internal" href="process_module.html#process.Standard" title="process.Standard"><tt class="xref py py-class docutils literal"><span class="pre">Standard</span></tt></a></p>
+<a class="reference internal" href="process_module.html#process.Standard" title="process.Standard"><code class="xref py py-class docutils literal"><span class="pre">Standard</span></code></a></p>
 </div>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
@@ -808,7 +816,7 @@ given, WCS coords of the cube are updated at the last step (Calibration step
 step):</p>
 <div class="admonition seealso">
 <p class="first admonition-title">See also</p>
-<p class="last"><tt class="xref py py-meth docutils literal"><span class="pre">get_corrected_wcs()</span></tt></p>
+<p class="last"><code class="xref py py-meth docutils literal"><span class="pre">get_corrected_wcs()</span></code></p>
 </div>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
@@ -825,8 +833,8 @@ coordinates of the stars in the field.</p>
 <div class="section" id="simplification">
 <h4>Simplification<a class="headerlink" href="#simplification" title="Permalink to this headline">¶</a></h4>
 <ul class="simple">
-<li><tt class="xref py py-class docutils literal"><span class="pre">core.Indexer</span></tt> created to index reduction files and get
-their location easily in <tt class="xref py py-class docutils literal"><span class="pre">orbs.Orbs</span></tt>.</li>
+<li><code class="xref py py-class docutils literal"><span class="pre">core.Indexer</span></code> created to index reduction files and get
+their location easily in <code class="xref py py-class docutils literal"><span class="pre">orbs.Orbs</span></code>.</li>
 <li>No more quadrants: Reduction of big data cubes has been simplified
 and do not save reduced files in quadrants any more. Big data cubes
 are thus handled as small data cubes. Reduced by quadrants but saved
@@ -839,13 +847,13 @@ as one set of frames.</li>
 <div class="section" id="cython-speed-optimization">
 <h4>Cython &amp; speed optimization<a class="headerlink" href="#cython-speed-optimization" title="Permalink to this headline">¶</a></h4>
 <ul class="simple">
-<li><tt class="xref py py-meth docutils literal"><span class="pre">utils.transform_frame()</span></tt> has been modified to do only one
+<li><code class="xref py py-meth docutils literal"><span class="pre">utils.transform_frame()</span></code> has been modified to do only one
 geometrical transformation instead of a set of transformations
 (tip-tilt then translations then rotation etc.). Coordinates
-transformation function (<tt class="xref py py-meth docutils literal"><span class="pre">cutils.transform_A_to_B()</span></tt>) written in
+transformation function (<code class="xref py py-meth docutils literal"><span class="pre">cutils.transform_A_to_B()</span></code>) written in
 Cython to optimize processing speed .</li>
-<li>core functions for fitting stars (<tt class="xref py py-meth docutils literal"><span class="pre">cutils.gaussian_array2d()</span></tt>
-and <tt class="xref py py-meth docutils literal"><span class="pre">cutils.surface_value()</span></tt>) have been transcripted to Cython
+<li>core functions for fitting stars (<code class="xref py py-meth docutils literal"><span class="pre">cutils.gaussian_array2d()</span></code>
+and <code class="xref py py-meth docutils literal"><span class="pre">cutils.surface_value()</span></code>) have been transcripted to Cython
 for faster processing.</li>
 <li>lots of functions have been cythonized to improve the overall speed.</li>
 </ul>
@@ -872,7 +880,7 @@ the whole suite of softwares.</p>
 <h4>Multi fit of the stars<a class="headerlink" href="#multi-fit-of-the-stars" title="Permalink to this headline">¶</a></h4>
 <p>The functions based on star fitting have been updated to take full
 advantage of the multi_fit mode of
-<tt class="xref py py-meth docutils literal"><span class="pre">orb.astrometry.fit_stars_in_frame()</span></tt>. Stars are fitted all
+<code class="xref py py-meth docutils literal"><span class="pre">orb.astrometry.fit_stars_in_frame()</span></code>. Stars are fitted all
 together based on the idea that the position pattern is good but may
 be shifted, rotated or zoomed. The stars share also the same
 FWHM. This update has made ORBS far more robust and precise on the
@@ -923,8 +931,8 @@ at all during the process</strong>.</p>
 account the fact that no wavelength calibration has been done.</p>
 <ul class="simple">
 <li>Important modified methods:<ul>
-<li><a class="reference internal" href="process_module.html#process.Interferogram.compute_spectrum" title="process.Interferogram.compute_spectrum"><tt class="xref py py-meth docutils literal"><span class="pre">compute_spectrum()</span></tt></a></li>
-<li><a class="reference internal" href="process_module.html#process.Spectrum.calibrate" title="process.Spectrum.calibrate"><tt class="xref py py-meth docutils literal"><span class="pre">calibrate()</span></tt></a></li>
+<li><a class="reference internal" href="process_module.html#process.Interferogram.compute_spectrum" title="process.Interferogram.compute_spectrum"><code class="xref py py-meth docutils literal"><span class="pre">compute_spectrum()</span></code></a></li>
+<li><a class="reference internal" href="process_module.html#process.Spectrum.calibrate" title="process.Spectrum.calibrate"><code class="xref py py-meth docutils literal"><span class="pre">calibrate()</span></code></a></li>
 </ul>
 </li>
 <li>New keyword added in the option file: WAVENUMBER, WAVE_CALIB</li>
@@ -933,16 +941,16 @@ account the fact that no wavelength calibration has been done.</p>
 <div class="section" id="enhanced-phase-map-fit">
 <h4>Enhanced phase map fit<a class="headerlink" href="#enhanced-phase-map-fit" title="Permalink to this headline">¶</a></h4>
 <ul class="simple">
-<li><a class="reference internal" href="process_module.html#process.Phase.fit_phase_map" title="process.Phase.fit_phase_map"><tt class="xref py py-meth docutils literal"><span class="pre">fit_phase_map()</span></tt></a> has been enhanced to give
+<li><a class="reference internal" href="process_module.html#process.Phase.fit_phase_map" title="process.Phase.fit_phase_map"><code class="xref py py-meth docutils literal"><span class="pre">fit_phase_map()</span></code></a> has been enhanced to give
 better results and use the residual map on phase fit.</li>
 </ul>
 </div>
 <div class="section" id="miscellaneous">
 <h4>Miscellaneous<a class="headerlink" href="#miscellaneous" title="Permalink to this headline">¶</a></h4>
 <ul class="simple">
-<li><a class="reference internal" href="orbs_module.html#orbs.orbs.Orbs.__init__" title="orbs.orbs.Orbs.__init__"><tt class="xref py py-meth docutils literal"><span class="pre">orbs.orbs.Orbs.__init__()</span></tt></a> simplified by the use of
-<tt class="xref py py-class docutils literal"><span class="pre">orb.core.OptionFile</span></tt> previously used only by
-<tt class="xref py py-class docutils literal"><span class="pre">orcs.orcs.SpectralCube()</span></tt></li>
+<li><a class="reference internal" href="orbs_module.html#orbs.orbs.Orbs.__init__" title="orbs.orbs.Orbs.__init__"><code class="xref py py-meth docutils literal"><span class="pre">orbs.orbs.Orbs.__init__()</span></code></a> simplified by the use of
+<code class="xref py py-class docutils literal"><span class="pre">orb.core.OptionFile</span></code> previously used only by
+<code class="xref py py-class docutils literal"><span class="pre">orcs.orcs.SpectralCube()</span></code></li>
 <li>doc updated</li>
 </ul>
 </div>
@@ -978,7 +986,7 @@ step number, ORBS version and ORBS option file name also added.</li>
 <div class="section" id="full-precision">
 <h4>Full precision<a class="headerlink" href="#full-precision" title="Permalink to this headline">¶</a></h4>
 <ul>
-<li><p class="first"><a class="reference internal" href="process_module.html#process.InterferogramMerger.find_alignment" title="process.InterferogramMerger.find_alignment"><tt class="xref py py-meth docutils literal"><span class="pre">find_alignment()</span></tt></a> default
+<li><p class="first"><a class="reference internal" href="process_module.html#process.InterferogramMerger.find_alignment" title="process.InterferogramMerger.find_alignment"><code class="xref py py-meth docutils literal"><span class="pre">find_alignment()</span></code></a> default
 behaviour changed. The alignement pass for tip and tilt angles is
 not anymore by default. It is still possible to do it by adding this
 line in the option file:</p>
@@ -998,9 +1006,9 @@ line in the option file:</p>
 <p>Using the SITELLE&#8217;s configuration file config.sitelle.orb and thus
 having the keyword INSTRUMENT_NAME set to SITELLE enables the sitelle
 mode. The only modification which has to be done was to pass two new
-options to <tt class="xref py py-meth docutils literal"><span class="pre">orb.Tools._create_list_from_dir()</span></tt>: image_mode and
+options to <code class="xref py py-meth docutils literal"><span class="pre">orb.Tools._create_list_from_dir()</span></code>: image_mode and
 chip_index (see ORB documentation). This is done during ORBS init:
-<a class="reference internal" href="orbs_module.html#orbs.orbs.Orbs.__init__" title="orbs.orbs.Orbs.__init__"><tt class="xref py py-meth docutils literal"><span class="pre">orbs.orbs.Orbs.__init__()</span></tt></a>.</p>
+<a class="reference internal" href="orbs_module.html#orbs.orbs.Orbs.__init__" title="orbs.orbs.Orbs.__init__"><code class="xref py py-meth docutils literal"><span class="pre">orbs.orbs.Orbs.__init__()</span></code></a>.</p>
 </div>
 <div class="section" id="prebinning">
 <h5>Prebinning<a class="headerlink" href="#prebinning" title="Permalink to this headline">¶</a></h5>
@@ -1016,8 +1024,8 @@ level only one option must be passed to the option file:</p>
 same values. The user must no modify the the values of BINCAM1 and
 BINCAM2.</p>
 </div>
-<p>Modification of <a class="reference internal" href="orbs_module.html#orbs.orbs.Orbs.__init__" title="orbs.orbs.Orbs.__init__"><tt class="xref py py-meth docutils literal"><span class="pre">orbs.orbs.Orbs.__init__()</span></tt></a> which gives the
-prebinning option to <tt class="xref py py-meth docutils literal"><span class="pre">orb.Tools._create_list_from_dir()</span></tt>. The
+<p>Modification of <a class="reference internal" href="orbs_module.html#orbs.orbs.Orbs.__init__" title="orbs.orbs.Orbs.__init__"><code class="xref py py-meth docutils literal"><span class="pre">orbs.orbs.Orbs.__init__()</span></code></a> which gives the
+prebinning option to <code class="xref py py-meth docutils literal"><span class="pre">orb.Tools._create_list_from_dir()</span></code>. The
 final data binning is also handled at the init level : the real
 binning of each camera is multiplied by the prebinning size.</p>
 </div>
@@ -1035,10 +1043,10 @@ relies on the use of both deep frame and energy maps and assert,
 just before the calibration that E(I) / M(I) = E(S) / M(S) if we
 consider that E() is the energy map and M() is the deep frame of the
 interferogram cube I or the spectral cube S. Both
-<a class="reference internal" href="process_module.html#process.InterferogramMerger.extract_stars_spectrum" title="process.InterferogramMerger.extract_stars_spectrum"><tt class="xref py py-meth docutils literal"><span class="pre">extract_stars_spectrum()</span></tt></a> and
-<a class="reference internal" href="process_module.html#process.Spectrum.calibrate" title="process.Spectrum.calibrate"><tt class="xref py py-meth docutils literal"><span class="pre">calibrate()</span></tt></a> have been modified to take
+<a class="reference internal" href="process_module.html#process.InterferogramMerger.extract_stars_spectrum" title="process.InterferogramMerger.extract_stars_spectrum"><code class="xref py py-meth docutils literal"><span class="pre">extract_stars_spectrum()</span></code></a> and
+<a class="reference internal" href="process_module.html#process.Spectrum.calibrate" title="process.Spectrum.calibrate"><code class="xref py py-meth docutils literal"><span class="pre">calibrate()</span></code></a> have been modified to take
 that into account.</li>
-<li>Bug fix in <a class="reference internal" href="process_module.html#process.InterferogramMerger.extract_stars_spectrum" title="process.InterferogramMerger.extract_stars_spectrum"><tt class="xref py py-meth docutils literal"><span class="pre">extract_stars_spectrum()</span></tt></a>.</li>
+<li>Bug fix in <a class="reference internal" href="process_module.html#process.InterferogramMerger.extract_stars_spectrum" title="process.InterferogramMerger.extract_stars_spectrum"><code class="xref py py-meth docutils literal"><span class="pre">extract_stars_spectrum()</span></code></a>.</li>
 </ul>
 </div>
 <div class="section" id="astropy">
@@ -1058,10 +1066,10 @@ be carefull before removing them)</p>
 <div class="section" id="id19">
 <h4>Miscellaneous<a class="headerlink" href="#id19" title="Permalink to this headline">¶</a></h4>
 <ul class="simple">
-<li><a class="reference internal" href="process_module.html#process.RawData.correct_frame" title="process.RawData.correct_frame"><tt class="xref py py-meth docutils literal"><span class="pre">correct_frame()</span></tt></a>: Hot pixels correction
+<li><a class="reference internal" href="process_module.html#process.RawData.correct_frame" title="process.RawData.correct_frame"><code class="xref py py-meth docutils literal"><span class="pre">correct_frame()</span></code></a>: Hot pixels correction
 algorithm changed for a standard median correction (hot pixel value
 is replaced by the median of the neighbouring pixels).</li>
-<li><a class="reference internal" href="process_module.html#process.InterferogramMerger.merge" title="process.InterferogramMerger.merge"><tt class="xref py py-meth docutils literal"><span class="pre">merge()</span></tt></a>: Merging operation
+<li><a class="reference internal" href="process_module.html#process.InterferogramMerger.merge" title="process.InterferogramMerger.merge"><code class="xref py py-meth docutils literal"><span class="pre">merge()</span></code></a>: Merging operation
 when the frames of the camera B are not used do not rely anymore on
 the computed stray light vector because of the impossibility to
 determine correctly the base level of this vector.</li>
@@ -1078,11 +1086,98 @@ determine correctly the base level of this vector.</li>
 <li>script <strong>orbs</strong> can be lauched in SITELLE or SPIOMM mode. This way
 is ensures that the configuration file will be the good one (instead
 of relying on the default behaviour)</li>
-<li><a class="reference internal" href="orbs_module.html#orbs.orbs.Orbs" title="orbs.orbs.Orbs"><tt class="xref py py-class docutils literal"><span class="pre">orbs.orbs.Orbs</span></tt></a> can be passed lists instead of directory paths for
+<li><a class="reference internal" href="orbs_module.html#orbs.orbs.Orbs" title="orbs.orbs.Orbs"><code class="xref py py-class docutils literal"><span class="pre">orbs.orbs.Orbs</span></code></a> can be passed lists instead of directory paths for
 object, dark, flat ...</li>
-<li><a class="reference internal" href="orbs_module.html#orbs.orbs.Orbs" title="orbs.orbs.Orbs"><tt class="xref py py-class docutils literal"><span class="pre">orbs.orbs.Orbs</span></tt></a> can be passed a special configuration file and
+<li><a class="reference internal" href="orbs_module.html#orbs.orbs.Orbs" title="orbs.orbs.Orbs"><code class="xref py py-class docutils literal"><span class="pre">orbs.orbs.Orbs</span></code></a> can be passed a special configuration file and
 this choice is reflected on all the processes it launches.</li>
 </ul>
+</div>
+<div class="section" id="id21">
+<h3>3.8.1<a class="headerlink" href="#id21" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="id22">
+<h4><strong>orbs</strong> script<a class="headerlink" href="#id22" title="Permalink to this headline">¶</a></h4>
+<p><strong>orbs</strong> script has been modified a lot to integrate new operations:
+- <em>start</em>: start a reduction.
+- <em>status</em>: display the status of all the reduction processes started</p>
+<blockquote>
+<div>with the same option file.</div></blockquote>
+<ul class="simple">
+<li><em>resume</em>: simply resume the last reduction process started with the
+given option file.</li>
+<li><em>clean</em>: clean the folder from all the reduction files but the final
+products.</li>
+</ul>
+<p>The new way of calling orbs is now:</p>
+<div class="highlight-python"><div class="highlight"><pre>orbs [option_file_path] {start, status, resume, clean} [options]
+</pre></div>
+</div>
+<p>To simply run the default reduction process (for an astrophysical object):</p>
+<div class="highlight-python"><div class="highlight"><pre>orbs [option_file_path] start
+</pre></div>
+</div>
+<p>If the data is e.g. a laser cube you must run orbs with the &#8211;laser option:</p>
+<div class="highlight-python"><div class="highlight"><pre>orbs [option_file_path] start --laser
+</pre></div>
+</div>
+<p>All the special targets are (the default target is a common
+astrophysical object):</p>
+<ul class="simple">
+<li><em>laser</em>: for a laser cube</li>
+<li><em>flat</em>: for a flat cube (or more generally a continnum source cube)</li>
+<li><em>stars</em>: for a star/galaxy cluster</li>
+<li><em>nostar</em>: for an astophysical object containing no star</li>
+<li><em>standard</em>: for a standard star</li>
+</ul>
+<p>More options are available and can be listed by adding -h to the
+command line.</p>
+<p>Those operations are all based on the concept of RoadMaps (see below).</p>
+</div>
+<div class="section" id="roadmaps">
+<h4>RoadMaps<a class="headerlink" href="#roadmaps" title="Permalink to this headline">¶</a></h4>
+<p>The integration of the &#8216;roadmaps&#8217; concept avoid to modify the code in
+order to add or modify a reduction sequence. It is now possible to
+change the steps, their order and the associated options of a given
+reduction sequence by modfying a simple xml file.</p>
+<p>All the possible reduction steps are listed in the file <code class="file docutils literal"><span class="pre">orbs/data/roadmap.steps.xml</span></code></p>
+<p>Each reduction process has its own roadmap. Each instrument has also
+its own roadmaps and some reduction processes have different roadmaps
+depending on the camera we want to reduce. A name of a roadmap file is thus:</p>
+<div class="highlight-python"><div class="highlight"><pre>roadmap.[instrument].[target].[camera].xml
+</pre></div>
+</div>
+<ul class="simple">
+<li><em>instrument</em> can be <em>spiomm</em> or <em>sitelle</em></li>
+<li><em>target</em> can be one of the special targets listed above or object for the default target</li>
+<li><em>camera</em> can be <em>full</em> for a process using both cameras; <em>single1</em> or
+<em>single2</em> for a process using only the camera 1 or 2.</li>
+</ul>
+<p>e.g. the roadmap file for the default reduction process of SITELLE is <code class="file docutils literal"><span class="pre">orbs/data/roadmap.sitelle.object.full.xml</span></code></p>
+<ul class="simple">
+<li>classes <a class="reference internal" href="orbs_module.html#orbs.orbs.RoadMap" title="orbs.orbs.RoadMap"><code class="xref py py-class docutils literal"><span class="pre">orbs.orbs.RoadMap</span></code></a> and
+<a class="reference internal" href="orbs_module.html#orbs.orbs.Step" title="orbs.orbs.Step"><code class="xref py py-class docutils literal"><span class="pre">orbs.orbs.Step</span></code></a> created to manage the roadmap files.</li>
+<li><a class="reference internal" href="orbs_module.html#orbs.orbs.Orbs" title="orbs.orbs.Orbs"><code class="xref py py-class docutils literal"><span class="pre">orbs.orbs.Orbs</span></code></a> has been changed to integrate this new
+concept. The methods <code class="xref py py-meth docutils literal"><span class="pre">orbs.orbs.Orbs.full_reduction()</span></code> and
+<code class="xref py py-meth docutils literal"><span class="pre">orbs.orbs.Orbs.single_reduction()</span></code> have been replaced by one
+simple method <a class="reference internal" href="orbs_module.html#orbs.orbs.Orbs.start_reduction" title="orbs.orbs.Orbs.start_reduction"><code class="xref py py-meth docutils literal"><span class="pre">orbs.orbs.Orbs.start_reduction()</span></code></a> which just
+read the xml files and run the sequence.</li>
+<li>most of the early &#8216;development&#8217; options of the methods of
+<a class="reference internal" href="orbs_module.html#orbs.orbs.Orbs" title="orbs.orbs.Orbs"><code class="xref py py-class docutils literal"><span class="pre">orbs.orbs.Orbs</span></code></a> have been removed, keeping only the
+useful ones.</li>
+</ul>
+</div>
+<div class="section" id="id23">
+<h4>Miscellaneous<a class="headerlink" href="#id23" title="Permalink to this headline">¶</a></h4>
+<ul class="simple">
+<li><a class="reference internal" href="process_module.html#process.CalibrationLaser.create_calibration_laser_map" title="process.CalibrationLaser.create_calibration_laser_map"><code class="xref py py-meth docutils literal"><span class="pre">create_calibration_laser_map()</span></code></a>
+output all the parameters of the fitted laser line. this way the ILS
+(fwhm) map can be derived directly. The laser spectral cube is also
+generated by default.</li>
+<li>in <a class="reference internal" href="process_module.html#process.Interferogram.create_correction_vectors" title="process.Interferogram.create_correction_vectors"><code class="xref py py-meth docutils literal"><span class="pre">create_correction_vectors()</span></code></a>, the
+correction of the transmission vector, in the case when only one
+camera is reduced, has been enhanced (the transmission near ZPD
+cannot be retrieved and must be guessed).</li>
+</ul>
+</div>
 </div>
 </div>
 </div>
@@ -1093,7 +1188,7 @@ this choice is reflected on all the processes it launches.</li>
       </div>
       <div class="clearer"></div>
     </div>
-    <div class="related">
+    <div class="related" role="navigation" aria-label="related navigation">
       <h3>Navigation</h3>
       <ul>
         <li class="right" style="margin-right: 10px">
@@ -1105,12 +1200,12 @@ this choice is reflected on all the processes it launches.</li>
         <li class="right" >
           <a href="process_module.html" title="Process module"
              >previous</a> |</li>
-        <li><a href="index.html">Orbs 3.8.1 documentation</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="index.html">Orbs 3.8.2 documentation</a> &raquo;</li> 
       </ul>
     </div>
-    <div class="footer">
+    <div class="footer" role="contentinfo">
         &copy; Copyright 2014, Thomas Martin (thomas.martin.1@ulaval.ca).
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.3.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.1.
     </div>
   </body>
 </html>

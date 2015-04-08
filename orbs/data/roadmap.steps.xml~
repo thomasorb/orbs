@@ -1,0 +1,52 @@
+<?xml version="1.0"?>
+<steps>
+
+  <step name="compute_alignment_vector">
+    <outfile name='alignment_vector'></outfile>
+  </step>
+
+  <step name="compute_cosmic_ray_map">
+    <outfile name='cr_map_list'></outfile>
+  </step>
+
+  <step name="compute_interferogram">
+    <outfile name='interfero_list'></outfile>
+  </step>
+
+  <step name="transform_cube_B">
+    <outfile name='transformed_interfero_frame_list'></outfile>
+  </step>
+
+  <step name="correct_interferograms">
+    <outfile name='corr_interf_list'></outfile>
+  </step>
+
+  <step name="merge_interferograms">
+    <outfile name='merged_interfero_frame_list'></outfile>
+  </step>
+
+  <step name="merge_interferograms_alt">
+    <outfile name='merged_interfero_frame_list'></outfile>
+  </step>
+
+  <step name="compute_calibration_laser_map">
+    <outfile name='calibration_laser_map'></outfile>
+  </step>
+
+  <step name="compute_phase">
+    <outfile name='phase_list'></outfile>
+  </step>
+
+  <step name="compute_phase_maps">
+    <outfile name='phase_map_0'></outfile>
+  </step>
+
+  <step name="compute_spectrum">
+    <outfile name='spectrum_list'></outfile>
+  </step>
+
+  <step name="calibrate_spectrum">
+    <outfile name='calibrated_spectrum_list'></outfile>
+  </step>
+
+</steps>

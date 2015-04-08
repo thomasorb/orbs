@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<steps>
+  <step name='compute_calibration_laser_map' cam='2'>
+    <arg value='2' type='int'></arg>
+    <kwarg name='get_calibration_laser_spectrum' value='True' type='bool'></kwarg>
+    <kwarg name='fast' value='False' type='bool'></kwarg>
+
+  </step>
+</steps>
+

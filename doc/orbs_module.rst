@@ -15,6 +15,24 @@ Orbs class
    :special-members:
    :show-inheritance:
 
+RoadMap class
+-------------
+
+.. autoclass:: orbs.orbs.RoadMap
+   :members:
+   :private-members:
+   :special-members:
+   :show-inheritance:
+
+Step class
+----------
+
+.. autoclass:: orbs.orbs.Step
+   :members:
+   :private-members:
+   :special-members:
+   :show-inheritance:
+
 Performance class
 -----------------
 
