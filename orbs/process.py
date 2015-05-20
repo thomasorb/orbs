@@ -34,7 +34,7 @@ from orb.core import Tools, Cube, ProgressBar, TextColor
 import orb.utils
 import orb.astrometry
 import orb.constants
-from orb.astrometry import Astrometry, Gaussian
+from orb.astrometry import Astrometry, Gaussian, Aligner
 
 import os
 import numpy as np
@@ -3765,23 +3765,6 @@ class InterferogramMerger(Tools):
                 + self._get_basic_frame_header(self.cube_A.dimx,
                                                self.cube_A.dimy))
 
-    
-    def _get_guess_matrix_path(self):
-        """Return path to the guess matrix"""
-        return self._data_path_hdr + "guess_matrix.fits"
-
-    def _get_guess_matrix_header(self):
-        """Return path to the guess matrix"""
-        return (self._get_basic_header('Alignment guess matrix')
-                + self._project_header)
-    
-    def print_alignment_coeffs(self):
-        """Print the alignement coefficients."""
-        self._print_msg("\n> dx : " + str(self.dx) + "\n" +
-                        "> dy : " + str(self.dy) + "\n" +
-                        "> dr : " + str(self.dr) + "\n" +
-                        "> da : " + str(self.da) + "\n" +
-                        "> db : " + str(self.db))
 
     def add_missing_frames(self, step_number):
         """ Add non taken frames at the end of a cube in order to
@@ -3806,16 +3789,14 @@ class InterferogramMerger(Tools):
             f.write(image_list_text)
             f.close
 
-    def find_alignment(self, star_list_path, init_angle, init_dx, init_dy,
-                       fwhm_arc_A, fov_A, full_precision=False,
-                       profile_name='gaussian',
-                       moffat_beta=3.5):
+    def find_alignment(self, star_list_path_A, init_angle, init_dx, init_dy,
+                       fwhm_arc_A, fov_A):
         """
         Return the alignment coefficients to align the cube of the
         camera 2 on the cube of the camera 1
 
-        :param star_list_path: Path to a list of stars
-
+        :param star_list_path_A: Path to a list of star for the camera A
+        
         :param init_angle: Initial rotation angle between images
 
         :param init_dx: Initial shift along x axis between images
@@ -3828,163 +3809,26 @@ class InterferogramMerger(Tools):
         :param fov_A: Field of view of the camera A in arcminutes (given
           along x axis.
 
-        :param full_precision: (Optional) If True tip and tilt angles
-          (da and db) are checked. Note that this can take a lot of
-          time. If False da and db are set to 0 (default False).
-
-        :param profile_name: (Optional) PSF profile to use to fit
-          stars. Can be 'gaussian' or 'moffat' (default
-          'gaussian'). See:
-          :py:meth:`orb.astrometry.Astrometry.fit_stars_in_frame`.
-
-        :param moffat_beta: (Optional) Beta parameter to use for
-          moffat PSF (default 3.5).
-        
-        .. note:: The alignement coefficients are:
-        
-          * dx : shift along x axis in pixels
-          
-          * dy : shift along y axis in pixels
-          
-          * dr : rotation angle between images (the center of rotation
-            is the center of the images of the camera 1) in degrees
-            
-          * da : tip angle between cameras (along x axis) in degrees
-          
-          * db : tilt angle between cameras (along y axis) in degrees
-
-        .. note:: The process tries to find the stars detected in the camera A in the frame of the camera B. It goes through 2 steps:
-
-           1. Rough alignment only looking over dx, dy. dr is kept to
-              its initial value (init_angle), da and db are set to 0.
-
-           2. First optimization pass only looking over dx, dy and
-              dr. da and db are set to 0.
-
-           3. Second optimization pass adding da and db to the
-              parameters. This pass can be removed if full_precision
-              is set to False.
-
-        .. warning:: This alignment process do not work if the initial
-          parameters are too far from the real value. The angle must
-          be known within a few degrees. The shift must be known
-          within 4 % of the frame size (The latter can be changed
-          using the SIZE_COEFF constant)
+        .. seealso:: py:meth:`orb.astrometry.Aligner.compute_alignment_parameters`
         """
-        def _match_stars_in_frame_B(guess, astrom, mean_params_A,
-                                    rc, zoom_factor,
-                                    progress, return_fitted_stars_nb,
-                                    precise_guess, fix_fwhm):
-
-            star_list_A = mean_params_A.get_star_list()
-
-            if guess.shape[0] == 3:
-                [dx, dy, dr] = guess
-                star_list_B = orb.utils.transform_star_position_A_to_B(
-                    np.copy(star_list_A), [dx,dy,dr,0.,0.], rc, zoom_factor)
-            elif guess.shape[0] == 5:
-                [dx, dy, dr, da, db] = guess
-                star_list_B = orb.utils.transform_star_position_A_to_B(
-                    np.copy(star_list_A), [dx,dy,dr,da,db], rc, zoom_factor)
-                
-            astrom.reset_star_list(star_list_B)
-            star_list_B_fit = astrom.fit_stars_in_frame(
-                0, fix_height=False, fix_fwhm=fix_fwhm,
-                no_aperture_photometry=True, estimate_local_noise=True,
-                precise_guess=precise_guess, local_background=True,
-                multi_fit=True, enable_rotation=True)
- 
-            dist_list = list()
-            fitted_stars = 0
-            
-            for istar in range(star_list_B.shape[0]):
-                
-                if star_list_B_fit[istar] is not None:
-                    # FWHM filtering in case FWHM is not fixed (rough alignment)
-                    if ((abs(star_list_B_fit[istar, 'fwhm_arc']
-                           - mean_params_A[istar, 'fwhm_arc'])
-                        < mean_params_A[istar, 'fwhm_arc'] / 2.)
-                        and star_list_B_fit[istar, 'snr'] > 3.):
-                
-                        dist_x = star_list_B_fit[istar, 'dx']
-                        dist_y = star_list_B_fit[istar, 'dy']
-                        
-                        dist = math.sqrt((dist_x)**2. + (dist_y)**2.)
-
-                        dist_err = math.sqrt(
-                            star_list_B_fit[istar, 'x_err']**2.
-                            + star_list_B_fit[istar, 'y_err']**2.)
-
-                        dist += dist_err
-                        
-                        fitted_stars += 1
-                    else:
-                        dist = np.sqrt(2.) * astrom.box_size
-                else:
-                    dist = np.sqrt(2.) * astrom.box_size
-                    
-                dist_list.append(dist)
-                
-            mean_dist = np.mean(np.array(dist_list))
-            
-            if progress is not None:
-                progress.update(
-                    0, "fitted stars : %d%%, mean distance  : %.4f"%(
-                        float(fitted_stars)/float(star_list_A.shape[0])*100.,
-                        mean_dist))
-            
-            if not return_fitted_stars_nb:
-                return mean_dist
-            else:
-                return fitted_stars
-
-
-        SIZE_COEFF = float(self._get_tuning_parameter('SIZE_COEFF', 0.07))
-        # Define the range of pixels around the initial value of shift
-        # where the correct shift parameters must be found.
-
-        ERROR_RATIO = 0.5 # Minimum ratio of fitted stars once the
-                          # first optimization pass has been done. If
-                          # the ratio of fitted stars is less than
-                          # this ratio an error is raised.
-
-        WARNING_RATIO = 1.0 # If there's less than this ratio of
-                            # fitted stars after the first
-                            # optimization pass a warning is printed.
-
-        WARNING_DIST = 1. # Max optimized distance before a warning is raised
-        ERROR_DIST = 2. # Max optimized distance before an error is raised
-        
-        STEP_DEG = 3. # Define the number of steps for the rough guess
-                      # STEP_SIZE = FWHM / STEP_DEG
-        
-        # Size of the box = BOX_SIZE_COEFF * FWHM
-        BOX_SIZE_COEFF = float(self._get_tuning_parameter('BOX_SIZE_COEFF', 7.))
-
         # High pass filtering of the frames
         HPFILTER = int(self._get_tuning_parameter('HPFILTER', 0))
-
-        # hack full precision value
-        full_precision = bool(int(self._get_tuning_parameter(
-            'FULL_PRECISION', full_precision)))
         
-        # if the alignment parameters have been passed in the
-        # arguments they are just returned
         self._print_msg("Computing alignment parameters")
 
         # defining FOV of the camera B
-        ccd_size_A = self.bin_A * self.cube_A.dimx * self.pix_size_A #um
-        ccd_size_B = self.bin_B * self.cube_B.dimx * self.pix_size_B #um
+        ccd_size_A = self.bin_A * self.cube_A.dimx * self.pix_size_A
+        ccd_size_B = self.bin_B * self.cube_B.dimx * self.pix_size_B
         scale = fov_A / ccd_size_A # absolute scale [arcsec/um]
         fov_B = scale * ccd_size_B
-        
+
         fwhm_arc_B = float(fwhm_arc_A)
         self._print_msg("Calculated FOV of the camera B: %f arcmin"%fov_B)
 
         # Printing some information
         self._print_msg("Rotation center: %s"%str(self.rc))
         self._print_msg("Zoom factor: %f"%self.zoom_factor)
-        
+
         # creating deep frames for cube A and B
         frameA = self.cube_A.get_mean_image()
         frameB = self.cube_B.get_mean_image()
@@ -3992,225 +3836,27 @@ class InterferogramMerger(Tools):
         if HPFILTER: # Filter alignment frames
             frameA = orb.utils.high_pass_diff_image_filter(frameA, deg=1)
             frameB = orb.utils.high_pass_diff_image_filter(frameB, deg=1)
-
-        # fit stars to get exact positions on deep frames
-        mean_params_A = Astrometry(
-            frameA, fwhm_arc_A, fov_A, profile_name=profile_name,
-            star_list_path=star_list_path,
-            logfile_name=self._logfile_name,
-            tuning_parameters=self._tuning_parameters,
-            config_file_name=self.config_file_name).fit_stars_in_frame(
-            0, precise_guess=True, multi_fit=True)
         
-        fwhm_arc_A = orb.utils.robust_mean(mean_params_A[:,'fwhm_arc'])
-        fwhm_pix_A = orb.utils.robust_mean(mean_params_A[:,'fwhm_pix'])
-        fwhm_pix_B = (fwhm_pix_A * float(self.pix_size_A) * float(self.bin_A)
-                      / (float(self.pix_size_B) * float(self.bin_B)))
-        self._print_msg(
-            "FWHM of the stars in camera A: %f [in pixels]"%fwhm_pix_A)
-        self._print_msg(
-            "Guessed FWHM of the stars in camera B: %f [in pixels]"%fwhm_pix_B)
-        
-        astrom = Astrometry(
-            frameB, fwhm_arc_B, fov_B, profile_name=profile_name,
-            box_size_coeff=BOX_SIZE_COEFF,
-            logfile_name=self._logfile_name,
+        aligner = Aligner(
+            frameA, frameB, fwhm_arc_A, fov_A, fov_B,
+            self.bin_A, self.bin_B, self.pix_size_A, self.pix_size_B,
+            init_angle, init_dx, init_dy, logfile_name=self._logfile_name,
             tuning_parameters=self._tuning_parameters,
+            project_header=self._project_header, overwrite=self.overwrite,
+            data_prefix=self._data_prefix,
             config_file_name=self.config_file_name)
         
+        result = aligner.compute_alignment_parameters(
+            star_list_path1=star_list_path_A,
+            fwhm_arc=fwhm_arc_A,
+            correct_distorsion=False)
+
+        [self.dx, self.dy, self.dr, self.da, self.db] = result['coeffs']
+        self.rc = result['rc']
+        self.zoom_factor = result['zoom_factor']
+        sip1 = result['sip1']
+        sip2 = result['sip2']
         
-        ## ROUGH ALIGNMENT (only dx and dy)
-        self._print_msg("Rough alignment")
-        
-        # define the ranges in x and y for the rough optimization
-        x_range_len = int(SIZE_COEFF * float(self.cube_B.dimx))
-        y_range_len = int(SIZE_COEFF * float(self.cube_B.dimy))
-        step =  fwhm_pix_B / float(STEP_DEG)
-        if step < 0.3: step = 0.3
-        if step > 1.5: step = 1.5
-        
-        x_range = np.arange(-int(x_range_len/2.), int(x_range_len/2.)+1,
-                            step, dtype=float)
-        y_range = np.arange(-int(y_range_len/2.), int(y_range_len/2.)+1,
-                            step, dtype=float)
-        
-        guess_list = list()
-        guess_matrix = np.empty((len(x_range), len(y_range)), dtype=float)
-        guess_matrix_index_list = list()
-        for idx in range(len(x_range)):
-            for idy in range(len(y_range)):
-                guess_matrix_index_list.append((idx, idy))
-                guess_list.append(np.array([init_dx+x_range[idx],
-                                            init_dy+y_range[idy],
-                                            init_angle]))
-               
-        # Init of the multiprocessing server
-        job_server, ncpus = self._init_pp_server()
-        ncpus_max = ncpus
-
-        mean_dist_list = list()
-        progress = ProgressBar(int(len(guess_list)/ncpus_max))
-
-        for ik in range(0, len(guess_list), ncpus):
-            # no more jobs than frames to compute
-            if (ik + ncpus >= len(guess_list)):
-                ncpus = len(guess_list) - ik
-
-            # find mean distance for each guess
-            jobs = [(ijob, job_server.submit(
-                _match_stars_in_frame_B, 
-                args=(guess_list[ik+ijob], astrom,
-                      mean_params_A, self.rc, self.zoom_factor,
-                      None, False, False, True),
-                modules=("numpy as np",  
-                         "import math",
-                         "import orb.utils"))) 
-                    for ijob in range(ncpus)]
-
-            for ijob, job in jobs:
-                mean_dist_list.append((job(), guess_list[ik+ijob]))
-                guess_matrix[
-                    guess_matrix_index_list[ik+ijob][0],
-                    guess_matrix_index_list[ik+ijob][1]] = mean_dist_list[-1][0]
-            
-            progress.update(int(ik/ncpus_max), info="guess : %d/%d"%(
-                ik,(int(len(x_range)*len(y_range)))))
-            
-        self._close_pp_server(job_server)
-        progress.end()
-
-        # Guess matrix is smoothed and its minimum value is taken as
-        # the best estimate
-        smooth_deg = int(STEP_DEG)
-        guess_matrix = orb.utils.low_pass_image_filter(guess_matrix, smooth_deg)
-        
-        # Save guess matrix
-        self.write_fits(self._get_guess_matrix_path(),
-                        guess_matrix,
-                        fits_header=self._get_guess_matrix_header(),
-                        overwrite=self.overwrite)
-
-        guess_matrix[np.nonzero(np.isnan(guess_matrix))] = np.median(
-            guess_matrix)
-        
-        rough_dx, rough_dy =  np.unravel_index(
-            np.argmin(guess_matrix), guess_matrix.shape)
-        
-        [self.dx, self.dy, self.dr] = mean_dist_list[
-           np.ravel_multi_index((rough_dx, rough_dy), guess_matrix.shape)][1]
-        self.da = 0.
-        self.db = 0.
-
-        self._print_msg("Rough alignment parameters:") 
-        self.print_alignment_coeffs()
-        
-        ## FIRST OPTIMIZATION PASS (dx, dy, dr)
-        self._print_msg("First optimization pass")
-        guess = [self.dx, self.dy, self.dr]
-        progress = ProgressBar(0)
-            
-        fmin_output = (
-            optimize.fmin_powell(_match_stars_in_frame_B, guess, 
-                                 args=(astrom, mean_params_A,
-                                       self.rc,
-                                       self.zoom_factor,
-                                       progress, False, False, True),
-                                 ftol=1e-2, xtol=1e-2, disp=False,
-                                 full_output=True))
-        progress.end()
-        
-        [self.dx, self.dy, self.dr] = fmin_output[0]
-        self._print_msg("First optimization pass: alignment parameters:")
-        self.print_alignment_coeffs()
-
-        # CHECK minimum of the optimisation
-        min_dist_found = fmin_output[1]
-        if min_dist_found < WARNING_DIST:
-            self._print_msg("Mean position difference: %f pixels"%min_dist_found)
-        elif min_dist_found < ERROR_DIST:
-            self._print_warning("Mean position difference is bad (%f pixels), please check alignment parameters."%min_dist_found)
-        else:
-            self._print_error("Mean position difference is too bad (%f pixels), please check alignment parameters."%min_dist_found)
-            
-        # CHECK number of stars :
-        # If less than 50 % (ERROR_RATIO) of the stars can be fitted
-        # with the found alignement parameters the parameters are
-        # certainly wrong and the program stops on an error. If less
-        # than 100 % (WARNING_RATIO) but more than 50 % of the stars can
-        # be fitted only a warning is printed.
-        
-        fitted_star_nb = _match_stars_in_frame_B(
-            np.array([self.dx, self.dy, self.dr]),
-            astrom, mean_params_A,
-            self.rc, self.zoom_factor,
-            None, True, False, True)
-        
-        if ((fitted_star_nb / float(astrom.star_list.shape[0]))
-            < ERROR_RATIO):
-            self._print_error("Not enough fitted stars in both cubes (%d%%) for the first optimization pass. Alignment parameters are certainly wrong."%int(fitted_star_nb / float(astrom.star_list.shape[0]) * 100.))
-            
-        elif ((fitted_star_nb / float(astrom.star_list.shape[0]))
-              < WARNING_RATIO):
-            self._print_warning("Poor ratio of fitted stars in both cubes (%d%%) for the first optimization pass. Check alignment parameters."%int(fitted_star_nb / float(astrom.star_list.shape[0]) * 100.))
-                
-        ## SECOND OPTIMIZATION PASS (dx, dy,dr, da, db)
-        self._print_msg("Second optimization pass")
-        if full_precision:
-            guess = [self.dx, self.dy, self.dr, 0.,0.]
-        else:
-            guess = [self.dx, self.dy, self.dr]
-        progress = ProgressBar(0)
-        fmin_output = (
-            optimize.fmin_powell(_match_stars_in_frame_B, guess, 
-                                 args=(astrom, mean_params_A,
-                                       self.rc,
-                                       self.zoom_factor,
-                                       progress, False, True, True),
-                                 ftol=1e-3, xtol=1e-3, disp=False,
-                                 full_output=True))
-        progress.end()
-
-        if full_precision:
-            [self.dx, self.dy, self.dr, self.da, self.db] = fmin_output[0]
-        else:
-            [self.dx, self.dy, self.dr] = fmin_output[0]
-            
-        self._print_msg("Second optimization pass: alignment parameters:")
-        self.print_alignment_coeffs()
-
-        # CHECK minimum of the optimisation
-        min_dist_found = fmin_output[1]
-        if min_dist_found < WARNING_DIST:
-            self._print_msg("Mean position difference: %f pixels"%min_dist_found)
-        elif min_dist_found < ERROR_DIST:
-            self._print_warning("Mean position difference is bad (%f pixels), please check alignment parameters."%min_dist_found)
-        else:
-            self._print_error("Mean position difference is too bad (%f pixels), please check alignment parameters."%min_dist_found)
-
-        # CHECK second optimization pass :
-        # If less than 50 % (ERROR_RATIO) of the stars can be fitted
-        # with the found alignement parameters the parameters are
-        # certainly wrong and the program stops on an error. If less
-        # than 80 % (WARNING_RATIO) but more than 50 % of the stars can
-        # be fitted only a warning is printed.
-
-        fitted_star_nb = _match_stars_in_frame_B(
-            np.array([self.dx, self.dy, self.dr, self.da, self.db]),
-            astrom, mean_params_A, 
-            self.rc, self.zoom_factor,
-            None, True, True, True)
-
-        if ((fitted_star_nb / float(astrom.star_list.shape[0]))
-            < ERROR_RATIO):
-            self._print_error("Not enough fitted stars in both cubes (%d%%) for the second optimization pass. Alignment parameters are certainly wrong."%int(fitted_star_nb / float(astrom.star_list.shape[0]) * 100.))
-
-        elif ((fitted_star_nb / float(astrom.star_list.shape[0]))
-            < WARNING_RATIO):
-            self._print_warning("Poor ratio of fitted stars in both cubes (%d%%) for the second optimization pass. Check alignment parameters."%int(fitted_star_nb / float(astrom.star_list.shape[0]) * 100.))
-
-        self._print_msg(
-            "Final number of fitted stars in both cubes : %d %%"%int(
-                fitted_star_nb / float(astrom.star_list.shape[0]) * 100.))
 
         return [[self.dx, self.dy, self.dr, self.da, self.db], self.rc, 
                 self.zoom_factor]
@@ -6162,7 +5808,6 @@ class Spectrum(Cube):
 
 
     def _update_hdr_wcs(self, hdr, wcs_hdr):
-        
         """Update a header with WCS parameters
 
         :param hdr: A pyfits.Header() instance

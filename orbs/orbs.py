@@ -1032,7 +1032,7 @@ class Orbs(Tools):
                     target_x, target_y,
                     init_dx, init_dy,
                     self.config["INIT_ANGLE"],
-                    0., 0., xrc, yrc, zoom)
+                    0., 0., xrc, yrc, zoom, zoom)
                
             else:
                 target_xy = [target_x, target_y]
@@ -1212,7 +1212,8 @@ class Orbs(Tools):
             if self.target == 'laser': cam = 1
             else: cam = 0
         
-        if self.target == 'object': self.export_calibrated_spectrum_cube(cam)
+        if self.target == 'object' or self.target == 'nostar':
+            self.export_calibrated_spectrum_cube(cam)
         if self.target == 'flat': self.export_flat_phase_map(cam)
         if self.target == 'laser': self.export_calibration_laser_map(cam)
         if self.target == 'standard': self.export_standard_spectrum(
@@ -1505,17 +1506,12 @@ class Orbs(Tools):
         del cube, perf
         return perf_stats
 
-    def transform_cube_B(self, full_precision=False, interp_order=1,
-                         no_star=False):
+    def transform_cube_B(self, interp_order=1, no_star=False):
         
         """Calculate the alignment parameters of the camera 2
         relatively to the first one. Transform the images of the
         camera 2 using linear interpolation by default.
-            
-        :param full_precision: (Optional) If True tip and tilt angles
-          (da and db) are checked. Note that this can take a lot of
-          time. If False da and db are set to 0 (default False).
-
+    
         :param interp_order: (Optional) Interpolation order (Default 1.).
 
         :param no_star: (Optional) If the cube does not contain any star, the
@@ -1585,10 +1581,7 @@ class Orbs(Tools):
             cube.find_alignment(
                 star_list_path_1,
                 self.config["INIT_ANGLE"], init_dx, init_dy,
-                mean_fwhm_1_arc, self.config["FIELD_OF_VIEW"],
-                full_precision=full_precision,
-                profile_name='gaussian', # Better for alignement tasks
-                moffat_beta=self.config["MOFFAT_BETA"])
+                mean_fwhm_1_arc, self.config["FIELD_OF_VIEW"])
         else:
             cube.print_alignment_coeffs()
             self._print_msg("Alignment parameters: ")
