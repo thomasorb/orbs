@@ -365,7 +365,7 @@ class Orbs(Tools):
           
         * wavenumber: WAVENUMBER
 
-        * wavelength_calibration: WAVE_CALIB
+        * spectral_calibration: WAVE_CALIB
 
         * prebinning: PREBINNING
 
@@ -555,7 +555,7 @@ class Orbs(Tools):
 
         # record some default options
         self.options["try_catalogue"] = False
-        self.options['wavelength_calibration'] = True
+        self.options['spectral_calibration'] = True
         self.options['wavenumber'] = False
         self.options['no_sky'] = False
         
@@ -589,7 +589,7 @@ class Orbs(Tools):
         store_option_parameter('calibration_laser_map_path', 'CALIBMAP', str)
         store_option_parameter('try_catalogue', 'TRYCAT', bool)
         store_option_parameter('wavenumber', 'WAVENUMBER', bool)
-        store_option_parameter('wavelength_calibration', 'WAVE_CALIB', bool)
+        store_option_parameter('spectral_calibration', 'WAVE_CALIB', bool)
         store_option_parameter('no_sky', 'NOSKY', bool)
         store_option_parameter('prebinning', 'PREBINNING', int)
         # recompute the real data binning
@@ -906,7 +906,7 @@ class Orbs(Tools):
     
     def _get_calibrated_spectrum_cube_path(self, camera_number, apod,
                                            wavenumber=False,
-                                           wavelength_calibration=True):
+                                           spectral_calibration=True):
         """Return path to the calibrated spectrum cube resulting of the
         reduction process.
         
@@ -916,13 +916,16 @@ class Orbs(Tools):
         :param apod: Apodization function name to be added to the
           path.
 
-        :param wavenumber: If True the spectral axis of the cube is
-          considered to be a wavenumber axis. If False it is
+        :param wavenumber: (Optional) If True the spectral axis of the
+          cube is considered to be a wavenumber axis. If False it is
           considered to be a wavelength axis (default False).
+
+        :param spectral_calibration: (Optional) If True the cube is
+          calibrated in wavelength/wavenumber (default True).
         """
         if wavenumber: wave_type = 'cm1'
         else: wave_type = 'nm'
-        if wavelength_calibration: calib = ''
+        if spectral_calibration: calib = ''
         else: calib = '.uncalib'
             
         return (self._get_root_data_path_hdr(camera_number)
@@ -1956,13 +1959,22 @@ class Orbs(Tools):
           that the interferogram could not be corrected for sky
           transmission variations. The interferogram cube used will
           thus be the uncorrected one (default False).
+
+        .. warning:: No calibration of any sort is made (e.g. no
+          wavelength calibration) if the wanted cube is a spectral
+          cube. This way, if an output in wavenumber is desired no
+          interpolation has to be done. In the case of a phase cube
+          the wavelength calibration is done.
       
         .. seealso:: :meth:`process.Interferogram.compute_spectrum`
         .. seealso:: :meth:`orb.utils.transform_interferogram`
         """
         # get calibration laser map path
-        calibration_laser_map_path = self._get_calibration_laser_map(
-            camera_number)
+        if phase_cube:
+            calibration_laser_map_path = self._get_calibration_laser_map(
+                camera_number)
+        else:
+            calibration_laser_map_path = None
       
         ## Load phase maps and create phase coefficients vector
         phase_map_correction = False
@@ -2096,12 +2108,6 @@ class Orbs(Tools):
         if not phase_cube:
             if 'wavenumber' in self.options:
                 wavenumber = self.options['wavenumber']
-
-        # wavelength calibration option
-        if not phase_cube:
-            if 'wavelength_calibration' in self.options:
-                if not self.options['wavelength_calibration']:
-                    calibration_laser_map_path = None
                 
         ## Compute phase coeffs vector
         if (phase_coeffs is None
@@ -2352,22 +2358,20 @@ class Orbs(Tools):
             deep_frame_path = self.indexer.get_path('deep_frame', camera_number)
         
         # check wavelength calibration
-        if not self.options['wavelength_calibration']:
-            calibration_laser_map_path = self._get_calibration_laser_map(
-                camera_number)
-        else:
-            calibration_laser_map_path = None
+        calibration_laser_map_path = self._get_calibration_laser_map(
+            camera_number)
             
         # Calibration
         spectrum.calibrate(
             filter_path, step, order,
+            calibration_laser_map_path,
+            self.config['CALIB_NM_LASER'],
             correct_wcs=correct_wcs,
             flux_calibration_vector=flux_calibration_vector,
             deep_frame_path=deep_frame_path,
             wavenumber=self.options['wavenumber'],
-            calibration_laser_map_path=calibration_laser_map_path,
-            nm_laser=self.config['CALIB_NM_LASER'],
-            standard_header = self._get_calibration_standard_fits_header())
+            standard_header = self._get_calibration_standard_fits_header(),
+            spectral_calibration=self.options['spectral_calibration'])
         
         perf_stats = perf.print_stats()
         del perf, spectrum
@@ -2648,7 +2652,8 @@ class Orbs(Tools):
         apod = spectrum_header['APODIZ']
         spectrum_path = self._get_calibrated_spectrum_cube_path(
             camera_number, apod, wavenumber=wavenumber,
-            wavelength_calibration=self.options['wavelength_calibration'])
+            spectral_calibration=self.options['spectral_calibration'])
+        
         spectrum.export(spectrum_path, fits_header=spectrum_header,
                         overwrite=self.overwrite)
 

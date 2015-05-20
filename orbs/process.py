@@ -5831,11 +5831,11 @@ class Spectrum(Cube):
         
 
     def calibrate(self, filter_file_path, step, order,
+                  calibration_laser_map_path, nm_laser,
                   stars_cube=False, correct_wcs=None,
                   flux_calibration_vector=None,
                   deep_frame_path=None, mean_flux=True, wavenumber=False,
-                  calibration_laser_map_path=None, nm_laser=None,
-                  standard_header=None):
+                  standard_header=None, spectral_calibration=True):
         
         """Calibrate spectrum cube: correct for filter transmission
         function, correct WCS parameters and flux calibration.
@@ -5846,6 +5846,18 @@ class Spectrum(Cube):
         :param step: Step size of the interferogram in nm.
         
         :param order: Folding order of the interferogram.
+
+        :param calibration_laser_map_path: Path to the calibration
+          laser map.
+
+        :param nm_laser: Calibration laser wavelength.
+
+        :param spectral_calibration (Optional): If True, the ouput
+          spectral cube will be calibrated in
+          wavelength/wavenumber. Note that in this case the spectrum
+          must be interpolated. Else no spectral calibration is done:
+          the channel position of a given wavelength/wavenumber
+          changes with its position in the field (default True).
           
         :param stars_cube: (Optional) True if the spectral cube is a
           star cube (default False).
@@ -5876,16 +5888,7 @@ class Spectrum(Cube):
 
         :param wavenumber: (Optional) If True, the spectrum is
           considered to be in wavenumber. If False it is considered to
-          be in wavelength (default False).
-
-        :param calibration_laser_map_path: (Optional) If not None the
-          input spectrum is considered as uncalibrated for
-          wavelength. The filter correction is thus applied taking
-          into account the calibration laser map (default None).
-
-        :param nm_laser: (Optional) Must be set if a calibration laser
-          map is given. This option has no use in the other case and
-          can be set to None.
+          be in wavelength (default False).    
 
         :param standard_header: (Optional) Header for the standard
           star used for flux calibration. This header part will be
@@ -5917,87 +5920,104 @@ class Spectrum(Cube):
                                      flux_calibration_vector,
                                      scale_factor,
                                      calibration_laser_col, nm_laser,
-                                     step, order, wavenumber):
+                                     step, order, wavenumber,
+                                     spectral_calibration):
             """
-            .. note:: This function just makes a division by the
-            filter function: the filter function must have been normalized, and
-            corrected.
+            
             """
             # rescaling:
             if scale_factor is not None:
                 spectrum_col *= scale_factor
 
-            # filter correction
-            # if the cube is wavelength calibrated
-            if np.all(calibration_laser_col / nm_laser == 1.):
-                spectrum_col[:,min_index:max_index] /= (
-                    filter_function[min_index:max_index])
-                spectrum_col[:,:min_index] = np.nan
-                spectrum_col[:,max_index:] = np.nan
+            
+            if wavenumber:
+                cm1_axis = orb.utils.create_cm1_axis(spectrum_col.shape[1],
+                                                     step, order, corr=1.)
+                filter_min_nm = cm1_axis[min_index]
+                filter_max_nm = cm1_axis[max_index]
             else:
+                nm_axis = orb.utils.create_nm_axis(spectrum_col.shape[1],
+                                                   step, order)
+                filter_min_nm = nm_axis[min_index]
+                filter_max_nm = nm_axis[max_index]
+
+            for icol in range(spectrum_col.shape[0]):
+
+                corr = calibration_laser_col[icol]/nm_laser
+
                 if wavenumber:
-                    cm1_axis = orb.utils.create_cm1_axis(spectrum_col.shape[1],
-                                                         step, order, corr=1.)
-                    filter_min_nm = cm1_axis[min_index]
-                    filter_max_nm = cm1_axis[max_index]
-                else:
-                    # filter function is projected onto an irregular nm axis
-                    nm_axis = orb.utils.create_nm_axis(spectrum_col.shape[1],
-                                                       step, order)
-                    filter_min_nm = nm_axis[min_index]
-                    filter_max_nm = nm_axis[max_index]
-                
-                for icol in range(spectrum_col.shape[0]):
-                    
-                    corr = calibration_laser_col[icol]/nm_laser
-                    
-                    if wavenumber:
-                        cm1_axis_corr = orb.utils.create_cm1_axis(
-                            spectrum_col.shape[1], step, order, corr=corr)
-                        [imin_index, imax_index] = orb.utils.nm2pix(
+                    cm1_axis_corr = orb.utils.create_cm1_axis(
+                        spectrum_col.shape[1], step, order, corr=corr)
+
+                    # filter function and spectrum are projected
+                    if spectral_calibration: # spectrum proj
+                        [imin_index, imax_index] = [min_index, max_index]
+                        ifilter = filter_function
+                        spectrum_col[icol,:] = orb.utils.interpolate_axis(
+                            spectrum_col[icol,:], cm1_axis, 1,
+                            old_axis=cm1_axis_corr) 
+                    else: # filter proj
+                        [imin_index, imax_index] = orb.utils.cm12pix(
                             cm1_axis_corr, [filter_min_nm, filter_max_nm])
                         ifilter = orb.utils.interpolate_axis(
-                            filter_function, cm1_axis_corr, 1, old_axis=cm1_axis)
-                    
-                        imin_index = int(imin_index)
-                        imax_index = int(imax_index)
-                        spectrum_col[icol, imin_index:imax_index] /= (
-                            ifilter[imin_index:imax_index])
-                        spectrum_col[icol,:imin_index] = np.nan
-                        spectrum_col[icol,imax_index:] = np.nan
-                    
-                    else:
-                        # note: too much interpolations are done here, this
-                        # could be reduced
-                        nm_axis_ireg_corr = orb.utils.create_nm_axis_ireg(
-                            spectrum_col.shape[1], step, order, corr=corr)
-                        nm_axis_ireg = orb.utils.create_nm_axis_ireg(
-                            spectrum_col.shape[1], step, order, corr=1.)
-                        # both filter and spectrum are interpolated to
-                        # a common nm iregular axis
-                        ifilter = orb.utils.interpolate_axis(
-                            filter_function, nm_axis_ireg_corr, 1,
-                            old_axis=nm_axis)
-                        spectrum_col[icol, :] = orb.utils.interpolate_axis(
-                            spectrum_col[icol, :], nm_axis_ireg, 5,
-                            old_axis=nm_axis)
+                            filter_function, cm1_axis_corr, 1,
+                            old_axis=cm1_axis) 
 
+                    imin_index = int(imin_index)
+                    imax_index = int(imax_index)
+                    spectrum_col[icol, imin_index:imax_index] /= (
+                        ifilter[imin_index:imax_index])
+                    spectrum_col[icol,:imin_index] = np.nan
+                    spectrum_col[icol,imax_index:] = np.nan
+
+                else:
+                    nm_axis_corr = orb.utils.create_nm_axis(
+                        spectrum_col.shape[1], step, order, corr=corr)
+                    # filter function and spectrum are projected
+                    if spectral_calibration: # spectrum proj
+                        [imin_index, imax_index] = [min_index, max_index]
+                        ifilter = filter_function
+                        spectrum_col[icol,:] = orb.utils.interpolate_axis(
+                            spectrum_col[icol,:], nm_axis, 1,
+                            old_axis=nm_axis_corr) 
+                    else: # filter proj
                         [imin_index, imax_index] = orb.utils.nm2pix(
-                            nm_axis_ireg_corr, [filter_min_nm, filter_max_nm])
-                        
-                        imin_index = int(imin_index)
-                        imax_index = int(imax_index)
-                        spectrum_col[icol, imin_index:imax_index] /= (
-                            ifilter[imin_index:imax_index])
-                        spectrum_col[icol,:imin_index] = np.nan
-                        spectrum_col[icol,imax_index:] = np.nan
+                            nm_axis_corr, [filter_min_nm, filter_max_nm])
+                        ifilter = orb.utils.interpolate_axis(
+                            filter_function, nm_axis_corr, 1,
+                            old_axis=nm_axis)
 
-                        # once the spectrum has been divided by the
-                        # filter it is interpolated back to its
-                        # original axis
-                        spectrum_col[icol, :] = orb.utils.interpolate_axis(
-                            spectrum_col[icol, :], nm_axis, 5,
-                            old_axis=nm_axis_ireg)
+                    imin_index = int(imin_index)
+                    imax_index = int(imax_index)
+                    spectrum_col[icol, imin_index:imax_index] /= (
+                        ifilter[imin_index:imax_index])
+                    spectrum_col[icol,:imin_index] = np.nan
+                    spectrum_col[icol,imax_index:] = np.nan
+
+                    #####################################
+                    ## ifilter = orb.utils.interpolate_axis(
+                    ##     filter_function, nm_axis_ireg_corr, 1,
+                    ##     old_axis=nm_axis)
+                    ## spectrum_col[icol, :] = orb.utils.interpolate_axis(
+                    ##     spectrum_col[icol, :], nm_axis_ireg, 5,
+                    ##     old_axis=nm_axis)
+
+                    ## [imin_index, imax_index] = orb.utils.nm2pix(
+                    ##     nm_axis_ireg_corr, [filter_min_nm, filter_max_nm])
+
+                    ## imin_index = int(imin_index)
+                    ## imax_index = int(imax_index)
+                    ## spectrum_col[icol, imin_index:imax_index] /= (
+                    ##     ifilter[imin_index:imax_index])
+                    ## spectrum_col[icol,:imin_index] = np.nan
+                    ## spectrum_col[icol,imax_index:] = np.nan
+
+                    ## # once the spectrum has been divided by the
+                    ## # filter it is interpolated back to its
+                    ## # original axis
+                    ## spectrum_col[icol, :] = orb.utils.interpolate_axis(
+                    ##     spectrum_col[icol, :], nm_axis, 5,
+                    ##     old_axis=nm_axis_ireg)
                         
 
             # flux calibration
@@ -6033,29 +6053,21 @@ class Spectrum(Cube):
             apodization_function = 'None'
 
         # get calibration laser map
-        if calibration_laser_map_path is not None:
-            calibration_laser_map = self.read_fits(calibration_laser_map_path)
-            if (calibration_laser_map.shape[0] != self.dimx):
-                calibration_laser_map = orb.utils.interpolate_map(
-                    calibration_laser_map,
-                    self.dimx, self.dimy)
-            if nm_laser is None:
-                self._print_error('If a calibration laser map is given nm_laser must also be set !')
-        else:
-            calibration_laser_map = np.ones(
-                (self.dimx, self.dimy), dtype=float)
-            nm_laser = 1.
+        calibration_laser_map = self.read_fits(calibration_laser_map_path)
+        if (calibration_laser_map.shape[0] != self.dimx):
+            calibration_laser_map = orb.utils.interpolate_map(
+                calibration_laser_map,
+                self.dimx, self.dimy)
             
-        
         # Get filter parameters
         filter_function, filter_min, filter_max = orb.utils.get_filter_function(
             filter_file_path, step, order, self.dimz, wavenumber=wavenumber)
 
         if filter_min < 0: filter_min = 0
         if filter_max > self.dimz: filter_max = self.dimz
-
+    
         if flux_calibration_vector is not None:
-            if mean_flux == True:
+            if mean_flux:
                 filter_function[filter_min:filter_max] /= orb.utils.robust_mean(
                     filter_function[filter_min:filter_max])
             else:
@@ -6063,6 +6075,11 @@ class Spectrum(Cube):
         
         self._print_msg("Calibrating spectra", color=True)
         self._print_msg("Filter correction")
+
+        if spectral_calibration:
+            self._print_msg("Spectral calibration")
+        else:
+            self._print_warning("No spectral calibration")
         
         if flux_calibration_vector is not None:
             self._print_msg("Flux calibration")
@@ -6132,7 +6149,8 @@ class Spectrum(Cube):
                         flux_calibration_vector,
                         scale_factor, 
                         iquad_calibration_laser_map[ii+ijob,:],
-                        nm_laser, step, order, wavenumber),
+                        nm_laser, step, order, wavenumber,
+                        spectral_calibration),
                     modules=("numpy as np", "import orb.utils"))) 
                         for ijob in range(ncpus)]
 

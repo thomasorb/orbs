@@ -1,3 +1,4 @@
+
 Changelog
 #########
 
@@ -943,3 +944,28 @@ Miscellaneous
   correction of the transmission vector, in the case when only one
   camera is reduced, has been enhanced (the transmission near ZPD
   cannot be retrieved and must be guessed).
+
+3.8.2
+=====
+
+Aligner
+-------
+
+:py:class:`orb.astrometry.Aligner` has been created in ORB to handle
+alignement between frames. The whole alignment procedure has been
+updated and is now much faster and robust. More details on the
+alignment procedure can be found in ORB documentation.
+
+
+3.8.3
+=====
+
+
+Spectral calibration
+--------------------
+
+Spectral calibration is now done at the calibration step, see:
+:py:meth:`orbs.orbs.Orbs.calibrate_spectrum` (before this was done
+during the FFT computation).
+
+
