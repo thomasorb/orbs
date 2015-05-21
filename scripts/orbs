@@ -20,17 +20,15 @@
 ## along with ORBS.  If not, see <http://www.gnu.org/licenses/>.
 
 ####################################################
-############ ORBS reduction script #################
+############ ORBS Command Line #####################
 ####################################################
 
-# Note that this script is aimed to run the whole reduction
-# process with the options used by default. 
-# To have more control on each function please use the file
-# "scripts/example_script.py"
+# This script is aimed to run the whole reduction
+# process.
 
 # To run this script simply use the following command :
-# $ ./orbs option_file.opt
-# Remember : for any help please refer to the file "Orbs/orbs.py"
+# $ ./orbs option_file.opt start
+# Remember : for any help please refer to the documentation
 
 import sys, os, time
 import argparse
@@ -358,8 +356,8 @@ def clean(args):
 def start(args, resume=False):
     """Start reduction operation
 
-    :param args: Namespace object containing the passed argments returned by the
-    function ArgParse.parse_args().
+    :param args: Namespace object containing the passed argments
+      returned by the function ArgParse.parse_args().
     """
     
     start_time = time.time()
@@ -590,7 +588,7 @@ if __name__ == "__main__":
 
     parser.add_argument('--mode', dest='mode', choices=['spiomm', 'sitelle'],
                         action='store', default='spiomm',
-                        help="Reduction mode. Force the use of the reduction file of a particular instrument. The mode is set to 'spiomm' by default.")
+                        help="Reduction mode. Force the use of the reduction file of a particular instrument. Mode is set to 'spiomm' by default.")
     
     parser.add_argument('--noprint', dest='noprint', action='store_true',
                         default=False,

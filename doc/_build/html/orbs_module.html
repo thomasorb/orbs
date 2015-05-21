@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Orbs module &mdash; Orbs 3.8.2 documentation</title>
+    <title>Orbs module &mdash; Orbs 3.8.3.1 documentation</title>
     
     <link rel="stylesheet" href="_static/sphinxdoc.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -14,7 +14,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
-        VERSION:     '3.8.2',
+        VERSION:     '3.8.3.1',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -25,7 +25,7 @@
     <script type="text/javascript" src="_static/doctools.js"></script>
     <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="shortcut icon" href="_static/logo.ico"/>
-    <link rel="top" title="Orbs 3.8.2 documentation" href="index.html" />
+    <link rel="top" title="Orbs 3.8.3.1 documentation" href="index.html" />
     <link rel="next" title="Process module" href="process_module.html" />
     <link rel="prev" title="Quick start Guide" href="quick_start.html" /> 
   </head>
@@ -45,7 +45,7 @@
         <li class="right" >
           <a href="quick_start.html" title="Quick start Guide"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">Orbs 3.8.2 documentation</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="index.html">Orbs 3.8.3.1 documentation</a> &raquo;</li> 
       </ul>
     </div>
       <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
@@ -286,7 +286,7 @@ paths). This mode is faster but less safe.</li>
 
 <dl class="method">
 <dt id="orbs.orbs.Orbs._get_calibrated_spectrum_cube_path">
-<code class="descname">_get_calibrated_spectrum_cube_path</code><span class="sig-paren">(</span><em>camera_number</em>, <em>apod</em>, <em>wavenumber=False</em>, <em>wavelength_calibration=True</em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.orbs.Orbs._get_calibrated_spectrum_cube_path" title="Permalink to this definition">¶</a></dt>
+<code class="descname">_get_calibrated_spectrum_cube_path</code><span class="sig-paren">(</span><em>camera_number</em>, <em>apod</em>, <em>wavenumber=False</em>, <em>spectral_calibration=True</em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.orbs.Orbs._get_calibrated_spectrum_cube_path" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return path to the calibrated spectrum cube resulting of the
 reduction process.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -298,9 +298,11 @@ reduction process.</p>
 merged data).</li>
 <li><strong>apod</strong> &#8211; Apodization function name to be added to the
 path.</li>
-<li><strong>wavenumber</strong> &#8211; If True the spectral axis of the cube is
-considered to be a wavenumber axis. If False it is
+<li><strong>wavenumber</strong> &#8211; (Optional) If True the spectral axis of the
+cube is considered to be a wavenumber axis. If False it is
 considered to be a wavelength axis (default False).</li>
+<li><strong>spectral_calibration</strong> &#8211; (Optional) If True the cube is
+calibrated in wavelength/wavenumber (default True).</li>
 </ul>
 </td>
 </tr>
@@ -801,6 +803,14 @@ thus be the uncorrected one (default False).</li>
 </tr>
 </tbody>
 </table>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p class="last">No calibration of any sort is made (e.g. no
+wavelength calibration) if the wanted cube is a spectral
+cube. This way, if an output in wavenumber is desired no
+interpolation has to be done. In the case of a phase cube
+the wavelength calibration is done.</p>
+</div>
 <div class="admonition seealso">
 <p class="first admonition-title">See also</p>
 <p class="last"><a class="reference internal" href="process_module.html#process.Interferogram.compute_spectrum" title="process.Interferogram.compute_spectrum"><code class="xref py py-meth docutils literal"><span class="pre">process.Interferogram.compute_spectrum()</span></code></a></p>
@@ -1234,7 +1244,7 @@ others created during initialization needed by processing classes.</p>
 <li>calibration_laser_map_path: CALIBMAP</li>
 <li>try_catalogue: TRYCAT</li>
 <li>wavenumber: WAVENUMBER</li>
-<li>wavelength_calibration: WAVE_CALIB</li>
+<li>spectral_calibration: WAVE_CALIB</li>
 <li>prebinning: PREBINNING</li>
 <li>no_sky: NOSKY</li>
 </ul>
@@ -1333,7 +1343,7 @@ transmission. Default True.</li>
 
 <dl class="method">
 <dt id="orbs.orbs.Orbs.transform_cube_B">
-<code class="descname">transform_cube_B</code><span class="sig-paren">(</span><em>full_precision=False</em>, <em>interp_order=1</em>, <em>no_star=False</em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.orbs.Orbs.transform_cube_B" title="Permalink to this definition">¶</a></dt>
+<code class="descname">transform_cube_B</code><span class="sig-paren">(</span><em>interp_order=1</em>, <em>no_star=False</em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.orbs.Orbs.transform_cube_B" title="Permalink to this definition">¶</a></dt>
 <dd><p>Calculate the alignment parameters of the camera 2
 relatively to the first one. Transform the images of the
 camera 2 using linear interpolation by default.</p>
@@ -1342,9 +1352,6 @@ camera 2 using linear interpolation by default.</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>full_precision</strong> &#8211; (Optional) If True tip and tilt angles
-(da and db) are checked. Note that this can take a lot of
-time. If False da and db are set to 0 (default False).</li>
 <li><strong>interp_order</strong> &#8211; (Optional) Interpolation order (Default 1.).</li>
 <li><strong>no_star</strong> &#8211; (Optional) If the cube does not contain any star, the
 transformation is made using the default alignment
@@ -1656,7 +1663,7 @@ run this function for a single reduction step.</p>
         <li class="right" >
           <a href="quick_start.html" title="Quick start Guide"
              >previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">Orbs 3.8.2 documentation</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="index.html">Orbs 3.8.3.1 documentation</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">

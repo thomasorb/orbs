@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Process module &mdash; Orbs 3.8.2 documentation</title>
+    <title>Process module &mdash; Orbs 3.8.3.1 documentation</title>
     
     <link rel="stylesheet" href="_static/sphinxdoc.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -14,7 +14,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
-        VERSION:     '3.8.2',
+        VERSION:     '3.8.3.1',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -25,7 +25,7 @@
     <script type="text/javascript" src="_static/doctools.js"></script>
     <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="shortcut icon" href="_static/logo.ico"/>
-    <link rel="top" title="Orbs 3.8.2 documentation" href="index.html" />
+    <link rel="top" title="Orbs 3.8.3.1 documentation" href="index.html" />
     <link rel="next" title="Changelog" href="changelog.html" />
     <link rel="prev" title="Orbs module" href="orbs_module.html" /> 
   </head>
@@ -45,7 +45,7 @@
         <li class="right" >
           <a href="orbs_module.html" title="Orbs module"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">Orbs 3.8.2 documentation</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="index.html">Orbs 3.8.3.1 documentation</a> &raquo;</li> 
       </ul>
     </div>
       <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
@@ -1467,18 +1467,6 @@ the extracted stars</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="process.InterferogramMerger._get_guess_matrix_header">
-<code class="descname">_get_guess_matrix_header</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#process.InterferogramMerger._get_guess_matrix_header" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return path to the guess matrix</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.InterferogramMerger._get_guess_matrix_path">
-<code class="descname">_get_guess_matrix_path</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#process.InterferogramMerger._get_guess_matrix_path" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return path to the guess matrix</p>
-</dd></dl>
-
-<dl class="method">
 <dt id="process.InterferogramMerger._get_merged_interfero_frame_header">
 <code class="descname">_get_merged_interfero_frame_header</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#process.InterferogramMerger._get_merged_interfero_frame_header" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return the header of the merged interferogram frames.</p>
@@ -1755,7 +1743,7 @@ saturation level are removed from the fit (default None).</li>
 
 <dl class="method">
 <dt id="process.InterferogramMerger.find_alignment">
-<code class="descname">find_alignment</code><span class="sig-paren">(</span><em>star_list_path</em>, <em>init_angle</em>, <em>init_dx</em>, <em>init_dy</em>, <em>fwhm_arc_A</em>, <em>fov_A</em>, <em>full_precision=False</em>, <em>profile_name='gaussian'</em>, <em>moffat_beta=3.5</em><span class="sig-paren">)</span><a class="headerlink" href="#process.InterferogramMerger.find_alignment" title="Permalink to this definition">¶</a></dt>
+<code class="descname">find_alignment</code><span class="sig-paren">(</span><em>star_list_path_A</em>, <em>init_angle</em>, <em>init_dx</em>, <em>init_dy</em>, <em>fwhm_arc_A</em>, <em>fov_A</em><span class="sig-paren">)</span><a class="headerlink" href="#process.InterferogramMerger.find_alignment" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return the alignment coefficients to align the cube of the
 camera 2 on the cube of the camera 1</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -1763,7 +1751,7 @@ camera 2 on the cube of the camera 1</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>star_list_path</strong> &#8211; Path to a list of stars</li>
+<li><strong>star_list_path_A</strong> &#8211; Path to a list of star for the camera A</li>
 <li><strong>init_angle</strong> &#8211; Initial rotation angle between images</li>
 <li><strong>init_dx</strong> &#8211; Initial shift along x axis between images</li>
 <li><strong>init_dy</strong> &#8211; Initial shift along y axis between images</li>
@@ -1771,52 +1759,14 @@ camera 2 on the cube of the camera 1</p>
 camera A.</li>
 <li><strong>fov_A</strong> &#8211; Field of view of the camera A in arcminutes (given
 along x axis.</li>
-<li><strong>full_precision</strong> &#8211; (Optional) If True tip and tilt angles
-(da and db) are checked. Note that this can take a lot of
-time. If False da and db are set to 0 (default False).</li>
-<li><strong>profile_name</strong> &#8211; (Optional) PSF profile to use to fit
-stars. Can be &#8216;gaussian&#8217; or &#8216;moffat&#8217; (default
-&#8216;gaussian&#8217;). See:
-<code class="xref py py-meth docutils literal"><span class="pre">orb.astrometry.Astrometry.fit_stars_in_frame()</span></code>.</li>
-<li><strong>moffat_beta</strong> &#8211; (Optional) Beta parameter to use for
-moffat PSF (default 3.5).</li>
 </ul>
 </td>
 </tr>
 </tbody>
 </table>
-<div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p>The alignement coefficients are:</p>
-<ul class="last simple">
-<li>dx : shift along x axis in pixels</li>
-<li>dy : shift along y axis in pixels</li>
-<li>dr : rotation angle between images (the center of rotation
-is the center of the images of the camera 1) in degrees</li>
-<li>da : tip angle between cameras (along x axis) in degrees</li>
-<li>db : tilt angle between cameras (along y axis) in degrees</li>
-</ul>
-</div>
-<div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p>The process tries to find the stars detected in the camera A in the frame of the camera B. It goes through 2 steps:</p>
-<ol class="last arabic simple">
-<li>Rough alignment only looking over dx, dy. dr is kept to
-its initial value (init_angle), da and db are set to 0.</li>
-<li>First optimization pass only looking over dx, dy and
-dr. da and db are set to 0.</li>
-<li>Second optimization pass adding da and db to the
-parameters. This pass can be removed if full_precision
-is set to False.</li>
-</ol>
-</div>
-<div class="admonition warning">
-<p class="first admonition-title">Warning</p>
-<p class="last">This alignment process do not work if the initial
-parameters are too far from the real value. The angle must
-be known within a few degrees. The shift must be known
-within 4 % of the frame size (The latter can be changed
-using the SIZE_COEFF constant)</p>
+<div class="admonition seealso">
+<p class="first admonition-title">See also</p>
+<p class="last">py:meth:<cite>orb.astrometry.Aligner.compute_alignment_parameters</cite></p>
 </div>
 </dd></dl>
 
@@ -1904,12 +1854,6 @@ formula:</p>
 </li>
 </ol>
 </div>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.InterferogramMerger.print_alignment_coeffs">
-<code class="descname">print_alignment_coeffs</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#process.InterferogramMerger.print_alignment_coeffs" title="Permalink to this definition">¶</a></dt>
-<dd><p>Print the alignement coefficients.</p>
 </dd></dl>
 
 <dl class="method">
@@ -2210,7 +2154,7 @@ new WCS parameters.</li>
 
 <dl class="method">
 <dt id="process.Spectrum.calibrate">
-<code class="descname">calibrate</code><span class="sig-paren">(</span><em>filter_file_path</em>, <em>step</em>, <em>order</em>, <em>stars_cube=False</em>, <em>correct_wcs=None</em>, <em>flux_calibration_vector=None</em>, <em>deep_frame_path=None</em>, <em>mean_flux=True</em>, <em>wavenumber=False</em>, <em>calibration_laser_map_path=None</em>, <em>nm_laser=None</em>, <em>standard_header=None</em><span class="sig-paren">)</span><a class="headerlink" href="#process.Spectrum.calibrate" title="Permalink to this definition">¶</a></dt>
+<code class="descname">calibrate</code><span class="sig-paren">(</span><em>filter_file_path</em>, <em>step</em>, <em>order</em>, <em>calibration_laser_map_path</em>, <em>nm_laser</em>, <em>stars_cube=False</em>, <em>correct_wcs=None</em>, <em>flux_calibration_vector=None</em>, <em>deep_frame_path=None</em>, <em>mean_flux=True</em>, <em>wavenumber=False</em>, <em>standard_header=None</em>, <em>spectral_calibration=True</em><span class="sig-paren">)</span><a class="headerlink" href="#process.Spectrum.calibrate" title="Permalink to this definition">¶</a></dt>
 <dd><p>Calibrate spectrum cube: correct for filter transmission
 function, correct WCS parameters and flux calibration.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -2222,6 +2166,15 @@ function, correct WCS parameters and flux calibration.</p>
 filter transmission function.</li>
 <li><strong>step</strong> &#8211; Step size of the interferogram in nm.</li>
 <li><strong>order</strong> &#8211; Folding order of the interferogram.</li>
+<li><strong>calibration_laser_map_path</strong> &#8211; Path to the calibration
+laser map.</li>
+<li><strong>nm_laser</strong> &#8211; Calibration laser wavelength.</li>
+<li><strong>(Optional)</strong> (<em>spectral_calibration</em>) &#8211; If True, the ouput
+spectral cube will be calibrated in
+wavelength/wavenumber. Note that in this case the spectrum
+must be interpolated. Else no spectral calibration is done:
+the channel position of a given wavelength/wavenumber
+changes with its position in the field (default True).</li>
 <li><strong>stars_cube</strong> &#8211; (Optional) True if the spectral cube is a
 star cube (default False).</li>
 <li><strong>correct_wcs</strong> &#8211; (Optional) Must be a pywcs.WCS
@@ -2247,13 +2200,6 @@ included the filter and no filter correction is done
 <li><strong>wavenumber</strong> &#8211; (Optional) If True, the spectrum is
 considered to be in wavenumber. If False it is considered to
 be in wavelength (default False).</li>
-<li><strong>calibration_laser_map_path</strong> &#8211; (Optional) If not None the
-input spectrum is considered as uncalibrated for
-wavelength. The filter correction is thus applied taking
-into account the calibration laser map (default None).</li>
-<li><strong>nm_laser</strong> &#8211; (Optional) Must be set if a calibration laser
-map is given. This option has no use in the other case and
-can be set to None.</li>
 <li><strong>standard_header</strong> &#8211; (Optional) Header for the standard
 star used for flux calibration. This header part will be
 appended to the FITS header.</li>
@@ -2623,7 +2569,7 @@ in erg/cm^2/s/A.</p>
         <li class="right" >
           <a href="orbs_module.html" title="Orbs module"
              >previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">Orbs 3.8.2 documentation</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="index.html">Orbs 3.8.3.1 documentation</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">

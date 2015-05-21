@@ -2466,10 +2466,10 @@ class Interferogram(Cube):
                             tuning_parameters=self._tuning_parameters,
                             config_file_name=self.config_file_name)
 
-        ## astrom.fit_stars_in_cube(local_background=False,
-        ##                          fix_aperture_size=True,
-        ##                          precise_guess=True,
-        ##                          multi_fit=True)
+        astrom.fit_stars_in_cube(local_background=False,
+                                 fix_aperture_size=True,
+                                 precise_guess=True,
+                                 multi_fit=True, save=True)
         
         astrom.load_fit_results(astrom._get_fit_results_path())
         
@@ -3236,7 +3236,7 @@ class Interferogram(Cube):
                                  precise_guess=True,
                                  aper_coeff=aper_coeff,
                                  multi_fit=True,
-                                 saturation=saturation)
+                                 saturation=saturation, save=True)
         
         astrom.load_fit_results(astrom._get_fit_results_path())
         photom = astrom.fit_results[:,:,photometry_type]
@@ -4520,7 +4520,7 @@ class InterferogramMerger(Tools):
             tuning_parameters=self._tuning_parameters,
             config_file_name=self.config_file_name).fit_stars_in_frame(
             0, precise_guess=True, local_background=local_background,
-            fix_fwhm=fix_fwhm, fix_height=False)
+            fix_fwhm=fix_fwhm, fix_height=False, save=False)
         mean_params_B = Astrometry(
             frameB, fwhm_arc, fov, profile_name=profile_name,
             star_list_path=star_list_path, readout_noise=readout_noise_2,
@@ -4529,7 +4529,7 @@ class InterferogramMerger(Tools):
             tuning_parameters=self._tuning_parameters,
             config_file_name=self.config_file_name).fit_stars_in_frame(
             0, precise_guess=True, local_background=local_background,
-            fix_fwhm=fix_fwhm, fix_height=False)
+            fix_fwhm=fix_fwhm, fix_height=False, save=False)
 
         star_list_A = mean_params_A.get_star_list()
         star_list_B = mean_params_A.get_star_list()
@@ -4576,12 +4576,14 @@ class InterferogramMerger(Tools):
                                    fix_fwhm=fix_fwhm,
                                    fix_height=False,
                                    fix_aperture_size=True,
-                                   multi_fit=True)
+                                   multi_fit=True,
+                                   save=True)
         astrom_B.fit_stars_in_cube(local_background=local_background,
                                    fix_fwhm=fix_fwhm,
                                    fix_height=False,
                                    fix_aperture_size=True,
-                                   multi_fit=True)
+                                   multi_fit=True,
+                                   save=True)
         
         astrom_A.load_fit_results(astrom_A._get_fit_results_path())
         astrom_B.load_fit_results(astrom_B._get_fit_results_path())
@@ -4699,7 +4701,7 @@ class InterferogramMerger(Tools):
             local_background=local_background,
             fix_aperture_size=True,
             add_cube=[self.cube_A, modulation_ratio],
-            no_fit=True)
+            no_fit=True, save=True)
         astrom_merged.load_fit_results(astrom_merged._get_fit_results_path())
         photom_merged = astrom_merged.fit_results[:,:,photometry_type]
         photom_merged_err = astrom_merged.fit_results[
@@ -5316,7 +5318,8 @@ class InterferogramMerger(Tools):
         mean_astrom_A.reset_star_list(star_list)
         mean_params_A = mean_astrom_A.fit_stars_in_frame(
             0, precise_guess=True, local_background=True,
-            fix_fwhm=False, fix_height=False, multi_fit=True)
+            fix_fwhm=False, fix_height=False, multi_fit=True,
+            save=False)
         
         mean_astrom_B = Astrometry(
             frameB, fwhm_arc, fov, profile_name=profile_name,
@@ -5326,7 +5329,8 @@ class InterferogramMerger(Tools):
         mean_astrom_B.reset_star_list(star_list)
         mean_params_B = mean_astrom_B.fit_stars_in_frame(
             0, precise_guess=True, local_background=True,
-            fix_fwhm=False, fix_height=False, multi_fit=True)
+            fix_fwhm=False, fix_height=False, multi_fit=True,
+            save=False)
 
         star_list_A = mean_params_A.get_star_list()
         star_list_B = mean_params_A.get_star_list()
@@ -5368,13 +5372,15 @@ class InterferogramMerger(Tools):
                                    precise_guess=True,
                                    aper_coeff=aper_coeff,
                                    multi_fit=True,
-                                   saturation=saturation)
+                                   saturation=saturation,
+                                   save=True)
         astrom_B.fit_stars_in_cube(local_background=True,
                                    fix_aperture_size=True,
                                    precise_guess=True,
                                    aper_coeff=aper_coeff,
                                    multi_fit=True,
-                                   saturation=saturation)
+                                   saturation=saturation,
+                                   save=True)
         
         astrom_A.load_fit_results(astrom_A._get_fit_results_path())
         astrom_B.load_fit_results(astrom_B._get_fit_results_path())
@@ -5456,7 +5462,7 @@ class InterferogramMerger(Tools):
             fix_aperture_size=True,
             add_cube=[self.cube_A, -modulation_ratio],
             no_fit=True,
-            aper_coeff=aper_coeff)
+            aper_coeff=aper_coeff, save=True)
         
         astrom_merged.load_fit_results(astrom_merged._get_fit_results_path())
         photom_merged = astrom_merged.fit_results[:,:,'aperture_flux']
@@ -7145,10 +7151,11 @@ class Standard(Tools):
         astrom.reset_star_list(np.array([std_coords]))
         fit_results = astrom.fit_stars_in_frame(0, local_background=False,
                                                 multi_fit=True,
-                                                precise_guess=True)
+                                                precise_guess=True,
+                                                save=False)
         
         star_counts = fit_results[0, 'aperture_flux']
-        #if verbose:
+        
         self._print_msg('Raw Star photometry: %e ADU'%star_counts)
 
         star_flux = star_counts / exp_time # [ADU/s]

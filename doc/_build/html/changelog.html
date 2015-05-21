@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Changelog &mdash; Orbs 3.8.2 documentation</title>
+    <title>Changelog &mdash; Orbs 3.8.3.1 documentation</title>
     
     <link rel="stylesheet" href="_static/sphinxdoc.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -14,7 +14,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
-        VERSION:     '3.8.2',
+        VERSION:     '3.8.3.1',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -25,7 +25,7 @@
     <script type="text/javascript" src="_static/doctools.js"></script>
     <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="shortcut icon" href="_static/logo.ico"/>
-    <link rel="top" title="Orbs 3.8.2 documentation" href="index.html" />
+    <link rel="top" title="Orbs 3.8.3.1 documentation" href="index.html" />
     <link rel="prev" title="Process module" href="process_module.html" /> 
   </head>
   <body role="document">
@@ -41,7 +41,7 @@
         <li class="right" >
           <a href="process_module.html" title="Process module"
              accesskey="P">previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">Orbs 3.8.2 documentation</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="index.html">Orbs 3.8.3.1 documentation</a> &raquo;</li> 
       </ul>
     </div>
       <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
@@ -201,6 +201,14 @@
 <li><a class="reference internal" href="#id22"><strong>orbs</strong> script</a></li>
 <li><a class="reference internal" href="#roadmaps">RoadMaps</a></li>
 <li><a class="reference internal" href="#id23">Miscellaneous</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#id24">3.8.2</a><ul>
+<li><a class="reference internal" href="#aligner">Aligner</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#id25">3.8.3</a><ul>
+<li><a class="reference internal" href="#spectral-calibration">Spectral calibration</a></li>
 </ul>
 </li>
 </ul>
@@ -1179,6 +1187,25 @@ cannot be retrieved and must be guessed).</li>
 </ul>
 </div>
 </div>
+<div class="section" id="id24">
+<h3>3.8.2<a class="headerlink" href="#id24" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="aligner">
+<h4>Aligner<a class="headerlink" href="#aligner" title="Permalink to this headline">¶</a></h4>
+<p><code class="xref py py-class docutils literal"><span class="pre">orb.astrometry.Aligner</span></code> has been created in ORB to handle
+alignement between frames. The whole alignment procedure has been
+updated and is now much faster and robust. More details on the
+alignment procedure can be found in ORB documentation.</p>
+</div>
+</div>
+<div class="section" id="id25">
+<h3>3.8.3<a class="headerlink" href="#id25" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="spectral-calibration">
+<h4>Spectral calibration<a class="headerlink" href="#spectral-calibration" title="Permalink to this headline">¶</a></h4>
+<p>Spectral calibration is now done at the calibration step, see:
+<a class="reference internal" href="orbs_module.html#orbs.orbs.Orbs.calibrate_spectrum" title="orbs.orbs.Orbs.calibrate_spectrum"><code class="xref py py-meth docutils literal"><span class="pre">orbs.orbs.Orbs.calibrate_spectrum()</span></code></a> (before this was done
+during the FFT computation).</p>
+</div>
+</div>
 </div>
 </div>
 
@@ -1200,7 +1227,7 @@ cannot be retrieved and must be guessed).</li>
         <li class="right" >
           <a href="process_module.html" title="Process module"
              >previous</a> |</li>
-        <li class="nav-item nav-item-0"><a href="index.html">Orbs 3.8.2 documentation</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="index.html">Orbs 3.8.3.1 documentation</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">
