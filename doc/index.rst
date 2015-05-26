@@ -31,8 +31,8 @@ Table of contents
 Installation
 ------------
 
-You'll maybe need to install Python_ or some modules before installing
-ORBS. You'll find here some informations on how to install Python_ on
+You may have to install Python_ or some modules before installing
+ORBS. You will find here informations on how to install ORBS on
 Ubuntu.
 
 .. toctree::
@@ -42,25 +42,25 @@ Ubuntu.
    installing_python
 
 
-Quick Start Guide
------------------
+Reduction Guide
+---------------
 
-You'll find here some general description of ORBS architecture and
-some basic steps to follow in order to make ORBS run.
+You will find here what you need to know to reduce your data. This is
+also certainly the first place to look if you experience any problem
+using ORBS.
 
 .. toctree::
    :maxdepth: 2
 
-   quick_start
+   reduction_guide
+   reduction_faq
 
 
+Code Documentation
+------------------
 
-Documentation
--------------
-
-The documentation can help you understand how the whole reduction
-process works. This is certainly the first place to look if you
-experience any problem using ORBS.
+The code documentation can help you understand how the whole reduction
+process works in details.
 
 .. toctree::
    :maxdepth: 2

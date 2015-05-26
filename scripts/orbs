@@ -30,7 +30,7 @@
 # $ ./orbs option_file.opt start
 # Remember : for any help please refer to the documentation
 
-import sys, os, time
+import sys, os, time, traceback
 import argparse
 from argparse import ArgumentParser
 import numpy as np
@@ -487,6 +487,7 @@ def start(args, resume=False):
     
     
     project = init_orbs(args, target, cams)
+    logfile_name = project._logfile_name
 
     if args.init_angle is not None:
         project.set_init_angle(args.init_angle)
@@ -501,14 +502,28 @@ def start(args, resume=False):
 
     # start reduction
     to._print_msg("Reduction process started at : " + time.ctime(start_time), color=True)
-    
-    project.start_reduction(
-        apodization_function=args.apodization_function,
-        start_step=args.start_step,
-        save_as_quads=args.quadrants,
-        n_phase=args.n_phase,
-        alt_merge=args.alt_merge,
-        add_frameB=args.add_frameB)
+
+    try:
+        project.start_reduction(
+            apodization_function=args.apodization_function,
+            start_step=args.start_step,
+            save_as_quads=args.quadrants,
+            n_phase=args.n_phase,
+            alt_merge=args.alt_merge,
+            add_frameB=args.add_frameB)
+
+    except BaseException, e:
+        with open(logfile_name, 'a') as logfile:
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+            # print on screen
+            traceback.print_exception(exc_type, exc_value, exc_traceback,
+                                      limit=10, file=sys.stdout)
+
+            # log error and traceback
+            traceback.print_exception(exc_type, exc_value, exc_traceback,
+                                      limit=10, file=logfile)
+        
+        sys.exit(2)
         
     end_time = time.time()
     to._print_msg("Reduction process finished at : " + time.ctime(end_time), color=True)

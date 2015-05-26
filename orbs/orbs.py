@@ -79,10 +79,6 @@ class Orbs(Tools):
 
     :FILTER: Filter name
 
-    :BINCAM1: Binning of the camera 1
-
-    :BINCAM2: Binning of the camera 2
-
     :SPESTEP: Step size of the moving mirror (in nm)
 
     :SPESTNB: Number of steps
@@ -524,7 +520,11 @@ class Orbs(Tools):
         store_config_parameter("WCS_ROTATION", float)
         store_config_parameter("EXT_ILLUMINATION", bool)
         store_config_parameter("SATURATION_THRESHOLD", float)
-
+        store_config_parameter("CAM1_DETECTOR_SIZE_X", int)
+        store_config_parameter("CAM1_DETECTOR_SIZE_Y", int)
+        store_config_parameter("CAM2_DETECTOR_SIZE_X", int)
+        store_config_parameter("CAM2_DETECTOR_SIZE_Y", int)
+        
         # defining DARK_ACTIVATION_ENERGY
         self.config["DARK_ACTIVATION_ENERGY"] = float(
             self._get_config_parameter(
@@ -547,7 +547,7 @@ class Orbs(Tools):
         if not os.path.exists(option_file_path):
             self._print_error("Option file does not exists !")
 
-        # Print first the entire option file for log
+        # Print first the entire option file for logging
         op_file = open(option_file_path)
         self._print_msg("Option file content :", color=True)
         for line in op_file:
@@ -558,14 +558,24 @@ class Orbs(Tools):
         self.options['spectral_calibration'] = True
         self.options['wavenumber'] = False
         self.options['no_sky'] = False
-        
-        # Parse the option file to get reduction parameters
+
+        ##########
+        ## Parse the option file to get reduction parameters
+        ##########
         self.optionfile = OptionFile(option_file_path,
                                      config_file_name=config_file_name)
-        store_option_parameter('object_name', 'OBJECT', str, optional=False)
-        store_option_parameter('filter_name', 'FILTER', str, optional=False)
-        store_option_parameter('bin_cam_1', 'BINCAM1', int)
-        store_option_parameter('bin_cam_2', 'BINCAM2', int)
+
+        # In the case of LASER cube the parameters are set
+        # automatically
+        if target == 'laser': optional_keys = True
+        else:  optional_keys = False
+            
+        store_option_parameter('object_name', 'OBJECT', str,
+                               optional=optional_keys)
+        store_option_parameter('filter_name', 'FILTER', str,
+                               optional=optional_keys)
+        
+            
         store_option_parameter('step', 'SPESTEP', float)
         store_option_parameter('step_number', 'SPESTNB', int)
         store_option_parameter('order', 'SPEORDR', float)
@@ -592,13 +602,6 @@ class Orbs(Tools):
         store_option_parameter('spectral_calibration', 'WAVE_CALIB', bool)
         store_option_parameter('no_sky', 'NOSKY', bool)
         store_option_parameter('prebinning', 'PREBINNING', int)
-        # recompute the real data binning
-        if 'prebinning' in self.options:
-            if self.options['prebinning'] is not None:
-                self.options['bin_cam_1'] = (self.options['bin_cam_1']
-                                             * self.options['prebinning'])
-                self.options['bin_cam_2'] = (self.options['bin_cam_2']
-                                             * self.options['prebinning'])
         
         fringes = self.optionfile.get_fringes()
         if fringes is not None:
@@ -608,6 +611,17 @@ class Orbs(Tools):
         if bad_frames is not None:
             self.options['bad_frames'] = bad_frames
             
+        # In the case of LASER cube the parameters are set
+        # automatically
+        
+        if target == 'laser':
+            self.options['object_name'] = 'LASER'
+            self.options['filter_name'] = 'None'
+            if 'order' not in self.options:
+                self.options['order'] = self.config['CALIB_ORDER']
+            if 'step' not in self.options:
+                self.options['step'] = self.config['CALIB_STEP_SIZE']
+                
         # If a keyword is the same as a configuration keyword,
         # config option is changed
         for key in self.config.iterkeys():
@@ -621,17 +635,6 @@ class Orbs(Tools):
         for itune in self.tuning_parameters:
             self._print_warning("Tuning parameter %s changed to %s"%(
                 itune, self.tuning_parameters[itune]))
-        
-        # compute nm min and nm max from step and order parameters
-        ## if ("step" in self.options) and ("order" in self.options):
-        ##     self.options["nm_min"] = (1. / ((self.options["order"] + 1.) / 
-        ##                                     (2. * self.options["step"])))
-        ##     if self.options["order"] > 0:
-        ##         self.options["nm_max"] = (1. / (self.options["order"] / 
-        ##                                         (2. * self.options["step"])))
-        ##     else:
-        ##         self.options["nm_max"] = np.inf
-        ##         self._print_error('Order 0 is still not handled by ORBS! Sorry...')
 
         if (("object_name" not in self.options)
             or ("filter_name" not in self.options)):
@@ -640,6 +643,7 @@ class Orbs(Tools):
             self.options["project_name"] = (self.options["object_name"] 
                                             + "_" + self.options["filter_name"])
 
+        
         # get folders paths
         self._print_msg('Reading data folders')
         store_option_parameter('image_list_path_1', 'DIRCAM1', str, True, 1)
@@ -648,27 +652,70 @@ class Orbs(Tools):
         store_option_parameter('bias_path_2', 'DIRBIA2', str, True, 2)
         store_option_parameter('dark_path_1', 'DIRDRK1', str, True, 1)
         store_option_parameter('dark_path_2', 'DIRDRK2', str, True, 2)
+        if (('dark_path_2' in self.options or 'dark_path_1' in self.options)
+            and 'dark_time' not in self.options):
+            self._print_error('Dark integration time must be set (SPEDART) if the path to a dark calibration files folder is given')
+            
         store_option_parameter('flat_path_1', 'DIRFLT1', str, True, 1)
         store_option_parameter('flat_path_2', 'DIRFLT2', str, True, 2)
         store_option_parameter('calib_path_1', 'DIRCAL1', str, True, 1)
         store_option_parameter('calib_path_2', 'DIRCAL2', str, True, 2)
         store_option_parameter('flat_spectrum_path', 'DIRFLTS', str, True)
+
                     
-        # Check step number and number of raw images
+        # Check step number, number of raw images
         if (('image_list_path_1' in self.options)
             and ('image_list_path_2' in self.options)):
-            dimz1 = Cube(self.options['image_list_path_1'],
+            cube1 = Cube(self.options['image_list_path_1'],
                          silent_init=True,
-                         config_file_name=self.config_file_name).dimz
-            dimz2 = Cube(self.options['image_list_path_2'],
+                         config_file_name=self.config_file_name)
+            dimz1 = cube1.dimz
+            cam1_image_shape = [cube1.dimx, cube1.dimy]
+            
+            cube2 = Cube(self.options['image_list_path_2'],
                          silent_init=True,
-                         config_file_name=self.config_file_name).dimz
+                         config_file_name=self.config_file_name)
+            dimz2 = cube2.dimz
+            cam2_image_shape = [cube2.dimx, cube2.dimy]
+            
             if dimz1 != dimz2:
                 self._print_error('The number of images of CAM1 and CAM2 are not the same (%d != %d)'%(dimz1, dimz2))
             if self.options['step_number'] < dimz1:
                 self._print_warning('Step number option changed to {} because the number of steps ({}) of a full cube must be greater or equal to the number of images given for CAM1 and CAM2 ({})'.format(
                     dimz1, self.options['step_number'], dimz1))
                 self.options['step_number'] = dimz1
+            
+
+
+            # Get data binning
+            cam1_detector_shape = [self.config['CAM1_DETECTOR_SIZE_X'],
+                                   self.config['CAM1_DETECTOR_SIZE_Y']]
+            bin_cam_1 = orb.utils.compute_binning(
+                cam1_image_shape, cam1_detector_shape)
+            self._print_msg('Computed binning of camera 1: {}x{}'.format(
+                *bin_cam_1))
+            if bin_cam_1[0] != bin_cam_1[1]:
+                self._print_error('Images with different binning along X and Y axis are not handled by ORBS')
+            self.options['bin_cam_1'] = bin_cam_1[0]
+            
+            cam2_detector_shape = [self.config['CAM2_DETECTOR_SIZE_X'],
+                                   self.config['CAM2_DETECTOR_SIZE_Y']]
+            bin_cam_2 = orb.utils.compute_binning(
+                cam2_image_shape, cam2_detector_shape)
+            self._print_msg('Computed binning of camera 2: {}x{}'.format(
+                *bin_cam_2))
+            if bin_cam_2[0] != bin_cam_2[1]:
+                self._print_error('Images with different binning along X and Y axis are not handled by ORBS')
+            self.options['bin_cam_2'] = bin_cam_2[0]
+                
+            if 'prebinning' in self.options:
+                if self.options['prebinning'] is not None:
+                    self.options['bin_cam_1'] = (
+                        self.options['bin_cam_1']
+                        * self.options['prebinning'])
+                    self.options['bin_cam_2'] = (
+                        self.options['bin_cam_2']
+                        * self.options['prebinning'])
 
         # Init Indexer
         self.indexer = Indexer(data_prefix=self.options['object_name']
@@ -1311,9 +1358,13 @@ class Orbs(Tools):
                 dark_path = self.options["dark_path_2"]
             
         exposition_time = self.options["exp_time"]
-        dark_int_time = self.options["dark_time"]
-
-        if bias_path is not None and dark_path is not None:
+        if "dark_time" in self.options:
+                dark_int_time = self.options["dark_time"]
+        else: dark_int_time = None
+        
+        if (bias_path is not None and dark_path is not None
+            and dark_int_time is not None):
+               
             cube = self._init_raw_data_cube(camera_number)
             readout_noise, dark_current_level = cube.get_noise_values(
                 bias_path, dark_path, exposition_time,
@@ -1748,10 +1799,18 @@ class Orbs(Tools):
         else:
             self._print_error("Camera number must be either 1 or 2")
 
-        order = self.config["CALIB_ORDER"]
-        step = self.config["CALIB_STEP_SIZE"]
+        if self.target == 'laser':
+            order = self.options['order']
+            step = self.options['step']
+        else:
+            order = self.config["CALIB_ORDER"]
+            step = self.config["CALIB_STEP_SIZE"]
+            
+        self._print_msg('Calibration laser observation parameters: step={}, order={}'.format(step, order))
+            
         self.options["camera_number"] = camera_number
-
+        
+        
         self.indexer.set_file_group(camera_number)
         cube = CalibrationLaser(
             calib_path, 
@@ -2812,11 +2871,61 @@ class RoadMap(Tools):
     use (camera 1, 2 or both cameras).
 
     All steps are defined in a particular xml files in the data folder
-    of ORBS (orbs/data).
+    of ORBS (:file:`orbs/data/roadmap.steps.xml`).
 
-    Each roadmap is defined by an xml file zhich can also be found in
+    Each roadmap is defined by an xml file which can also be found in
     orbs/data.
-    """
+
+    .. note:: The name of a roadmap file is defined as follows::
+
+         roadmap.[instrument].[target].[camera].xml
+
+       - *instrument* can be *spiomm* or *sitelle*
+       - *target* can be one of the special targets listed above or object
+         for the default target
+       - *camera* can be *full* for a process using both cameras; *single1*
+         or *single2* for a process using only the camera 1 or 2.
+
+
+    .. note:: RoadMap file syntax:
+    
+        .. code-block:: xml
+
+           <?xml version="1.0"?>
+           <steps>
+             <step name='compute_alignment_vector' cam='1'>
+               <arg value='1' type='int'></arg>
+             </step>
+
+             <step name='compute_alignment_vector' cam='2'>
+               <arg value='2' type='int'></arg>
+             </step>
+
+             <step name='compute_spectrum' cam='0'>
+               <arg value='0' type='int'></arg>
+               <kwarg name='n_phase'></kwarg>
+               <kwarg name='apodization_function'></kwarg>
+             </step>
+           </steps>
+
+        * <step> Each step is defined by its **name** (which can be
+          found in :file:`orbs/data/roadmap.steps.xml`) and the camera
+          used (1, 2 or 0 for merged data).
+
+        * <arg> Every needed arguments can be passed by giving the
+          value and its type (see
+          :py:data:`orbs.orbs.RoadMap.types_dict`).
+
+        * <kwarg> optional arguments. They must be added to the step
+          definition if their value has to be passed from the calling
+          method (:py:meth:`orbs.orbs.Orbs.start_reduction`). Only the
+          optional arguments of
+          :py:meth:`orbs.orbs.Orbs.start_reduction` can thus be passed
+          as optional arguments of the step function.
+        
+
+        
+    """ 
     road = None # the reduction road to follow
     steps = None # all the possible reduction steps
     indexer = None # an orb.Indexer instance
@@ -2840,15 +2949,21 @@ class RoadMap(Tools):
         else: raise Exception(
             "Boolean value must be 'True','1' or 'False','0'")
 
+
     types_dict = { # map type to string definition in xml files
         'int':int,
         'str':str,
         'float':float,
         'bool':_str2bool}
+    """Dictionary of the defined arguments types"""
     
     color_OKGREEN = '\033[92m'
     color_END = '\033[0m'
     color_KORED = '\033[91m'
+
+    
+    
+    
 
     
     

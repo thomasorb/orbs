@@ -969,3 +969,22 @@ Spectral calibration is now done at the calibration step, see:
 during the FFT computation).
 
 
+3.8.4.0
+=======
+
+Update of the documentation
+---------------------------
+
+A far more complete reduction guide has been written. Some parts still
+need some further explanations (coming with 3.8.4.1).
+
+Required option file keywords
+-----------------------------
+
+* The keywords **BINCAM1** and **BINCAM2** are not used anymore. The
+  binning is deduced from the detector size. CAM1_DETECTOR_SIZE_X,
+  CAM1_DETECTOR_SIZE_Y, CAM2_DETECTOR_SIZE_X, CAM2_DETECTOR_SIZE_Y
+  have been added to the ORB configuration file.
+
+* **SPEDART** keyword is no more required if not path to a dark folder
+  is set (**DIRDRK1** or **DIRDRK2**).

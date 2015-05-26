@@ -1,0 +1,26 @@
+====================
+ ORBS Reduction FAQ
+====================
+
+.. contents::
+
+
+How can I have access to ORBS commands ?
+========================================
+
+There are a lot of different ways to get ORBS commands like any other
+OS commands on a UNIX-like system. Here are two possibilities:
+
+If you have administrator rights
+--------------------------------
+
+You can create a symbolic link in one of the folders :file:`/usr/local/bin` or :file:`/usr/bin` to the ORBS command (but you need to do this **for each command you want to add**), e.g.::
+
+  sudo ln -s /opt/orbs/scripts/orbs /usr/local/bin/orbs
+
+
+You can also modify the file :file:`/etc/profile` by adding the line (**this way all the command contained in the scripts folder of ORBS will be added**)::
+
+  export PATH=$PATH:/opt/orbs/scripts/
+
+
