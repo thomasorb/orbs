@@ -1,0 +1,36 @@
+==============================
+ ORBS Common reduction errors
+==============================
+
+.. contents::
+
+.. _how-can-access-orbs-commands:
+
+Malformed sequence of files ?
+=============================
+
+ORBS will always try to sort the name of the files in a given
+folder. So all the files must have a common nomenclature. Any kind of
+name is accepted as long as only one number is changing. For example,
+all those nomenclatures are accepted::
+
+  0image.fits
+  image000.fits
+  image_M51_CAM1_0000.fits
+  etc.
+
+This error happens when some files in the folder do not respect the
+nomenclature. If the files are named e.g.::
+
+  dark_1.fits
+  dark_2.fits
+  dark_3.fits
+  dark.fits
+
+The last file (:file:`dark.fits`) do not respect the nomenclature.
+Just try to rename (or remove if it can be removed) the file. If the
+file cannot be renamed or remove (e.g. all the data files are in the
+same folder) you can give the path to a :ref:`file-list` in place of
+the path to a folder (see the note in :ref:`required-parameters`).
+
+

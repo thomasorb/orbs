@@ -54,6 +54,7 @@ using ORBS.
 
    reduction_guide
    reduction_faq
+   reduction_errors
 
 
 Code Documentation

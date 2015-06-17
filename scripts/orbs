@@ -143,6 +143,9 @@ def check_option_file(to, path):
     protected_keys = ['OBS', 'FLAT', 'DARK', 'COMPARISON']
     ofile = OptionFile(path, protected_keys=protected_keys,
                        config_file_name=to.config_file_name)
+
+    if ofile.header_line is None:
+        return path, dict(), 'option_file'
     
     if 'SITELLE_JOB_FILE' in ofile.header_line:
 
@@ -349,6 +352,8 @@ def clean(args):
 
         remove(project._get_project_dir())
         remove(project._logfile_name)
+        remove(project.indexer._get_index_path())
+        remove(project._memfile_name)
         remove(recfile.file_path)
 
     print_msg('Working directory clean')

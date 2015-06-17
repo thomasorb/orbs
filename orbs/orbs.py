@@ -48,7 +48,7 @@ import pp
 import bottleneck as bn
 
 
-from orb.core import Tools, Cube, Indexer, OptionFile
+from orb.core import Tools, Cube, Indexer, OptionFile, HDFCube
 from process import RawData, InterferogramMerger, Interferogram
 from process import Phase, Spectrum, CalibrationLaser
 from orb.astrometry import Astrometry
@@ -394,7 +394,7 @@ class Orbs(Tools):
     
     target = None
     """Choosen target to reduce"""
-    
+
     def __init__(self, option_file_path, target, cams,
                  config_file_name="config.orb",
                  overwrite=False, silent=False, fast_init=False):
@@ -461,9 +461,38 @@ class Orbs(Tools):
                                     chip_index=chip_index,
                                     prebinning=prebinning,
                                     check=not fast_init))
-                            
                         else:
                              self.options[option_key] = value
+                             
+
+                        # export fits frames as hdf5 cubes
+                        if not fast_init:
+                            cube = Cube(self.options[option_key],
+                                        silent_init=True)
+                            export_path = os.path.splitext(
+                                self.options[option_key])[0] + '.hdf5'
+
+                            # check if the hdf5 cube already
+                            # exists. If the list of the imported
+                            # files in the hdf5 cube is the same,
+                            # export is not done again.
+                            already_exported = False
+                            if os.path.exists(export_path):
+                                with self.open_hdf5(export_path, 'r') as f:
+                                    if 'image_list' in f:
+                                        if np.all(
+                                            f['image_list'][:]
+                                            == np.array(cube.image_list)):
+                                            already_exported = True
+                                            self._print_msg(
+                                                'HDF5 cube {} already created'.format(export_path))
+                            if not already_exported:
+                                cube.export(export_path, force_hdf5 = True,
+                                            overwrite=True)
+
+
+                            self.options[option_key + '.hdf5'] = export_path
+                             
                              
                     else: self._print_error(
                         'Given path does not exist {}'.format(value))
@@ -662,31 +691,13 @@ class Orbs(Tools):
         store_option_parameter('calib_path_2', 'DIRCAL2', str, True, 2)
         store_option_parameter('flat_spectrum_path', 'DIRFLTS', str, True)
 
-                    
-        # Check step number, number of raw images
-        if (('image_list_path_1' in self.options)
-            and ('image_list_path_2' in self.options)):
+        if 'image_list_path_1' in self.options:
             cube1 = Cube(self.options['image_list_path_1'],
                          silent_init=True,
                          config_file_name=self.config_file_name)
             dimz1 = cube1.dimz
             cam1_image_shape = [cube1.dimx, cube1.dimy]
             
-            cube2 = Cube(self.options['image_list_path_2'],
-                         silent_init=True,
-                         config_file_name=self.config_file_name)
-            dimz2 = cube2.dimz
-            cam2_image_shape = [cube2.dimx, cube2.dimy]
-            
-            if dimz1 != dimz2:
-                self._print_error('The number of images of CAM1 and CAM2 are not the same (%d != %d)'%(dimz1, dimz2))
-            if self.options['step_number'] < dimz1:
-                self._print_warning('Step number option changed to {} because the number of steps ({}) of a full cube must be greater or equal to the number of images given for CAM1 and CAM2 ({})'.format(
-                    dimz1, self.options['step_number'], dimz1))
-                self.options['step_number'] = dimz1
-            
-
-
             # Get data binning
             cam1_detector_shape = [self.config['CAM1_DETECTOR_SIZE_X'],
                                    self.config['CAM1_DETECTOR_SIZE_Y']]
@@ -698,6 +709,20 @@ class Orbs(Tools):
                 self._print_error('Images with different binning along X and Y axis are not handled by ORBS')
             self.options['bin_cam_1'] = bin_cam_1[0]
             
+            # prebinning
+            if 'prebinning' in self.options:
+                if self.options['prebinning'] is not None:
+                    self.options['bin_cam_1'] = (
+                        self.options['bin_cam_1']
+                        * self.options['prebinning'])
+                    
+        if 'image_list_path_2' in self.options:
+            cube2 = Cube(self.options['image_list_path_2'],
+                         silent_init=True,
+                         config_file_name=self.config_file_name)
+            dimz2 = cube2.dimz
+            cam2_image_shape = [cube2.dimx, cube2.dimy]
+            # Get data binning
             cam2_detector_shape = [self.config['CAM2_DETECTOR_SIZE_X'],
                                    self.config['CAM2_DETECTOR_SIZE_Y']]
             bin_cam_2 = orb.utils.compute_binning(
@@ -707,15 +732,26 @@ class Orbs(Tools):
             if bin_cam_2[0] != bin_cam_2[1]:
                 self._print_error('Images with different binning along X and Y axis are not handled by ORBS')
             self.options['bin_cam_2'] = bin_cam_2[0]
-                
+            
+            # prebinning
             if 'prebinning' in self.options:
                 if self.options['prebinning'] is not None:
-                    self.options['bin_cam_1'] = (
-                        self.options['bin_cam_1']
-                        * self.options['prebinning'])
                     self.options['bin_cam_2'] = (
                         self.options['bin_cam_2']
                         * self.options['prebinning'])
+            
+        # Check step number, number of raw images
+        if (('image_list_path_1' in self.options)
+            and ('image_list_path_2' in self.options)):
+            
+            if dimz1 != dimz2:
+                self._print_error('The number of images of CAM1 and CAM2 are not the same (%d != %d)'%(dimz1, dimz2))
+                
+            if self.options['step_number'] < dimz1:
+                self._print_warning('Step number option changed to {} because the number of steps ({}) of a full cube must be greater or equal to the number of images given for CAM1 and CAM2 ({})'.format(
+                    dimz1, self.options['step_number'], dimz1))
+                self.options['step_number'] = dimz1
+
 
         # Init Indexer
         self.indexer = Indexer(data_prefix=self.options['object_name']
@@ -996,7 +1032,7 @@ class Orbs(Tools):
             if ("image_list_path_1" in self.options):
                 self.indexer.set_file_group('cam1')
                 cube = RawData(
-                    self.options["image_list_path_1"], 
+                    self.options["image_list_path_1.hdf5"], 
                     data_prefix=self._get_data_prefix(1),
                     project_header=self._get_project_fits_header(1),
                     overwrite=self.overwrite,
@@ -1010,7 +1046,7 @@ class Orbs(Tools):
             if ("image_list_path_2" in self.options):
                 self.indexer.set_file_group('cam2')
                 cube = RawData(
-                    self.options["image_list_path_2"], 
+                    self.options["image_list_path_2.hdf5"], 
                     data_prefix=self._get_data_prefix(2),
                     project_header=self._get_project_fits_header(2),
                     overwrite=self.overwrite,
@@ -1117,27 +1153,26 @@ class Orbs(Tools):
                           config_file_name=self.config_file_name)
 
 
-    def _get_interfero_list_path(self, camera_number, corrected=False):
-        """Return the path to the file containing the list of 
-        the interferogram frames computed for each camera or
-        the merged interferogram (camera_number = 0)
+    def _get_interfero_cube_path(self, camera_number, corrected=False):
+        """Return the path to the interferogram cube for each camera
+        or the merged interferogram (camera_number = 0)
 
         :param camera_number: Camera number (can be 1, 2 or 0 
           for merged data).
         """
         if camera_number == 0:
             return self.indexer.get_path(
-                'merged.merged_interfero_frame_list', err=True)
+                'merged.merged_interfero_cube', err=True)
         elif camera_number == 1:
             if corrected:
-                return self.indexer.get_path('cam1.corr_interf_list', err=True)
+                return self.indexer.get_path('cam1.corr_interfero_cube', err=True)
             else:
-                return self.indexer.get_path('cam1.interfero_list', err=True)
+                return self.indexer.get_path('cam1.interfero_cube', err=True)
         elif camera_number == 2:
             if corrected:
-                return self.indexer.get_path('cam2.corr_interf_list', err=True)
+                return self.indexer.get_path('cam2.corr_interfero_cube', err=True)
             else:
-                return self.indexer.get_path('cam2.interfero_list', err=True)
+                return self.indexer.get_path('cam2.interfero_cube', err=True)
         else: self._print_error('Camera number must be 0, 1 or 2')
 
     def set_init_angle(self, init_angle):
@@ -1167,8 +1202,8 @@ class Orbs(Tools):
         :param bad_frames_list: (Optional) List of bad frames indexes
           that must be added to the bad frames vector (default None).
         """
-        interf_cube = Cube(self._get_interfero_list_path(camera_number),
-                           config_file_name=self.config_file_name)
+        interf_cube = HDFCube(self._get_interfero_cube_path(camera_number),
+                              config_file_name=self.config_file_name)
         bad_frames_vector = np.zeros(interf_cube.dimz)
         
         if camera_number == 0:
@@ -1255,7 +1290,7 @@ class Orbs(Tools):
                 self.roadmap.road[istep]['name']))
 
 
-        # once the whole process has been done, final data can be exported
+        # Once the whole process has been done, final data can be exported
         if self.roadmap.cams == 'single1': cam = 1
         elif self.roadmap.cams == 'single2': cam = 2
         elif self.roadmap.cams == 'full':
@@ -1308,12 +1343,31 @@ class Orbs(Tools):
             self._print_msg('Using external star list: %s'%self.options['star_list_path_1'], color=True)
             star_list_path = self.options['star_list_path_1']
             mean_fwhm = self.config['INIT_FWHM']
+            refit = True
             
         elif (camera_number == 2 and 'star_list_path_2' in self.options):
             self._print_msg('Using external star list: %s'%self.options['star_list_path_2'], color=True)
             star_list_path = self.options['star_list_path_2']
             mean_fwhm = self.config['INIT_FWHM']
+            refit = True
+        else: refit = False
 
+        if refit:
+            self._print_msg('Fitting manual star list')
+            astrom = self._init_astrometry(cube, camera_number)
+            astrom.load_star_list(star_list_path)
+            fit_results = astrom.fit_stars_in_frame(0)
+            star_list = fit_results.get_star_list()
+            star_list_fit_path = star_list_path + '.fit'
+            with open(star_list_fit_path, 'w') as f:
+                for istar in range(np.array(star_list).shape[0]):
+                    f.write('{} {}\n'.format(
+                        star_list[istar, 0], star_list[istar, 1]))
+            star_list_path = star_list_fit_path
+            mean_fwhm = orb.utils.robust_median(fit_results[:,'fwhm_arc'])
+            self._print_msg('Mean FWHM: {} arcsec'.format(mean_fwhm))
+            
+        
         # else try to auto-detect stars
         else:
             if saturation_threshold is None:
@@ -1548,7 +1602,7 @@ class Orbs(Tools):
         cube.correct(
             bias_path=bias_path, dark_path=dark_path, 
             flat_path=flat_path, alignment_vector_path=None,
-            cr_map_list_path=None, bad_frames_vector=bad_frames_vector, 
+            cr_map_cube_path=None, bad_frames_vector=bad_frames_vector, 
             dark_int_time=dark_int_time, flat_int_time=None,
             exposition_time=exposition_time,
             optimize_dark_coeff=optimize_dark_coeff,
@@ -1592,8 +1646,8 @@ class Orbs(Tools):
         init_dy = self.config["INIT_DY"] / bin_cam_2
 
         # get interferograms frames paths
-        image_list_path_1 = self.indexer['cam1.interfero_list']
-        image_list_path_2 = self.indexer['cam2.interfero_list']
+        interf_cube_path_1 = self.indexer['cam1.interfero_cube']
+        interf_cube_path_2 = self.indexer['cam2.interfero_cube']
 
         # detect stars in cube 1
         if not no_star:
@@ -1612,7 +1666,7 @@ class Orbs(Tools):
         # Init InterferogramMerger class
         self.indexer.set_file_group('merged')
         cube = InterferogramMerger(
-            image_list_path_1, image_list_path_2,
+            interf_cube_path_1, interf_cube_path_2,
             bin_A=bin_cam_1, bin_B=bin_cam_2,
             pix_size_A=self.config["PIX_SIZE_CAM1"],
             pix_size_B=self.config["PIX_SIZE_CAM2"],
@@ -1637,8 +1691,9 @@ class Orbs(Tools):
                 self.config["INIT_ANGLE"], init_dx, init_dy,
                 mean_fwhm_1_arc, self.config["FIELD_OF_VIEW"])
         else:
-            cube.print_alignment_coeffs()
-            self._print_msg("Alignment parameters: ")
+            self._print_msg("Alignment parameters: {} {} {} {} {}".format(
+                cube.dx, cube.dy, cube.dr, cube.da, cube.db))
+            
 
         # transform frames of cube B
         cube.transform(interp_order=interp_order)
@@ -1666,16 +1721,16 @@ class Orbs(Tools):
         """
         
         # get frame list paths
-        image_list_path_1 = self.indexer.get_path(
-            'cam1.interfero_list', err=True)
-        image_list_path_2 = self.indexer.get_path(
-            'merged.transformed_interfero_frame_list', err=True)
+        interf_cube_path_1 = self.indexer.get_path(
+            'cam1.interfero_cube', err=True)
+        interf_cube_path_2 = self.indexer.get_path(
+            'merged.transformed_interfero_cube', err=True)
 
         # Init class
         self.indexer.set_file_group('merged')
         cube = InterferogramMerger(
-            image_list_path_A=image_list_path_1,
-            image_list_path_B=image_list_path_2,
+            interf_cube_path_A=interf_cube_path_1,
+            interf_cube_path_B=interf_cube_path_2,
             data_prefix=self._get_data_prefix(0),
             project_header=self._get_project_fits_header(0),
             alignment_coeffs=None,
@@ -1718,17 +1773,16 @@ class Orbs(Tools):
             cube1, 1)
         del cube1
         
-        
         if "step_number" in self.options: 
             step_number = self.options["step_number"]
         else:
             self._print_error("No step number given, check the option file")
             
         # get frame list paths
-        image_list_path_1 = self.indexer.get_path(
-            'cam1.interfero_list', err=True)
-        image_list_path_2 = self.indexer.get_path(
-            'merged.transformed_interfero_frame_list', err=True)
+        interf_cube_path_1 = self.indexer.get_path(
+            'cam1.interfero_cube', err=True)
+        interf_cube_path_2 = self.indexer.get_path(
+            'merged.transformed_interfero_cube', err=True)
         
         # get noise values
         readout_noise_1, dark_current_level_1 = self.get_noise_values(1)
@@ -1736,8 +1790,8 @@ class Orbs(Tools):
 
         self.indexer.set_file_group('merged')
         cube = InterferogramMerger(
-            image_list_path_A=image_list_path_1,
-            image_list_path_B=image_list_path_2,
+            interf_cube_path_A=interf_cube_path_1,
+            interf_cube_path_B=interf_cube_path_2,
             data_prefix=self._get_data_prefix(0),
             project_header=self._get_project_fits_header(0),
             alignment_coeffs=None,
@@ -1786,14 +1840,20 @@ class Orbs(Tools):
           
         .. seealso:: :meth:`process.CalibrationLaser.create_calibration_laser_map`
         """
+        if 'calibration_laser_map_path' in self.options:
+            self._print_warning('A path to a calibration laser map has already been given ({}), this step is skipped.'.format(
+                self.options['calibration_laser_map_path']))
+
+            return 
+
         if camera_number == 1:
             if "calib_path_1" in self.options: 
-                calib_path = self.options["calib_path_1"]
+                calib_path = self.options["calib_path_1.hdf5"]
             else: 
                 self._print_error("No path to the calibration laser files list given, check the option file")
         elif camera_number == 2:
             if "calib_path_2" in self.options: 
-                calib_path = self.options["calib_path_2"]
+                calib_path = self.options["calib_path_2.hdf5"]
             else: 
                 self._print_error("No path to the calibration laser files list given, check the option file")
         else:
@@ -1834,38 +1894,6 @@ class Orbs(Tools):
         del cube, perf
         return perf_stats
         
-    def add_missing_frames(self, camera_number):
-        """Add non taken frames at the end of a cube in order to
-        complete it and have a centered ZDP. Useful when a cube could
-        not be completed during the night.
-        
-        :param camera_number: Camera number (can be 1, 2 or 0 
-          for merged data).
-          
-        .. seealso:: :meth:`process.RawData.add_missing_frames`
-        """
-        image_list_path = self._get_interfero_list_path(camera_number)
-            
-        self.options["camera_number"] = camera_number
-        if camera_number == 0:
-            cube = InterferogramMerger(
-                image_list_path, 
-                data_prefix=self._get_data_prefix(camera_number),
-                project_header=self._get_project_fits_header(0),
-                overwrite=self.overwrite,
-                tuning_parameters=self.tuning_parameters,
-                logfile_name=self._logfile_name,
-                config_file_name=self.config_file_name)
-        else:
-            cube = self._init_raw_data_cube(camera_number)
-            
-        if "step_number" in self.options: 
-            step_number = self.options["step_number"]
-        else:
-            self._print_error("No step number given, check the option file")
-
-        cube.add_missing_frames(step_number)
-        del cube
 
     def correct_interferogram(self, camera_number):
         """Correct a single-camera interferogram cube for variations
@@ -1892,13 +1920,13 @@ class Orbs(Tools):
             self._print_error('This method (Orbs.orbs.correct_interferogram) is intended to be used only to correct single-camera interferograms (i.e. camera_number must be 1 or 2)')
 
         # Load interferogram frames
-        image_list_path = self._get_interfero_list_path(camera_number)
-
+        interf_cube_path = self._get_interfero_cube_path(camera_number)
+        
         # init cube
         self.options["camera_number"] = camera_number
         self.indexer.set_file_group(camera_number)
         cube = Interferogram(
-            image_list_path, 
+            interf_cube_path, 
             data_prefix=self._get_data_prefix(camera_number),
             project_header = self._get_project_fits_header(
                 camera_number),
@@ -2084,7 +2112,7 @@ class Orbs(Tools):
         else: phase_map_0_path = None
         
         # Load interferogram frames
-        image_list_path = self._get_interfero_list_path(
+        cube_path = self._get_interfero_cube_path(
             camera_number, corrected=True)
                       
         # Get final bad frames vector
@@ -2098,8 +2126,9 @@ class Orbs(Tools):
         # init cube
         self.options["camera_number"] = camera_number
         self.indexer.set_file_group(camera_number)
+        
         cube = Interferogram(
-            image_list_path, 
+            cube_path, 
             data_prefix=self._get_data_prefix(camera_number),
             project_header = self._get_project_fits_header(
                 camera_number),
@@ -2264,22 +2293,22 @@ class Orbs(Tools):
 
         # get default phase list path
         if camera_number == 0:
-            phase_list_path = self.indexer['merged.phase_list']
+            phase_cube_path = self.indexer['merged.phase_cube']
         elif camera_number == 1:
-            phase_list_path = self.indexer['cam1.phase_list']
+            phase_cube_path = self.indexer['cam1.phase_cube']
         elif camera_number == 2:
-            phase_list_path = self.indexer['cam2.phase_list']
+            phase_cube_path = self.indexer['cam2.phase_cube']
         else:
             self._print_error('Camera number must be 1, 2 or 0')
                 
         # get default interferogram length
         if not no_star:
-            interfero_list_path = self._get_interfero_list_path(
+            interfero_cube_path = self._get_interfero_cube_path(
                 camera_number, corrected=True)
         else:
-            interfero_list_path = self._get_interfero_list_path(
+            interfero_cube_path = self._get_interfero_cube_path(
                 camera_number, corrected=False)
-        cube = Interferogram(interfero_list_path, silent_init=True,
+        cube = Interferogram(interfero_cube_path, silent_init=True,
                              logfile_name=self._logfile_name,
                              config_file_name=self.config_file_name)
         interferogram_length = cube.dimz
@@ -2287,7 +2316,7 @@ class Orbs(Tools):
 
         self.indexer.set_file_group(camera_number)
         phase = Phase(
-            phase_list_path, 
+            phase_cube_path, 
             data_prefix=self._get_data_prefix(camera_number),
             project_header = self._get_project_fits_header(
                 camera_number),
@@ -2323,7 +2352,8 @@ class Orbs(Tools):
         del perf
         return perf_stats
         
-    def calibrate_spectrum(self, camera_number, cam1_scale=False):
+    def calibrate_spectrum(self, camera_number, cam1_scale=False,
+                           no_star=False):
         
         """Calibrate spectrum cube and correct WCS.
 
@@ -2334,6 +2364,10 @@ class Orbs(Tools):
           deep frame. Useful for SpIOMM which cam 2 frames cannot be
           well corrected for bias. This option is used only for a
           two-camera calibration process (default False).
+
+        :param no_star: (Optional) If True, data is considered to
+          contain no star, so no WCS calibration is possible (default
+          False).
 
         .. seealso:: :py:class:`process.Spectrum`
         """
@@ -2368,12 +2402,12 @@ class Orbs(Tools):
             self._print_warning(
                 "Unknown filter. No filter correction can be made")
     
-        spectrum_list_path = self.indexer.get_path(
-            'spectrum_list', camera_number)
+        spectrum_cube_path = self.indexer.get_path(
+            'spectrum_cube', camera_number)
 
         self.indexer.set_file_group(camera_number)
         spectrum = Spectrum(
-            spectrum_list_path, 
+            spectrum_cube_path, 
             data_prefix=self._get_data_prefix(camera_number),
             project_header = self._get_project_fits_header(
                 camera_number),
@@ -2404,6 +2438,9 @@ class Orbs(Tools):
         if (target_ra is None or target_dec is None
             or target_x is None or target_y is None):
             self._print_warning("Some WCS options were not given. WCS correction cannot be done.")
+            correct_wcs = None
+        elif no_star:
+            self._print_warning("No-star reduction: no WCS calibration.")
             correct_wcs = None
         else:
             astrom = self._init_astrometry(spectrum, camera_number)
@@ -2511,10 +2548,10 @@ class Orbs(Tools):
         else: stars_fwhm_arc = self.config['INIT_FWHM']
         
         # get frame list paths
-        image_list_path_1 = self.indexer['cam1.interfero_list']
+        interf_cube_path_1 = self.indexer['cam1.interfero_cube']
         if camera_number == 0:
-            image_list_path_2 = self.indexer[
-                'merged.transformed_interfero_frame_list']
+            interf_cube_path_2 = self.indexer[
+                'merged.transformed_interfero_cube']
 
         # load calibration laser map
         if 'calibration_laser_map_path' in self.options:
@@ -2566,8 +2603,8 @@ class Orbs(Tools):
 
         if camera_number == 0:
             cube = InterferogramMerger(
-                image_list_path_A=image_list_path_1,
-                image_list_path_B=image_list_path_2,
+                interf_cube_path_A=interf_cube_path_1,
+                interf_cube_path_B=interf_cube_path_2,
                 data_prefix=self._get_data_prefix(0),
                 project_header=self._get_project_fits_header(0),
                 alignment_coeffs=None,
@@ -2605,7 +2642,7 @@ class Orbs(Tools):
             perf.print_stats()
         else:
             cube = Interferogram(
-                image_list_path_1,          
+                interf_cube_path_1,          
                 data_prefix=self._get_data_prefix(camera_number),
                 project_header = self._get_project_fits_header(
                     camera_number),
@@ -2683,11 +2720,11 @@ class Orbs(Tools):
           merged data).
         """
         self._print_msg('Writing calibrated spectrum cube to disk', color=True)
-        spectrum_list_path = self.indexer.get_path('calibrated_spectrum_list',
+        spectrum_cube_path = self.indexer.get_path('calibrated_spectrum_cube',
                                                    camera_number)
-        spectrum = Cube(spectrum_list_path,
-                        config_file_name=self.config_file_name)
-        spectrum_header = spectrum.get_frame_header(0)
+        spectrum = HDFCube(spectrum_cube_path,
+                           config_file_name=self.config_file_name)
+        spectrum_header = spectrum.get_cube_header()
 
         if 'wavenumber' in self.options:
             wavenumber = self.options['wavenumber']
@@ -2713,11 +2750,12 @@ class Orbs(Tools):
             camera_number, apod, wavenumber=wavenumber,
             spectral_calibration=self.options['spectral_calibration'])
         
-        spectrum.export(spectrum_path, fits_header=spectrum_header,
+        spectrum.export(spectrum_path, header=spectrum_header,
                         overwrite=self.overwrite)
 
     def export_standard_spectrum(self, camera_number, n_phase=None,
-                                 aperture_photometry=True, apodization_function='2.0',
+                                 aperture_photometry=True,
+                                 apodization_function='2.0',
                                  auto_phase=True):
         """Extract spectrum of the standard stars and write it at the
         root of the reduction folder.

@@ -46,6 +46,7 @@
 
   <step name='calibrate_spectrum' cam='0'>
     <arg value='0' type='int'></arg>
+    <kwarg name='no_star' value='True' type='bool'></kwarg>
   </step>
 
 </steps>

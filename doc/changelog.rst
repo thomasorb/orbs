@@ -988,3 +988,30 @@ Required option file keywords
 
 * **SPEDART** keyword is no more required if not path to a dark folder
   is set (**DIRDRK1** or **DIRDRK2**).
+
+
+v3.9 The HDF5 Miracle
+*********************
+
+All ORBS internal cubes used for computation have been passed to an
+HDF5 format which makes data loading incredibly faster. If those
+changes have small effects on small data cubes like SpIOMM data. It
+changes a lot the computation time on SITELLE's data cubes.
+
+v3.9.0
+======
+
+Nearly all classe in :file:`orbs.py` and :file:`process.py` have been
+modified to accept hdf5 cubes as input and output hdf5 cubes.
+
+During the Init of ORBS, FITS cubes are exported to HDF5 cubes before
+the reduction can start.
+
+Miscellaneous
+-------------
+
+:py:meth:`orb.astrometry.StarsParams.load_stars_parameters` and
+:py:meth:`orb.astrometry.StarsParams.save_stars_parameters` changed to
+output the parameters in HDF5 format. saving and loading is much
+more efficient.
+

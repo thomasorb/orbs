@@ -14,6 +14,11 @@ Each reduction can be divided in two major steps :
 * :ref:`creation-option-file`
 * :ref:`start-reduction-process`
 
+The creation of the option file is certainly the most important step
+as this file contains all the parameters which will be passed to
+ORBS. Indeed this file controls all the important aspects of the
+reduction. While starting the reduction process can be reduced to
+typing a simple command line.
 
 .. _creation-option-file:
 
@@ -72,9 +77,12 @@ interferometric images into a spectral cube:
 
 .. note:: When a path to a folder is expected, the folder must only
           contain the requested files (i.e. the folder set to DIRCAL1
-          must only contain the images of the calibration lase
-          cube). If all you files are in the same folder you can give
-          the path to a file list (see :ref:`file-list`).
+          must only contain the images of the calibration laser
+          cube). Note also that only FITS files will be considered,
+          i.e. you can put any other type of file in this folder. If
+          all you FITS files must be in the same folder you can give
+          the path to a file list (see :ref:`file-list`) in place of a
+          path to a folder.
 
 
 .. _compute-step-size:

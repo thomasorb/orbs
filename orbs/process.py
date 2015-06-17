@@ -31,10 +31,12 @@ import version
 __version__ = version.__version__
 
 from orb.core import Tools, Cube, ProgressBar, TextColor
+from orb.core import HDFCube, OutHDFCube
 import orb.utils
 import orb.astrometry
 import orb.constants
 from orb.astrometry import Astrometry, Gaussian, Aligner
+import bottleneck as bn
 
 import os
 import numpy as np
@@ -49,7 +51,7 @@ import astropy.wcs as pywcs
 #### CLASS RawData ###############################
 ##################################################
 
-class RawData(Cube):
+class RawData(HDFCube):
     """ORBS raw data processing class.
 
     .. note:: Raw data is the output data of SpIOMM/SITELLE without
@@ -82,26 +84,15 @@ class RawData(Cube):
         else:
             return (self._get_basic_header('Alignment vector error')
                     + self._project_header) 
-    
-    def _get_cr_map_frame_path(self, index):
-        """Return the default path to a frame of the cosmic ray map.
 
-        :param index: Index of the frame"""
-        formatted_index = "%(#)04d" %{"#":index}
-        crmap_dirname = os.path.dirname(self._data_path_hdr)
-        crmap_basename = os.path.basename(self._data_path_hdr)
-        return (crmap_dirname + os.sep + "CRMAP" + os.sep
-                + crmap_basename + "cr_map" 
-                + str(formatted_index) + ".fits")
+    def _get_cr_map_cube_path(self):
+        """Return the default path to a HDF5 cube of the cosmic rays."""
+        return self._data_path_hdr + "cr_map.hdf5"
 
     def _get_cr_map_frame_header(self):
         """Return the header of the cosmic ray map."""
         return (self._get_basic_header('Cosmic ray map')
                 + self._project_header)
-
-    def _get_cr_map_list_path(self):
-        """Return  the default path to the cosmic ray map list"""
-        return self._data_path_hdr + "cr_map.list"
     
     def _get_hp_map_path(self):
         """Return the default path to the hot pixels map."""
@@ -127,17 +118,10 @@ class RawData(Cube):
                 + self._project_header
                 + self._get_basic_frame_header(self.dimx, self.dimy))
 
-    def _get_interfero_frame_path(self, index):
-        """Return the default path to the interferogram frames.
 
-        :param index: The index of the interferogram frame.
-        """
-        formatted_index = "%(#)04d" %{"#":index}
-        interfero_dirname = os.path.dirname(self._data_path_hdr)
-        interfero_basename = os.path.basename(self._data_path_hdr)
-        return (interfero_dirname + "/INTERFEROGRAM/" 
-                + interfero_basename + "interferogram" 
-                + str(formatted_index) + ".fits")
+    def _get_interfero_cube_path(self):
+        """Return the default path to the interferogram HDF5 cube."""
+        return self._data_path_hdr + "interferogram.hdf5"
 
     def _get_interfero_frame_header(self):
         """Return the header of an interferogram frame"""
@@ -145,10 +129,6 @@ class RawData(Cube):
                 + self._project_header
                 + self._get_basic_frame_header(self.dimx, self.dimy))
 
-    def _get_interfero_list_path(self):
-        """Return the default path to the list of the interferogram
-        cube"""
-        return self._data_path_hdr + "interf.list"
 
     def _get_master_path(self, kind):
         """Return the default path to a master frame.
@@ -301,8 +281,21 @@ class RawData(Cube):
             dark_frames = dark_cube.get_all_data().astype(float)
             
         else:
-            self._print_warning("Bad dark cube dimensions : resizing data")
-            dark_frames = dark_cube.get_resized_data(self.dimx, self.dimy)
+            self._print_warning("Bad dark cube dimensions : resizing data. To avoid resizing hot pixels, the master dark frame is replaced by its median value.")
+            #dark_frames = dark_cube.get_resized_data(self.dimx, self.dimy)
+            dark_frames_badsize = dark_cube.get_all_data()
+            dark_frames = np.empty((self.dimx, self.dimy), dtype=float)
+            dark_median = list()
+            for iframe in range(dark_cube.dimz):
+                dark_median.append(orb.utils.robust_median(
+                    dark_frames_badsize[:,:,iframe]))
+            dark_frames.fill(np.median(dark_median))
+                
+                
+                
+                
+            
+            
 
         # Create master dark
         if not self.BIG_DATA:
@@ -400,28 +393,6 @@ class RawData(Cube):
             self._print_warning("Alignment vector not loaded")
             return None
 
-    def add_missing_frames(self, step_number):
-        """Add non taken frames at the end of a cube in order to
-        complete it and have a centered ZDP. Useful when a cube could
-        not be completed during the night.
-
-        :param step_number: Number of steps for a full cube.
-        """
-        if step_number > self.dimz:
-            zeros_frame = np.zeros((self.dimx, self.dimy), dtype=float)
-            image_list_text = ""
-            for iframe in range(step_number):
-                image_list_text += self._get_interfero_frame_path(iframe) + "\n"
-                if iframe >= self.dimz:
-                    self.write_fits(
-                        self._get_interfero_frame_path(iframe), 
-                        zeros_frame,
-                        fits_header=self._get_interfero_frame_header(),
-                        overwrite=self.overwrite,
-                        mask=zeros_frame)
-            f = open(self._get_interfero_list_path(), "w")
-            f.write(image_list_text)
-            f.close
 
     def create_alignment_vector(self, star_list_path, init_fwhm_arc,
                                 fov, profile_name='gaussian',
@@ -884,38 +855,41 @@ class RawData(Cube):
         self._print_msg("Total number of detected cosmic rays: %d"%np.sum(
             cr_map), color=True)
         
-        list_file = self.open_file(self._get_cr_map_list_path())
-        
         ## Writing cosmic ray map to disk
+        out_cube = OutHDFCube(self._get_cr_map_cube_path(),
+                              shape=cr_map.shape,
+                              overwrite=self.overwrite)
         for iframe in range(self.dimz):
-            cr_map_path = self._get_cr_map_frame_path(iframe)
-            self.write_fits(cr_map_path,
-                            cr_map[:,:,iframe].astype(np.uint8), 
-                            silent=True,
-                            fits_header=
-                            self._get_basic_header(file_type="Cosmic ray map"),
-                            overwrite=self.overwrite)
-            list_file.write(cr_map_path + "\n")
-        if self.indexer is not None:
-            self.indexer['cr_map_list'] = self._get_cr_map_list_path()
+            out_cube.write_frame(
+                iframe, cr_map[:,:,iframe].astype(np.bool_),
+                header=self._get_basic_header(file_type="Cosmic ray map"),
+                force_float32=False)
 
-    def check_bad_frames(self, cr_map_list_path=None, coeff=2.):
+        out_cube.close()
+        del out_cube
+            
+        if self.indexer is not None:
+            self.indexer['cr_map_cube'] = self._get_cr_map_cube_path()
+
+    def check_bad_frames(self, cr_map_cube_path=None, coeff=2.):
         """Check an interferogram cube for bad frames.
 
         If the number of detected cosmic rays is too important the
         frame is considered as bad
 
-        :param cr_map_path: (Optional) Path to the cosmic ray map
-        :param coeff: (Optional) Threshold coefficient (Default 2.)
+        :param cr_map_cube_path: (Optional) Path to the cosmic ray map
+          cube. If None given, default path is used (default None).
+        
+        :param coeff: (Optional) Threshold coefficient (default 2.)
         """
         self._print_msg("Checking bad frames")
         MIN_CR = 30.
         
         # Instanciating cosmic ray map cube
-        if (cr_map_list_path is None):
-                cr_map_list_path = self._get_cr_map_list_path()
-        cr_map_cube = Cube(cr_map_list_path,
-                           config_file_name=self.config_file_name)
+        if (cr_map_cube_path is None):
+                cr_map_cube_path = self._get_cr_map_cube_path()
+        cr_map_cube = HDFCube(cr_map_cube_path,
+                              config_file_name=self.config_file_name)
         cr_map = cr_map_cube.get_all_data()
         cr_map_vector = np.sum(np.sum(cr_map, axis=0), axis=0)
         median_rc = np.median(cr_map_vector)
@@ -958,8 +932,9 @@ class RawData(Cube):
                     nsigma -= 0.01
                 else:
                     nsigma_ok = True
-                    hp_map = np.ones_like(dark_image).astype(np.uint8)
+                    hp_map = np.zeros_like(dark_image).astype(np.uint8)
                     self._print_warning("No hot pixel found on frame")
+                    
         self._print_msg("Percentage of hot pixels : %.2f %%"%(
             float(np.shape(np.nonzero(hp_map))[1])
             / (self.dimx * self.dimy) * 100.))
@@ -1017,10 +992,15 @@ class RawData(Cube):
         
         dark_cube = Cube(dark_path,
                          config_file_name=self.config_file_name)
+        dark_cube_dimz = dark_cube.dimz
+        
+        if not self.is_same_2D_size(dark_cube):
+            dark_cube = dark_cube.get_resized_data(self.dimx, self.dimy)
+            dark_cube_dimz = dark_cube.shape[2]
 
         dark_current_level = [orb.utils.robust_median(
             (dark_cube[:,:,ik] - bias_image)[min_x:max_x, min_y:max_y])
-                              for ik in range(dark_cube.dimz)]
+                              for ik in range(dark_cube_dimz)]
         
         dark_current_level = orb.utils.robust_mean(dark_current_level)
         dark_current_level = (dark_current_level
@@ -1291,8 +1271,10 @@ class RawData(Cube):
                 temporary_frame = frame - (master_dark * dark_coeff)
 
                 # hot pixels correction
-                temporary_frame = orb.utils.correct_hot_pixels(
-                    temporary_frame, hp_map)
+                if np.any(hp_map):
+                    temporary_frame = orb.utils.correct_hot_pixels(
+                        temporary_frame, hp_map)
+                    
                 
                 ## # hot pixels only are now corrected using a special
                 ## # dark coefficient that minimize their std
@@ -1304,7 +1286,7 @@ class RawData(Cube):
                 ## temporary_frame[np.nonzero(hp_map)] = hp_frame[
                 ##     np.nonzero(hp_map)]
                 
-                frame = temporary_frame 
+                frame = temporary_frame
 
             # else: simple dark substraction
             else:
@@ -1336,7 +1318,7 @@ class RawData(Cube):
 
 
     def correct(self, bias_path=None, dark_path=None, flat_path=None,
-                cr_map_list_path=None, alignment_vector_path=None,
+                cr_map_cube_path=None, alignment_vector_path=None,
                 dark_int_time=None, flat_int_time=None,
                 exposition_time=None, bad_frames_vector=[],
                 optimize_dark_coeff=False,
@@ -1358,8 +1340,8 @@ class RawData(Cube):
         :param flat_path: (Optional) Path to a list of flat files. If
           none given no flat correction is done.
         
-        :param cr_map_list_path: (Optional) Path to the cosmic ray map
-          list of files, if none given the default path is used.
+        :param cr_map_cube_path: (Optional) Path to the cosmic ray map
+          HDF5 cube, if none given the default path is used.
           
         :param alignment_vector_path: (Optional) Path to the alignment
           vector file, if none given the default path is used.
@@ -1671,18 +1653,15 @@ class RawData(Cube):
             z_min = min(z_range)
             z_max = max(z_range)
             
-        # Create the file containing the list of the interferogram
-        # frames
-        image_list_file = self.open_file(self._get_interfero_list_path())
 
         cr_map_cube = None
         
         # Instanciating cosmic ray map cube
-        if (cr_map_list_path is None):
-            cr_map_list_path = self._get_cr_map_list_path()
-            if os.path.exists(cr_map_list_path):
-                cr_map_cube = Cube(cr_map_list_path,
-                                    config_file_name=self.config_file_name)
+        if (cr_map_cube_path is None):
+            cr_map_cube_path = self._get_cr_map_cube_path()
+            if os.path.exists(cr_map_cube_path):
+                cr_map_cube = HDFCube(cr_map_cube_path,
+                                      config_file_name=self.config_file_name)
             else:
                 self._print_warning("No cosmic ray map loaded")
                 
@@ -1692,16 +1671,20 @@ class RawData(Cube):
         job_server, ncpus = self._init_pp_server() 
         ncpus_max = ncpus
 
+        # creating output hdfcube
+        out_cube = OutHDFCube(self._get_interfero_cube_path(),
+                              (self.dimx, self.dimy, z_max-z_min),
+                              overwrite=self.overwrite)
+        
         # Interferogram creation
         progress = ProgressBar(int((z_max - z_min) / ncpus_max))
         for ik in range(z_min, z_max, ncpus):
-            
+                        
             # No more jobs than frames to compute
             if (ik + ncpus >= z_max): 
                 ncpus = z_max - ik
                 
             frames = np.empty((self.dimx, self.dimy, ncpus), dtype=float)
-            mask_frames = np.empty((self.dimx, self.dimy, ncpus), dtype=float)
             cr_maps = np.zeros((self.dimx, self.dimy, ncpus), dtype=np.bool)
             
             for icpu in range(ncpus):
@@ -1753,65 +1736,83 @@ class RawData(Cube):
                     for ijob in range(ncpus)]
 
             for ijob, job in jobs:
-                frames[:,:,ijob], mask_frames[:,:,ijob] = job()
+                iframe, imask_frame = job()
+                out_cube.write_frame(
+                    ik+ijob,
+                    data=iframe,
+                    header=self._get_interfero_frame_header(),
+                    mask=imask_frame,
+                    record_stats=True)
 
-            for ijob in range(ncpus):
-                interfero_frame_path = self._get_interfero_frame_path(ik + ijob)
-                image_list_file.write(interfero_frame_path + "\n")
-                self.write_fits(
-                    interfero_frame_path, frames[:,:,ijob], 
-                    silent=True,
-                    fits_header=self._get_interfero_frame_header(),
-                    overwrite=self.overwrite,
-                    mask=mask_frames[:,:,ijob], record_stats=True)
             progress.update(int((ik - z_min) / ncpus_max), 
                             info="frame : " + str(ik))
-            
-        image_list_file.close()
+
         self._close_pp_server(job_server)
         progress.end()
+        out_cube.close()
+        del out_cube
 
-        # check median level of frames (Because bad bias frames can
+        
+        # check median level of frames (Because bad bias/dark frames can
         # cause a negative median level for the frames of camera 2)
         self._print_msg('Checking frames level')
-        interf_cube = Cube(self._get_interfero_list_path(),
-                           config_file_name=self.config_file_name)
+        interf_cube = HDFCube(self._get_interfero_cube_path(),
+                              config_file_name=self.config_file_name)
         zmedian = interf_cube.get_zmedian()
         corr_level = -np.min(zmedian) + 10. # correction level
-
+        header = self._get_interfero_frame_header()
         # correct frames if nescessary by adding the same level to every frame
         if np.min(zmedian) < 0.:
+            out_cube = OutHDFCube(self._get_interfero_cube_path(),
+                                  (self.dimx, self.dimy, z_max-z_min),
+                                  overwrite=self.overwrite)
+            
             self._print_warning('Negative median level of some frames. Level of all frames is being added %f counts'%(corr_level))
             progress = ProgressBar(interf_cube.dimz)
             for iz in range(interf_cube.dimz):
                 progress.update(iz, info='Correcting negative level of frames')
                 frame = interf_cube.get_data_frame(iz) + corr_level
                 mask = interf_cube.get_data_frame(iz, mask=True)
-                interfero_frame_path = self._get_interfero_frame_path(iz)
-                self.write_fits(
-                    interfero_frame_path, frame, mask=mask,
-                    fits_header=self._get_interfero_frame_header(),
-                    overwrite=True, silent=True, record_stats=True)
+                
+                out_cube.write_frame(
+                    iz,
+                    data=frame,
+                    mask=mask,
+                    header=header,
+                    record_stats=True)
             progress.end()
-        
+
+            out_cube.close()
+            del out_cube
         
         if self.indexer is not None:
-            self.indexer['interfero_list'] = self._get_interfero_list_path()
+            self.indexer['interfero_cube'] = self._get_interfero_cube_path()
             
         self._print_msg("Interferogram computed")
 
+        out_cube = OutHDFCube(self._get_interfero_cube_path(),
+                              (self.dimx, self.dimy, z_max-z_min),
+                              overwrite=self.overwrite)
+        
         # create energy map
         energy_map = interf_cube.get_interf_energy_map()
+        out_cube.append_energy_map(energy_map)
         self.write_fits(
             self._get_energy_map_path(), energy_map,
             fits_header=self._get_energy_map_header(),
             overwrite=True, silent=False)
+
+        
         
         if self.indexer is not None:
             self.indexer['energy_map'] = self._get_energy_map_path()
-            
+
         # Create deep frame
         deep_frame = interf_cube.get_mean_image()
+        out_cube.append_deep_frame(deep_frame)
+        
+        if bn.nanmedian(deep_frame) < 0.:
+            self._print_warning('Deep frame median of the corrected cube is < 0. ({}), please check the calibration files (dark, bias, flat).')
         
         self.write_fits(
             self._get_deep_frame_path(), deep_frame,
@@ -1820,14 +1821,16 @@ class RawData(Cube):
         
         if self.indexer is not None:
             self.indexer['deep_frame'] = self._get_deep_frame_path()
+
         
-            
+        out_cube.close()
+        del out_cube    
 
 ##################################################
 #### CLASS Laser #################################
 ##################################################
 
-class CalibrationLaser(Cube):
+class CalibrationLaser(HDFCube):
     """ ORBS calibration laser processing class.
 
     CalibrationLaser class is aimed to compute the calibration laser map that
@@ -1874,19 +1877,11 @@ class CalibrationLaser(Cube):
         of the calibration laser cube."""
         return (self._get_basic_header('Calibration laser fit parameters')
                 + self._calibration_laser_header)
-
-    def _get_calibration_laser_spectrum_list_path(self):
-        """Return the path to the calibration laser spectrum list."""
-        return self._data_path_hdr + "calibration_laser_spectrumlist"
     
-    def _get_calibration_laser_spectrum_frame_path(self, index):
-        """Return the default path to the reduced calibration laser frame.
-
-        :param index: Index of the frame.
-        """
-        return os.path.join(self._data_path_hdr,
-                            'CALIBRATION_LASER_SPECTRUM',
-                            "calibration_laser_spectrum_{:04d}.fits".format(index))
+    def _get_calibration_laser_spectrum_cube_path(self):
+        """Return the default path to the reduced calibration laser
+        HDF5 cube."""
+        return self._data_path_hdr + "calibration_laser_cube.hdf5"
 
     def _get_calibration_laser_spectrum_frame_header(self, index, axis):
         """Return the header of a calibration spectrum frame.
@@ -1921,7 +1916,6 @@ class CalibrationLaser(Cube):
           is better but the procedure becomes slower. If True a
           gaussian is fitted (default True).
         """
-
         def _find_max_in_column(column_data, step, order, cm1_axis,
                                 get_calibration_laser_spectrum, fast):
             """Return the fitted central position of the emission line"""
@@ -1957,7 +1951,7 @@ class CalibrationLaser(Cube):
                         poly_order=0,
                         signal_range=[range_min, range_max],
                         wavenumber=True)
-
+                
                 # or sinc2 fit (slow)
                 else:
                     fitp = orb.utils.fit_lines_in_vector(
@@ -2005,6 +1999,11 @@ class CalibrationLaser(Cube):
         cm1_axis = orb.utils.create_cm1_axis(
             self.dimz, step, order)
 
+        out_cube = OutHDFCube(
+            self._get_calibration_laser_spectrum_cube_path(),
+            shape=(self.dimx, self.dimy, self.dimz),
+            reset=True)
+
         fitparams = np.empty((self.dimx, self.dimy, 8), dtype=float)
         max_array = np.empty((self.dimx, self.dimy), dtype=float)
         for iquad in range(0, self.QUAD_NB):
@@ -2049,17 +2048,16 @@ class CalibrationLaser(Cube):
 
             if get_calibration_laser_spectrum:
                 progress = ProgressBar(self.dimz)
-                ## SAVE returned data by quadrants
                 for iframe in range(self.dimz):
-                    progress.update(iframe, info='Saving data')
-                    frame_path = self._get_calibration_laser_spectrum_frame_path(
-                        iframe)
-
-                    # save data in a *.IQUAD file
-                    self.write_fits(
-                        frame_path+'.%d'%(iquad), iquad_data[:,:,iframe],
-                        silent=True, overwrite=True)
+                    out_cube.write_frame(
+                        iframe, data=iquad_data[:,:,iframe],
+                        section=[x_min,x_max,y_min,y_max])
+                    progress.update(
+                        iframe, info='writing data frame {}'.format(iframe))
                 progress.end()
+
+        out_cube.close()
+        del out_cube
 
         # Correct non-fitted values by interpolation
         max_array = orb.utils.correct_map2d(max_array, bad_value=np.nan)
@@ -2080,43 +2078,12 @@ class CalibrationLaser(Cube):
             self.indexer['calibration_laser_map'] = (
                 self._get_calibration_laser_map_path())
 
-        # merge *.IQUAD files
-        if get_calibration_laser_spectrum:
-            progress = ProgressBar(self.dimz)
-            for iframe in range(self.dimz):
-                progress.update(iframe, info='Merging quads')
-                frame = np.empty((self.dimx, self.dimy), dtype=float)
-                spectrum_frame_path = self._get_calibration_laser_spectrum_frame_path(
-                    iframe)
-                for iquad in range(0, self.QUAD_NB):
-                    x_min, x_max, y_min, y_max = self.get_quadrant_dims(iquad)
-                    frame[x_min:x_max, y_min:y_max] = self.read_fits(
-                        spectrum_frame_path+'.%d'%(iquad), delete_after=True)
-                self.write_fits(
-                    spectrum_frame_path, frame,
-                    silent=True,
-                    fits_header=self._get_calibration_laser_spectrum_frame_header(
-                        iframe, cm1_axis),
-                    overwrite=True)
-
-            progress.end()
-
-            # write list of spectrum files
-            list_file_path = self._get_calibration_laser_spectrum_list_path()
-            list_file = self.open_file(list_file_path)
-            for iframe in range(self.dimz):
-                spectrum_frame_path = self._get_calibration_laser_spectrum_frame_path(
-                    iframe)
-                list_file.write('%s\n'%spectrum_frame_path)
-
-            list_file.close()
-
 
 ##################################################
 #### CLASS Interferogram #########################
 ##################################################
 
-class Interferogram(Cube):
+class Interferogram(HDFCube):
     """ORBS interferogram processing class.
 
     .. note:: Interferogram data is defined as data already processed
@@ -2154,81 +2121,27 @@ class Interferogram(Cube):
                 + self._project_header
                 + self._calibration_laser_header
                 + self._get_fft_params_header('2.0'))
-
-    def _get_corrected_interferogram_list_path(self):
-        """Return the default path to the corrected interferogram list"""
-        return self._data_path_hdr + "corr_interf.list"
-
     
-    def _get_corrected_interferogram_frame_path(self, frame_index):
-        """Return the default path to a spectrum frame given its
-        index.
-        
-        :param frame_index: Index of the frame
-        """
-        corr_interf_dirname = os.path.dirname(self._data_path_hdr)
-        corr_interf_basename = os.path.basename(self._data_path_hdr)
-        return (corr_interf_dirname + "/CORRECTED_INTERFEROGRAM/"
-                + corr_interf_basename
-                + "corrected_interferogram%04d.fits"%frame_index)
+    def _get_corrected_interferogram_cube_path(self):
+        """Return the default path to a spectrum HDF5 cube."""
+        return self._data_path_hdr + 'corrected_interferogram_cube.hdf5'
 
     def _get_corrected_interferogram_frame_header(self):
         """Return the header of a corrected interferogram frame"""
         return (self._get_basic_header('Corrected interferogram frame')
                 + self._project_header
                 + self._get_basic_frame_header(self.dimx, self.dimy))
-        
-    def _get_spectrum_list_path(self, stars_cube=False,  phase=False):
-        """Return the default path to the spectrum list.
-
-        :param stars_cube: (Optional) The spectrum computed
-          contains only the spectrum of some stars. The default path
-          name is changed (default False).
-        :param phase: (Optional) If True the path is changed for a
-          phase cube (default False).
-        """
-
-        if not phase: cube_type = "spectrum"
-        else: cube_type = "phase"
-            
-        if stars_cube:
-            stars_header = "stars_"
-        else:
-            stars_header = ""
-       
-        return self._data_path_hdr + stars_header + "%s.list"%cube_type
        
 
-    def _get_spectrum_frame_path(self, frame_index, stars_cube=False,
-                                 phase=False):
-        """Return the default path to a spectrum frame given its
-        index.
+    def _get_spectrum_cube_path(self, phase=False):
+        """Return the default path to a spectrum HDF5 cube.
 
-        :param frame_index: Index of the frame
-        :param stars_cube: (Optional) The spectrum computed
-          contains only the spectrum of some stars. The default path
-          name is changed (default False).
         :param phase: (Optional) If True the path is changed for a
           phase cube (default False).
         """
         if not phase: cube_type = "spectrum"
         else: cube_type = "phase"
-        
-        if stars_cube:
-            dir_header = "STARS_"
-            stars_header = "stars_"
-        else:
-            dir_header = ""
-            stars_header = ""
-            
-        spectrum_dirname = os.path.dirname(self._data_path_hdr)
-        spectrum_basename = os.path.basename(self._data_path_hdr)
-        
-        return (spectrum_dirname + "/" + dir_header
-                + "%s/"%cube_type.upper()
-                + spectrum_basename + stars_header 
-                + "%s%04d.fits"%(cube_type, frame_index))
-
+        return self._data_path_hdr + cube_type + '.hdf5'
 
     def _get_spectrum_frame_header(self, frame_index, axis,
                                    apodization_function, phase=False,
@@ -2257,37 +2170,14 @@ class Interferogram(Cube):
                 + self._get_basic_spectrum_frame_header(frame_index, axis,
                                                         wavenumber=wavenumber)
                 + self._get_fft_params_header(apodization_function))
-
-    def _get_spectrum_path(self, stars_cube=False, phase=False):
-        """Return the default path to the spectral cube.
-        
-        :param stars_cube: (Optional) The spectrum computed
-          contains only the spectrum of some stars. The default path
-          name is changed (default False).
-        :param phase: (Optional) If True the path is changed for a
-          phase cube (default False).
-        """
-        if not phase: cube_type = "spectrum"
-        else: cube_type = "phase"
-        
-        if stars_cube:
-            stars_header = "stars_"
-        else:
-            stars_header = ""
-        return self._data_path_hdr + stars_header + "%s.fits"%cube_type
  
     def _get_spectrum_header(self, axis, apodization_function,
-                             stars_cube=False, phase=False,
-                             wavenumber=False):
+                             phase=False, wavenumber=False):
         """Return the header of the spectal cube.
         
         :param axis: Spectrum axis (must be in wavelength or in
           wavenumber).
-        
-        :param stars_cube: (Optional) The spectrum computed
-          contains only the spectrum of some stars. The default path
-          name is changed (default False).
-          
+              
         :param phase: (Optional) If True the path is changed for a
           phase cube (default False).
 
@@ -2298,10 +2188,8 @@ class Interferogram(Cube):
         if not phase: cube_type = "Spectrum"
         else: cube_type = "Phase"
         
-        if stars_cube:
-            header = self._get_basic_header('Stars %s cube'%cube_type)
-        else:
-            header = self._get_basic_header('%s cube'%cube_type)
+      
+        header = self._get_basic_header('%s cube'%cube_type)
         
         return (header
                 + self._project_header
@@ -2462,11 +2350,10 @@ class Interferogram(Cube):
                             data_prefix=self._data_prefix,
                             star_list_path=star_list_path,
                             logfile_name=self._logfile_name,
-                            box_size_coeff=7,
                             tuning_parameters=self._tuning_parameters,
                             config_file_name=self.config_file_name)
 
-        astrom.fit_stars_in_cube(local_background=False,
+        astrom.fit_stars_in_cube(local_background=True,
                                  fix_aperture_size=True,
                                  precise_guess=True,
                                  multi_fit=True, save=True)
@@ -2566,7 +2453,6 @@ class Interferogram(Cube):
 
         .. seealso:: :py:meth:`process.Interferogram.create_correction_vectors`
         """
-        
         def _correct_frame(frame, transmission_coeff, stray_light_coeff):
             if not np.all(frame==0.):
                 return (frame - stray_light_coeff) / transmission_coeff
@@ -2590,9 +2476,11 @@ class Interferogram(Cube):
         # Multiprocessing server init
         job_server, ncpus = self._init_pp_server() 
 
-        corr_interf_list_file = self.open_file(
-            self._get_corrected_interferogram_list_path())
-
+        # creating output hdfcube
+        out_cube = OutHDFCube(self._get_corrected_interferogram_cube_path(),
+                              (self.dimx, self.dimy, self.dimz),
+                              overwrite=self.overwrite)
+        
         # Interferogram creation
         progress = ProgressBar(self.dimz)
         for ik in range(0, self.dimz, ncpus):
@@ -2614,31 +2502,26 @@ class Interferogram(Cube):
                 frames[:,:,ijob] = job()
                 
             for ijob in range(ncpus):
-                corr_interf_frame_path = (
-                    self._get_corrected_interferogram_frame_path(ik + ijob))
                 
-                corr_interf_list_file.write(corr_interf_frame_path + "\n")
-                self.write_fits(
-                    corr_interf_frame_path, frames[:,:,ijob], 
-                    silent=True,
-                    fits_header=self._get_corrected_interferogram_frame_header(),
-                    overwrite=self.overwrite)
+                out_cube.write_frame(
+                    ik+ijob,
+                    data=frames[:,:,ijob],
+                    header=self._get_corrected_interferogram_frame_header())
             progress.update(ik, info="Correcting frame %d"%ik)
 
         progress.end()
-        corr_interf_list_file.close()
 
         if self.indexer is not None:
-            self.indexer['corr_interf_list'] = (
-                self._get_corrected_interferogram_list_path())
+            self.indexer['corr_interfero_cube'] = (
+                self._get_corrected_interferogram_cube_path())
             
         self._close_pp_server(job_server)
             
 
-    def compute_spectrum(self, calibration_laser_map_path, bin, step, order,
-                         nm_laser, zpd_shift=None, polyfit_deg=1,
-                         n_phase=None, bad_frames_vector=None,
-                         window_type=None, stars_cube=False,
+    def compute_spectrum(self, calibration_laser_map_path, bin, step,
+                         order, nm_laser, zpd_shift=None,
+                         polyfit_deg=1, n_phase=None,
+                         bad_frames_vector=None, window_type=None,
                          phase_cube=False, phase_map_0_path=None,
                          phase_coeffs=None, filter_file_path=None,
                          balanced=True, smoothing_deg=2, fringes=None,
@@ -2679,12 +2562,6 @@ class Interferogram(Cube):
           containing ones for bad frames. Bad frames are replaced by
           zeros using a special function that smoothes transition
           between good parts and zeros (default None).
-
-        :param stars_cube: (Optional) If True the process is optimized
-          for an interferogram cube containing only the interferogram
-          of some stars (This type of cube is mostly filled with
-          zeros). The resulting spectrum cube will be saved with a
-          different name (default False).
 
         :param phase_cube: (Optional) If True, only the phase cube is
           returned. The number of points of the phase can be defined
@@ -2917,6 +2794,7 @@ class Interferogram(Cube):
         if zpd_shift is None:
             zpd_shift = orb.utils.find_zpd(self.get_zmedian(nozero=True),
                                            return_zpd_shift=True)
+            
 
         self._print_msg("Zpd will be shifted from %d frames"%zpd_shift)
 
@@ -2927,6 +2805,7 @@ class Interferogram(Cube):
         else:
             phase_map_0 = np.zeros((self.dimx, self.dimy), dtype=float)
             phase_coeffs = None
+
             
         ## Check spectrum polarity
             
@@ -2943,9 +2822,9 @@ class Interferogram(Cube):
             
             # get mean interferogram
             mean_interf = self.get_zmean(nozero=True)
+            
 
             # create mean phase vector
-            
             coeffs_list_mean = list()
             coeffs_list_mean.append(np.mean(phase_map_0))
             coeffs_list_mean += phase_coeffs
@@ -2998,13 +2877,22 @@ class Interferogram(Cube):
             axis = orb.utils.create_nm_axis(axis_len, step, order)
         else:
             axis = orb.utils.create_cm1_axis(axis_len, step, order)
-        
+
+        out_cube = OutHDFCube(
+            self._get_spectrum_cube_path(phase=phase_cube),
+            shape=(self.dimx, self.dimy, axis_len),
+            overwrite=self.overwrite)
+
+        out_cube.append_header(pyfits.Header(self._get_spectrum_header(
+            axis, window_type, phase=phase_cube,
+            wavenumber=wavenumber)))
+
         for iquad in range(0, self.QUAD_NB):
             x_min, x_max, y_min, y_max = self.get_quadrant_dims(iquad)
             iquad_data = self.get_data(x_min, x_max, 
-                                       y_min, y_max, 
-                                       0, self.dimz)
-                       
+                                      y_min, y_max, 
+                                      0, self.dimz)
+                
             # multi-processing server init
             job_server, ncpus = self._init_pp_server()
             progress = ProgressBar(x_max - x_min)
@@ -3013,7 +2901,7 @@ class Interferogram(Cube):
                 if (ii + ncpus >= x_max - x_min): 
                     ncpus = x_max - x_min - ii
                     
-                # jobs creation      
+                # jobs creation
                 jobs = [(ijob, job_server.submit(
                     _compute_spectrum_in_column, 
                     args=(nm_laser, 
@@ -3042,64 +2930,33 @@ class Interferogram(Cube):
             self._close_pp_server(job_server)
             progress.end()
             
-            ## SAVE returned data by quadrants
+            # save data
             progress = ProgressBar(axis_len)
             for iframe in range(axis_len):
-                progress.update(iframe, info='Saving data')
-                spectrum_frame_path = self._get_spectrum_frame_path(
-                    iframe, stars_cube=stars_cube, phase=phase_cube)
-                
-                # save data in a *.IQUAD file
-                self.write_fits(
-                    spectrum_frame_path+'.%d'%(iquad), iquad_data[:,:,iframe],
-                    silent=True, overwrite=True)
+                out_cube.write_frame(
+                    iframe,
+                    data=iquad_data[:,:,iframe],
+                    section=[x_min,x_max,y_min,y_max])
+                progress.update(iframe, info='Writing data frame {}'.format(
+                    iframe))
             progress.end()
-
-        # merge *.IQUAD files
-        progress = ProgressBar(axis_len)
-        for iframe in range(axis_len):
-            progress.update(iframe, info='Merging quads')
-            frame = np.empty((self.dimx, self.dimy), dtype=float)
-            spectrum_frame_path = self._get_spectrum_frame_path(
-                iframe, stars_cube=stars_cube, phase=phase_cube)
-            for iquad in range(0, self.QUAD_NB):
-                x_min, x_max, y_min, y_max = self.get_quadrant_dims(iquad)
-                frame[x_min:x_max, y_min:y_max] = self.read_fits(
-                    spectrum_frame_path+'.%d'%(iquad), delete_after=True)
-            self.write_fits(
-                spectrum_frame_path, frame,
-                silent=True,
-                fits_header=self._get_spectrum_frame_header(
-                    iframe, 
-                    axis, window_type, wavenumber=wavenumber),
-                overwrite=True)
-                
-        progress.end()
-        
-        # write list of spectrum files
-        list_file_path = self._get_spectrum_list_path(stars_cube=stars_cube,
-                                                      phase=phase_cube)
-        list_file = self.open_file(list_file_path)
-        for iframe in range(axis_len):
-            spectrum_frame_path = self._get_spectrum_frame_path(
-                iframe, stars_cube=stars_cube, phase=phase_cube)
-            list_file.write('%s\n'%spectrum_frame_path)
-                
-        list_file.close()
-
+            
+        out_cube.close()
+        del out_cube
+            
         # Create indexer key
         if not phase_cube:
             self._print_msg("Spectrum computed")
-            list_file_key = 'spectrum_list'
-            if stars_cube: list_file_key = 'stars_' + list_file_key
+            cube_file_key = 'spectrum_cube'
+            
         else:
             self._print_msg("Phase computed")
-            list_file_key = 'phase_list'
-            if stars_cube: list_file_key = 'stars_' + list_file_key
+            cube_file_key = 'phase_cube'
             
 
         if self.indexer is not None:
-                self.indexer[list_file_key] = list_file_path
+                self.indexer[cube_file_key] = self._get_spectrum_cube_path(
+                    phase=phase_cube)
 
 
     def extract_stars_spectrum(self, star_list_path, fwhm_arc, fov,
@@ -3454,7 +3311,7 @@ class InterferogramMerger(Tools):
     _project_header = None
     _wcs_header = None
     
-    def __init__(self, image_list_path_A=None, image_list_path_B=None,
+    def __init__(self, interf_cube_path_A=None, interf_cube_path_B=None,
                  bin_A=None, bin_B=None, pix_size_A=None, pix_size_B=None,
                  data_prefix="temp_data_",
                  alignment_coeffs=None, project_header=list(),
@@ -3467,11 +3324,11 @@ class InterferogramMerger(Tools):
         """
         Initialize InterferogramMerger class
 
-        :param image_list_path_A: (Optional) Path to the image list of
-          the camera 1
+        :param interf_cube_path_A: (Optional) Path to the interferogram
+          cube of the camera 1
 
-        :param image_list_path_B: (Optional) Path to the image list of
-          the camera 2
+        :param interf_cube_path_B: (Optional) Path to the interferogram
+          cube of the camera 2
 
         :param bin_A: (Optional) Binning factor of the camera A
 
@@ -3542,14 +3399,14 @@ class InterferogramMerger(Tools):
         if alignment_coeffs is not None:
             [self.dx, self.dy, self.dr, self.da, self.db] = alignment_coeffs
 
-        if image_list_path_A is not None:
-            self.cube_A = Cube(image_list_path_A,
-                               project_header=cube_A_project_header,
-                               config_file_name=self.config_file_name)
-        if image_list_path_B is not None:
-            self.cube_B = Cube(image_list_path_B,
-                               project_header=cube_B_project_header,
-                               config_file_name=self.config_file_name)
+        if interf_cube_path_A is not None:
+            self.cube_A = HDFCube(interf_cube_path_A,
+                                  project_header=cube_A_project_header,
+                                  config_file_name=self.config_file_name)
+        if interf_cube_path_B is not None:
+            self.cube_B = HDFCube(interf_cube_path_B,
+                                  project_header=cube_B_project_header,
+                                  config_file_name=self.config_file_name)
 
         self.bin_A = bin_A
         self.bin_B = bin_B
@@ -3685,20 +3542,9 @@ class InterferogramMerger(Tools):
                 + self._get_basic_frame_header(
                     self.cube_A.dimx, self.cube_A.dimy))
 
-    def _get_merged_interfero_frame_list_path(self):
-        """Return the path to the list of frames of the merged cube"""
-        return self._data_path_hdr + "interf.list"
-
-    def _get_merged_interfero_frame_path(self, index):
-        """Return the default path to the merged interferogram frames.
-
-        :param index: Index of the merged interferogram frame.
-        """
-        formatted_index = "%(#)04d" %{"#":index}
-        interfero_dirname = os.path.dirname(self._data_path_hdr)
-        interfero_basename = os.path.basename(self._data_path_hdr)
-        return (interfero_dirname + "/INTERFEROGRAM/" + interfero_basename
-                + "interferogram_" + str(formatted_index) + ".fits")
+    def _get_merged_interfero_cube_path(self):
+        """Return the default path to the merged interferogram frames."""
+        return self._data_path_hdr + "interferogram.hdf5"
 
     def _get_merged_interfero_frame_header(self):
         """Return the header of the merged interferogram frames."""
@@ -3720,20 +3566,10 @@ class InterferogramMerger(Tools):
         return (self._get_basic_header('Bad frames vector')
                 + self._project_header)
 
-    def _get_transformed_interfero_frame_list_path(self):
-        """Return the path to the list of frames of the transformed cube"""
-        return self._data_path_hdr + "transf.list"
 
-    def _get_transformed_interfero_frame_path(self, index):
-        """Return the default path to the transformed interferogram frames.
-        
-        :param index: Index of the transformed interferogram frame.
-        """
-        formatted_index = "%(#)04d" %{"#":index}
-        interfero_dirname = os.path.dirname(self._data_path_hdr)
-        interfero_basename = os.path.basename(self._data_path_hdr)
-        return (interfero_dirname + "/TRANSFORMED_CUBE_B/" + interfero_basename
-                + "transformed_cube_B_" + str(formatted_index) + ".fits")
+    def _get_transformed_interfero_cube_path(self):
+        """Return the default path to the transformed interferogram frames."""
+        return self._data_path_hdr + "transformed_cube_B.hdf5"
 
     def _get_transformed_interfero_frame_header(self):
         """Return the header of the transformed interferogram frames."""
@@ -3742,52 +3578,6 @@ class InterferogramMerger(Tools):
                 + self._get_basic_frame_header(self.cube_A.dimx,
                                                self.cube_A.dimy))
 
-    def _get_stars_interfero_frame_list_path(self):
-        """Return the path to the list of frames of the stars cube"""
-        return self._data_path_hdr + "stars.list"
-
-    def _get_stars_interfero_frame_path(self, index):
-        """Return the default path to the stars interferogram frames.
-
-        :param index: Index of the merged interferogram frame.
-        """
-        formatted_index = "%(#)04d" %{"#":index}
-        interfero_dirname = os.path.dirname(self._data_path_hdr)
-        interfero_basename = os.path.basename(self._data_path_hdr)
-        return interfero_dirname + "/STARS_INTERFEROGRAM/" + interfero_basename + "stars_interferogram_" + str(formatted_index) + ".fits"
-
-    def _get_stars_interfero_frame_header(self):
-        """Return the header of the merged interferogram frames
-        containing only the photometrical data for the stars.
-        """
-        return (self._get_basic_header('Merged stars interferogram frame')
-                + self._project_header
-                + self._get_basic_frame_header(self.cube_A.dimx,
-                                               self.cube_A.dimy))
-
-
-    def add_missing_frames(self, step_number):
-        """ Add non taken frames at the end of a cube in order to
-        complete it and have a centered ZDP. Useful when a cube could
-        not be completed during the night.
-        
-        :param step_number: Number of steps for a full cube.
-        """
-        if step_number > self.cube_A.dimz:
-            zeros_frame = np.zeros((self.cube_A.dimx, self.cube_A.dimy), dtype=float)
-            image_list_text = ""
-            for iframe in range(step_number):
-                image_list_text += self._get_merged_interfero_frame_path(iframe) + "\n"
-                if iframe >= self.cube_A.dimz:
-                    self.write_fits(
-                        self._get_merged_interfero_frame_path(iframe),
-                        zeros_frame,
-                        fits_header=self._get_merged_interfero_frame_header(),
-                        overwrite=self.overwrite,
-                        mask=zeros_frame)
-            f = open(self._get_merged_interfero_frame_list_path(), "w")
-            f.write(image_list_text)
-            f.close
 
     def find_alignment(self, star_list_path_A, init_angle, init_dx, init_dy,
                        fwhm_arc_A, fov_A):
@@ -3884,14 +3674,18 @@ class InterferogramMerger(Tools):
         framesB_init_mask = np.empty((self.cube_B.dimx, self.cube_B.dimy,
                                       ncpus), dtype=float)
         
-        transf_list_file = self.open_file(
-            self._get_transformed_interfero_frame_list_path())
+       
 
         self._print_msg("Transforming cube B")
         self._print_msg("Alignment parameters : %s"%str([self.dx, self.dy,
                                                          self.dr, self.da,
                                                          self.db]))
         self._print_msg("Zoom factor : %s"%str(self.zoom_factor))
+        
+        out_cube = OutHDFCube(self._get_transformed_interfero_cube_path(),
+                              shape=(self.cube_A.dimx, self.cube_A.dimy, self.cube_A.dimz),
+                              overwrite=self.overwrite)
+        
         progress = ProgressBar(int(self.cube_A.dimz/ncpus_max))
         for ik in range(0, self.cube_A.dimz, ncpus):
             # no more jobs than frames to compute
@@ -3926,24 +3720,21 @@ class InterferogramMerger(Tools):
                 framesB[:,:,ijob], framesB_mask[:,:,ijob] = job()
             
             for ijob in range(ncpus):
-                transfo_frame_path = self._get_transformed_interfero_frame_path(
-                    ik + ijob)
-                transf_list_file.write(transfo_frame_path + "\n")
-                self.write_fits(
-                    transfo_frame_path, framesB[:,:,ijob], 
-                    silent=True, 
-                    fits_header=self._get_transformed_interfero_frame_header(),
-                    overwrite=self.overwrite,
+                out_cube.write_frame(
+                    ik + ijob,
+                    data=framesB[:,:,ijob],
+                    header=self._get_transformed_interfero_frame_header(),
                     mask=framesB_mask[:,:,ijob])
 
             progress.update(int(ik/ncpus_max), info="frame : " + str(ik))
         self._close_pp_server(job_server)
         progress.end()
 
-        transf_list_file.close()
+        out_cube.close()
+        del out_cube
         
         if self.indexer is not None:
-            self.indexer['transformed_interfero_frame_list'] = self._get_transformed_interfero_frame_list_path()
+            self.indexer['transformed_interfero_cube'] = self._get_transformed_interfero_cube_path()
 
 
     def alternative_merge(self, add_frameB=True):
@@ -4098,13 +3889,18 @@ class InterferogramMerger(Tools):
                            dtype=float)
         ncpus_max = ncpus
         
-        image_list_file = self.open_file(
-            self._get_merged_interfero_frame_list_path())
-        
         result_frames = np.empty(
             (self.cube_A.dimx, self.cube_A.dimy, ncpus), dtype=float)
+
+
+        out_cube = OutHDFCube(self._get_merged_interfero_cube_path(),
+                              shape=(self.cube_A.dimx,
+                                     self.cube_A.dimy,
+                                     self.cube_A.dimz),
+                              overwrite=self.overwrite)
         
         progress = ProgressBar(int(self.cube_A.dimz/ncpus_max))
+        header = self._get_merged_interfero_frame_header()
         for ik in range(0, self.cube_A.dimz, ncpus):
             # no more jobs than frames to compute
             if (ik + ncpus >= self.cube_A.dimz):
@@ -4131,28 +3927,24 @@ class InterferogramMerger(Tools):
                 result_frames[:,:,ijob] = job()
              
             for ijob in range(ncpus):
-                
-                merged_frame_path = self._get_merged_interfero_frame_path(
-                    ik + ijob)
-                fits_header = self._get_merged_interfero_frame_header()
-                image_list_file.write(merged_frame_path + "\n")
-                self.write_fits(merged_frame_path, result_frames[:,:,ijob], 
-                                silent=True, 
-                                fits_header=fits_header,
-                                overwrite=self.overwrite)
-
+                out_cube.write_frame(
+                    ik + ijob,
+                    data=result_frames[:,:,ijob],
+                    header=header,
+                    record_stats=True)
+        
             progress.update(int(ik/ncpus_max), info="frame : " + str(ik))
         self._close_pp_server(job_server)
         progress.end()
 
         if self.indexer is not None:
-            self.indexer['merged_interfero_frame_list'] = (
-                self._get_merged_interfero_frame_list_path())
+            self.indexer['merged_interfero_cube'] = (
+                self._get_merged_interfero_cube_path())
         
 
     def merge(self, star_list_path, step_number, fwhm_arc, fov,
               add_frameB=True, smooth_vector=True,
-              create_stars_cube=False, profile_name='gaussian',
+              profile_name='gaussian',
               moffat_beta=3.5, bad_frames_vector=[],
               compute_ext_light=True, aperture_photometry=True,
               readout_noise_1=10., dark_current_level_1=0.,
@@ -4180,12 +3972,7 @@ class InterferogramMerger(Tools):
         
         :param fov: Field of view of the frame in arcminutes (given
           along x axis.
-
-        :param create_stars_cube: (Optional) If True only the
-          interferogram of the stars in the star list are computed
-          using their photometric parameters returned by a 2D gaussian
-          fit (default False).
-
+    
         :param profile_name: (Optional) PSF profile to use to fit
           stars. Can be 'gaussian' or 'moffat' (default
           'gaussian'). See:
@@ -4346,50 +4133,6 @@ class InterferogramMerger(Tools):
             
             return result_frame, result_frame_mask, flux_frame
 
-        def _create_merged_stars_frame(dimx, dimy, photom_A, photom_B,
-                                       star_list, transmission_factor,
-                                       modulation_ratio, ext_level):
-            """Create a star frame
-
-            The star frame is a reconstructed interferogram frame with
-            only one point for each star. Other pixels are set to zero.
-
-            :param dimx: Dimension along x axis of the resulting frame
-            
-            :param dimy: Dimension along y axis of the resulting frame
-            
-            :param photom_A: Photometry of the stars in the cube A for
-              the given frame.
-
-            :param photom_B: Photometry of the stars in the cube B for
-              the given frame.
-
-            :param star_list: List of star positions
-            
-            :param transmission_factor: Correction factor for the sky
-              variation of transmission
-
-            :param modulation_ratio: The ratio of modulation between
-              the two cameras. It depends on the gain and the quantum
-              efficiency of the CCD.
-              
-            :param ext_level: Level of stray light (external
-              illumination) in the camera B (if the level is negative,
-              the stray light is thus in the camera A)
-            """
-            result_frame = np.zeros((dimx, dimy), dtype=float)
-            
-            for istar in range(star_list.shape[0]):
-                if ((photom_B[istar] != 0.)
-                    and (photom_A[istar] != 0)):
-                    x_star, y_star = star_list[istar]
-                    result_frame[int(x_star), int(y_star)] = (
-                        (((photom_B[istar] / modulation_ratio)
-                         - photom_A[istar])
-                        / transmission_factor) - ext_level)
-            
-            return result_frame
-
         def get_sky_level_vector(cube):
             """Create a vector containing the sky level evaluated in
             each frame of a cube
@@ -4450,9 +4193,10 @@ class InterferogramMerger(Tools):
         MIN_STAR_NUMBER = float(self._get_tuning_parameter(
             'MIN_STAR_NUMBER', 5))
 
-        BAD_FRAME_COEFF = 0.5 # Minimum transmission coefficient for
-                              # bad frames detection (taken relatively
-                              # to the median transmission coefficient)
+        # Minimum transmission coefficient for bad frames detection
+        # (taken relatively to the median transmission coefficient)
+        BAD_FRAME_COEFF = float(self._get_tuning_parameter(
+            'BAD_FRAME_COEFF', 0.5))
 
         SIGMA_CUT_COEFF = 2.0 # Number of sigmas of the sigmacut
                               # (better if < 3.)
@@ -4888,74 +4632,6 @@ class InterferogramMerger(Tools):
         if self.indexer is not None:
             self.indexer['ext_illumination_vector'] = (
                 self._get_ext_illumination_vector_path())
-
-        ## STRAY LIGHT VECTOR #####################################
-        # This vector is used to compute stray light in both
-        # detectors.
-
-        ## if not add_frameB:
-        ##     self._print_msg("Computing stray light vector")
-            
-        ##     # Init of the multiprocessing server
-        ##     job_server, ncpus = self._init_pp_server()
-        ##     framesA = np.empty(
-        ##         (self.cube_A.dimx, self.cube_A.dimy, ncpus), dtype=float)
-        ##     framesB = np.empty(
-        ##         (self.cube_A.dimx, self.cube_A.dimy, ncpus), dtype=float)
-        ##     ncpus_max = ncpus
-
-        ##     stray_light_vector = np.empty(self.cube_A.dimz, dtype=float)
-        ##     progress = ProgressBar(self.cube_A.dimz)
-        ##     for ik in range(0, self.cube_A.dimz, ncpus):
-        ##         # no more jobs than frames to compute
-        ##         if (ik + ncpus >= self.cube_A.dimz):
-        ##             ncpus = self.cube_A.dimz - ik
-
-        ##         for ijob in range(ncpus):
-        ##             framesA[:,:,ijob] = self.cube_A.get_data_frame(ik + ijob)
-        ##             framesB[:,:,ijob] = self.cube_B.get_data_frame(ik + ijob)
-
-        ##         jobs = [(ijob, job_server.submit(
-        ##             _get_stray_light_coeff, 
-        ##             args=(framesA[:,:,ijob],
-        ##                   framesB[:,:,ijob], 
-        ##                   transmission_vector[ik + ijob],
-        ##                   modulation_ratio,
-        ##                   ext_level_vector[ik + ijob]),
-        ##             modules=("numpy as np", 'import orb.utils')))    
-        ##             for ijob in range(ncpus)]
-
-        ##         for ijob, job in jobs:
-        ##             stray_light_vector[ik+ijob] = job()
-
-        ##         progress.update(ik, info="frame: %d"%ik)
-        ##     self._close_pp_server(job_server)
-        ##     progress.end()
-
-        ##     # correct vector for nan values and zeros
-        ##     stray_light_vector = orb.utils.correct_vector(
-        ##         stray_light_vector, bad_value=0., polyfit=True, deg=3)
-
-        ##     # remove pedestal
-        ##     stray_light_vector -= orb.cutils.part_value(
-        ##         stray_light_vector[np.nonzero(~np.isnan(
-        ##             stray_light_vector))], 0.015)
-
-        ##     # Save stray light vector
-        ##     self.write_fits(
-        ##         self._get_stray_light_vector_path(), 
-        ##         np.reshape(stray_light_vector, (stray_light_vector.shape[0],1)),
-        ##         fits_header=self._get_stray_light_vector_header(),
-        ##         overwrite=self.overwrite)
-
-        ##     if self.indexer is not None:
-        ##         self.indexer['stray_light_vector'] = (
-        ##             self._get_stray_light_vector_path())
-        
-        ## else:
-        ##     # stray light vector will be computed from frame merging
-        ##     stray_light_vector = np.empty_like(transmission_vector)
-        ##     stray_light_vector.fill(np.nan)
         
 
         ## MERGE FRAMES ###########################################
@@ -4977,18 +4653,16 @@ class InterferogramMerger(Tools):
                                  ncpus), dtype=float)
         framesB_mask = np.empty((self.cube_A.dimx, self.cube_A.dimy,
                                  ncpus), dtype=float)
-        
-        if create_stars_cube:
-            image_list_file_path = (
-                self._get_stars_interfero_frame_list_path())
-        else:
-            image_list_file_path = (
-                self._get_merged_interfero_frame_list_path())
-            
-        image_list_file = self.open_file(image_list_file_path)
+
+        out_cube = OutHDFCube(self._get_merged_interfero_cube_path(),
+                              shape=(self.cube_A.dimx,
+                                     self.cube_A.dimy,
+                                     self.cube_A.dimz),
+                              overwrite=self.overwrite)
         
         ncpus_max = ncpus
         progress = ProgressBar(int(self.cube_A.dimz/ncpus_max))
+        header = self._get_merged_interfero_frame_header()
         
         for ik in range(0, self.cube_A.dimz, ncpus):
             # no more jobs than frames to compute
@@ -5007,84 +4681,49 @@ class InterferogramMerger(Tools):
                 framesB_mask.fill(0.)
             
             # compute merged frames
-            if create_stars_cube:
-                jobs = [(ijob, job_server.submit(
-                    _create_merged_stars_frame, 
-                    args=(self.cube_A.dimx, self.cube_A.dimy,
-                          photom_A[:, ik + ijob],
-                          photom_B[:, ik + ijob],
-                          astrom_A.star_list, 
-                          transmission_vector[ik + ijob],
-                          modulation_ratio,
-                          ext_level_vector[ik + ijob]),
-                    modules=("numpy as np",)))
-                        for ijob in range(ncpus)]
-            else:
-                jobs = [(ijob, job_server.submit(
-                    _create_merged_frame, 
-                    args=(self.cube_A.get_data_frame(ik + ijob),
-                          self.cube_B.get_data_frame(ik + ijob), 
-                          transmission_vector[ik + ijob],
-                          modulation_ratio,
-                          ext_level_vector[ik + ijob],
-                          add_frameB,
-                          framesA_mask[:,:,ijob],
-                          framesB_mask[:,:,ijob]),
-                    modules=("numpy as np",)))
-                        for ijob in range(ncpus)]
+            
+            jobs = [(ijob, job_server.submit(
+                _create_merged_frame, 
+                args=(self.cube_A.get_data_frame(ik + ijob),
+                      self.cube_B.get_data_frame(ik + ijob), 
+                      transmission_vector[ik + ijob],
+                      modulation_ratio,
+                      ext_level_vector[ik + ijob],
+                      add_frameB,
+                      framesA_mask[:,:,ijob],
+                      framesB_mask[:,:,ijob]),
+                modules=("numpy as np",)))
+                    for ijob in range(ncpus)]
                 
             for ijob, job in jobs:
-                if create_stars_cube:
-                    result_frames[:,:,ijob] = job()
+                (result_frames[:,:,ijob],
+                 result_mask_frames[:,:,ijob],
+                 flux_frame_temp) = job()
+                
+                if np.any(flux_frame_temp != 0.):
+                    flux_frame += flux_frame_temp
+                    flux_frame_nb += 1
+                    flux_vector[ik + ijob] = orb.utils.robust_median(
+                        flux_frame_temp)
                 else:
-                    (result_frames[:,:,ijob],
-                     result_mask_frames[:,:,ijob],
-                     flux_frame_temp) = job()
-                    
-                    if np.any(flux_frame_temp != 0.):
-                        flux_frame += flux_frame_temp
-                        flux_frame_nb += 1
-                        flux_vector[ik + ijob] = orb.utils.robust_median(
-                            flux_frame_temp)
-                    else:
-                        flux_vector[ik + ijob] = np.nan
+                    flux_vector[ik + ijob] = np.nan
              
             for ijob in range(ncpus):
-                if create_stars_cube:
-                    merged_frame_path = self._get_stars_interfero_frame_path(
-                        ik + ijob)
-                    fits_header = self._get_stars_interfero_frame_header()
-                    self.write_fits(merged_frame_path, result_frames[:,:,ijob], 
-                                    silent=True, 
-                                    fits_header=fits_header,
-                                    overwrite=self.overwrite)
-                else:
-                    merged_frame_path = self._get_merged_interfero_frame_path(
-                        ik + ijob)
-                    fits_header = self._get_merged_interfero_frame_header()
-                    self.write_fits(merged_frame_path, result_frames[:,:,ijob], 
-                                    silent=True, 
-                                    fits_header=fits_header,
-                                    overwrite=self.overwrite,
-                                    mask=result_mask_frames[:,:,ijob],
-                                    record_stats=True)
-                image_list_file.write(merged_frame_path + "\n")
-                image_list_file.flush()
-                
+                out_cube.write_frame(
+                    ik + ijob,
+                    data=result_frames[:,:,ijob],
+                    header=header,
+                    mask=result_mask_frames[:,:,ijob],
+                    record_stats=True)
 
             progress.update(int(ik/ncpus_max), info="frame : " + str(ik))
         self._close_pp_server(job_server)
         progress.end()
-        image_list_file.close
         flux_frame /= flux_frame_nb
 
         if self.indexer is not None:
-            if create_stars_cube:
-                self.indexer['stars_interfero_frame_list'] = (
-                    image_list_file_path)
-            else:
-                self.indexer['merged_interfero_frame_list'] = (
-                    image_list_file_path)
+            self.indexer['merged_interfero_cube'] = (
+                self._get_merged_interfero_cube_path())
         
 
         # ENERGY MAP & DEEP FRAME
@@ -5115,10 +4754,12 @@ class InterferogramMerger(Tools):
         else:
             stray_light_vector = np.zeros_like(flux_vector)
        
-        merged_cube = Cube(image_list_file_path,
-                           config_file_name=self.config_file_name)
+        merged_cube = HDFCube(self._get_merged_interfero_cube_path(),
+                              config_file_name=self.config_file_name)
         energy_map = merged_cube.get_interf_energy_map()
+        out_cube.append_energy_map(energy_map)
         deep_frame = (flux_frame - np.nanmean(stray_light_vector))
+        out_cube.append_deep_frame(deep_frame)
     
         self.write_fits(self._get_energy_map_path(), energy_map, 
                         fits_header=
@@ -5154,6 +4795,8 @@ class InterferogramMerger(Tools):
             self.indexer['calibration_stars'] = calibration_stars_path
             
         self._print_msg("Cubes merged")
+        out_cube.close()
+        del out_cube
 
 
     def extract_stars_spectrum(self, star_list_path, fwhm_arc, fov,
@@ -5280,6 +4923,7 @@ class InterferogramMerger(Tools):
         :param saturation: (Optional) If not None, allpixels above the
           saturation level are removed from the fit (default None).
         """
+
         PHASE_LEN_COEFF = 0.5 # Ratio of the number of points used to
                               # define phase over the total number of
                               # points of the interferograms
@@ -5670,7 +5314,7 @@ class InterferogramMerger(Tools):
 ##################################################
 #### CLASS Spectrum ##############################
 ##################################################
-class Spectrum(Cube):
+class Spectrum(HDFCube):
     """
     ORBS spectrum processing class.
 
@@ -5683,19 +5327,6 @@ class Spectrum(Cube):
     def _get_stars_coords_path(self):
         """Return path to the list of stars coordinates used to correct WCS"""
         return self._data_path_hdr + "stars_coords"
-
-        
-    def _get_calibrated_spectrum_list_path(self, stars_cube=False):
-        """Return the default path to the calibrated spectrum list.
-
-        :param stars_cube: (Optional) The spectrum computed
-          contains only the spectrum of some stars. The default path
-          name is changed (default False).
-        """ 
-        if stars_cube:
-            return self._data_path_hdr + "calibrated_stars_spectrum.list"
-        else:
-            return self._data_path_hdr + "calibrated_spectrum.list"
 
     def _get_modulation_efficiency_map_path(self):
         """Return path to the modulation efficiency map."""
@@ -5711,36 +5342,12 @@ class Spectrum(Cube):
                 + self._calibration_laser_header
                 + self._get_basic_frame_header(self.dimx, self.dimy))
 
-    def _get_calibrated_spectrum_frame_path(self, frame_index,
-                                            stars_cube=False):
-        """Return the default path to a calibrated spectral frame given its
-        index.
-
-        :param frame_index: Index of the frame
-        :param stars_cube: (Optional) The spectrum computed
-          contains only the spectrum of some stars. The default path
-          name is changed (default False).
-        """
-        cube_type = "calibrated_spectrum"
-        if stars_cube:
-            dir_header = "STARS_"
-            stars_header = "stars_"
-        else:
-            dir_header = ""
-            stars_header = ""
-
-        spectrum_dirname = os.path.dirname(self._data_path_hdr)
-        spectrum_basename = os.path.basename(self._data_path_hdr)
-        
-        return (spectrum_dirname + os.sep + dir_header
-                + "%s"%cube_type.upper() + os.sep
-                + spectrum_basename + stars_header 
-                + "%s%04d.fits"%(cube_type, frame_index))
-
+    def _get_calibrated_spectrum_cube_path(self):
+        """Return the default path to a calibrated spectral cube."""
+        return self._data_path_hdr + "calibrated_spectrum.hdf5"
 
     def _get_calibrated_spectrum_frame_header(self, frame_index, axis,
                                               apodization_function,
-                                              stars_cube=False,
                                               wavenumber=False):
         
         """Return the header of the calibrated spectral frames.
@@ -5749,17 +5356,12 @@ class Spectrum(Cube):
     
         :param axis: Spectrum axis (must be in wavelength or in
           wavenumber).
-        
-        :param stars_cube: (Optional) The spectrum computed contains
-          only the spectrum of some stars. The default path name is
-          changed (default False).
-
+    
         :param wavenumber: (Optional) If True the axis is considered
           to be in wavenumber. If False the axis is considered to be
           in wavelength (default False).
         """
-        if stars_cube: file_type = "Calibrated stars spectrum frame"
-        else: file_type = "Calibrated spectrum frame"
+        file_type = "Calibrated spectrum frame"
             
         return (self._get_basic_header(file_type)
                 + self._project_header
@@ -5769,41 +5371,19 @@ class Spectrum(Cube):
                                                         wavenumber=wavenumber)
                 + self._get_fft_params_header(apodization_function))
     
-    def _get_calibrated_spectrum_path(self, stars_cube=False):
-        """Return the default path to the calibrated spectral cube.
-        
-        :param stars_cube: (Optional) The spectrum computed
-          contains only the spectrum of some stars. The default path
-          name is changed (default False).
-        """
-        if stars_cube:
-            stars_header = "stars_"
-        else:
-            stars_header = ""
-      
-        return (self._data_path_hdr + stars_header
-                + "calibrated_spectrum.fits")
-    
     def _get_calibrated_spectrum_header(self, axis, apodization_function,
-                                        stars_cube=False,
                                         wavenumber=False):
         """Return the header of the calibrated spectral cube.
         
         :param axis: Spectrum axis (must be in wavelength or in
           wavenumber).
-        
-        :param stars_cube: (Optional) The spectrum computed
-          contains only the spectrum of some stars. The default path
-          name is changed (default False).
           
         :param wavenumber: (Optional) If True the axis is considered
           to be in wavenumber. If False the axis is considered to be
           in wavelength (default False).
         """
-        if stars_cube:
-            header = self._get_basic_header('Calibrated stars spectrum cube')
-        else:
-            header = self._get_basic_header('Calibrated spectrum cube')
+        header = self._get_basic_header('Calibrated spectrum cube')
+        
         return (header
                 + self._project_header
                 + self._calibration_laser_header
@@ -5811,7 +5391,6 @@ class Spectrum(Cube):
                 + self._get_basic_spectrum_cube_header(axis,
                                                        wavenumber=wavenumber)
                 + self._get_fft_params_header(apodization_function))
-
 
     def _update_hdr_wcs(self, hdr, wcs_hdr):
         """Update a header with WCS parameters
@@ -5835,10 +5414,9 @@ class Spectrum(Cube):
             del hdr['LATPOLE']
         return hdr
         
-
     def calibrate(self, filter_file_path, step, order,
                   calibration_laser_map_path, nm_laser,
-                  stars_cube=False, correct_wcs=None,
+                  correct_wcs=None,
                   flux_calibration_vector=None,
                   deep_frame_path=None, mean_flux=True, wavenumber=False,
                   standard_header=None, spectral_calibration=True):
@@ -5864,10 +5442,7 @@ class Spectrum(Cube):
           must be interpolated. Else no spectral calibration is done:
           the channel position of a given wavelength/wavenumber
           changes with its position in the field (default True).
-          
-        :param stars_cube: (Optional) True if the spectral cube is a
-          star cube (default False).
-          
+                 
         :param correct_wcs: (Optional) Must be a pywcs.WCS
           instance. If not None header of the corrected spectrum
           cube is updated with the new WCS.
@@ -6051,13 +5626,14 @@ class Spectrum(Cube):
         
                 
         # Get FFT parameters
-        hdu = self.read_fits(self.image_list[0],
-                             return_hdu_only=True)
-        if 'APODIZ' in hdu[0].header:
-            apodization_function = hdu[0].header['APODIZ']
+        ## with self.open_hdf5(self.cube_path, 'r') as f:
+        ##     header = f[self._get_hdf5_header_path(0)][:]
+        header = self.get_cube_header()
+        if 'APODIZ' in header:
+            apodization_function = header['APODIZ']
         else:
             apodization_function = 'None'
-
+        
         # get calibration laser map
         calibration_laser_map = self.read_fits(calibration_laser_map_path)
         if (calibration_laser_map.shape[0] != self.dimx):
@@ -6124,6 +5700,11 @@ class Spectrum(Cube):
                 "No rescaling done: flux calibration might be bad")
             scale_factor = None
 
+        out_cube = OutHDFCube(
+            self._get_calibrated_spectrum_cube_path(),
+            shape=(self.dimx, self.dimy, self.dimz),
+            reset=True)
+        
         # Init of the multiprocessing server    
         for iquad in range(0, self.QUAD_NB):
             (x_min, x_max, 
@@ -6166,21 +5747,21 @@ class Spectrum(Cube):
 
             self._close_pp_server(job_server)
             progress.end()
-            
+
+            # save data
             progress = ProgressBar(self.dimz)
-            ## SAVE returned data by quadrants
             for iframe in range(self.dimz):
-                progress.update(iframe, info='Saving data')
-                frame_path = self._get_calibrated_spectrum_frame_path(
-                    iframe, stars_cube=stars_cube)
-
-                # save data in a *.IQUAD file
-                self.write_fits(
-                    frame_path+'.%d'%(iquad), iquad_data[:,:,iframe],
-                    silent=True, overwrite=True)
+                out_cube.write_frame(
+                    iframe,
+                    data=iquad_data[:,:,iframe],
+                    section=[x_min,x_max,y_min,y_max])
+                progress.update(iframe, info='Writing data frame {}'.format(
+                    iframe))
             progress.end()
-
-        # merge *.IQUAD files
+            
+          
+        
+        # update header
         if wavenumber:
             axis = orb.utils.create_nm_axis(self.dimz, step, order)
         else:
@@ -6192,71 +5773,47 @@ class Spectrum(Cube):
                 'FLAMBDA',
                 np.nanmean(flux_calibration_vector),
                 'Mean flux/ADU [erg/cm^2/s/A/ADU]'))
-                
-        progress = ProgressBar(self.dimz)
-        for iframe in range(self.dimz):
-            progress.update(iframe, info='Merging quads')
-            frame = np.empty((self.dimx, self.dimy), dtype=float)
-            frame_path = self._get_calibrated_spectrum_frame_path(
-                iframe, stars_cube=stars_cube)
-            for iquad in range(0, self.QUAD_NB):
-                x_min, x_max, y_min, y_max = self.get_quadrant_dims(iquad)
-                frame[x_min:x_max, y_min:y_max] = self.read_fits(
-                    frame_path+'.%d'%(iquad), delete_after=True)
-                
-            # Create header
-            hdr = self._get_calibrated_spectrum_frame_header(
-                iframe, axis,
-                apodization_function, stars_cube=stars_cube,
-                wavenumber=wavenumber)
 
-            # Create WCS header
-            new_hdr = pyfits.PrimaryHDU(frame.transpose()).header
-            new_hdr.extend(hdr, strip=True, update=True, end=True)
-            if correct_wcs is not None:
-                hdr = self._update_hdr_wcs(new_hdr, correct_wcs.to_header())
-            else:
-                hdr = new_hdr
-
-            hdr.set('PC1_1', after='CROTA2')
-            hdr.set('PC1_2', after='PC1_1')
-            hdr.set('PC2_1', after='PC1_2')
-            hdr.set('PC2_2', after='PC2_1')
-            hdr.set('WCSAXES', before='CTYPE1')
+        hdr = self._get_calibrated_spectrum_header(
+            axis, apodization_function, wavenumber=wavenumber)
+        
+        new_hdr = pyfits.PrimaryHDU(
+            np.empty((self.dimx, self.dimy),
+                     dtype=float).transpose()).header
+        new_hdr.extend(hdr, strip=True, update=True, end=True)
+        if correct_wcs is not None:
+            hdr = self._update_hdr_wcs(new_hdr, correct_wcs.to_header())
+        else:
+            hdr = new_hdr
             
-            # Create Standard header
-            if standard_header is not None:
-                hdr.extend(standard_header, strip=False, update=False, end=True)
+        hdr.set('PC1_1', after='CROTA2')
+        hdr.set('PC1_2', after='PC1_1')
+        hdr.set('PC2_1', after='PC1_2')
+        hdr.set('PC2_2', after='PC2_1')
+        hdr.set('WCSAXES', before='CTYPE1')
+        
+        # Create Standard header
+        if standard_header is not None:
+            hdr.extend(standard_header, strip=False, update=False, end=True)
                     
-            # Create flux header
-            flux_hdr = list()
-            flux_hdr.append(('COMMENT','',''))
-            flux_hdr.append(('COMMENT','Flux',''))
-            flux_hdr.append(('COMMENT','----',''))
-            flux_hdr.append(('COMMENT','',''))
-            if flux_calibration_vector is not None:
-                flux_hdr.append(('BUNIT','FLUX','Flux unit [erg/cm^2/s/A]'))
-            else:
-                flux_hdr.append(('BUNIT','UNCALIB','Uncalibrated Flux'))
-                    
-            hdr.extend(flux_hdr, strip=False, update=False, end=True)
-                
-            self.write_fits(
-                frame_path, frame, silent=True,
-                fits_header=hdr,
-                overwrite=True)
-        progress.end()
+        # Create flux header
+        flux_hdr = list()
+        flux_hdr.append(('COMMENT','',''))
+        flux_hdr.append(('COMMENT','Flux',''))
+        flux_hdr.append(('COMMENT','----',''))
+        flux_hdr.append(('COMMENT','',''))
+        if flux_calibration_vector is not None:
+            flux_hdr.append(('BUNIT','FLUX','Flux unit [erg/cm^2/s/A]'))
+        else:
+            flux_hdr.append(('BUNIT','UNCALIB','Uncalibrated Flux'))
+            
+        hdr.extend(flux_hdr, strip=False, update=False, end=True)
 
-        # write list of calibrated frames
-        file_list_path = self._get_calibrated_spectrum_list_path()
-        file_list = self.open_file(file_list_path )
-        for iframe in range(self.dimz):
-            frame_path = self._get_calibrated_spectrum_frame_path(
-                iframe, stars_cube=stars_cube)
-            file_list.write("%s\n"%frame_path)
-        file_list.close()
+        out_cube.append_header(hdr)
+    
         if self.indexer is not None:
-            self.indexer['calibrated_spectrum_list'] = file_list_path
+            self.indexer['calibrated_spectrum_cube'] = (
+                self._get_calibrated_spectrum_cube_path())
 
     def get_flux_calibration_vector(self, std_spectrum_path, std_name,
                                     step, order, exp_time, filter_file_path,
@@ -6406,7 +5963,7 @@ class Spectrum(Cube):
 #### CLASS Phase #################################
 ##################################################
 
-class Phase(Cube):
+class Phase(HDFCube):
     """ORBS phase processing class.
 
     Used to create the phase maps used to correct phase in spectra.
@@ -6414,7 +5971,6 @@ class Phase(Cube):
     .. note:: Phase data can be obtained by transforming interferogram
       cubes into a phase cube using :class:`process.Interferogram`.
     """
-
 
     def _get_phase_map_path(self, order, phase_map_type=None):
         """Return the default path to the phase map.

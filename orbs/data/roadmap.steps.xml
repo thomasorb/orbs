@@ -6,27 +6,27 @@
   </step>
 
   <step name="compute_cosmic_ray_map">
-    <outfile name='cr_map_list'></outfile>
+    <outfile name='cr_map_cube'></outfile>
   </step>
 
   <step name="compute_interferogram">
-    <outfile name='interfero_list'></outfile>
+    <outfile name='interfero_cube'></outfile>
   </step>
 
   <step name="transform_cube_B">
-    <outfile name='transformed_interfero_frame_list'></outfile>
+    <outfile name='transformed_interfero_cube'></outfile>
   </step>
 
   <step name="correct_interferogram">
-    <outfile name='corr_interf_list'></outfile>
+    <outfile name='corr_interfero_cube'></outfile>
   </step>
 
   <step name="merge_interferograms">
-    <outfile name='merged_interfero_frame_list'></outfile>
+    <outfile name='merged_interfero_cube'></outfile>
   </step>
 
   <step name="merge_interferograms_alt">
-    <outfile name='merged_interfero_frame_list'></outfile>
+    <outfile name='merged_interfero_cube'></outfile>
   </step>
 
   <step name="compute_calibration_laser_map">
@@ -34,7 +34,7 @@
   </step>
 
   <step name="compute_phase">
-    <outfile name='phase_list'></outfile>
+    <outfile name='phase_cube'></outfile>
   </step>
 
   <step name="compute_phase_maps">
@@ -42,11 +42,11 @@
   </step>
 
   <step name="compute_spectrum">
-    <outfile name='spectrum_list'></outfile>
+    <outfile name='spectrum_cube'></outfile>
   </step>
 
   <step name="calibrate_spectrum">
-    <outfile name='calibrated_spectrum_list'></outfile>
+    <outfile name='calibrated_spectrum_cube'></outfile>
   </step>
 
 </steps>
