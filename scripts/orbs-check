@@ -25,29 +25,24 @@ __version__ = "0.5dev"
 
 import os, sys
 
-# ORBS import
-# Defining the path to ORBS module from script location
-script_path = os.path.dirname(os.path.realpath(__file__)).split()
-orbs_path = os.path.normpath(('%s'%os.sep).join(str(script_path[0]).split(os.sep)[:-1]))
-sys.path.append(orbs_path)
-
-
+import orbs
 from orbs.orbs import Orbs
 from orbs.process import InterferogramMerger, Interferogram
 from orb.core import Tools, Cube
+from orb.visual import BaseViewer
 import orb.utils
 import orb.astrometry
 
 # Other imports
-import getopt
+import argparse
+from argparse import ArgumentParser
 import numpy as np
 import pylab as pl
-import ds9
-import Tkinter
-import ImageTk
+import gtk
+import gobject
 
 ####################################################
-############ OrbsCheck class ############################
+############ OrbsCheck class #######################
 ####################################################
 class OrbsCheck(Tools):
     """
@@ -72,10 +67,9 @@ class OrbsCheck(Tools):
 
     _star_list_A = None # List of star position detected by OrbsCheck
     _mean_fwhm = None # mean FWHM of stars detected by OrbsCheck
-    _nods9 = None # If False, ds9 interface will not be used
     raw_frame_nb = None
     
-    def __init__(self, options_file_path, nods9=False):
+    def __init__(self, options_file_path):
         """Initialize :py:class:`orbscheck.OrbsCheck`
 
         :param options_file_path: Path to the option file used by
@@ -83,8 +77,7 @@ class OrbsCheck(Tools):
         """
         self._print_msg("OrbsCheck initialization")
         self._orbs = Orbs(options_file_path, 'object', 'full')
-        self._nods9 = nods9
-        self._graph = Graph(nods9=self._nods9)
+        self._graph = Graph()
         cube = self._orbs._init_raw_data_cube(1)
         self.raw_frame_nb = cube.dimz
         
@@ -191,12 +184,16 @@ class OrbsCheck(Tools):
         .. seealso:: :py:meth:`astrometry.Astrometry.detect_stars`
         """
         cube = self._orbs._init_raw_data_cube(camera_number)
+        frame = cube[:,:,0]
+        vmax = orb.cutils.part_value(frame.flatten(), 0.995)
+        vmin = orb.cutils.part_value(frame.flatten(), 0.05)
+        pl.imshow(frame.T, vmin=vmin, vmax=vmax)
         astrom = self._orbs._init_astrometry(cube, camera_number)
-        frame = cube.get_data_frame(0).transpose()
         star_list = orb.astrometry.load_star_list(astrom._get_star_list_path())
-        self._graph.pop_frame(frame)
-        self._graph.pop_stars(star_list)
-
+  
+        pl.scatter(star_list[:,0], star_list[:,1])
+        pl.show()
+       
     def show_detected_cosmic_rays(self, camera_number, frame_nb):
         """Get the position of the detected cosmic rays and diplay it
         over each frame of the concerned data cube using ds9.
@@ -292,9 +289,6 @@ class Graph(Tools):
     """
     Graph class is used to display the informations collected by
     :py:class:`orbscheck.OrbsCheck`.
-    
-    Graph uses ds9 (through :py:mod:`pyds9`) for image display and
-    the :py:mod:`pylab` library for plotting.
     """
 
     FONTSIZE = 14 # Default font size
@@ -303,33 +297,11 @@ class Graph(Tools):
     _ds9 = None # ds9 instance
     _nods9 = None # If True ds9 interface will no be used
 
-    def __init__(self, nods9=False):
+    def __init__(self):
         """Initialize :py:class:`orbscheck.Graph`. Load ds9.
         """
         self._last_fig_index = 0
-        self._nods9 = nods9
-        if not self._nods9:
-            self._load_ds9()
 
-    def _load_ds9(self):
-        """Load ds9.
-
-        .. seealso:: :py:mod:`pyds9`
-        """
-        if self._ds9 != None:
-            self._close_ds9()
-        self._ds9 = ds9.ds9("OrbsCheck")
-        
-    def _close_ds9(self):
-        """Close ds9.
-
-        .. seealso:: :py:mod:`pyds9`
-        """
-        try:
-            self._ds9.set('exit')
-        except:
-            self._print_msg('ds9 is not running')
-        self._ds9 = None
         
     def pop_plot(self, y, x=None, xlabel=None, ylabel=None,
                  title=None, yerr=None, ylim=None):
@@ -439,233 +411,248 @@ class Graph(Tools):
         self._last_fig_index += 1
         return self._last_fig_index - 1
 
-    def pop_frame(self, frame):
-        """Display an image frame in ds9.
 
-        :param frame: The frame to be displayed as a numpy 2D array.
-        """
-        
-        try:
-            self._ds9.set_np2arr(frame.astype(float))
-            self._ds9.set('cmap bb')
-            self._ds9.set('scale log')
-        except:
-            self._print_msg("ds9 has been closed. Please restart OrbsCheck.")
-
-    def pop_stars(self, star_list):
-        """Display star positions in ds9.
-
-        :star_list: The list of star positions as an array [[x1, y1],
-          [x2, y2], ...]
-        
-        .. note:: The star positions are corrected for the shift of
-          the zero in ds9. In ds9 the pixel indices start from 1 and
-          in python they start from 0.
-        """
-        star_list_path = ".OrbsCheck_formatted_star_list"
-        f = open(star_list_path, 'w')
-        for istar in range(star_list.shape[0]):
-            star_list[istar,:] = star_list[istar,:] + 1
-            f.write("%f %f\n"%(star_list[istar,0], star_list[istar,1]))
-        f.close()
-        try:
-            self._ds9.set('regions format xy')
-            self._ds9.set('regions system image')
-            self._ds9.set('regions load %s'%star_list_path)
-        except:
-            self._print_msg("ds9 has been closed. Please restart OrbsCheck.")
-        
-    def __del__(self):
-        """Close ds9 and delete the Graph class properly.
-        """
-        self._close_ds9()
 
 
 ####################################################
-############ OrbsCheckGui class #########################
+############ OrbsCheckGui class ####################
 ####################################################
 
 
-class OrbsCheckGui(Tkinter.Frame):
-    """
-    This class runs OrbsCheck (Interface Rapide d'Information et de
-    Synthèse) an analysis interface for the data reduction software
-    ORBS.
+## class OrbsCheckGui(Tkinter.Frame):
+##     """
+##     This class runs OrbsCheck GUI
+##     """
+##     script_dir = os.path.dirname(os.path.realpath(__file__)).split()[0] + os.sep
     
-    To run this script simply use the following command : $ ./orbscheck
-    option_file.opt Remember : for any help please refer to the file
-    'OrbsCheck/orbscheck.py'
-    """
-    script_dir = os.path.dirname(os.path.realpath(__file__)).split()[0] + os.sep
+##     _logo_path = os.path.join(script_dir, 'logo.png')
+##     _orbscheck = None # OrbsCheck() instance
+##     _frame_nb = 0
+##     _showing_cr = None
     
-    _logo_path = os.path.join(script_dir, 'logo.png')
-    _orbscheck = None # OrbsCheck() instance
-    _frame_nb = 0
-    _showing_cr = None
+##     def onMove(self, value):
+##         self._frame_nb.set(int(value))
+
+##     def slide_plus(self):
+##         if self._frame_nb.get() < self._orbscheck.raw_frame_nb - 1:
+##             self._frame_nb.set(self._frame_nb.get() + 1)
+##         if (self._showing_cr == 1 or self._showing_cr == 2):
+##             self._orbscheck.show_detected_cosmic_rays(
+##                 self._showing_cr, self._frame_nb.get())
+
+##     def slide_minus(self):
+##         if self._frame_nb.get() > 0:
+##             self._frame_nb.set(self._frame_nb.get() - 1)
+##         if (self._showing_cr == 1 or self._showing_cr == 2):
+##             self._orbscheck.show_detected_cosmic_rays(
+##                 self._showing_cr, self._frame_nb.get())
+
+##     def show_detected_cr(self, camera_number):
+##         self._orbscheck.show_detected_cosmic_rays(camera_number,
+##                                                   self._frame_nb.get())
+##         self._showing_cr = camera_number
     
-    def onMove(self, value):
-        self._frame_nb.set(int(value))
+##     def show_detected_stars(self, camera_number):
+##         self._orbscheck.show_detected_stars(camera_number)
+##         self._showing_cr = None
 
-    def slide_plus(self):
-        if self._frame_nb.get() < self._orbscheck.raw_frame_nb - 1:
-            self._frame_nb.set(self._frame_nb.get() + 1)
-        if (self._showing_cr == 1 or self._showing_cr == 2):
-            self._orbscheck.show_detected_cosmic_rays(
-                self._showing_cr, self._frame_nb.get())
+##     def __init__(self, root, orbscheck):
+##         self._orbscheck = orbscheck
+##         self._frame_nb = Tkinter.IntVar()
+##         Tkinter.Frame.__init__(self, root)
+##         root.resizable(False,False)
 
-    def slide_minus(self):
-        if self._frame_nb.get() > 0:
-            self._frame_nb.set(self._frame_nb.get() - 1)
-        if (self._showing_cr == 1 or self._showing_cr == 2):
-            self._orbscheck.show_detected_cosmic_rays(
-                self._showing_cr, self._frame_nb.get())
+##         # define commands
+##         ftrans_vector = (
+##             lambda: self._orbscheck.show_transmission_vector(self.cam.get()))
+##         fextil_vector = lambda: self._orbscheck.show_ext_illumination_vector()
+##         faddli_vector = (
+##             lambda: self._orbscheck.show_stray_light_vector(self.cam.get()))
+##         falignment_vector_1 =  lambda: self._orbscheck.show_alignment_vector(1)
+##         falignment_vector_2 =  lambda: self._orbscheck.show_alignment_vector(2)
+##         falignment_quality =  lambda: self._orbscheck.show_alignment_quality()
+##         fdetected_stars_1 = lambda: self.show_detected_stars(1)
+##         fdetected_stars_2 = lambda: self.show_detected_stars(2)
+##         fdetected_cr_1 = lambda: self.show_detected_cr(1)
+##         fdetected_cr_2 = lambda: self.show_detected_cr(2)
+        
+##         # define labels and buttons
+##         Tkinter.Label(root, text="General").grid(
+##             column=1, row=0, sticky=Tkinter.W, columnspan=2)
+##         Tkinter.Button(root, text='DETECTED STARS CAM1', 
+##                        command=fdetected_stars_1, width=20).grid(
+##             column=1, row=1, columnspan=2)
+##         Tkinter.Button(root, text='DETECTED STARS CAM2', 
+##                        command=fdetected_stars_2, width=20).grid(
+##             column=1, row=2, columnspan=2)
+        
+##         Tkinter.Label(root, text="Correction").grid(
+##             column=1, row=3, sticky=Tkinter.W)
+##         Tkinter.Button(root, text='ALIGNMENT VECTORS CAM1', 
+##                        command=falignment_vector_1, width=20).grid(
+##             column=1, row=4, columnspan=2)
+##         Tkinter.Button(root, text='ALIGNMENT VECTORS CAM2', 
+##                        command=falignment_vector_2, width=20).grid(
+##             column=1, row=5, columnspan=2)
+##         Tkinter.Button(root, text='COSMIC RAYS CAM1', 
+##                        command=fdetected_cr_1, width=20).grid(
+##             column=1, row=6, columnspan=2)
+##         Tkinter.Button(root, text='COSMIC RAYS CAM2', 
+##                        command=fdetected_cr_2, width=20).grid(
+##             column=1, row=7, columnspan=2)
+##         Tkinter.Scale(root, label='Frame Nb',
+##                       command=self.onMove,
+##                       variable=self._frame_nb,
+##                       from_=0, to=self._orbscheck.raw_frame_nb - 1,
+##                       length=150,
+##                       tickinterval=int(self._orbscheck.raw_frame_nb / 4.),
+##                       showvalue='yes',
+##                       orient='horizontal').grid(
+##             column=1, row=8, columnspan=2, rowspan=3)
+##         Tkinter.Button(root, text='-', 
+##                        command=self.slide_minus, width=5).grid(
+##             column=1, row=11)
+##         Tkinter.Button(root, text='+', 
+##                        command=self.slide_plus, width=5).grid(
+##             column=2, row=11)
+        
+##         Tkinter.Label(root, text="Merging Process").grid(
+##             column=0, row=5, sticky=Tkinter.W, columnspan=1)
 
-    def show_detected_cr(self, camera_number):
-        self._orbscheck.show_detected_cosmic_rays(camera_number,
-                                                  self._frame_nb.get())
-        self._showing_cr = camera_number
+##         self.cam_list = ['CAM1', 'CAM2', 'MERGED']
+        
+##         self.cam = Tkinter.StringVar(root)
+##         self.cam.set('MERGED') # initial value
+##         self.ecam = Tkinter.OptionMenu(root, self.cam, *self.cam_list)
+##         self.ecam.grid(column=0, row=6, sticky=Tkinter.W)
+        
+##         Tkinter.Button(root, text='TRANSMISSION VECTOR', 
+##                        command=ftrans_vector, width=20).grid(
+##             column=0, row=7, columnspan=1)
+##         Tkinter.Button(root, text='EXT. ILLUM. VECTOR', 
+##                        command=fextil_vector, width=20).grid(
+##             column=0, row=8, columnspan=1)
+##         Tkinter.Button(root, text='STRAY LIGHT VECTOR', 
+##                        command=faddli_vector, width=20).grid(
+##             column=0, row=9, columnspan=1)
+##         Tkinter.Button(root, text='ALIGNMENT QUALITY', 
+##                        command=falignment_quality, width=20).grid(
+##             column=0, row=10, columnspan=1)
+
+##         # display logo
+##         image = ImageTk.PhotoImage(file=self._logo_path)
+##         label = Tkinter.Label(root, image=image)
+##         label.image = image
+##         label.grid(row=0, column=0, columnspan=1, rowspan=5, padx=5)
+        
+
+
+class OrbsCheckGui(OrbsCheck):
+
+
+    boxcams_camera = 1 # camera number
+    boxmerged_camera = 0 # camera number
     
-    def show_detected_stars(self, camera_number):
-        self._orbscheck.show_detected_stars(camera_number)
-        self._showing_cr = None
 
-    def __init__(self, root, orbscheck):
-        self._orbscheck = orbscheck
-        self._frame_nb = Tkinter.IntVar()
-        Tkinter.Frame.__init__(self, root)
-        root.resizable(False,False)
-
-        # define commands
-        ftrans_vector = (
-            lambda: self._orbscheck.show_transmission_vector(self.cam.get()))
-        fextil_vector = lambda: self._orbscheck.show_ext_illumination_vector()
-        faddli_vector = (
-            lambda: self._orbscheck.show_stray_light_vector(self.cam.get()))
-        falignment_vector_1 =  lambda: self._orbscheck.show_alignment_vector(1)
-        falignment_vector_2 =  lambda: self._orbscheck.show_alignment_vector(2)
-        falignment_quality =  lambda: self._orbscheck.show_alignment_quality()
-        fdetected_stars_1 = lambda: self.show_detected_stars(1)
-        fdetected_stars_2 = lambda: self.show_detected_stars(2)
-        fdetected_cr_1 = lambda: self.show_detected_cr(1)
-        fdetected_cr_2 = lambda: self.show_detected_cr(2)
-        
-        # define labels and buttons
-        Tkinter.Label(root, text="General").grid(
-            column=1, row=0, sticky=Tkinter.W, columnspan=2)
-        Tkinter.Button(root, text='DETECTED STARS CAM1', 
-                       command=fdetected_stars_1, width=20).grid(
-            column=1, row=1, columnspan=2)
-        Tkinter.Button(root, text='DETECTED STARS CAM2', 
-                       command=fdetected_stars_2, width=20).grid(
-            column=1, row=2, columnspan=2)
-        
-        Tkinter.Label(root, text="Correction").grid(
-            column=1, row=3, sticky=Tkinter.W)
-        Tkinter.Button(root, text='ALIGNMENT VECTORS CAM1', 
-                       command=falignment_vector_1, width=20).grid(
-            column=1, row=4, columnspan=2)
-        Tkinter.Button(root, text='ALIGNMENT VECTORS CAM2', 
-                       command=falignment_vector_2, width=20).grid(
-            column=1, row=5, columnspan=2)
-        Tkinter.Button(root, text='COSMIC RAYS CAM1', 
-                       command=fdetected_cr_1, width=20).grid(
-            column=1, row=6, columnspan=2)
-        Tkinter.Button(root, text='COSMIC RAYS CAM2', 
-                       command=fdetected_cr_2, width=20).grid(
-            column=1, row=7, columnspan=2)
-        Tkinter.Scale(root, label='Frame Nb',
-                      command=self.onMove,
-                      variable=self._frame_nb,
-                      from_=0, to=self._orbscheck.raw_frame_nb - 1,
-                      length=150,
-                      tickinterval=int(self._orbscheck.raw_frame_nb / 4.),
-                      showvalue='yes',
-                      orient='horizontal').grid(
-            column=1, row=8, columnspan=2, rowspan=3)
-        Tkinter.Button(root, text='-', 
-                       command=self.slide_minus, width=5).grid(
-            column=1, row=11)
-        Tkinter.Button(root, text='+', 
-                       command=self.slide_plus, width=5).grid(
-            column=2, row=11)
-        
-        Tkinter.Label(root, text="Merging Process").grid(
-            column=0, row=5, sticky=Tkinter.W, columnspan=1)
-
-        self.cam_list = ['CAM1', 'CAM2', 'MERGED']
-        
-        self.cam = Tkinter.StringVar(root)
-        self.cam.set('MERGED') # initial value
-        self.ecam = Tkinter.OptionMenu(root, self.cam, *self.cam_list)
-        self.ecam.grid(column=0, row=6, sticky=Tkinter.W)
-        
-        Tkinter.Button(root, text='TRANSMISSION VECTOR', 
-                       command=ftrans_vector, width=20).grid(
-            column=0, row=7, columnspan=1)
-        Tkinter.Button(root, text='EXT. ILLUM. VECTOR', 
-                       command=fextil_vector, width=20).grid(
-            column=0, row=8, columnspan=1)
-        Tkinter.Button(root, text='STRAY LIGHT VECTOR', 
-                       command=faddli_vector, width=20).grid(
-            column=0, row=9, columnspan=1)
-        Tkinter.Button(root, text='ALIGNMENT QUALITY', 
-                       command=falignment_quality, width=20).grid(
-            column=0, row=10, columnspan=1)
-
-        # display logo
-        image = ImageTk.PhotoImage(file=self._logo_path)
-        label = Tkinter.Label(root, image=image)
-        label.image = image
-        label.grid(row=0, column=0, columnspan=1, rowspan=5, padx=5)
+    def __init__(self, option_file_path):
+        OrbsCheck.__init__(self, option_file_path)
         
 
-def usage(): 
-    print """ orbscheck [OPTIONS]... OPTION_FILE...
+        self.window = gtk.Window(gtk.WINDOW_TOPLEVEL)
+        self.window.connect('destroy', self.destroy)
+        self.window.set_border_width(10)
+        
+        boxcams = gtk.VBox()
+        liststore = gtk.ListStore(gobject.TYPE_STRING)
+        camchooser = gtk.ComboBox(liststore)
+        cell = gtk.CellRendererText()
+        camchooser.pack_start(cell, True)
+        camchooser.add_attribute(cell, 'text', 0)
+        camchooser.append_text('CAM1')
+        camchooser.append_text('CAM2')
+        camchooser.connect('changed', self._set_boxcams_camera_cb)
+        camchooser.set_active(0)
+        boxcams.pack_start(camchooser)
 
-    Run the OrbsCheck interface.
+        def add_button(name, box, cb, *args):
+            button = gtk.Button(name)
+            button.connect('clicked', cb, *args)
+            box.pack_start(button)
 
-  --nods9: ds9 interface will not be loaded. (Useful when using ssh X
-    forwarding). But some OrbsCheck functions will be disabled.
+        add_button('Alignement Vector', boxcams, self._show_alignment_vector_cb)
+        add_button('Detected stars', boxcams, self._show_detected_stars_cb)
+       
+        boxmerged = gtk.VBox()
+        liststore = gtk.ListStore(gobject.TYPE_STRING)
+        camchooser = gtk.ComboBox(liststore)
+        cell = gtk.CellRendererText()
+        camchooser.pack_start(cell, True)
+        camchooser.add_attribute(cell, 'text', 0)
+        camchooser.append_text('MERGED')
+        camchooser.append_text('CAM1')
+        camchooser.append_text('CAM2')
+        camchooser.connect('changed', self._set_boxmerged_camera_cb)
+        camchooser.set_active(0)
+        boxmerged.pack_start(camchooser)
+        add_button('Transmission', boxmerged, self._show_transmission_vector_cb)
+        add_button('External Illumination', boxmerged, self._show_ext_illumination_vector_cb)
+        add_button('Stray Light', boxmerged, self._show_stray_light_vector_cb)
 
-  OrbsCheck version: %s
-  Author: Thomas Martin (thomas.martin.1@ulaval.ca)
-"""%__version__
-    sys.exit(2)
+
+        box = gtk.VBox()
+        frame_cams = gtk.Frame('Independant correction')
+        frame_cams.add(boxcams)
+        frame_merged = gtk.Frame('Merging')
+        frame_merged.add(boxmerged)
+        box.pack_start(frame_cams)
+        box.pack_start(frame_merged)
+        
+        
+        self.window.add(box)
+        self.window.show_all()
+        
+
+    def _show_transmission_vector_cb(self, w):
+        self.show_transmission_vector(self.boxmerged_camera)
+
+    def _show_stray_light_vector_cb(self, w):
+        self.show_stray_light_vector(self.boxmerged_camera)
+
+    def _show_ext_illumination_vector_cb(self, w):
+        self.show_ext_illumination_vector()
+
+    def _show_alignment_vector_cb(self, w):
+        self.show_alignment_vector(self.boxcams_camera)
+
+    def _show_detected_stars_cb(self, w):
+        self.show_detected_stars(self.boxcams_camera)
+        
+    def _set_boxcams_camera_cb(self, w):
+        val = w.get_active_text()
+        if val == 'CAM1': self.boxcams_camera = 1
+        elif val == 'CAM2': self.boxcams_camera = 2
+        else: raise Exception("Text must be 'CAM1' or 'CAM2'")
+
+    def _set_boxmerged_camera_cb(self, w):
+        val = w.get_active_text()
+        self.boxmerged_camera = val
+
+    def destroy(self, widget, data=None):
+        gtk.main_quit()
+        
 
 
 if __name__ == "__main__":
     
-    try:
-        opts, args = getopt.getopt(sys.argv[1:], "", ["nods9"])
-    except getopt.GetoptError, err:
-        print str(err)
-        usage()
-        sys.exit(2)
+    parser = ArgumentParser(
+        version=('ORBS-version: {}, ORB-version: {}'.format(
+            orbs.version.__version__, orb.core.__version__)))
 
-    nods9 = False
+    parser.add_argument('option_file_path',
+                        action='store',
+                        help="Path to the option file (can be a SITELLE job file).")
 
-    for opt, arg in opts:
-        if opt in ("--nods9"):
-            nods9 = True
-
-    for opt, arg in opts:
-        Tools()._print_msg(' ' + opt + ' ' + arg)
-        
-    if (len(args) > 0):
-        Tools()._print_msg("** OrbsCheck **", color=True)
-        Tools()._print_msg("Passed arguments : ", color=True)
-        Tools()._print_msg("Option file : %s"%str(args[0]), color=True)
-
-        if nods9 == True:
-            Tools()._print_warning(
-                "DS9 will not be loaded. Some OrbsCheck functions are disabled.")
-
-        orbscheck = OrbsCheck(str(args[0]), nods9=nods9)
-    else: usage()
-    
+    args = parser.parse_args()
     # GUI
-    root = Tkinter.Tk()
-    root.title("OrbsCheck Interface")
-    orbscheck_gui = OrbsCheckGui(root, orbscheck)
-    root.mainloop()
-
+    orbscheck_gui = OrbsCheckGui(args.option_file_path)
+    gtk.main()

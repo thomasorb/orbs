@@ -21,7 +21,7 @@
 ## along with ORBS.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-Process module contains all the processing classes of ORBS.
+The Process module contains all the processing classes of ORBS.
 """
 
 __author__ = "Thomas Martin"
@@ -396,7 +396,7 @@ class RawData(HDFCube):
 
     def create_alignment_vector(self, star_list_path, init_fwhm_arc,
                                 fov, profile_name='gaussian',
-                                moffat_beta=3.5, min_coeff=0.3,
+                                moffat_beta=2.1, min_coeff=0.3,
                                 readout_noise=10., dark_current_level=0.):
         """Create the alignment vector used to compute the
           interferogram from the raw images.
@@ -452,7 +452,7 @@ class RawData(HDFCube):
          alignment_error) = astrom.get_alignment_vectors(fit_cube=True)
 
         self.alignment_vector = np.array([alignment_vector_x,
-                                     alignment_vector_y]).T
+                                          alignment_vector_y]).T
         
         alignment_vector_path = self._get_alignment_vector_path()
         alignment_err_vector_path = self._get_alignment_vector_path(err=True)
