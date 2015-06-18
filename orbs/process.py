@@ -3,7 +3,7 @@
 # Author: Thomas Martin <thomas.martin.1@ulaval.ca>
 # File: process.py
 
-## Copyright (c) 2010-2014 Thomas Martin <thomas.martin.1@ulaval.ca>
+## Copyright (c) 2010-2015 Thomas Martin <thomas.martin.1@ulaval.ca>
 ## 
 ## This file is part of ORBS
 ##
@@ -2772,7 +2772,7 @@ class Interferogram(HDFCube):
             # no calibration: the calibration laser wavelength is set
             # to the real one (laser_nm) so that no calibration has to
             # be done.
-            self._print_warning('No wavelength calibration')
+            self._print_msg('No wavelength calibration')
             wavelength_calibration = False
             calibration_laser_map = np.empty(
                 (self.dimx, self.dimy), dtype=float)
@@ -2852,8 +2852,6 @@ class Interferogram(HDFCube):
         self._print_msg("Step size: %f"%step)
         self._print_msg("Bad frames: %s"%str(np.nonzero(bad_frames_vector)[0]))
         self._print_msg("Wavenumber output: {}".format(wavenumber))
-        self._print_msg("Wavelength calibration: {}".format(
-            wavelength_calibration))
         if fringes is not None:
             if not phase_cube:
                 self._print_msg("Fringes:")

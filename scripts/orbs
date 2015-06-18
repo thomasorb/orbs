@@ -1,8 +1,9 @@
 #!/usr/bin/python 
 # *-* coding: utf-8 *-*
 # Author: Thomas Martin <thomas.martin.1@ulaval.ca>
+# File: orbs
 
-## Copyright (c) 2010-2014 Thomas Martin <thomas.martin.1@ulaval.ca>
+## Copyright (c) 2010-2015 Thomas Martin <thomas.martin.1@ulaval.ca>
 ## 
 ## This file is part of ORBS
 ##
@@ -655,8 +656,8 @@ if __name__ == "__main__":
     parser_start.add_argument('--apod', '-a',
                               dest='apodization_function',
                               action='store',
-                              default=None,
-                              help="Apodization function. Can be one of the extended Norton-Beer functions (Naylor & Tahic 2007) : enter one of following coefficients : 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0. The coefficient 1.0 stands for NO apodization (default). You can also use one of the following window functions: barthann, bartlett, blackman, blackmanharris, bohman, hamming, hann, nuttall, parzen).")
+                              default='2.0',
+                              help="Apodization function. Can be one of the extended Norton-Beer functions (Naylor & Tahic 2007) : enter one of following coefficients : 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0. The coefficient 1.0 stands for NO apodization (default is 2.0).")
     
     group_special = parser_start.add_argument_group('Special arguments', 'Arguments less often used.')
         

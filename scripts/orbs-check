@@ -1,8 +1,9 @@
 #!/usr/bin/python
 # *-* coding: utf-8 *-*
 # Author: Thomas Martin <thomas.martin.1@ulaval.ca>
+# file: orbs-check
 
-## Copyright (c) 2010-2014 Thomas Martin <thomas.martin.1@ulaval.ca>
+## Copyright (c) 2010-2015 Thomas Martin <thomas.martin.1@ulaval.ca>
 ## 
 ## This file is part of ORBS
 ##
@@ -411,142 +412,12 @@ class Graph(Tools):
         self._last_fig_index += 1
         return self._last_fig_index - 1
 
-
-
+        
 
 ####################################################
 ############ OrbsCheckGui class ####################
 ####################################################
-
-
-## class OrbsCheckGui(Tkinter.Frame):
-##     """
-##     This class runs OrbsCheck GUI
-##     """
-##     script_dir = os.path.dirname(os.path.realpath(__file__)).split()[0] + os.sep
-    
-##     _logo_path = os.path.join(script_dir, 'logo.png')
-##     _orbscheck = None # OrbsCheck() instance
-##     _frame_nb = 0
-##     _showing_cr = None
-    
-##     def onMove(self, value):
-##         self._frame_nb.set(int(value))
-
-##     def slide_plus(self):
-##         if self._frame_nb.get() < self._orbscheck.raw_frame_nb - 1:
-##             self._frame_nb.set(self._frame_nb.get() + 1)
-##         if (self._showing_cr == 1 or self._showing_cr == 2):
-##             self._orbscheck.show_detected_cosmic_rays(
-##                 self._showing_cr, self._frame_nb.get())
-
-##     def slide_minus(self):
-##         if self._frame_nb.get() > 0:
-##             self._frame_nb.set(self._frame_nb.get() - 1)
-##         if (self._showing_cr == 1 or self._showing_cr == 2):
-##             self._orbscheck.show_detected_cosmic_rays(
-##                 self._showing_cr, self._frame_nb.get())
-
-##     def show_detected_cr(self, camera_number):
-##         self._orbscheck.show_detected_cosmic_rays(camera_number,
-##                                                   self._frame_nb.get())
-##         self._showing_cr = camera_number
-    
-##     def show_detected_stars(self, camera_number):
-##         self._orbscheck.show_detected_stars(camera_number)
-##         self._showing_cr = None
-
-##     def __init__(self, root, orbscheck):
-##         self._orbscheck = orbscheck
-##         self._frame_nb = Tkinter.IntVar()
-##         Tkinter.Frame.__init__(self, root)
-##         root.resizable(False,False)
-
-##         # define commands
-##         ftrans_vector = (
-##             lambda: self._orbscheck.show_transmission_vector(self.cam.get()))
-##         fextil_vector = lambda: self._orbscheck.show_ext_illumination_vector()
-##         faddli_vector = (
-##             lambda: self._orbscheck.show_stray_light_vector(self.cam.get()))
-##         falignment_vector_1 =  lambda: self._orbscheck.show_alignment_vector(1)
-##         falignment_vector_2 =  lambda: self._orbscheck.show_alignment_vector(2)
-##         falignment_quality =  lambda: self._orbscheck.show_alignment_quality()
-##         fdetected_stars_1 = lambda: self.show_detected_stars(1)
-##         fdetected_stars_2 = lambda: self.show_detected_stars(2)
-##         fdetected_cr_1 = lambda: self.show_detected_cr(1)
-##         fdetected_cr_2 = lambda: self.show_detected_cr(2)
         
-##         # define labels and buttons
-##         Tkinter.Label(root, text="General").grid(
-##             column=1, row=0, sticky=Tkinter.W, columnspan=2)
-##         Tkinter.Button(root, text='DETECTED STARS CAM1', 
-##                        command=fdetected_stars_1, width=20).grid(
-##             column=1, row=1, columnspan=2)
-##         Tkinter.Button(root, text='DETECTED STARS CAM2', 
-##                        command=fdetected_stars_2, width=20).grid(
-##             column=1, row=2, columnspan=2)
-        
-##         Tkinter.Label(root, text="Correction").grid(
-##             column=1, row=3, sticky=Tkinter.W)
-##         Tkinter.Button(root, text='ALIGNMENT VECTORS CAM1', 
-##                        command=falignment_vector_1, width=20).grid(
-##             column=1, row=4, columnspan=2)
-##         Tkinter.Button(root, text='ALIGNMENT VECTORS CAM2', 
-##                        command=falignment_vector_2, width=20).grid(
-##             column=1, row=5, columnspan=2)
-##         Tkinter.Button(root, text='COSMIC RAYS CAM1', 
-##                        command=fdetected_cr_1, width=20).grid(
-##             column=1, row=6, columnspan=2)
-##         Tkinter.Button(root, text='COSMIC RAYS CAM2', 
-##                        command=fdetected_cr_2, width=20).grid(
-##             column=1, row=7, columnspan=2)
-##         Tkinter.Scale(root, label='Frame Nb',
-##                       command=self.onMove,
-##                       variable=self._frame_nb,
-##                       from_=0, to=self._orbscheck.raw_frame_nb - 1,
-##                       length=150,
-##                       tickinterval=int(self._orbscheck.raw_frame_nb / 4.),
-##                       showvalue='yes',
-##                       orient='horizontal').grid(
-##             column=1, row=8, columnspan=2, rowspan=3)
-##         Tkinter.Button(root, text='-', 
-##                        command=self.slide_minus, width=5).grid(
-##             column=1, row=11)
-##         Tkinter.Button(root, text='+', 
-##                        command=self.slide_plus, width=5).grid(
-##             column=2, row=11)
-        
-##         Tkinter.Label(root, text="Merging Process").grid(
-##             column=0, row=5, sticky=Tkinter.W, columnspan=1)
-
-##         self.cam_list = ['CAM1', 'CAM2', 'MERGED']
-        
-##         self.cam = Tkinter.StringVar(root)
-##         self.cam.set('MERGED') # initial value
-##         self.ecam = Tkinter.OptionMenu(root, self.cam, *self.cam_list)
-##         self.ecam.grid(column=0, row=6, sticky=Tkinter.W)
-        
-##         Tkinter.Button(root, text='TRANSMISSION VECTOR', 
-##                        command=ftrans_vector, width=20).grid(
-##             column=0, row=7, columnspan=1)
-##         Tkinter.Button(root, text='EXT. ILLUM. VECTOR', 
-##                        command=fextil_vector, width=20).grid(
-##             column=0, row=8, columnspan=1)
-##         Tkinter.Button(root, text='STRAY LIGHT VECTOR', 
-##                        command=faddli_vector, width=20).grid(
-##             column=0, row=9, columnspan=1)
-##         Tkinter.Button(root, text='ALIGNMENT QUALITY', 
-##                        command=falignment_quality, width=20).grid(
-##             column=0, row=10, columnspan=1)
-
-##         # display logo
-##         image = ImageTk.PhotoImage(file=self._logo_path)
-##         label = Tkinter.Label(root, image=image)
-##         label.image = image
-##         label.grid(row=0, column=0, columnspan=1, rowspan=5, padx=5)
-        
-
-
 class OrbsCheckGui(OrbsCheck):
 
 
@@ -640,7 +511,9 @@ class OrbsCheckGui(OrbsCheck):
     def destroy(self, widget, data=None):
         gtk.main_quit()
         
-
+####################################################
+############ MAIN ##################################
+####################################################
 
 if __name__ == "__main__":
     

@@ -9,7 +9,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Index &mdash; Orbs 3.8.4.1 documentation</title>
+  <title>Index &mdash; Orbs 3.9.0 documentation</title>
   
 
   
@@ -33,7 +33,7 @@
   
 
   
-    <link rel="top" title="Orbs 3.8.4.1 documentation" href="index.html"/> 
+    <link rel="top" title="Orbs 3.9.0 documentation" href="index.html"/> 
 
   
   <script src="_static/js/modernizr.min.js"></script>
@@ -55,7 +55,7 @@
 
         
           
-          <img src="_static/logo.png" class="logo" />
+          <img src="_static/logo_sidebar.png" class="logo" />
         
         </a>
 
@@ -89,7 +89,12 @@
 <li class="toctree-l3"><a class="reference internal" href="installing_python.html#parallel-python">Parallel Python</a></li>
 <li class="toctree-l3"><a class="reference internal" href="installing_python.html#pywcs">PyWCS</a></li>
 <li class="toctree-l3"><a class="reference internal" href="installing_python.html#bottleneck">Bottleneck</a></li>
-<li class="toctree-l3"><a class="reference internal" href="installing_python.html#tkinter">Tkinter</a></li>
+<li class="toctree-l3"><a class="reference internal" href="installing_python.html#h5py">h5py</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="installing_python.html#install-szip">Install SZIP</a></li>
+<li class="toctree-l4"><a class="reference internal" href="installing_python.html#install-hdf5">Install HDF5</a></li>
+<li class="toctree-l4"><a class="reference internal" href="installing_python.html#install-h5py-pip-cannot-be-used-directly">Install H5PY (pip cannot be used directly)</a></li>
+</ul>
+</li>
 <li class="toctree-l3"><a class="reference internal" href="installing_python.html#cython">Cython</a></li>
 </ul>
 </li>
@@ -361,6 +366,14 @@
 </li>
 </ul>
 </li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#v3-9-the-hdf5-miracle">v3.9 The HDF5 Miracle</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="changelog.html#v3-9-0">v3.9.0</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="changelog.html#scripts">Scripts</a></li>
+<li class="toctree-l4"><a class="reference internal" href="changelog.html#default-output-cube">Default Output Cube</a></li>
+</ul>
+</li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>
@@ -471,24 +484,18 @@
   <dt><a href="orbs_module.html#orbs.orbs.Orbs._get_calibrated_spectrum_cube_path">_get_calibrated_spectrum_cube_path() (orbs.orbs.Orbs method)</a>
   </dt>
 
+      <dd><dl>
+        
+  <dt><a href="process_module.html#process.Spectrum._get_calibrated_spectrum_cube_path">(process.Spectrum method)</a>
+  </dt>
+
+      </dl></dd>
       
   <dt><a href="process_module.html#process.Spectrum._get_calibrated_spectrum_frame_header">_get_calibrated_spectrum_frame_header() (process.Spectrum method)</a>
   </dt>
 
       
-  <dt><a href="process_module.html#process.Spectrum._get_calibrated_spectrum_frame_path">_get_calibrated_spectrum_frame_path() (process.Spectrum method)</a>
-  </dt>
-
-      
   <dt><a href="process_module.html#process.Spectrum._get_calibrated_spectrum_header">_get_calibrated_spectrum_header() (process.Spectrum method)</a>
-  </dt>
-
-      
-  <dt><a href="process_module.html#process.Spectrum._get_calibrated_spectrum_list_path">_get_calibrated_spectrum_list_path() (process.Spectrum method)</a>
-  </dt>
-
-      
-  <dt><a href="process_module.html#process.Spectrum._get_calibrated_spectrum_path">_get_calibrated_spectrum_path() (process.Spectrum method)</a>
   </dt>
 
       
@@ -522,15 +529,11 @@
 
       </dl></dd>
       
+  <dt><a href="process_module.html#process.CalibrationLaser._get_calibration_laser_spectrum_cube_path">_get_calibration_laser_spectrum_cube_path() (process.CalibrationLaser method)</a>
+  </dt>
+
+      
   <dt><a href="process_module.html#process.CalibrationLaser._get_calibration_laser_spectrum_frame_header">_get_calibration_laser_spectrum_frame_header() (process.CalibrationLaser method)</a>
-  </dt>
-
-      
-  <dt><a href="process_module.html#process.CalibrationLaser._get_calibration_laser_spectrum_frame_path">_get_calibration_laser_spectrum_frame_path() (process.CalibrationLaser method)</a>
-  </dt>
-
-      
-  <dt><a href="process_module.html#process.CalibrationLaser._get_calibration_laser_spectrum_list_path">_get_calibration_laser_spectrum_list_path() (process.CalibrationLaser method)</a>
   </dt>
 
       
@@ -542,27 +545,19 @@
   </dt>
 
       
+  <dt><a href="process_module.html#process.Interferogram._get_corrected_interferogram_cube_path">_get_corrected_interferogram_cube_path() (process.Interferogram method)</a>
+  </dt>
+
+      
   <dt><a href="process_module.html#process.Interferogram._get_corrected_interferogram_frame_header">_get_corrected_interferogram_frame_header() (process.Interferogram method)</a>
   </dt>
 
       
-  <dt><a href="process_module.html#process.Interferogram._get_corrected_interferogram_frame_path">_get_corrected_interferogram_frame_path() (process.Interferogram method)</a>
-  </dt>
-
-      
-  <dt><a href="process_module.html#process.Interferogram._get_corrected_interferogram_list_path">_get_corrected_interferogram_list_path() (process.Interferogram method)</a>
+  <dt><a href="process_module.html#process.RawData._get_cr_map_cube_path">_get_cr_map_cube_path() (process.RawData method)</a>
   </dt>
 
       
   <dt><a href="process_module.html#process.RawData._get_cr_map_frame_header">_get_cr_map_frame_header() (process.RawData method)</a>
-  </dt>
-
-      
-  <dt><a href="process_module.html#process.RawData._get_cr_map_frame_path">_get_cr_map_frame_path() (process.RawData method)</a>
-  </dt>
-
-      
-  <dt><a href="process_module.html#process.RawData._get_cr_map_list_path">_get_cr_map_list_path() (process.RawData method)</a>
   </dt>
 
       
@@ -649,26 +644,22 @@
   <dt><a href="process_module.html#process.RawData._get_hp_map_path">_get_hp_map_path() (process.RawData method)</a>
   </dt>
 
-      
-  <dt><a href="process_module.html#process.RawData._get_interfero_frame_header">_get_interfero_frame_header() (process.RawData method)</a>
-  </dt>
-
   </dl></td>
   <td style="width: 33%" valign="top"><dl>
       
-  <dt><a href="process_module.html#process.RawData._get_interfero_frame_path">_get_interfero_frame_path() (process.RawData method)</a>
-  </dt>
-
-      
-  <dt><a href="orbs_module.html#orbs.orbs.Orbs._get_interfero_list_path">_get_interfero_list_path() (orbs.orbs.Orbs method)</a>
+  <dt><a href="orbs_module.html#orbs.orbs.Orbs._get_interfero_cube_path">_get_interfero_cube_path() (orbs.orbs.Orbs method)</a>
   </dt>
 
       <dd><dl>
         
-  <dt><a href="process_module.html#process.RawData._get_interfero_list_path">(process.RawData method)</a>
+  <dt><a href="process_module.html#process.RawData._get_interfero_cube_path">(process.RawData method)</a>
   </dt>
 
       </dl></dd>
+      
+  <dt><a href="process_module.html#process.RawData._get_interfero_frame_header">_get_interfero_frame_header() (process.RawData method)</a>
+  </dt>
+
       
   <dt><a href="process_module.html#process.RawData._get_master_header">_get_master_header() (process.RawData method)</a>
   </dt>
@@ -678,15 +669,11 @@
   </dt>
 
       
+  <dt><a href="process_module.html#process.InterferogramMerger._get_merged_interfero_cube_path">_get_merged_interfero_cube_path() (process.InterferogramMerger method)</a>
+  </dt>
+
+      
   <dt><a href="process_module.html#process.InterferogramMerger._get_merged_interfero_frame_header">_get_merged_interfero_frame_header() (process.InterferogramMerger method)</a>
-  </dt>
-
-      
-  <dt><a href="process_module.html#process.InterferogramMerger._get_merged_interfero_frame_list_path">_get_merged_interfero_frame_list_path() (process.InterferogramMerger method)</a>
-  </dt>
-
-      
-  <dt><a href="process_module.html#process.InterferogramMerger._get_merged_interfero_frame_path">_get_merged_interfero_frame_path() (process.InterferogramMerger method)</a>
   </dt>
 
       
@@ -726,23 +713,15 @@
   </dt>
 
       
+  <dt><a href="process_module.html#process.Interferogram._get_spectrum_cube_path">_get_spectrum_cube_path() (process.Interferogram method)</a>
+  </dt>
+
+      
   <dt><a href="process_module.html#process.Interferogram._get_spectrum_frame_header">_get_spectrum_frame_header() (process.Interferogram method)</a>
   </dt>
 
       
-  <dt><a href="process_module.html#process.Interferogram._get_spectrum_frame_path">_get_spectrum_frame_path() (process.Interferogram method)</a>
-  </dt>
-
-      
   <dt><a href="process_module.html#process.Interferogram._get_spectrum_header">_get_spectrum_header() (process.Interferogram method)</a>
-  </dt>
-
-      
-  <dt><a href="process_module.html#process.Interferogram._get_spectrum_list_path">_get_spectrum_list_path() (process.Interferogram method)</a>
-  </dt>
-
-      
-  <dt><a href="process_module.html#process.Interferogram._get_spectrum_path">_get_spectrum_path() (process.Interferogram method)</a>
   </dt>
 
       
@@ -751,18 +730,6 @@
 
       
   <dt><a href="process_module.html#process.Spectrum._get_stars_coords_path">_get_stars_coords_path() (process.Spectrum method)</a>
-  </dt>
-
-      
-  <dt><a href="process_module.html#process.InterferogramMerger._get_stars_interfero_frame_header">_get_stars_interfero_frame_header() (process.InterferogramMerger method)</a>
-  </dt>
-
-      
-  <dt><a href="process_module.html#process.InterferogramMerger._get_stars_interfero_frame_list_path">_get_stars_interfero_frame_list_path() (process.InterferogramMerger method)</a>
-  </dt>
-
-      
-  <dt><a href="process_module.html#process.InterferogramMerger._get_stars_interfero_frame_path">_get_stars_interfero_frame_path() (process.InterferogramMerger method)</a>
   </dt>
 
       
@@ -786,15 +753,11 @@
 
       </dl></dd>
       
+  <dt><a href="process_module.html#process.InterferogramMerger._get_transformed_interfero_cube_path">_get_transformed_interfero_cube_path() (process.InterferogramMerger method)</a>
+  </dt>
+
+      
   <dt><a href="process_module.html#process.InterferogramMerger._get_transformed_interfero_frame_header">_get_transformed_interfero_frame_header() (process.InterferogramMerger method)</a>
-  </dt>
-
-      
-  <dt><a href="process_module.html#process.InterferogramMerger._get_transformed_interfero_frame_list_path">_get_transformed_interfero_frame_list_path() (process.InterferogramMerger method)</a>
-  </dt>
-
-      
-  <dt><a href="process_module.html#process.InterferogramMerger._get_transformed_interfero_frame_path">_get_transformed_interfero_frame_path() (process.InterferogramMerger method)</a>
   </dt>
 
       
@@ -855,20 +818,6 @@
 <h2 id="A">A</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%" valign="top"><dl>
-      
-  <dt><a href="orbs_module.html#orbs.orbs.Orbs.add_missing_frames">add_missing_frames() (orbs.orbs.Orbs method)</a>
-  </dt>
-
-      <dd><dl>
-        
-  <dt><a href="process_module.html#process.InterferogramMerger.add_missing_frames">(process.InterferogramMerger method)</a>
-  </dt>
-
-        
-  <dt><a href="process_module.html#process.RawData.add_missing_frames">(process.RawData method)</a>
-  </dt>
-
-      </dl></dd>
       
   <dt><a href="process_module.html#process.InterferogramMerger.alternative_merge">alternative_merge() (process.InterferogramMerger method)</a>
   </dt>
@@ -1345,7 +1294,7 @@
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'3.8.4.1',
+            VERSION:'3.9.0',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true

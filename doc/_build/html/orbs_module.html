@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Orbs module &mdash; Orbs 3.8.4.1 documentation</title>
+  <title>Orbs module &mdash; Orbs 3.9.0 documentation</title>
   
 
   
@@ -32,7 +32,7 @@
   
 
   
-    <link rel="top" title="Orbs 3.8.4.1 documentation" href="index.html"/>
+    <link rel="top" title="Orbs 3.9.0 documentation" href="index.html"/>
         <link rel="next" title="Process module" href="process_module.html"/>
         <link rel="prev" title="ORBS Common reduction errors" href="reduction_errors.html"/> 
 
@@ -56,7 +56,7 @@
 
         
           
-          <img src="_static/logo.png" class="logo" />
+          <img src="_static/logo_sidebar.png" class="logo" />
         
         </a>
 
@@ -90,7 +90,12 @@
 <li class="toctree-l3"><a class="reference internal" href="installing_python.html#parallel-python">Parallel Python</a></li>
 <li class="toctree-l3"><a class="reference internal" href="installing_python.html#pywcs">PyWCS</a></li>
 <li class="toctree-l3"><a class="reference internal" href="installing_python.html#bottleneck">Bottleneck</a></li>
-<li class="toctree-l3"><a class="reference internal" href="installing_python.html#tkinter">Tkinter</a></li>
+<li class="toctree-l3"><a class="reference internal" href="installing_python.html#h5py">h5py</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="installing_python.html#install-szip">Install SZIP</a></li>
+<li class="toctree-l4"><a class="reference internal" href="installing_python.html#install-hdf5">Install HDF5</a></li>
+<li class="toctree-l4"><a class="reference internal" href="installing_python.html#install-h5py-pip-cannot-be-used-directly">Install H5PY (pip cannot be used directly)</a></li>
+</ul>
+</li>
 <li class="toctree-l3"><a class="reference internal" href="installing_python.html#cython">Cython</a></li>
 </ul>
 </li>
@@ -362,6 +367,14 @@
 </li>
 </ul>
 </li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#v3-9-the-hdf5-miracle">v3.9 The HDF5 Miracle</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="changelog.html#v3-9-0">v3.9.0</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="changelog.html#scripts">Scripts</a></li>
+<li class="toctree-l4"><a class="reference internal" href="changelog.html#default-output-cube">Default Output Cube</a></li>
+</ul>
+</li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>
@@ -402,21 +415,21 @@
           <div role="main" class="document">
             
   <div class="section" id="orbs-module">
-<h1><a class="toc-backref" href="#id1">Orbs module</a><a class="headerlink" href="#orbs-module" title="Permalink to this headline">¶</a></h1>
+<span id="id1"></span><h1><a class="toc-backref" href="#id2">Orbs module</a><a class="headerlink" href="#orbs-module" title="Permalink to this headline">¶</a></h1>
 <div class="contents topic" id="contents">
 <p class="topic-title first">Contents</p>
 <ul class="simple">
-<li><a class="reference internal" href="#orbs-module" id="id1">Orbs module</a><ul>
-<li><a class="reference internal" href="#orbs-class" id="id2">Orbs class</a></li>
-<li><a class="reference internal" href="#roadmap-class" id="id3">RoadMap class</a></li>
-<li><a class="reference internal" href="#step-class" id="id4">Step class</a></li>
-<li><a class="reference internal" href="#performance-class" id="id5">Performance class</a></li>
+<li><a class="reference internal" href="#orbs-module" id="id2">Orbs module</a><ul>
+<li><a class="reference internal" href="#orbs-class" id="id3">Orbs class</a></li>
+<li><a class="reference internal" href="#roadmap-class" id="id4">RoadMap class</a></li>
+<li><a class="reference internal" href="#step-class" id="id5">Step class</a></li>
+<li><a class="reference internal" href="#performance-class" id="id6">Performance class</a></li>
 </ul>
 </li>
 </ul>
 </div>
 <span class="target" id="module-orbs.orbs"></span><div class="section" id="orbs-class">
-<h2><a class="toc-backref" href="#id2">Orbs class</a><a class="headerlink" href="#orbs-class" title="Permalink to this headline">¶</a></h2>
+<h2><a class="toc-backref" href="#id3">Orbs class</a><a class="headerlink" href="#orbs-class" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt id="orbs.orbs.Orbs">
 <em class="property">class </em><code class="descclassname">orbs.orbs.</code><code class="descname">Orbs</code><span class="sig-paren">(</span><em>option_file_path</em>, <em>target</em>, <em>cams</em>, <em>config_file_name='config.orb'</em>, <em>overwrite=False</em>, <em>silent=False</em>, <em>fast_init=False</em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.orbs.Orbs" title="Permalink to this definition">¶</a></dt>
@@ -705,11 +718,10 @@ merged data).</td>
 </dd></dl>
 
 <dl class="method">
-<dt id="orbs.orbs.Orbs._get_interfero_list_path">
-<code class="descname">_get_interfero_list_path</code><span class="sig-paren">(</span><em>camera_number</em>, <em>corrected=False</em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.orbs.Orbs._get_interfero_list_path" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the path to the file containing the list of 
-the interferogram frames computed for each camera or
-the merged interferogram (camera_number = 0)</p>
+<dt id="orbs.orbs.Orbs._get_interfero_cube_path">
+<code class="descname">_get_interfero_cube_path</code><span class="sig-paren">(</span><em>camera_number</em>, <em>corrected=False</em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.orbs.Orbs._get_interfero_cube_path" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the path to the interferogram cube for each camera
+or the merged interferogram (camera_number = 0)</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -817,29 +829,8 @@ for merged data).</li>
 </dd></dl>
 
 <dl class="method">
-<dt id="orbs.orbs.Orbs.add_missing_frames">
-<code class="descname">add_missing_frames</code><span class="sig-paren">(</span><em>camera_number</em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.orbs.Orbs.add_missing_frames" title="Permalink to this definition">¶</a></dt>
-<dd><p>Add non taken frames at the end of a cube in order to
-complete it and have a centered ZDP. Useful when a cube could
-not be completed during the night.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>camera_number</strong> &#8211; Camera number (can be 1, 2 or 0 
-for merged data).</td>
-</tr>
-</tbody>
-</table>
-<div class="admonition seealso">
-<p class="first admonition-title">See also</p>
-<p class="last"><a class="reference internal" href="process_module.html#process.RawData.add_missing_frames" title="process.RawData.add_missing_frames"><code class="xref py py-meth docutils literal"><span class="pre">process.RawData.add_missing_frames()</span></code></a></p>
-</div>
-</dd></dl>
-
-<dl class="method">
 <dt id="orbs.orbs.Orbs.calibrate_spectrum">
-<code class="descname">calibrate_spectrum</code><span class="sig-paren">(</span><em>camera_number</em>, <em>cam1_scale=False</em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.orbs.Orbs.calibrate_spectrum" title="Permalink to this definition">¶</a></dt>
+<code class="descname">calibrate_spectrum</code><span class="sig-paren">(</span><em>camera_number</em>, <em>cam1_scale=False</em>, <em>no_star=False</em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.orbs.Orbs.calibrate_spectrum" title="Permalink to this definition">¶</a></dt>
 <dd><p>Calibrate spectrum cube and correct WCS.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -852,6 +843,9 @@ for merged data).</td>
 deep frame. Useful for SpIOMM which cam 2 frames cannot be
 well corrected for bias. This option is used only for a
 two-camera calibration process (default False).</li>
+<li><strong>no_star</strong> &#8211; (Optional) If True, data is considered to
+contain no star, so no WCS calibration is possible (default
+False).</li>
 </ul>
 </td>
 </tr>
@@ -1589,7 +1583,7 @@ of <code class="xref py py-const docutils literal"><span class="pre">orbs.orbs.O
 
 <dl class="method">
 <dt id="orbs.orbs.Orbs.start_reduction">
-<code class="descname">start_reduction</code><span class="sig-paren">(</span><em>apodization_function=None</em>, <em>start_step=0</em>, <em>n_phase=None</em>, <em>alt_merge=False</em>, <em>save_as_quads=False</em>, <em>add_frameB=True</em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.orbs.Orbs.start_reduction" title="Permalink to this definition">¶</a></dt>
+<code class="descname">start_reduction</code><span class="sig-paren">(</span><em>apodization_function='2.0'</em>, <em>start_step=0</em>, <em>n_phase=None</em>, <em>alt_merge=False</em>, <em>save_as_quads=False</em>, <em>add_frameB=True</em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.orbs.Orbs.start_reduction" title="Permalink to this definition">¶</a></dt>
 <dd><p>Run the whole reduction process for two cameras using
 default options</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -1693,7 +1687,7 @@ TUNE InterferogramMerger.find_alignment.BOX_SIZE_COEFF 7
 
 </div>
 <div class="section" id="roadmap-class">
-<h2><a class="toc-backref" href="#id3">RoadMap class</a><a class="headerlink" href="#roadmap-class" title="Permalink to this headline">¶</a></h2>
+<h2><a class="toc-backref" href="#id4">RoadMap class</a><a class="headerlink" href="#roadmap-class" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt id="orbs.orbs.RoadMap">
 <em class="property">class </em><code class="descclassname">orbs.orbs.</code><code class="descname">RoadMap</code><span class="sig-paren">(</span><em>instrument</em>, <em>target</em>, <em>cams</em>, <em>indexer</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.orbs.RoadMap" title="Permalink to this definition">¶</a></dt>
@@ -1865,7 +1859,7 @@ as optional arguments of the step function.</li>
 
 <dl class="attribute">
 <dt id="orbs.orbs.RoadMap.types_dict">
-<code class="descname">types_dict</code><em class="property"> = {'int': &lt;type 'int'&gt;, 'float': &lt;type 'float'&gt;, 'bool': &lt;function _str2bool at 0x2acaff25fc08&gt;, 'str': &lt;type 'str'&gt;}</em><a class="headerlink" href="#orbs.orbs.RoadMap.types_dict" title="Permalink to this definition">¶</a></dt>
+<code class="descname">types_dict</code><em class="property"> = {'int': &lt;type 'int'&gt;, 'float': &lt;type 'float'&gt;, 'bool': &lt;function _str2bool at 0x2b0546451a28&gt;, 'str': &lt;type 'str'&gt;}</em><a class="headerlink" href="#orbs.orbs.RoadMap.types_dict" title="Permalink to this definition">¶</a></dt>
 <dd><p>Dictionary of the defined arguments types</p>
 </dd></dl>
 
@@ -1873,7 +1867,7 @@ as optional arguments of the step function.</li>
 
 </div>
 <div class="section" id="step-class">
-<h2><a class="toc-backref" href="#id4">Step class</a><a class="headerlink" href="#step-class" title="Permalink to this headline">¶</a></h2>
+<h2><a class="toc-backref" href="#id5">Step class</a><a class="headerlink" href="#step-class" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt id="orbs.orbs.Step">
 <em class="property">class </em><code class="descclassname">orbs.orbs.</code><code class="descname">Step</code><span class="sig-paren">(</span><em>infiles</em>, <em>func</em>, <em>outfiles</em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.orbs.Step" title="Permalink to this definition">¶</a></dt>
@@ -1924,7 +1918,7 @@ recorded in the indexer (see <code class="xref py py-class docutils literal"><sp
 
 </div>
 <div class="section" id="performance-class">
-<h2><a class="toc-backref" href="#id5">Performance class</a><a class="headerlink" href="#performance-class" title="Permalink to this headline">¶</a></h2>
+<h2><a class="toc-backref" href="#id6">Performance class</a><a class="headerlink" href="#performance-class" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt id="orbs.orbs.Performance">
 <em class="property">class </em><code class="descclassname">orbs.orbs.</code><code class="descname">Performance</code><span class="sig-paren">(</span><em>cube</em>, <em>process_name</em>, <em>camera_number</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.orbs.Performance" title="Permalink to this definition">¶</a></dt>
@@ -2036,7 +2030,7 @@ run this function for a single reduction step.</p>
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'3.8.4.1',
+            VERSION:'3.9.0',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true

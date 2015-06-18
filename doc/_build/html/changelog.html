@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Changelog &mdash; Orbs 3.8.4.1 documentation</title>
+  <title>Changelog &mdash; Orbs 3.9.0 documentation</title>
   
 
   
@@ -32,7 +32,7 @@
   
 
   
-    <link rel="top" title="Orbs 3.8.4.1 documentation" href="index.html"/>
+    <link rel="top" title="Orbs 3.9.0 documentation" href="index.html"/>
         <link rel="prev" title="Process module" href="process_module.html"/> 
 
   
@@ -55,7 +55,7 @@
 
         
           
-          <img src="_static/logo.png" class="logo" />
+          <img src="_static/logo_sidebar.png" class="logo" />
         
         </a>
 
@@ -89,7 +89,12 @@
 <li class="toctree-l3"><a class="reference internal" href="installing_python.html#parallel-python">Parallel Python</a></li>
 <li class="toctree-l3"><a class="reference internal" href="installing_python.html#pywcs">PyWCS</a></li>
 <li class="toctree-l3"><a class="reference internal" href="installing_python.html#bottleneck">Bottleneck</a></li>
-<li class="toctree-l3"><a class="reference internal" href="installing_python.html#tkinter">Tkinter</a></li>
+<li class="toctree-l3"><a class="reference internal" href="installing_python.html#h5py">h5py</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="installing_python.html#install-szip">Install SZIP</a></li>
+<li class="toctree-l4"><a class="reference internal" href="installing_python.html#install-hdf5">Install HDF5</a></li>
+<li class="toctree-l4"><a class="reference internal" href="installing_python.html#install-h5py-pip-cannot-be-used-directly">Install H5PY (pip cannot be used directly)</a></li>
+</ul>
+</li>
 <li class="toctree-l3"><a class="reference internal" href="installing_python.html#cython">Cython</a></li>
 </ul>
 </li>
@@ -169,6 +174,12 @@
 <li class="toctree-l3"><a class="reference internal" href="reduction_faq.html#if-you-only-are-a-simple-user">If you only are a simple user</a></li>
 </ul>
 </li>
+<li class="toctree-l2"><a class="reference internal" href="reduction_faq.html#what-is-the-binning-of-my-frames">What is the binning of my frames ?</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="reduction_errors.html">ORBS Common reduction errors</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="reduction_errors.html#malformed-sequence-of-files">Malformed sequence of files ?</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reduction_errors.html#error-during-cube-alignment">Error during cube alignment ?</a></li>
 </ul>
 </li>
 </ul>
@@ -355,6 +366,14 @@
 </li>
 </ul>
 </li>
+<li class="toctree-l2"><a class="reference internal" href="#v3-9-the-hdf5-miracle">v3.9 The HDF5 Miracle</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#v3-9-0">v3.9.0</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#scripts">Scripts</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#default-output-cube">Default Output Cube</a></li>
+</ul>
+</li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>
@@ -445,10 +464,10 @@ maximum flux of the detected stars)</li>
 <div class="section" id="v3-1-1">
 <h3>v3.1.1<a class="headerlink" href="#v3-1-1" title="Permalink to this headline">¶</a></h3>
 <ul class="simple">
-<li><a class="reference internal" href="process_module.html#process.RawData.add_missing_frames" title="process.RawData.add_missing_frames"><code class="xref py py-meth docutils literal"><span class="pre">add_missing_frames()</span></code></a> : correction of a
+<li><code class="xref py py-meth docutils literal"><span class="pre">add_missing_frames()</span></code> : correction of a
 minor bug when adding zeros frames for a single cube interferogram</li>
-<li><a class="reference internal" href="process_module.html#process.RawData.add_missing_frames" title="process.RawData.add_missing_frames"><code class="xref py py-meth docutils literal"><span class="pre">add_missing_frames()</span></code></a> and
-<a class="reference internal" href="process_module.html#process.InterferogramMerger.add_missing_frames" title="process.InterferogramMerger.add_missing_frames"><code class="xref py py-meth docutils literal"><span class="pre">add_missing_frames()</span></code></a> have been
+<li><code class="xref py py-meth docutils literal"><span class="pre">add_missing_frames()</span></code> and
+<code class="xref py py-meth docutils literal"><span class="pre">add_missing_frames()</span></code> have been
 corrected to add the correct header to the created zeros frames.</li>
 </ul>
 </div>
@@ -1250,12 +1269,11 @@ this choice is reflected on all the processes it launches.</li>
 <h3>3.8.1<a class="headerlink" href="#id21" title="Permalink to this headline">¶</a></h3>
 <div class="section" id="id22">
 <h4><strong>orbs</strong> script<a class="headerlink" href="#id22" title="Permalink to this headline">¶</a></h4>
-<p><strong>orbs</strong> script has been modified a lot to integrate new operations:
-- <em>start</em>: start a reduction.
-- <em>status</em>: display the status of all the reduction processes started</p>
-<blockquote>
-<div>with the same option file.</div></blockquote>
+<p><strong>orbs</strong> script has been modified a lot to integrate new operations:</p>
 <ul class="simple">
+<li><em>start</em>: start a reduction.</li>
+<li><em>status</em>: display the status of all the reduction processes started
+with the same option file.</li>
 <li><em>resume</em>: simply resume the last reduction process started with the
 given option file.</li>
 <li><em>clean</em>: clean the folder from all the reduction files but the final
@@ -1356,8 +1374,9 @@ during the FFT computation).</p>
 <h3>3.8.4.0<a class="headerlink" href="#id26" title="Permalink to this headline">¶</a></h3>
 <div class="section" id="update-of-the-documentation">
 <h4>Update of the documentation<a class="headerlink" href="#update-of-the-documentation" title="Permalink to this headline">¶</a></h4>
-<p>A far more complete reduction guide has been written. Some parts still
-need some further explanations (coming with 3.8.4.1).</p>
+<p>A far more complete <strong>reduction guide</strong> (see <a class="reference internal" href="reduction_guide.html#reduction-guide"><span>ORBS Reduction Guide</span></a>)
+has been written. Some parts still need some further explanations
+(coming with 3.8.4.1).</p>
 </div>
 <div class="section" id="required-option-file-keywords">
 <h4>Required option file keywords<a class="headerlink" href="#required-option-file-keywords" title="Permalink to this headline">¶</a></h4>
@@ -1368,6 +1387,56 @@ CAM1_DETECTOR_SIZE_Y, CAM2_DETECTOR_SIZE_X, CAM2_DETECTOR_SIZE_Y
 have been added to the ORB configuration file.</li>
 <li><strong>SPEDART</strong> keyword is no more required if not path to a dark folder
 is set (<strong>DIRDRK1</strong> or <strong>DIRDRK2</strong>).</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="section" id="v3-9-the-hdf5-miracle">
+<h2>v3.9 The HDF5 Miracle<a class="headerlink" href="#v3-9-the-hdf5-miracle" title="Permalink to this headline">¶</a></h2>
+<p>All ORBS internal cubes used for computation have been passed to an
+HDF5 format which makes data loading incredibly faster. If those
+changes have small effects on small data cubes like SpIOMM data, it
+changes a lot the computation time on SITELLE&#8217;s data cubes (passing
+from ~10 hours to 6.5 hours on a 16 procs machine).</p>
+<p>The HDF5 format is also very useful to display large data cubes with
+<strong>orb-viewer</strong> without loading the full cube in memory.</p>
+<div class="section" id="v3-9-0">
+<h3>v3.9.0<a class="headerlink" href="#v3-9-0" title="Permalink to this headline">¶</a></h3>
+<p>Nearly all classe in <code class="file docutils literal"><span class="pre">orbs.py</span></code> (see <a class="reference internal" href="orbs_module.html#orbs-module"><span>Orbs module</span></a>) and
+<code class="file docutils literal"><span class="pre">process.py</span></code> (see <a class="reference internal" href="process_module.html#process-module"><span>Process module</span></a>) have been modified to
+accept hdf5 cubes as input and output hdf5 cubes.</p>
+<p>During the Init of ORBS, FITS cubes are exported to HDF5 cubes before
+the reduction can start.</p>
+<div class="admonition seealso">
+<p class="first admonition-title">See also</p>
+<p class="last">ORB documentation (v1.4.0) for more info on the numerous
+core changes</p>
+</div>
+<div class="section" id="scripts">
+<h4>Scripts<a class="headerlink" href="#scripts" title="Permalink to this headline">¶</a></h4>
+<ul class="simple">
+<li><strong>orbs-check</strong> has been modified to be based on GTK instead of
+Tkinter (like all the other viewer of ORB). Tkinter is no more used
+by ORBS.</li>
+<li><strong>orbs-optcreator</strong> has not survived all the upgrades and has been
+removed. A command line tool might come instead of a gui-based tool.</li>
+</ul>
+</div>
+<div class="section" id="default-output-cube">
+<h4>Default Output Cube<a class="headerlink" href="#default-output-cube" title="Permalink to this headline">¶</a></h4>
+<p>The default output cube format is now the classic format (see
+<a class="reference internal" href="reduction_guide.html#choosing-right-output"><span>Choosing the right output</span></a>) i.e. :</p>
+<ul class="simple">
+<li>Apodization 2.0</li>
+<li>Wavelength</li>
+<li>Calibrated</li>
+</ul>
+<p>This format <strong>is not the best format</strong> for data analysis but it is a
+comprehensive format for eye checking. The best format would be:</p>
+<ul class="simple">
+<li>Apodization 1.0</li>
+<li>Wavenumber</li>
+<li>Uncalibrated</li>
 </ul>
 </div>
 </div>
@@ -1411,7 +1480,7 @@ is set (<strong>DIRDRK1</strong> or <strong>DIRDRK2</strong>).</li>
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'3.8.4.1',
+            VERSION:'3.9.0',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true

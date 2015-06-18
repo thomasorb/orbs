@@ -1,3 +1,5 @@
+.. _orbs_module:
+
 Orbs module
 ===========
 

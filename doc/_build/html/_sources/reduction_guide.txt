@@ -1,3 +1,5 @@
+.. _reduction_guide:
+
 ======================
  ORBS Reduction Guide
 ======================

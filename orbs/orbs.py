@@ -3,7 +3,7 @@
 # Author: Thomas Martin <thomas.martin.1@ulaval.ca>
 # File: orbs.py
 
-## Copyright (c) 2010-2014 Thomas Martin <thomas.martin.1@ulaval.ca>
+## Copyright (c) 2010-2015 Thomas Martin <thomas.martin.1@ulaval.ca>
 ## 
 ## This file is part of ORBS
 ##
@@ -1225,7 +1225,7 @@ class Orbs(Tools):
         return bad_frames_vector
 
 
-    def start_reduction(self, apodization_function=None, start_step=0,
+    def start_reduction(self, apodization_function='2.0', start_step=0,
                         n_phase=None, alt_merge=False, save_as_quads=False,
                         add_frameB=True):
         

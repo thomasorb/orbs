@@ -860,12 +860,16 @@ v3.8 Start of CFHT integration
 ---------------
 
 **orbs** script has been modified a lot to integrate new operations:
-- *start*: start a reduction.
-- *status*: display the status of all the reduction processes started
+
+* *start*: start a reduction.
+
+* *status*: display the status of all the reduction processes started
   with the same option file.
-- *resume*: simply resume the last reduction process started with the
+
+* *resume*: simply resume the last reduction process started with the
   given option file.
-- *clean*: clean the folder from all the reduction files but the final
+
+* *clean*: clean the folder from all the reduction files but the final
   products.
 
 The new way of calling orbs is now::
@@ -975,8 +979,9 @@ during the FFT computation).
 Update of the documentation
 ---------------------------
 
-A far more complete reduction guide has been written. Some parts still
-need some further explanations (coming with 3.8.4.1).
+A far more complete **reduction guide** (see :ref:`reduction_guide`)
+has been written. Some parts still need some further explanations
+(coming with 3.8.4.1).
 
 Required option file keywords
 -----------------------------
@@ -995,23 +1000,52 @@ v3.9 The HDF5 Miracle
 
 All ORBS internal cubes used for computation have been passed to an
 HDF5 format which makes data loading incredibly faster. If those
-changes have small effects on small data cubes like SpIOMM data. It
-changes a lot the computation time on SITELLE's data cubes.
+changes have small effects on small data cubes like SpIOMM data, it
+changes a lot the computation time on SITELLE's data cubes (passing
+from ~10 hours to 6.5 hours on a 16 procs machine).
+
+The HDF5 format is also very useful to display large data cubes with
+**orb-viewer** without loading the full cube in memory.
+
 
 v3.9.0
 ======
 
-Nearly all classe in :file:`orbs.py` and :file:`process.py` have been
-modified to accept hdf5 cubes as input and output hdf5 cubes.
+Nearly all classe in :file:`orbs.py` (see :ref:`orbs_module`) and
+:file:`process.py` (see :ref:`process_module`) have been modified to
+accept hdf5 cubes as input and output hdf5 cubes.
 
 During the Init of ORBS, FITS cubes are exported to HDF5 cubes before
 the reduction can start.
 
-Miscellaneous
--------------
+.. seealso:: ORB documentation (v1.4.0) for more info on the numerous
+             core changes
 
-:py:meth:`orb.astrometry.StarsParams.load_stars_parameters` and
-:py:meth:`orb.astrometry.StarsParams.save_stars_parameters` changed to
-output the parameters in HDF5 format. saving and loading is much
-more efficient.
+Scripts
+-------
 
+* **orbs-check** has been modified to be based on GTK instead of
+  Tkinter (like all the other viewer of ORB). Tkinter is no more used
+  by ORBS.
+
+* **orbs-optcreator** has not survived all the upgrades and has been
+  removed. A command line tool might come instead of a gui-based tool.
+
+
+
+Default Output Cube
+-------------------
+
+The default output cube format is now the classic format (see
+:ref:`choosing-right-output`) i.e. : 
+
+* Apodization 2.0 
+* Wavelength
+* Calibrated
+
+This format **is not the best format** for data analysis but it is a
+comprehensive format for eye checking. The best format would be:
+
+* Apodization 1.0 
+* Wavenumber
+* Uncalibrated

@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Installing Orbs &mdash; Orbs 3.8.4.1 documentation</title>
+  <title>Installing Orbs &mdash; Orbs 3.9.0 documentation</title>
   
 
   
@@ -32,7 +32,7 @@
   
 
   
-    <link rel="top" title="Orbs 3.8.4.1 documentation" href="index.html"/>
+    <link rel="top" title="Orbs 3.9.0 documentation" href="index.html"/>
         <link rel="next" title="Installing Python" href="installing_python.html"/>
         <link rel="prev" title="ORBS Documentation" href="index.html"/> 
 
@@ -56,7 +56,7 @@
 
         
           
-          <img src="_static/logo.png" class="logo" />
+          <img src="_static/logo_sidebar.png" class="logo" />
         
         </a>
 
@@ -90,7 +90,12 @@
 <li class="toctree-l3"><a class="reference internal" href="installing_python.html#parallel-python">Parallel Python</a></li>
 <li class="toctree-l3"><a class="reference internal" href="installing_python.html#pywcs">PyWCS</a></li>
 <li class="toctree-l3"><a class="reference internal" href="installing_python.html#bottleneck">Bottleneck</a></li>
-<li class="toctree-l3"><a class="reference internal" href="installing_python.html#tkinter">Tkinter</a></li>
+<li class="toctree-l3"><a class="reference internal" href="installing_python.html#h5py">h5py</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="installing_python.html#install-szip">Install SZIP</a></li>
+<li class="toctree-l4"><a class="reference internal" href="installing_python.html#install-hdf5">Install HDF5</a></li>
+<li class="toctree-l4"><a class="reference internal" href="installing_python.html#install-h5py-pip-cannot-be-used-directly">Install H5PY (pip cannot be used directly)</a></li>
+</ul>
+</li>
 <li class="toctree-l3"><a class="reference internal" href="installing_python.html#cython">Cython</a></li>
 </ul>
 </li>
@@ -170,6 +175,12 @@
 <li class="toctree-l3"><a class="reference internal" href="reduction_faq.html#if-you-only-are-a-simple-user">If you only are a simple user</a></li>
 </ul>
 </li>
+<li class="toctree-l2"><a class="reference internal" href="reduction_faq.html#what-is-the-binning-of-my-frames">What is the binning of my frames ?</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="reduction_errors.html">ORBS Common reduction errors</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="reduction_errors.html#malformed-sequence-of-files">Malformed sequence of files ?</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reduction_errors.html#error-during-cube-alignment">Error during cube alignment ?</a></li>
 </ul>
 </li>
 </ul>
@@ -356,6 +367,14 @@
 </li>
 </ul>
 </li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#v3-9-the-hdf5-miracle">v3.9 The HDF5 Miracle</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="changelog.html#v3-9-0">v3.9.0</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="changelog.html#scripts">Scripts</a></li>
+<li class="toctree-l4"><a class="reference internal" href="changelog.html#default-output-cube">Default Output Cube</a></li>
+</ul>
+</li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>
@@ -451,7 +470,7 @@ sudo ln -s /link/to/orbs-optcreator /usr/bin/orbs-optcreator
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'3.8.4.1',
+            VERSION:'3.9.0',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true
