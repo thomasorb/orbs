@@ -1225,7 +1225,7 @@ class Orbs(Tools):
         return bad_frames_vector
 
 
-    def start_reduction(self, apodization_function='2.0', start_step=0,
+    def start_reduction(self, apodization_function=None, start_step=0,
                         n_phase=None, alt_merge=False, save_as_quads=False,
                         add_frameB=True):
         
@@ -1233,7 +1233,7 @@ class Orbs(Tools):
         default options 
 
         :param apodization_function: (Optional) Name of the apodization
-          function be used during the spectrum computation (default None).
+          function used during the spectrum computation (default None).
 
         :param start_step: (Optional) Starting step number. Use it to
           cover from an error at a certain step without having to
@@ -2180,9 +2180,12 @@ class Orbs(Tools):
         else: 
             self._print_error("No folding order given, check the option file")
 
-        if 'apodization_function' in self.options and apodization_function is None:
-            apodization_function = self.options['apodization_function']
-            
+        if apodization_function is None:
+            if 'apodization_function' in self.options:
+                apodization_function = self.options['apodization_function']
+            else:
+                apodization_function = '2.0'
+
         if apodization_function is not None:
             if apodization_function not in self._APODIZATION_FUNCTIONS:
                 self._print_error("Unrecognized apodization function. Please try : " + str(self._APODIZATION_FUNCTIONS))
