@@ -1877,6 +1877,19 @@ class CalibrationLaser(HDFCube):
         of the calibration laser cube."""
         return (self._get_basic_header('Calibration laser fit parameters')
                 + self._calibration_laser_header)
+
+    def _get_calibration_laser_ils_ratio_path(self):
+        """Return the path to the file containing the instrumental
+        line shape ratio map (ILS / theoretical ILS) of the
+        calibration laser cube."""
+        return self._data_path_hdr + "calibration_laser_ils_ratio_map.fits"
+
+    def _get_calibration_laser_ils_ratio_header(self):
+        """Return the header of the file containing the instrumental
+        line shape ratio map (ILS / theoretical ILS) of the
+        calibration laser cube."""
+        return (self._get_basic_header('ILS ratio map')
+                + self._calibration_laser_header)
     
     def _get_calibration_laser_spectrum_cube_path(self):
         """Return the default path to the reduced calibration laser
@@ -1917,11 +1930,12 @@ class CalibrationLaser(HDFCube):
           gaussian is fitted (default True).
         """
         def _find_max_in_column(column_data, step, order, cm1_axis,
-                                get_calibration_laser_spectrum, fast):
+                                get_calibration_laser_spectrum, fast,
+                                fwhm_guess):
             """Return the fitted central position of the emission line"""
             dimy = column_data.shape[0]
             dimz = column_data.shape[1]
-            BORDER = int(0.1 * dimz) + 1
+            BORDER = int(0.3 * dimz) + 1
             max_array_column = np.empty((dimy), dtype=float)
             fitparams_column = np.empty((dimy, 8), dtype=float)
             interpol_cm1_axis = interpolate.interp1d(
@@ -1930,10 +1944,12 @@ class CalibrationLaser(HDFCube):
                         
             # FFT of the interferogram
             column_spectrum = orb.utils.cube_raw_fft(column_data, apod=None)
-            if (int(order) & 1):
-                    column_spectrum = column_spectrum[::-1]
+                
             for ij in range(column_data.shape[0]):
                 spectrum_vector = column_spectrum[ij,:]
+                if (int(order) & 1):
+                    spectrum_vector = spectrum_vector[::-1]
+                    
                 # defining window
                 max_index = np.argmax(spectrum_vector)
                 range_min = max_index - BORDER
@@ -1947,20 +1963,23 @@ class CalibrationLaser(HDFCube):
                 if fast:
                     fitp = orb.utils.fit_lines_in_vector(
                         spectrum_vector, [max_index], fmodel='gaussian',
-                        fwhm_guess=2.4,
+                        fwhm_guess=fwhm_guess * 0.9,
                         poly_order=0,
                         signal_range=[range_min, range_max],
-                        wavenumber=True)
-                
+                        wavenumber=True,
+                        fix_cont=True, cont_guess=[0.])
+                    ## fitp = {'lines-params':[[0,1,max_index,1]],
+                    ##         'lines-params-err':[[0,0,0,0]]}
                 # or sinc2 fit (slow)
                 else:
                     fitp = orb.utils.fit_lines_in_vector(
                         spectrum_vector, [max_index], fmodel='sinc2',
                         observation_params=[step, order],
-                        fwhm_guess=2.,
+                        fwhm_guess=fwhm_guess,
                         poly_order=0,
                         signal_range=[range_min, range_max],
-                        wavenumber=True)
+                        wavenumber=True,
+                        fix_cont=True, cont_guess=[0.])
                     
                 if (fitp != []):
                     max_index_fit = fitp['lines-params'][0][2]
@@ -1994,11 +2013,17 @@ class CalibrationLaser(HDFCube):
        
         order = float(order)
         step = float(step)
-        
+
         # create the fft axis in cm1
         cm1_axis = orb.utils.create_cm1_axis(
             self.dimz, step, order)
 
+        # guess fwhm
+        dsigma = cm1_axis[1] - cm1_axis[0]
+        fwhm_guess = (1.2067/(self.dimz * step)) * 1e7 / dsigma 
+        self._print_msg('FWHM guess: {} pixels, {} cm-1'.format(
+            fwhm_guess,
+            fwhm_guess * dsigma))
         out_cube = OutHDFCube(
             self._get_calibration_laser_spectrum_cube_path(),
             shape=(self.dimx, self.dimy, self.dimz),
@@ -2006,6 +2031,7 @@ class CalibrationLaser(HDFCube):
 
         fitparams = np.empty((self.dimx, self.dimy, 8), dtype=float)
         max_array = np.empty((self.dimx, self.dimy), dtype=float)
+        
         for iquad in range(0, self.QUAD_NB):
             x_min, x_max, y_min, y_max = self.get_quadrant_dims(iquad)
             iquad_data = self.get_data(x_min, x_max, 
@@ -2024,7 +2050,8 @@ class CalibrationLaser(HDFCube):
                     _find_max_in_column, 
                     args=(iquad_data[ii+ijob,:,:],
                           step, order, cm1_axis,
-                          get_calibration_laser_spectrum, fast),
+                          get_calibration_laser_spectrum, fast,
+                          fwhm_guess),
                     modules=("numpy as np",
                              "math",
                              "from scipy import interpolate, fftpack",
@@ -2070,9 +2097,16 @@ class CalibrationLaser(HDFCube):
 
         # write fit params
         self.write_fits(
-                self._get_calibration_laser_fitparams_path(), fitparams,
-                fits_header=self._get_calibration_laser_fitparams_header(),
-                overwrite=self.overwrite)
+            self._get_calibration_laser_fitparams_path(), fitparams,
+            fits_header=self._get_calibration_laser_fitparams_header(),
+            overwrite=self.overwrite)
+
+        # write ils_ratio
+        ils_ratio = fitparams[:,:,3] / fwhm_guess
+        self.write_fits(
+            self._get_calibration_laser_ils_ratio_path(), ils_ratio,
+            fits_header=self._get_calibration_laser_ils_ratio_header(),
+            overwrite=self.overwrite)
 
         if self.indexer is not None:
             self.indexer['calibration_laser_map'] = (
@@ -2301,7 +2335,7 @@ class Interferogram(HDFCube):
         
         # number of pixels used on each side to smooth the
         # transmission vector
-        SMOOTH_DEG = int(self._get_tuning_parameter('SMOOTH_DEG', 1))
+        SMOOTH_DEG = int(self._get_tuning_parameter('SMOOTH_DEG', 0))
 
         def _sigmean(frame):
             return orb.utils.robust_mean(orb.utils.sigmacut(frame))
@@ -2396,11 +2430,10 @@ class Interferogram(HDFCube):
         
         transmission_vector[zpd_min:zpd_max] = 0.
         transmission_vector = orb.utils.correct_vector(
-            transmission_vector, bad_value=0., polyfit=True, deg=3)
+            transmission_vector, bad_value=0., polyfit=False, deg=1)
         stray_light_vector[zpd_min:zpd_max] = 0.
         stray_light_vector = orb.utils.correct_vector(
-            stray_light_vector, bad_value=0., polyfit=True, deg=3)
-        
+            stray_light_vector, bad_value=0., polyfit=False, deg=1)
         
         # smooth
         if SMOOTH_DEG > 0:
@@ -2432,7 +2465,7 @@ class Interferogram(HDFCube):
     def correct_interferogram(self, transmission_vector_path,
                               stray_light_vector_path):
         """Correct an interferogram cube for for variations
-        of sky transission and stray light.
+        of sky transmission and stray light.
 
         :param sky_transmission_vector_path: Path to the transmission
           vector.All the interferograms of the cube are divided by

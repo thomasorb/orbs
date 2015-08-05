@@ -159,9 +159,15 @@ def check_option_file(to, path):
             f.write('## ORBS Option file\n# Auto-generated from SITELLE job file: {}\n'.format(path))
 
             ## get first object file
-            hdu = to.read_fits(ofile.options['OBS'], return_hdu_only=True)
-            hdr = hdu[0].header
-
+            if 'OBS' in ofile.options:
+                hdu = to.read_fits(ofile.options['OBS'], return_hdu_only=True)
+                hdr = hdu[0].header
+            elif 'COMPARISON' in ofile.options:
+                hdu = to.read_fits(ofile.options['COMPARISON'],
+                                   return_hdu_only=True)
+                hdr = hdu[0].header
+            else:
+                raise Exception('Keywords OBS or COMPARISON must be at least in the job file.')
             option_file_params = add_key(to, option_file_params, ofile.options,
                     hdr, 'OBJECT', 'OBJECT')
             option_file_params = add_key(to, option_file_params, ofile.options,
@@ -169,10 +175,6 @@ def check_option_file(to, path):
             # check that binning is the same in both axes
             if hdr['CCDBIN1'] != hdr['CCDBIN2']:
                 print_error('CCD Binning appears to be different for both axes')
-            option_file_params = add_key(to, option_file_params, ofile.options,
-                    hdr, 'CCDBIN1', 'BINCAM1')
-            option_file_params = add_key(to, option_file_params, ofile.options,
-                    hdr, 'CCDBIN1', 'BINCAM2')
             
             # step size in nm
             step_fringe = float(get_value(ofile.options, hdr, 'SITSTPSZ'))
@@ -181,16 +183,18 @@ def check_option_file(to, path):
             
             option_file_params = add_key(to, option_file_params, ofile.options,
                     hdr, 'SITSTEPS', 'SPESTNB')
+
             option_file_params = add_key(to, option_file_params, ofile.options,
                     hdr, 'SITORDER', 'SPEORDR')
             option_file_params = add_key(to, option_file_params, ofile.options,
                     hdr, 'EXPTIME', 'SPEEXPT')
 
             # get dark integration time
-            dark_hdr = to.read_fits(
-                ofile.options['DARK'], return_hdu_only=True)[0].header
+            if 'DARK' in ofile.options:
+                dark_hdr = to.read_fits(
+                    ofile.options['DARK'], return_hdu_only=True)[0].header
             
-            option_file_params['SPEDART'] = dark_hdr['EXPTIME']
+                option_file_params['SPEDART'] = dark_hdr['EXPTIME']
         
             option_file_params = add_key(to, option_file_params, ofile.options,
                     hdr, 'DATE-OBS', 'OBSDATE')
@@ -217,21 +221,20 @@ def check_option_file(to, path):
             if 'CALIB_MAP_PATH' in ofile.options:
                 out_params['calibration_laser_map_path'] = ofile.options['CALIB_MAP_PATH']
             
-            
             # get standard star params
             option_file_params = add_key(to, option_file_params, ofile.options,
-                    hdr, 'STANDARD', 'STDPATH')
+                    hdr, 'STANDARD', 'STDPATH', optional=True)
 
-            std_path = option_file_params['STDPATH']
-            if os.path.exists(std_path):
-                std_hdr = to.read_fits(std_path, return_hdu_only=True)[0].header
-                if 'OBJECT' in std_hdr:
-                    option_file_params['STDNAME'] = std_hdr['OBJECT']
+            if 'STDPATH' in option_file_params:
+                std_path = option_file_params['STDPATH']
+                if os.path.exists(std_path):
+                    std_hdr = to.read_fits(std_path, return_hdu_only=True)[0].header
+                    if 'OBJECT' in std_hdr:
+                        option_file_params['STDNAME'] = std_hdr['OBJECT']
+                    else:
+                        print_error('OBJECT key is not in standard file header ({})'.format(std_path))
                 else:
-                    print_error('OBJECT key is not in standard file header ({})'.format(std_path))
-            else:
-                print_error('Standard star file does not exist ({})'.format(std_path))
-
+                    print_error('Standard star file does not exist ({})'.format(std_path))
 
             option_file_params = add_key(to, option_file_params, ofile.options,
                     hdr, 'APOD', 'APOD', optional=True)
@@ -267,23 +270,30 @@ def check_option_file(to, path):
                 # TODO: check files
 
                 return fpath
-            
-            # CAM1
-            option_file_params['DIRCAM1'] = generate_file_list(to, option_file_path, ofile.options, 'OBS', 'object', 1, prebin)
-            # CAM2
-            option_file_params['DIRCAM2'] = generate_file_list(to, option_file_path, ofile.options, 'OBS', 'object', 2, prebin)
-            # FLAT1
-            option_file_params['DIRFLT1'] = generate_file_list(to, option_file_path, ofile.options, 'FLAT', 'flat', 1, prebin)
-            # FLAT2
-            option_file_params['DIRFLT2'] = generate_file_list(to, option_file_path, ofile.options, 'FLAT', 'flat', 2, prebin)
-            # DARK1
-            option_file_params['DIRDRK1'] = generate_file_list(to, option_file_path, ofile.options, 'DARK', 'dark', 1, prebin)
-            # DARK2
-            option_file_params['DIRDRK2'] = generate_file_list(to, option_file_path, ofile.options, 'DARK', 'dark', 2, prebin)
-            # CALIB1
-            option_file_params['DIRCAL1'] = generate_file_list(to, option_file_path, ofile.options, 'COMPARISON', 'calib', 1, prebin)
-            # CALIB2
-            option_file_params['DIRCAL2'] = generate_file_list(to, option_file_path, ofile.options, 'COMPARISON', 'calib', 2, prebin)
+
+            if 'OBS' in ofile.options:
+                # CAM1
+                option_file_params['DIRCAM1'] = generate_file_list(to, option_file_path, ofile.options, 'OBS', 'object', 1, prebin)
+                # CAM2
+                option_file_params['DIRCAM2'] = generate_file_list(to, option_file_path, ofile.options, 'OBS', 'object', 2, prebin)
+
+            if 'FLAT' in ofile.options:
+                # FLAT1
+                option_file_params['DIRFLT1'] = generate_file_list(to, option_file_path, ofile.options, 'FLAT', 'flat', 1, prebin)
+                # FLAT2
+                option_file_params['DIRFLT2'] = generate_file_list(to, option_file_path, ofile.options, 'FLAT', 'flat', 2, prebin)
+
+            if 'DARK' in ofile.options:
+                # DARK1
+                option_file_params['DIRDRK1'] = generate_file_list(to, option_file_path, ofile.options, 'DARK', 'dark', 1, prebin)
+                # DARK2
+                option_file_params['DIRDRK2'] = generate_file_list(to, option_file_path, ofile.options, 'DARK', 'dark', 2, prebin)
+
+            if 'COMPARISON' in ofile.options:
+                # CALIB1
+                option_file_params['DIRCAL1'] = generate_file_list(to, option_file_path, ofile.options, 'COMPARISON', 'calib', 1, prebin)
+                # CALIB2
+                option_file_params['DIRCAL2'] = generate_file_list(to, option_file_path, ofile.options, 'COMPARISON', 'calib', 2, prebin)
             
             
                 
@@ -516,7 +526,7 @@ def start(args, resume=False):
             n_phase=args.n_phase,
             alt_merge=args.alt_merge,
             add_frameB=args.add_frameB)
-
+       
     except BaseException, e:
         with open(logfile_name, 'a') as logfile:
             exc_type, exc_value, exc_traceback = sys.exc_info()

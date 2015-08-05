@@ -1,0 +1,125 @@
+#!/usr/bin/python
+# *-* coding: utf-8 *-*
+# Author: Thomas Martin <thomas.martin.1@ulaval.ca>
+# File: orbs-sitelle-makejob
+
+## Copyright (c) 2010-2015 Thomas Martin <thomas.martin.1@ulaval.ca>
+##
+## This file is part of ORBS
+##
+## ORBS is free software: you can redistribute it and/or modify it
+## under the terms of the GNU General Public License as published by
+## the Free Software Foundation, either version 3 of the License, or
+## (at your option) any later version.
+##
+## ORBS is distributed in the hope that it will be useful, but WITHOUT
+## ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+## or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public
+## License for more details.
+##
+## You should have received a copy of the GNU General Public License
+## along with ORBS.  If not, see <http://www.gnu.org/licenses/>.
+
+####################################################
+############ ORBS SITELLE MAKEJOB ##################
+####################################################
+
+## Create a job file given the lists of object files, flat and dark
+
+import argparse
+from argparse import ArgumentParser
+import orb.core, orbs.version
+from orb.core import Tools
+
+#!/usr/bin/python -W ignore::VisibleDeprecationWarning
+# *-* coding: utf-8 *-*
+# Author: Thomas Martin <thomas.martin.1@ulaval.ca>
+
+## create a fake job file to simulate SITELLE reduction
+
+
+
+
+def main(args):
+    def make_files_list(list_file_path):
+        files_list = list()
+        with open(list_file_path, 'r') as f:
+            for line in f:
+                files_list.append(line.strip())
+            files_list = to.sort_image_list(files_list, image_mode='sitelle')
+        return files_list
+
+    
+    to = Tools(no_log=True, config_file_name='config.sitelle.orb')
+
+    olist = make_files_list(args.object_path)
+
+    first_file = to.read_fits(olist[0], return_hdu_only=True)
+    hdr = first_file[0].header
+            
+    s = """
+WAVENUMBER 1
+WAVE_CALIB 0
+APOD 1.0
+"""
+
+    if args.calibration_laser_map_path is not None:
+        s += 'CALIB_MAP_PATH {}\n'.format(args.calibration_laser_map_path)
+
+    # correct ORDER for laser cube in case an invalid order is passed
+    if args.laser:
+        if int(hdr['SITORDER']) <= 0:
+             s += 'SITORDER {}\n'.format(to._get_config_parameter("CALIB_ORDER"))
+    
+    with open(args.job_file_name, 'w') as f:
+
+        f.write('## SITELLE_JOB_FILE\n')
+
+        f.write(s)
+
+        if not args.laser:
+            for oline in olist:
+                f.write('OBS {}\n'.format(oline))
+        else:
+            for oline in olist:
+                f.write('COMPARISON {}\n'.format(oline))
+        ## for fline in flist:
+        ##     f.write('FLAT '+ fline)
+        ## for dline in dlist:
+        ##     f.write('DARK '+ dline)
+        ## for cline in clist:
+        ##     f.write('COMPARISON '+ cline)
+    
+
+if __name__ == "__main__":
+    """Main entrance of the script.
+    
+    Parse arguments and launch the reduction process.
+    """
+    parser = ArgumentParser(
+        version=('ORBS-version: {}, ORB-version: {}'.format(
+            orbs.version.__version__, orb.core.__version__)),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        description="Create a sitelle job file")
+
+    parser.add_argument('object_path',
+                        action='store',
+                        help="Path to the list of object files (they don't have to be in the exact order).")
+
+
+    parser.add_argument('--laser', dest='laser',
+                        action='store_true',
+                        default=False,
+                        help='This option must be set if the object is a laser cube')
+
+    parser.add_argument('-c', dest='calibration_laser_map_path',
+                        default=None,
+                        help='Path to the calibration laser map (needed for an object reduction).')
+
+    parser.add_argument('job_file_name',
+                        action='store',
+                        help="Job file name.")
+
+    args = parser.parse_args()
+
+    main(args)

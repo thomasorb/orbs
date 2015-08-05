@@ -70,14 +70,24 @@ class OrbsCheck(Tools):
     _mean_fwhm = None # mean FWHM of stars detected by OrbsCheck
     raw_frame_nb = None
     
-    def __init__(self, options_file_path):
+    def __init__(self, options_file_path, mode):
         """Initialize :py:class:`orbscheck.OrbsCheck`
 
         :param options_file_path: Path to the option file used by
            :py:class:`orbs.Orbs` for the project to analyse.
+
+        :param mode: can be 'sitelle' or 'spiomm'
         """
         self._print_msg("OrbsCheck initialization")
-        self._orbs = Orbs(options_file_path, 'object', 'full')
+        if mode == 'sitelle':
+            config_file_name='config.sitelle.orb'
+        elif mode == 'spiomm':
+            config_file_name='config.spiomm.orb'
+        else:
+            self._print_error('Mode must be set to sitelle or spiomm')
+            
+        self._orbs = Orbs(options_file_path, 'object', 'full',
+                          config_file_name=config_file_name)
         self._graph = Graph()
         cube = self._orbs._init_raw_data_cube(1)
         self.raw_frame_nb = cube.dimz
@@ -93,9 +103,9 @@ class OrbsCheck(Tools):
             cube = InterferogramMerger(
                 None, None, data_prefix=self._orbs._get_data_prefix(0))
         elif cam == 'CAM1':
-            cube = Interferogram('', data_prefix=self._orbs._get_data_prefix(1))
+            cube = Interferogram(None, data_prefix=self._orbs._get_data_prefix(1))
         elif cam == 'CAM2':
-            cube = Interferogram('', data_prefix=self._orbs._get_data_prefix(2))
+            cube = Interferogram(None, data_prefix=self._orbs._get_data_prefix(2))
             
         transmission_vector = self.read_fits(
             cube._get_transmission_vector_path())
@@ -135,10 +145,10 @@ class OrbsCheck(Tools):
             cube = InterferogramMerger(
                 None, None, data_prefix=self._orbs._get_data_prefix(0))
         elif cam == 'CAM1':
-            cube = Interferogram('', data_prefix=self._orbs._get_data_prefix(1))
+            cube = Interferogram(None, data_prefix=self._orbs._get_data_prefix(1))
         elif cam == 'CAM2':
-            cube = Interferogram('', data_prefix=self._orbs._get_data_prefix(2))
-            
+            cube = Interferogram(None, data_prefix=self._orbs._get_data_prefix(2))
+
         stray_light_vector = self.read_fits(
             cube._get_stray_light_vector_path())
         self._graph.pop_plot(stray_light_vector, xlabel="Frame index",
@@ -425,8 +435,8 @@ class OrbsCheckGui(OrbsCheck):
     boxmerged_camera = 0 # camera number
     
 
-    def __init__(self, option_file_path):
-        OrbsCheck.__init__(self, option_file_path)
+    def __init__(self, option_file_path, mode):
+        OrbsCheck.__init__(self, option_file_path, mode)
         
 
         self.window = gtk.Window(gtk.WINDOW_TOPLEVEL)
@@ -525,7 +535,14 @@ if __name__ == "__main__":
                         action='store',
                         help="Path to the option file (can be a SITELLE job file).")
 
+    parser.add_argument('--mode',
+                        dest='mode',
+                        action='store',
+                        default='spiomm',
+                        choices=['sitelle', 'spiomm'],
+                        help="Instrument mode: can be 'sitelle' or 'spiomm'")
+    
     args = parser.parse_args()
     # GUI
-    orbscheck_gui = OrbsCheckGui(args.option_file_path)
+    orbscheck_gui = OrbsCheckGui(args.option_file_path, args.mode)
     gtk.main()
