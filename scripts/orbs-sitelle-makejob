@@ -35,7 +35,7 @@ from orb.core import Tools
 # *-* coding: utf-8 *-*
 # Author: Thomas Martin <thomas.martin.1@ulaval.ca>
 
-## create a fake job file to simulate SITELLE reduction
+## create a job file for SITELLE's data reduction
 
 
 
@@ -53,7 +53,6 @@ def main(args):
     to = Tools(no_log=True, config_file_name='config.sitelle.orb')
 
     olist = make_files_list(args.object_path)
-
     first_file = to.read_fits(olist[0], return_hdu_only=True)
     hdr = first_file[0].header
             
@@ -79,7 +78,17 @@ APOD 1.0
 
         if not args.laser:
             for oline in olist:
-                f.write('OBS {}\n'.format(oline))
+                if args.object_name is not None:
+                    try:
+                        fits_file = to.read_fits(oline, return_hdu_only=True)
+                        fits_obj_name = fits_file[0].header['OBJECT']
+                        if fits_obj_name.strip() == args.object_name.strip():
+                            f.write('OBS {}\n'.format(oline))
+                    except Exception, e:
+                        print 'Error opening FITS file: {}'.format(e)
+        
+                else:
+                    f.write('OBS {}\n'.format(oline))
         else:
             for oline in olist:
                 f.write('COMPARISON {}\n'.format(oline))
@@ -106,7 +115,9 @@ if __name__ == "__main__":
                         action='store',
                         help="Path to the list of object files (they don't have to be in the exact order).")
 
-
+    parser.add_argument('-o', dest='object_name', default=None,
+                        help='Object name (only the files in the list with the same object name (header keyword OBJECT) will be kept)')
+    
     parser.add_argument('--laser', dest='laser',
                         action='store_true',
                         default=False,

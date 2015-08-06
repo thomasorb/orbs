@@ -220,6 +220,7 @@ def check_option_file(to, path):
             # get calibration laser map path
             if 'CALIB_MAP_PATH' in ofile.options:
                 out_params['calibration_laser_map_path'] = ofile.options['CALIB_MAP_PATH']
+                option_file_params['CALIBMAP'] = ofile.options['CALIB_MAP_PATH']
             
             # get standard star params
             option_file_params = add_key(to, option_file_params, ofile.options,

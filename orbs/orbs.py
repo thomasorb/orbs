@@ -480,9 +480,11 @@ class Orbs(Tools):
                             if os.path.exists(export_path):
                                 with self.open_hdf5(export_path, 'r') as f:
                                     if 'image_list' in f:
-                                        if np.all(
+                                        if (np.all(
                                             f['image_list'][:]
-                                            == np.array(cube.image_list)):
+                                            == np.array(cube.image_list))
+                                            and f.attrs['dimz']
+                                            == len(cube.image_list)):
                                             already_exported = True
                                             self._print_msg(
                                                 'HDF5 cube {} already created'.format(export_path))
