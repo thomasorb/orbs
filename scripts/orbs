@@ -76,7 +76,6 @@ class RecordsFile(object):
                             'instrument':rec[0],
                             'target':rec[1],
                             'cams':rec[2]})
-
         
     def update(self):
         with open(self.file_path, 'w') as f:
@@ -87,7 +86,6 @@ class RecordsFile(object):
                     record['cams']))
             f.write('last_command ' + ' '.join(self.last_command) + '\n')
         
-
     def add_record(self, mode, target, cams):
         record = {'instrument':mode,
                   'target':target,
@@ -183,7 +181,6 @@ def check_option_file(to, path):
             
             option_file_params = add_key(to, option_file_params, ofile.options,
                     hdr, 'SITSTEPS', 'SPESTNB')
-
             option_file_params = add_key(to, option_file_params, ofile.options,
                     hdr, 'SITORDER', 'SPEORDR')
             option_file_params = add_key(to, option_file_params, ofile.options,
@@ -400,14 +397,17 @@ def start(args, resume=False):
     elif args.single2: cams = 'single2'
 
     # special targets are mutually exclusive
-    if np.sum([args.flat, args.standard, args.stars, args.laser]) > 1:
-        print_error("only one special target (flat, standard, laser or stars) can be choosen")
+    if np.sum([args.flat, args.standard, args.stars, args.laser, args.raw]) > 1:
+        print_error("only one special target (flat, standard, laser, stars, raw) can be choosen")
         sys.exit(2)
     if args.flat: target = 'flat'
     elif args.standard: target = 'standard'
     elif args.laser: target = 'laser'
     elif args.stars: target = 'stars'
     elif args.nostar: target = 'nostar'
+    elif args.raw:
+        target = 'raw'
+        args.n_phase = 0
 
     # check first if reduction can be resumed
     if not resume and args.start_step == 0:
@@ -416,7 +416,6 @@ def start(args, resume=False):
         if project_fast_init.roadmap.get_resume_step() > 0:
             project_fast_init.roadmap.print_status()
             print_warning('Part of the process has already been done. Do you want to resume it instead of starting it again from the beginning [y/n] ?')
-
 
             answer_ok = False
             while not answer_ok:
@@ -471,6 +470,10 @@ def start(args, resume=False):
     if args.alt_merge:
         to._print_warning(
             "Alternative merging process")
+
+    if args.raw:
+        to._print_warning(
+            "Raw (faster) reduction process: no cosmic rays removal and no phase correction.")
 
     if args.flat:
         to._print_msg(
@@ -655,6 +658,9 @@ if __name__ == "__main__":
                                default=False,
                                help='Run a reduction but skip all star-dependant processes. Warning, this kind of reduction is far less precise. The default alignement parameters (defined in the configuration file) are used.')
 
+    group_target.add_argument('--raw', dest='raw', action='store_true',
+                              default=False,
+                              help='Run a fast raw reduction of astronomical data. Skip cosmic-ray detection and phase correction. Resulting spectra then have a sinc^2 instrumental line shape.')
 
     parser_start.add_argument('--step',
                               dest='start_step',

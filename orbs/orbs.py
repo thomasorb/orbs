@@ -389,7 +389,7 @@ class Orbs(Tools):
     option_file_path = None
     """Path to the option file"""
 
-    targets = ['object', 'flat', 'standard', 'laser', 'nostar']
+    targets = ['object', 'flat', 'standard', 'laser', 'nostar', 'raw']
     """Possible target types"""
     
     target = None
@@ -404,7 +404,7 @@ class Orbs(Tools):
 
         :param target: Target type to reduce. Used to define the
           reduction road map. Target may be 'object', 'flat',
-          'standard', 'laser'.
+          'standard', 'laser' or 'raw'.
 
         :param config_file_name: (Optional) Name of the config file to
           use. Must be located in orbs/data/.
@@ -769,7 +769,6 @@ class Orbs(Tools):
 
         self.roadmap = RoadMap(
             self.config["INSTRUMENT_NAME"].lower(), target, cams, self.indexer)
-        
 
         # attach methods to roadmap steps
         self.roadmap.attach('compute_alignment_vector',
