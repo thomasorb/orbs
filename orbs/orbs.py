@@ -1298,7 +1298,8 @@ class Orbs(Tools):
             if self.target == 'laser': cam = 1
             else: cam = 0
         
-        if self.target == 'object' or self.target == 'nostar':
+        if (self.target == 'object' or self.target == 'nostar'
+            or target == 'raw'):
             self.export_calibrated_spectrum_cube(cam)
         if self.target == 'flat': self.export_flat_phase_map(cam)
         if self.target == 'laser': self.export_calibration_laser_map(cam)
