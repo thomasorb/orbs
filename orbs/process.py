@@ -541,6 +541,9 @@ class RawData(HDFCube):
                         too_much_cr = False
                     else:
                         z_coeff += 0.5
+
+                    if z_coeff > z_coeff * 2:
+                        too_much_cr = False
                         
                 result[ij,:][cr_vector] = 1
             return result
