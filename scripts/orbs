@@ -167,7 +167,8 @@ def check_option_file(to, path):
             else:
                 raise Exception('Keywords OBS or COMPARISON must be at least in the job file.')
             option_file_params = add_key(to, option_file_params, ofile.options,
-                    hdr, 'OBJECT', 'OBJECT')
+                    hdr, 'OBJNAME', 'OBJECT')
+            option_file_params['OBJECT'] = ''.join(option_file_params['OBJECT'].strip().split())
             option_file_params = add_key(to, option_file_params, ofile.options,
                     hdr, 'FILTER', 'FILTER')
             # check that binning is the same in both axes
@@ -407,7 +408,7 @@ def start(args, resume=False):
     elif args.nostar: target = 'nostar'
     elif args.raw:
         target = 'raw'
-        args.n_phase = 0
+        args.nophase = True
 
     # check first if reduction can be resumed
     if not resume and args.start_step == 0:
@@ -450,14 +451,9 @@ def start(args, resume=False):
         to._print_msg(
             "Camera 2 reduction in single mode", color=True)
 
-    if args.n_phase is not None:
-        if args.n_phase == 0:
-            to._print_msg(
-                "No phase correction will be done", color=True)
-        else:
-            to._print_msg(
-                "Number of points used for phase correction: %d"%args.n_phase,
-                color=True)
+    if args.nophase is not False:
+        to._print_msg(
+            "No phase correction will be done", color=True)
 
     if args.stars:
         to._print_msg(
@@ -527,7 +523,7 @@ def start(args, resume=False):
             apodization_function=args.apodization_function,
             start_step=args.start_step,
             save_as_quads=args.quadrants,
-            n_phase=args.n_phase,
+            phase_correction=not args.nophase,
             alt_merge=args.alt_merge,
             add_frameB=args.add_frameB)
        
@@ -694,10 +690,9 @@ if __name__ == "__main__":
                               default=False,
                               help='(SpIOMM specific option) Reduction of camera 2 alone')
 
-    group_spiomm.add_argument('--nphase', dest='n_phase', action='store',
-                              default=None,
-                              type=int,
-                              help='(SpIOMM specific option) Number of points around ZPD to use for phase correction during spectrum computation. If 0, no phase correction will be done and the resulting spectrum will be the absolute value of the complex spectrum.')
+    group_spiomm.add_argument('--nophase', dest='nophase', action='store_true',
+                              default=False,
+                              help='(SpIOMM specific option) If this argument is set no phase correction will be done and the resulting spectrum will be the absolute value of the complex spectrum.')
     
     group_spiomm.add_argument('--nocam2', dest='add_frameB',
                               action='store_false',

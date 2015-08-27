@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Process module &mdash; Orbs 3.9.0 documentation</title>
+  <title>Process module &mdash; Orbs 3.10.0 documentation</title>
   
 
   
@@ -32,7 +32,7 @@
   
 
   
-    <link rel="top" title="Orbs 3.9.0 documentation" href="index.html"/>
+    <link rel="top" title="Orbs 3.10.0 documentation" href="index.html"/>
         <link rel="next" title="Changelog" href="changelog.html"/>
         <link rel="prev" title="Orbs module" href="orbs_module.html"/> 
 
@@ -84,7 +84,8 @@
 <li class="toctree-l1"><a class="reference internal" href="installing_python.html">Installing Python</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="installing_python.html#python">Python</a></li>
 <li class="toctree-l2"><a class="reference internal" href="installing_python.html#modules">Modules</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="installing_python.html#to-use-the-viewer-orb-viewer">To use the Viewer (orb-viewer)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="installing_python.html#check-if-a-module-is-already-installed">Check if a module is already installed</a></li>
+<li class="toctree-l3"><a class="reference internal" href="installing_python.html#to-use-the-viewers-orb-viewer-and-orb-viewer3d">To use the Viewers (orb-viewer and orb-viewer3d)</a></li>
 <li class="toctree-l3"><a class="reference internal" href="installing_python.html#scipy-and-numpy">Scipy and Numpy</a></li>
 <li class="toctree-l3"><a class="reference internal" href="installing_python.html#pyfits">PyFITS</a></li>
 <li class="toctree-l3"><a class="reference internal" href="installing_python.html#parallel-python">Parallel Python</a></li>
@@ -371,6 +372,15 @@
 <li class="toctree-l3"><a class="reference internal" href="changelog.html#v3-9-0">v3.9.0</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="changelog.html#scripts">Scripts</a></li>
 <li class="toctree-l4"><a class="reference internal" href="changelog.html#default-output-cube">Default Output Cube</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#v3-10-handling-real-sitelle-s-data-cubes">v3.10: handling real SITELLE&#8217;s data cubes</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="changelog.html#v3-10-0">v3.10.0</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="changelog.html#phase-correction">Phase correction</a></li>
+<li class="toctree-l4"><a class="reference internal" href="changelog.html#id27">Cosmic rays detection</a></li>
+<li class="toctree-l4"><a class="reference internal" href="changelog.html#id28">Miscellaneous</a></li>
 </ul>
 </li>
 </ul>
@@ -1216,7 +1226,7 @@ more precise mean coefficent.</li>
 
 <dl class="method">
 <dt id="process.Interferogram.compute_spectrum">
-<code class="descname">compute_spectrum</code><span class="sig-paren">(</span><em>calibration_laser_map_path</em>, <em>bin</em>, <em>step</em>, <em>order</em>, <em>nm_laser</em>, <em>zpd_shift=None</em>, <em>polyfit_deg=1</em>, <em>n_phase=None</em>, <em>bad_frames_vector=None</em>, <em>window_type=None</em>, <em>phase_cube=False</em>, <em>phase_map_0_path=None</em>, <em>phase_coeffs=None</em>, <em>filter_file_path=None</em>, <em>balanced=True</em>, <em>smoothing_deg=2</em>, <em>fringes=None</em>, <em>wavenumber=False</em><span class="sig-paren">)</span><a class="headerlink" href="#process.Interferogram.compute_spectrum" title="Permalink to this definition">¶</a></dt>
+<code class="descname">compute_spectrum</code><span class="sig-paren">(</span><em>calibration_laser_map_path</em>, <em>bin</em>, <em>step</em>, <em>order</em>, <em>nm_laser</em>, <em>zpd_shift=None</em>, <em>polyfit_deg=1</em>, <em>phase_correction=True</em>, <em>bad_frames_vector=None</em>, <em>window_type=None</em>, <em>phase_cube=False</em>, <em>phase_map_0_path=None</em>, <em>phase_coeffs=None</em>, <em>filter_file_path=None</em>, <em>balanced=True</em>, <em>smoothing_deg=2</em>, <em>fringes=None</em>, <em>wavenumber=False</em><span class="sig-paren">)</span><a class="headerlink" href="#process.Interferogram.compute_spectrum" title="Permalink to this definition">¶</a></dt>
 <dd><p>Compute the spectrum from the corrected interferogram
 frames. Can be used to compute spectrum for camera 1, camera 2
 or merged interferogram.</p>
@@ -1236,11 +1246,9 @@ the binning of the camera 1)</li>
 frames. Automaticaly computed if none given.</li>
 <li><strong>window_type</strong> &#8211; (Optional) Apodization window to be used
 (Default None, no apodization)</li>
-<li><strong>n_phase</strong> &#8211; (Optional) Number of points around ZPD to use
-for phase correction. If 0, no phase correction will be done
-and the resulting spectrum will be the absolute value of the
-complex spectrum. If None, the number of points is set to 50
-percent of the interferogram length (default None).</li>
+<li><strong>phase_correction</strong> &#8211; (Optional) If False, no phase
+correction will be done and the resulting spectrum will be
+the absolute value of the complex spectrum (default True).</li>
 <li><strong>polyfit_deg</strong> &#8211; (Optional) Degree of the polynomial fit to
 the computed phase. If &lt; 0, no fit will be performed
 (Default 1).</li>
@@ -1249,8 +1257,7 @@ containing ones for bad frames. Bad frames are replaced by
 zeros using a special function that smoothes transition
 between good parts and zeros (default None).</li>
 <li><strong>phase_cube</strong> &#8211; (Optional) If True, only the phase cube is
-returned. The number of points of the phase can be defined
-with the option n_phase. The option polyfit_deg is
+returned. The option polyfit_deg is
 automatically set to -1 and the phase is returned without
 being fitted (default False).</li>
 <li><strong>phase_map_0_path</strong> &#8211; (Optional) This map contains the 0th
@@ -1342,7 +1349,7 @@ calibration cube.</li>
 <dt id="process.Interferogram.correct_interferogram">
 <code class="descname">correct_interferogram</code><span class="sig-paren">(</span><em>transmission_vector_path</em>, <em>stray_light_vector_path</em><span class="sig-paren">)</span><a class="headerlink" href="#process.Interferogram.correct_interferogram" title="Permalink to this definition">¶</a></dt>
 <dd><p>Correct an interferogram cube for for variations
-of sky transission and stray light.</p>
+of sky transmission and stray light.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -1772,7 +1779,7 @@ Frame_{n,2}}{Frame_{n,1} + Frame_{n,2}}\]</div>
 
 <dl class="method">
 <dt id="process.InterferogramMerger.extract_stars_spectrum">
-<code class="descname">extract_stars_spectrum</code><span class="sig-paren">(</span><em>star_list_path</em>, <em>fwhm_arc</em>, <em>fov</em>, <em>modulation_ratio_path</em>, <em>transmission_vector_path</em>, <em>ext_illumination_vector_path</em>, <em>calibration_laser_map_path</em>, <em>step</em>, <em>order</em>, <em>nm_laser</em>, <em>filter_file_path</em>, <em>step_nb</em>, <em>window_type=None</em>, <em>bad_frames_vector=None</em>, <em>phase_map_0_path=None</em>, <em>phase_coeffs=None</em>, <em>smoothing_deg=2</em>, <em>aperture=True</em>, <em>profile_name='gaussian'</em>, <em>moffat_beta=3.5</em>, <em>n_phase=None</em>, <em>auto_phase=False</em>, <em>filter_correct=True</em>, <em>flat_spectrum_path=None</em>, <em>aper_coeff=3.0</em>, <em>saturation=None</em><span class="sig-paren">)</span><a class="headerlink" href="#process.InterferogramMerger.extract_stars_spectrum" title="Permalink to this definition">¶</a></dt>
+<code class="descname">extract_stars_spectrum</code><span class="sig-paren">(</span><em>star_list_path</em>, <em>fwhm_arc</em>, <em>fov</em>, <em>modulation_ratio_path</em>, <em>transmission_vector_path</em>, <em>ext_illumination_vector_path</em>, <em>calibration_laser_map_path</em>, <em>step</em>, <em>order</em>, <em>nm_laser</em>, <em>filter_file_path</em>, <em>step_nb</em>, <em>window_type=None</em>, <em>bad_frames_vector=None</em>, <em>phase_map_0_path=None</em>, <em>phase_coeffs=None</em>, <em>smoothing_deg=2</em>, <em>aperture=True</em>, <em>profile_name='gaussian'</em>, <em>moffat_beta=3.5</em>, <em>phase_correction=True</em>, <em>auto_phase=False</em>, <em>filter_correct=True</em>, <em>flat_spectrum_path=None</em>, <em>aper_coeff=3.0</em>, <em>saturation=None</em><span class="sig-paren">)</span><a class="headerlink" href="#process.InterferogramMerger.extract_stars_spectrum" title="Permalink to this definition">¶</a></dt>
 <dd><p>Extract the spectrum of the stars in a list of stars location
 list by photometry.</p>
 <p>This method may be used after
@@ -1836,16 +1843,13 @@ stars. Can be &#8216;gaussian&#8217; or &#8216;moffat&#8217; (default
 <code class="xref py py-meth docutils literal"><span class="pre">orb.astrometry.Astrometry.fit_stars_in_frame()</span></code>.</li>
 <li><strong>moffat_beta</strong> &#8211; (Optional) Beta parameter to use for
 moffat PSF (default 3.5).</li>
-<li><strong>n_phase</strong> &#8211; (Optional) Number of points around ZPD to use
-for phase correction. If 0, no phase correction will be done
-and the resulting spectrum will be the absolute value of the
-complex spectrum. If None, the number of points is set to 50
-percent of the interferogram length (default None).</li>
+<li><strong>phase_correction</strong> &#8211; (Optional) If False, no phase
+correction will be done and the resulting spectrum will be
+the absolute value of the complex spectrum (default True).</li>
 <li><strong>auto_phase</strong> &#8211; (Optional) If True, phase is computed for
 each star independantly. Useful for high SNR stars when no
 reliable external phase can be provided (e.g. Standard
-stars). Note that if auto_phase is set to True, phase will
-be corrected even if n_phase is set to 0. (default False).</li>
+stars) (default False).</li>
 <li><strong>filter_correct</strong> &#8211; (Optional) If True returned spectra
 are corrected for filter. Points out of the filter band
 are set to NaN (default True).</li>
@@ -2035,6 +2039,22 @@ of the calibration laser cube.</p>
 <code class="descname">_get_calibration_laser_fitparams_path</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#process.CalibrationLaser._get_calibration_laser_fitparams_path" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return the path to the file containing the fit parameters
 of the calibration laser cube.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="process.CalibrationLaser._get_calibration_laser_ils_ratio_header">
+<code class="descname">_get_calibration_laser_ils_ratio_header</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#process.CalibrationLaser._get_calibration_laser_ils_ratio_header" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the header of the file containing the instrumental
+line shape ratio map (ILS / theoretical ILS) of the
+calibration laser cube.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="process.CalibrationLaser._get_calibration_laser_ils_ratio_path">
+<code class="descname">_get_calibration_laser_ils_ratio_path</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#process.CalibrationLaser._get_calibration_laser_ils_ratio_path" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the path to the file containing the instrumental
+line shape ratio map (ILS / theoretical ILS) of the
+calibration laser cube.</p>
 </dd></dl>
 
 <dl class="method">
@@ -2338,6 +2358,14 @@ standard data.</p>
 cubes into a phase cube using <a class="reference internal" href="#process.Interferogram" title="process.Interferogram"><code class="xref py py-class docutils literal"><span class="pre">process.Interferogram</span></code></a>.</p>
 </div>
 <dl class="method">
+<dt id="process.Phase._get_calibration_laser_map_path">
+<code class="descname">_get_calibration_laser_map_path</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#process.Phase._get_calibration_laser_map_path" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return path to the calibration laser map created during the
+fitting procedure of the phase map (with a SITELLE&#8217;s fit model
+of the phase).</p>
+</dd></dl>
+
+<dl class="method">
 <dt id="process.Phase._get_phase_map_header">
 <code class="descname">_get_phase_map_header</code><span class="sig-paren">(</span><em>order</em>, <em>phase_map_type=None</em><span class="sig-paren">)</span><a class="headerlink" href="#process.Phase._get_phase_map_header" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return the header of the phase map.</p>
@@ -2433,10 +2461,11 @@ different phase maps will be created by this method.</p>
 
 <dl class="method">
 <dt id="process.Phase.fit_phase_map">
-<code class="descname">fit_phase_map</code><span class="sig-paren">(</span><em>phase_map_path</em>, <em>residual_map_path</em><span class="sig-paren">)</span><a class="headerlink" href="#process.Phase.fit_phase_map" title="Permalink to this definition">¶</a></dt>
+<code class="descname">fit_phase_map</code><span class="sig-paren">(</span><em>phase_map_path</em>, <em>residual_map_path</em>, <em>phase_model='spiomm'</em>, <em>calibration_laser_map_path=None</em>, <em>calibration_laser_nm=None</em><span class="sig-paren">)</span><a class="headerlink" href="#process.Phase.fit_phase_map" title="Permalink to this definition">¶</a></dt>
 <dd><p>Fit the phase map.</p>
-<p>Help remove most of the noise. This process is useful if the phase
-map has been computed from astronomical data without a high SNR.</p>
+<p>Help remove most of the noise. This process is useful if the
+phase map has been computed from astronomical data without a
+high SNR for every pixel in all the filter bandpass.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -2444,6 +2473,19 @@ map has been computed from astronomical data without a high SNR.</p>
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>phase_map_path</strong> &#8211; Path to the phase map</li>
 <li><strong>residual_map_path</strong> &#8211; Path to the residual on phase fit</li>
+<li><strong>phase_model</strong> &#8211; (Optional) Model used to fit phase, can be
+&#8216;spiomm&#8217; or &#8216;sitelle&#8217;. If &#8216;spiomm&#8217;, the model is a very
+basic one considering only linear variation of the phase map
+along the columns. If &#8216;sitelle&#8217;, the phase model is based on
+a the calibration laser map, tip tilt and rotation of the
+calibration laser map are considered in the fit, along with
+the first order of the phase (default &#8216;spiomm&#8217;).</li>
+<li><strong>calibration_laser_map_path</strong> &#8211; (Optional) Path to the
+calibration laser map. Only useful if the phase model is
+&#8216;sitelle&#8217; (default None).</li>
+<li><strong>calibration_laser_nm</strong> &#8211; (Optional) Wavelength of the
+calibration laser (in nm). Only useful if the phase model is
+&#8216;sitelle&#8217; (default None).</li>
 </ul>
 </td>
 </tr>
@@ -2640,7 +2682,7 @@ in erg/cm^2/s/A.</p>
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'3.9.0',
+            VERSION:'3.10.0',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true

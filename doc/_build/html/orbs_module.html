@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Orbs module &mdash; Orbs 3.9.0 documentation</title>
+  <title>Orbs module &mdash; Orbs 3.10.0 documentation</title>
   
 
   
@@ -32,7 +32,7 @@
   
 
   
-    <link rel="top" title="Orbs 3.9.0 documentation" href="index.html"/>
+    <link rel="top" title="Orbs 3.10.0 documentation" href="index.html"/>
         <link rel="next" title="Process module" href="process_module.html"/>
         <link rel="prev" title="ORBS Common reduction errors" href="reduction_errors.html"/> 
 
@@ -84,7 +84,8 @@
 <li class="toctree-l1"><a class="reference internal" href="installing_python.html">Installing Python</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="installing_python.html#python">Python</a></li>
 <li class="toctree-l2"><a class="reference internal" href="installing_python.html#modules">Modules</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="installing_python.html#to-use-the-viewer-orb-viewer">To use the Viewer (orb-viewer)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="installing_python.html#check-if-a-module-is-already-installed">Check if a module is already installed</a></li>
+<li class="toctree-l3"><a class="reference internal" href="installing_python.html#to-use-the-viewers-orb-viewer-and-orb-viewer3d">To use the Viewers (orb-viewer and orb-viewer3d)</a></li>
 <li class="toctree-l3"><a class="reference internal" href="installing_python.html#scipy-and-numpy">Scipy and Numpy</a></li>
 <li class="toctree-l3"><a class="reference internal" href="installing_python.html#pyfits">PyFITS</a></li>
 <li class="toctree-l3"><a class="reference internal" href="installing_python.html#parallel-python">Parallel Python</a></li>
@@ -375,6 +376,15 @@
 </li>
 </ul>
 </li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#v3-10-handling-real-sitelle-s-data-cubes">v3.10: handling real SITELLE&#8217;s data cubes</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="changelog.html#v3-10-0">v3.10.0</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="changelog.html#phase-correction">Phase correction</a></li>
+<li class="toctree-l4"><a class="reference internal" href="changelog.html#id27">Cosmic rays detection</a></li>
+<li class="toctree-l4"><a class="reference internal" href="changelog.html#id28">Miscellaneous</a></li>
+</ul>
+</li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>
@@ -578,7 +588,7 @@ name (OBJECT) and the filter name (FILTER)</p>
 <li><strong>option_file_path</strong> &#8211; Path to the option file.</li>
 <li><strong>target</strong> &#8211; Target type to reduce. Used to define the
 reduction road map. Target may be &#8216;object&#8217;, &#8216;flat&#8217;,
-&#8216;standard&#8217;, &#8216;laser&#8217;.</li>
+&#8216;standard&#8217;, &#8216;laser&#8217; or &#8216;raw&#8217;.</li>
 <li><strong>config_file_name</strong> &#8211; (Optional) Name of the config file to
 use. Must be located in orbs/data/.</li>
 <li><strong>overwrite</strong> &#8211; (Optional) If True, any existing FITS file
@@ -993,22 +1003,14 @@ flat (help removing possible fringe pattern) (default
 
 <dl class="method">
 <dt id="orbs.orbs.Orbs.compute_phase">
-<code class="descname">compute_phase</code><span class="sig-paren">(</span><em>camera_number</em>, <em>n_phase=None</em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.orbs.Orbs.compute_phase" title="Permalink to this definition">¶</a></dt>
+<code class="descname">compute_phase</code><span class="sig-paren">(</span><em>camera_number</em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.orbs.Orbs.compute_phase" title="Permalink to this definition">¶</a></dt>
 <dd><p>Create a phase cube.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>camera_number</strong> &#8211; Camera number (must be 1, 2 or 0 for
-merged data)</li>
-<li><strong>n_phase</strong> &#8211; (Optional) Number of points around ZPD to use
-for phase correction. If 0, no phase correction will be done
-and the resulting spectrum will be the absolute value of the
-complex spectrum. If None, the number of points is set to 50
-percent of the interferogram length (default None).</li>
-</ul>
-</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>camera_number</strong> &#8211; Camera number (must be 1, 2 or 0 for
+merged data)</td>
 </tr>
 </tbody>
 </table>
@@ -1053,9 +1055,8 @@ a flat cube with a high SNR at all wavelengths.</li>
 
 <dl class="method">
 <dt id="orbs.orbs.Orbs.compute_spectrum">
-<code class="descname">compute_spectrum</code><span class="sig-paren">(</span><em>camera_number</em>, <em>apodization_function=None</em>, <em>polyfit_deg=1</em>, <em>n_phase=None</em>, <em>phase_cube=False</em>, <em>phase_coeffs=None</em>, <em>smoothing_deg=2</em>, <em>no_star=False</em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.orbs.Orbs.compute_spectrum" title="Permalink to this definition">¶</a></dt>
-<dd><p>Run the computation of the spectrum from an interferogram
-cube.</p>
+<code class="descname">compute_spectrum</code><span class="sig-paren">(</span><em>camera_number</em>, <em>apodization_function=None</em>, <em>polyfit_deg=1</em>, <em>phase_correction=True</em>, <em>phase_cube=False</em>, <em>phase_coeffs=None</em>, <em>smoothing_deg=2</em>, <em>no_star=False</em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.orbs.Orbs.compute_spectrum" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute a spectral cube from an interferogram cube.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -1063,17 +1064,14 @@ cube.</p>
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>apodization_function</strong> &#8211; (Optional) Apodization function. Default
 None.</li>
-<li><strong>n_phase</strong> &#8211; (Optional) Number of points around ZPD to use
-for phase correction. If 0, no phase correction will be done
-and the resulting spectrum will be the absolute value of the
-complex spectrum. If None, the number of points is set to 50
-percent of the interferogram length (default None).</li>
+<li><strong>phase_correction</strong> &#8211; (Optional) If False, no phase correction
+will be done and the resulting spectrum will be the absolute value
+of the complex spectrum (default True).</li>
 <li><strong>polyfit_deg</strong> &#8211; (Optional) Degree of the polynomial fit to
 the computed phase. If &lt; 0, no fit will be performed
 (Default 1).</li>
 <li><strong>phase_cube</strong> &#8211; (Optional) If True, only the phase cube is
-returned. The number of points of the phase can be defined
-with the option n_phase (default False).</li>
+returned (default False).</li>
 <li><strong>phase_coeffs</strong> &#8211; (Optional) Polynomial coefficients of
 order higher than 0. If given those coefficients are used to
 define the phase vector. If none given default path to the
@@ -1229,7 +1227,7 @@ that must be added to the bad frames vector (default None).</li>
 
 <dl class="method">
 <dt id="orbs.orbs.Orbs.detect_stars">
-<code class="descname">detect_stars</code><span class="sig-paren">(</span><em>cube</em>, <em>camera_number</em>, <em>saturation_threshold=None</em>, <em>return_fwhm_pix=False</em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.orbs.Orbs.detect_stars" title="Permalink to this definition">¶</a></dt>
+<code class="descname">detect_stars</code><span class="sig-paren">(</span><em>cube</em>, <em>camera_number</em>, <em>saturation_threshold=None</em>, <em>return_fwhm_pix=False</em>, <em>all_sources=False</em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.orbs.Orbs.detect_stars" title="Permalink to this definition">¶</a></dt>
 <dd><p>Detect stars in a cube and save the star list in a file.</p>
 <p>This method is a simple wrapper around
 <code class="xref py py-meth docutils literal"><span class="pre">orb.astrometry.Astrometry.detect_stars()</span></code></p>
@@ -1253,6 +1251,9 @@ None).</li>
 <li><strong>return_fwhm_pix</strong> &#8211; (Optional) If True, the returned fwhm
 will be given in pixels instead of arcseconds (default
 False).</li>
+<li><strong>all_sources</strong> &#8211; (Optional) If True, all point sources ar
+detected regardless of their FWHM (galaxies, HII regions,
+filamentary knots and stars might be detected).</li>
 </ul>
 </td>
 </tr>
@@ -1317,7 +1318,7 @@ merged data).</td>
 
 <dl class="method">
 <dt id="orbs.orbs.Orbs.export_standard_spectrum">
-<code class="descname">export_standard_spectrum</code><span class="sig-paren">(</span><em>camera_number</em>, <em>n_phase=None</em>, <em>aperture_photometry=True</em>, <em>apodization_function='2.0'</em>, <em>auto_phase=True</em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.orbs.Orbs.export_standard_spectrum" title="Permalink to this definition">¶</a></dt>
+<code class="descname">export_standard_spectrum</code><span class="sig-paren">(</span><em>camera_number</em>, <em>phase_correction=None</em>, <em>aperture_photometry=True</em>, <em>apodization_function='2.0'</em>, <em>auto_phase=True</em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.orbs.Orbs.export_standard_spectrum" title="Permalink to this definition">¶</a></dt>
 <dd><p>Extract spectrum of the standard stars and write it at the
 root of the reduction folder.</p>
 <div class="admonition note">
@@ -1332,11 +1333,9 @@ option file with TARGETX and TARGETY keywords.</p>
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>camera_number</strong> &#8211; Camera number (must be 1, 2 or 0 for
 merged data).</li>
-<li><strong>n_phase</strong> &#8211; (Optional) Number of points around ZPD to use
-for phase correction. If 0, no phase correction will be done
-and the resulting spectrum will be the absolute value of the
-complex spectrum. If None, the number of points is set to 50
-percent of the interferogram length (default None).</li>
+<li><strong>phase_correction</strong> &#8211; (Optional) If False, no phase
+correction will be done and the resulting spectrum will be
+the absolute value of the complex spectrum (default True).</li>
 <li><strong>apodization_function</strong> &#8211; (Optional) Apodization function to use for
 spectrum computation (default &#8216;2.0&#8217;).</li>
 <li><strong>aperture_photometry</strong> &#8211; (Optional) If True, star flux is
@@ -1346,7 +1345,7 @@ computed from the results of the fit.</li>
 each star independantly. Useful for high SNR stars when no
 reliable external phase can be provided (e.g. Standard
 stars). Note that if auto_phase is set to True, phase will
-be corrected even if n_phase is set to 0. (default True).</li>
+be corrected even if phase_correction is False (default True).</li>
 </ul>
 </td>
 </tr>
@@ -1356,7 +1355,7 @@ be corrected even if n_phase is set to 0. (default True).</li>
 
 <dl class="method">
 <dt id="orbs.orbs.Orbs.extract_stars_spectrum">
-<code class="descname">extract_stars_spectrum</code><span class="sig-paren">(</span><em>camera_number</em>, <em>apodization_function</em>, <em>star_list_path=None</em>, <em>aperture_photometry=True</em>, <em>n_phase=None</em>, <em>auto_phase=False</em>, <em>filter_correct=True</em>, <em>aper_coeff=3.0</em>, <em>saturation=None</em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.orbs.Orbs.extract_stars_spectrum" title="Permalink to this definition">¶</a></dt>
+<code class="descname">extract_stars_spectrum</code><span class="sig-paren">(</span><em>camera_number</em>, <em>apodization_function</em>, <em>star_list_path=None</em>, <em>aperture_photometry=True</em>, <em>phase_correction=True</em>, <em>auto_phase=False</em>, <em>filter_correct=True</em>, <em>aper_coeff=3.0</em>, <em>saturation=None</em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.orbs.Orbs.extract_stars_spectrum" title="Permalink to this definition">¶</a></dt>
 <dd><p>Extract the spectrum of the stars in a list of stars location
 list by photometry.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -1379,16 +1378,15 @@ path to a list of stars is given). Default 15.</li>
 <li><strong>aperture_photometry</strong> &#8211; (Optional) If True, star flux is
 computed by aperture photometry. If False, star flux is
 computed from the results of the fit.</li>
-<li><strong>n_phase</strong> &#8211; (Optional) Number of points around ZPD to use
-for phase correction. If 0, no phase correction will be done
-and the resulting spectrum will be the absolute value of the
-complex spectrum. If None, the number of points is set to 50
-percent of the interferogram length (default None).</li>
+<li><strong>phase_correction</strong> &#8211; (Optional) If False, no phase
+correction will be done and the resulting spectrum will be
+the absolute value of the complex spectrum (default True).</li>
 <li><strong>auto_phase</strong> &#8211; (Optional) If True, phase is computed for
 each star independantly. Useful for high SNR stars when no
 reliable external phase can be provided (e.g. Standard
 stars). Note that if auto_phase is set to True, phase will
-be corrected even if n_phase is set to 0. (default False).</li>
+be corrected even if phase_correction is False (default
+False).</li>
 <li><strong>filter_correct</strong> &#8211; (Optional) If True returned spectra
 are corrected for filter. Points out of the filter band
 are set to NaN (default True).</li>
@@ -1583,7 +1581,7 @@ of <code class="xref py py-const docutils literal"><span class="pre">orbs.orbs.O
 
 <dl class="method">
 <dt id="orbs.orbs.Orbs.start_reduction">
-<code class="descname">start_reduction</code><span class="sig-paren">(</span><em>apodization_function='2.0'</em>, <em>start_step=0</em>, <em>n_phase=None</em>, <em>alt_merge=False</em>, <em>save_as_quads=False</em>, <em>add_frameB=True</em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.orbs.Orbs.start_reduction" title="Permalink to this definition">¶</a></dt>
+<code class="descname">start_reduction</code><span class="sig-paren">(</span><em>apodization_function=None</em>, <em>start_step=0</em>, <em>phase_correction=True</em>, <em>alt_merge=False</em>, <em>save_as_quads=False</em>, <em>add_frameB=True</em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.orbs.Orbs.start_reduction" title="Permalink to this definition">¶</a></dt>
 <dd><p>Run the whole reduction process for two cameras using
 default options</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -1592,16 +1590,13 @@ default options</p>
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>apodization_function</strong> &#8211; (Optional) Name of the apodization
-function be used during the spectrum computation (default None).</li>
+function used during the spectrum computation (default None).</li>
 <li><strong>start_step</strong> &#8211; (Optional) Starting step number. Use it to
 cover from an error at a certain step without having to
 run the whole process one more time (default 0).</li>
-<li><strong>n_phase</strong> &#8211; (Optional) Number of points around ZPD to use
-for phase correction during spectrum computation. If 0, no
-phase correction will be done and the resulting spectrum
-will be the absolute value of the complex spectrum. If
-None, the number of points is set to 50 percent of the
-interferogram length (default None).</li>
+<li><strong>phase_correction</strong> &#8211; (Optional) If False, no phase
+correction will be done and the resulting spectrum will be
+the absolute value of the complex spectrum (default True).</li>
 <li><strong>alt_merge</strong> &#8211; (Optional) If True, alternative merging
 process will be choosen. Star photometry is not used during
 the merging process. Might be more noisy but useful if for
@@ -1630,7 +1625,7 @@ transmission. Default True.</li>
 
 <dl class="attribute">
 <dt id="orbs.orbs.Orbs.targets">
-<code class="descname">targets</code><em class="property"> = ['object', 'flat', 'standard', 'laser', 'nostar']</em><a class="headerlink" href="#orbs.orbs.Orbs.targets" title="Permalink to this definition">¶</a></dt>
+<code class="descname">targets</code><em class="property"> = ['object', 'flat', 'standard', 'laser', 'nostar', 'raw']</em><a class="headerlink" href="#orbs.orbs.Orbs.targets" title="Permalink to this definition">¶</a></dt>
 <dd><p>Possible target types</p>
 </dd></dl>
 
@@ -1727,7 +1722,7 @@ or <em>single2</em> for a process using only the camera 1 or 2.</li>
 
   <span class="nt">&lt;step</span> <span class="na">name=</span><span class="s">&#39;compute_spectrum&#39;</span> <span class="na">cam=</span><span class="s">&#39;0&#39;</span><span class="nt">&gt;</span>
     <span class="nt">&lt;arg</span> <span class="na">value=</span><span class="s">&#39;0&#39;</span> <span class="na">type=</span><span class="s">&#39;int&#39;</span><span class="nt">&gt;&lt;/arg&gt;</span>
-    <span class="nt">&lt;kwarg</span> <span class="na">name=</span><span class="s">&#39;n_phase&#39;</span><span class="nt">&gt;&lt;/kwarg&gt;</span>
+    <span class="nt">&lt;kwarg</span> <span class="na">name=</span><span class="s">&#39;phase_correction&#39;</span><span class="nt">&gt;&lt;/kwarg&gt;</span>
     <span class="nt">&lt;kwarg</span> <span class="na">name=</span><span class="s">&#39;apodization_function&#39;</span><span class="nt">&gt;&lt;/kwarg&gt;</span>
   <span class="nt">&lt;/step&gt;</span>
 <span class="nt">&lt;/steps&gt;</span>
@@ -1859,7 +1854,7 @@ as optional arguments of the step function.</li>
 
 <dl class="attribute">
 <dt id="orbs.orbs.RoadMap.types_dict">
-<code class="descname">types_dict</code><em class="property"> = {'int': &lt;type 'int'&gt;, 'float': &lt;type 'float'&gt;, 'bool': &lt;function _str2bool at 0x2b0546451a28&gt;, 'str': &lt;type 'str'&gt;}</em><a class="headerlink" href="#orbs.orbs.RoadMap.types_dict" title="Permalink to this definition">¶</a></dt>
+<code class="descname">types_dict</code><em class="property"> = {'int': &lt;type 'int'&gt;, 'float': &lt;type 'float'&gt;, 'bool': &lt;function _str2bool at 0x2ad607ec1668&gt;, 'str': &lt;type 'str'&gt;}</em><a class="headerlink" href="#orbs.orbs.RoadMap.types_dict" title="Permalink to this definition">¶</a></dt>
 <dd><p>Dictionary of the defined arguments types</p>
 </dd></dl>
 
@@ -2030,7 +2025,7 @@ run this function for a single reduction step.</p>
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'3.9.0',
+            VERSION:'3.10.0',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true

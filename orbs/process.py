@@ -556,7 +556,7 @@ class RawData(HDFCube):
                              # length is 2 * MINI_BOX_HSZ + 1)
                              
             
-            REJECT_COEFF = 3.5 # Rejection coefficient 
+            REJECT_COEFF = 2. # Rejection coefficient # 3.5
             
             dimx = frames.shape[0]
             dimy = frames.shape[1]
@@ -613,9 +613,9 @@ class RawData(HDFCube):
             BOX_SIZE = 3 # Size of the box around the cosmic ray to be
                          # checked
 
-            STAR_BOX_SIZE_COEFF = 10 # Size coefficient of the box
+            STAR_BOX_SIZE_COEFF = 4 # Size coefficient of the box
                                     # around a star where all cosmic
-                                    # rays are removed.
+                                    # rays are removed. # 10
 
             star_box_size = math.ceil(STAR_BOX_SIZE_COEFF * stars_fwhm)
         
@@ -771,7 +771,7 @@ class RawData(HDFCube):
         ## Check 'strange' frames with too much CRs
         self._print_msg("Re-checking strange frames", color=True)
         
-        STRANGE_DETECT_COEFF = 1.
+        STRANGE_DETECT_COEFF = 2. # 1.
         CR_BOX_SIZE = 3
         LARGE_BOX_SIZE = 15
         
@@ -2556,7 +2556,7 @@ class Interferogram(HDFCube):
 
     def compute_spectrum(self, calibration_laser_map_path, bin, step,
                          order, nm_laser, zpd_shift=None,
-                         polyfit_deg=1, n_phase=None,
+                         polyfit_deg=1, phase_correction=True,
                          bad_frames_vector=None, window_type=None,
                          phase_cube=False, phase_map_0_path=None,
                          phase_coeffs=None, filter_file_path=None,
@@ -2584,11 +2584,9 @@ class Interferogram(HDFCube):
         :param window_type: (Optional) Apodization window to be used
           (Default None, no apodization)
 
-        :param n_phase: (Optional) Number of points around ZPD to use
-          for phase correction. If 0, no phase correction will be done
-          and the resulting spectrum will be the absolute value of the
-          complex spectrum. If None, the number of points is set to 50
-          percent of the interferogram length (default None).
+        :param phase_correction: (Optional) If False, no phase
+          correction will be done and the resulting spectrum will be
+          the absolute value of the complex spectrum (default True).
 
         :param polyfit_deg: (Optional) Degree of the polynomial fit to
           the computed phase. If < 0, no fit will be performed
@@ -2600,8 +2598,7 @@ class Interferogram(HDFCube):
           between good parts and zeros (default None).
 
         :param phase_cube: (Optional) If True, only the phase cube is
-          returned. The number of points of the phase can be defined
-          with the option n_phase. The option polyfit_deg is
+          returned. The option polyfit_deg is
           automatically set to -1 and the phase is returned without
           being fitted (default False).
 
@@ -2693,7 +2690,7 @@ class Interferogram(HDFCube):
                                         calibration_laser_map_column, step,
                                         order, 
                                         data, window_type, zpd_shift,
-                                        polyfit_deg, n_phase,
+                                        polyfit_deg, phase_correction,
                                         bad_frames_vector, phase_map_column,
                                         phase_coeffs, return_phase,
                                         balanced, filter_min, filter_max,
@@ -2701,11 +2698,8 @@ class Interferogram(HDFCube):
             """Compute spectrum in one column. Used to parallelize the
             process"""
             dimz = data.shape[1]
-            if not return_phase:
-                spectrum_column = np.zeros_like(data)
-            else:
-                spectrum_column = np.zeros((data.shape[0],
-                                            n_phase))
+            spectrum_column = np.zeros_like(data)
+  
                 
             for ij in range(data.shape[0]):
                 # throw out interferograms with less than half non-zero values
@@ -2727,9 +2721,9 @@ class Interferogram(HDFCube):
                     # Weights definition if the phase has to be
                     # defined for each pixel (no external phase
                     # provided)
-                    weights = np.zeros(n_phase)
+                    weights = np.zeros(dimz)
                     if (ext_phase is None
-                        and n_phase != 0
+                        and phase_correction
                         and filter_min is not None
                         and filter_max is not None):
                         weights += 1e-20
@@ -2737,7 +2731,7 @@ class Interferogram(HDFCube):
                             orb.utils.get_filter_edges_pix(
                                 None,
                                 calibration_laser_map_column[ij] / nm_laser,
-                                step, order, n_phase,
+                                step, order, dimz,
                                 filter_min=filter_min,
                                 filter_max=filter_max))
                         weights[filter_min_pix:filter_max_pix] = 1.
@@ -2758,7 +2752,7 @@ class Interferogram(HDFCube):
                         interf, nm_laser, calibration_laser_map_column[ij],
                         step, order, window_type, zpd_shift,
                         bad_frames_vector=bad_frames_vector,
-                        n_phase=n_phase,
+                        phase_correction=phase_correction,
                         polyfit_deg=polyfit_deg,
                         ext_phase=ext_phase,
                         return_phase=return_phase,
@@ -2772,7 +2766,7 @@ class Interferogram(HDFCube):
         # Ratio of the phase length over the interferogram length. It
         # must be no greater than 1 because phase vector can be no
         # greater than the interferogram length.
-        PHASE_LEN_RATIO = .7
+        PHASE_LEN_RATIO = 1.
 
         if not phase_cube:
             self._print_msg("Computing spectrum", color=True)
@@ -2783,18 +2777,6 @@ class Interferogram(HDFCube):
             
         order = float(order)
         step = float(step)
-        
-        ## Defining the number of points for the phase computation.
-        # The number of points by default is greater for phase
-        # cube computation than phase correction
-        if n_phase is None:
-            n_phase = int(PHASE_LEN_RATIO * float(self.dimz))
-            
-        if n_phase > self.dimz:
-            n_phase = self.dimz
-            self._print_warning("The number of points for the phase computation is too high (it can be no greater than the interferogram length). Phase is computed with the maximum number of points available (%d)"%n_phase)
-            
-        self._print_msg("Phase will be computed with %d points"%n_phase)
 
         ## Calibration map loading and interpolation
         if calibration_laser_map_path is not None:
@@ -2814,11 +2796,7 @@ class Interferogram(HDFCube):
                 (self.dimx, self.dimy), dtype=float)
             calibration_laser_map.fill(nm_laser)
             
-        ## Defining regular wavelength axis
-        if not phase_cube:
-            axis_len = self.dimz
-        else:
-            axis_len = n_phase
+        axis_len = self.dimz
         
         #############################
         ## Note: variable names are all "spectrum" related even if it
@@ -2836,7 +2814,7 @@ class Interferogram(HDFCube):
 
         ## Loading phase map and phase coefficients
         if (phase_map_0_path is not None and phase_coeffs is not None
-            and n_phase > 0):
+            and phase_correction):
             phase_map_0 = self.read_fits(phase_map_0_path)
         else:
             phase_map_0 = np.zeros((self.dimx, self.dimy), dtype=float)
@@ -2852,7 +2830,7 @@ class Interferogram(HDFCube):
         # spectrum polarity must be tested. We get the mean
         # interferogram and transform it to check.
         if (phase_map_0_path is not None and phase_coeffs is not None
-                and n_phase > 0):
+                and phase_correction):
             
             self._print_msg("Check spectrum polarity")
             
@@ -2862,7 +2840,7 @@ class Interferogram(HDFCube):
 
             # create mean phase vector
             coeffs_list_mean = list()
-            coeffs_list_mean.append(np.mean(phase_map_0))
+            coeffs_list_mean.append(np.nanmean(phase_map_0))
             coeffs_list_mean += phase_coeffs
             mean_phase_vector = np.polynomial.polynomial.polyval(
                 np.arange(self.dimz),
@@ -2871,7 +2849,7 @@ class Interferogram(HDFCube):
             # transform interferogram and check polarity
             mean_spectrum = orb.utils.transform_interferogram(
                 mean_interf, nm_laser, nm_laser, step, order, '2.0', zpd_shift,
-                n_phase=n_phase, ext_phase=mean_phase_vector,
+                phase_correction=phase_correction, ext_phase=mean_phase_vector,
                 return_phase=False, balanced=balanced, wavenumber=wavenumber)
 
             if np.mean(mean_spectrum) < 0:
@@ -2899,7 +2877,7 @@ class Interferogram(HDFCube):
         
         # get filter min and filter max edges for weights definition
         # in case no external phase is provided
-        if n_phase != 0 and filter_file_path is not None:
+        if phase_correction and filter_file_path is not None:
             (filter_nm, filter_trans,
              filter_min, filter_max) = orb.utils.read_filter_file(
                 filter_file_path)
@@ -2943,7 +2921,7 @@ class Interferogram(HDFCube):
                                                 y_min:y_max], 
                           step, order, iquad_data[ii+ijob,:,:], 
                           window_type, zpd_shift, polyfit_deg,
-                          n_phase, bad_frames_vector,
+                          phase_correction, bad_frames_vector,
                           phase_map_0[x_min + ii + ijob, y_min:y_max],
                           phase_coeffs, phase_cube, balanced,
                           filter_min, filter_max, smoothing_deg,
@@ -3205,10 +3183,8 @@ class Interferogram(HDFCube):
             # Weights definition if the phase has to be
             # defined for each star (no external phase
             # provided)
-            
-            n_phase = int(PHASE_LEN_COEFF * step_nb)
 
-            weights = np.zeros(n_phase)
+            weights = np.zeros(self.dimz)
             
             weights += 1e-20
             weights_min_pix, weights_max_pix = (
@@ -3216,7 +3192,7 @@ class Interferogram(HDFCube):
                     None,
                     (calibration_laser_map[int(star_x), int(star_y)]
                      / nm_laser),
-                    step, order, n_phase, filter_min=filter_min,
+                    step, order, self.dimz, filter_min=filter_min,
                     filter_max=filter_max))
             weights[weights_min_pix:weights_max_pix] = 1.
        
@@ -3225,7 +3201,7 @@ class Interferogram(HDFCube):
                 calibration_laser_map[int(star_x), int(star_y)],
                 step, order, window_type, zpd_shift,
                 bad_frames_vector=bad_frames_vector,
-                n_phase=n_phase,
+                phase_correction=phase_correction,
                 ext_phase=None,
                 balanced=True,
                 weights=weights,
@@ -4844,7 +4820,7 @@ class InterferogramMerger(Tools):
                                phase_map_0_path=None,
                                phase_coeffs=None, smoothing_deg=2,
                                aperture=True, profile_name='gaussian',
-                               moffat_beta=3.5, n_phase=None,
+                               moffat_beta=3.5, phase_correction=True,
                                auto_phase=False, filter_correct=True,
                                flat_spectrum_path=None, aper_coeff=3.,
                                saturation=None):
@@ -4928,17 +4904,14 @@ class InterferogramMerger(Tools):
         :param moffat_beta: (Optional) Beta parameter to use for
           moffat PSF (default 3.5).
 
-        :param n_phase: (Optional) Number of points around ZPD to use
-          for phase correction. If 0, no phase correction will be done
-          and the resulting spectrum will be the absolute value of the
-          complex spectrum. If None, the number of points is set to 50
-          percent of the interferogram length (default None).
+        :param phase_correction: (Optional) If False, no phase
+          correction will be done and the resulting spectrum will be
+          the absolute value of the complex spectrum (default True).
 
         :param auto_phase: (Optional) If True, phase is computed for
           each star independantly. Useful for high SNR stars when no
           reliable external phase can be provided (e.g. Standard
-          stars). Note that if auto_phase is set to True, phase will
-          be corrected even if n_phase is set to 0. (default False).
+          stars) (default False).
 
         :param filter_correct: (Optional) If True returned spectra
           are corrected for filter. Points out of the filter band
@@ -5183,7 +5156,7 @@ class InterferogramMerger(Tools):
         
         ## Loading phase map and phase coefficients
         if (phase_map_0_path is not None and phase_coeffs is not None
-            and n_phase != 0):
+            and phase_correction):
             phase_map_0 = self.read_fits(phase_map_0_path)
         else:
             phase_map_0 = np.zeros((self.cube_A.dimx,
@@ -5236,26 +5209,24 @@ class InterferogramMerger(Tools):
                     np.arange(step_nb), coeffs_list)
                 weights = None
     
-            elif (n_phase != 0) or auto_phase:
+            elif phase_correction or auto_phase:
                 ext_phase = None
                 # Weights definition if the phase has to be
                 # defined for each star (no external phase
                 # provided)
-                if n_phase is None or n_phase == 0:
-                    n_phase = int(PHASE_LEN_COEFF * step_nb)
 
-                weights = np.zeros(n_phase)
-                if ext_phase is None and n_phase != 0:
+                weights = np.zeros(self.cube_A.dimz)
+                if ext_phase is None and phase_correction:
                     weights += 1e-20
                     weights_min_pix, weights_max_pix = (
                         orb.utils.get_filter_edges_pix(
                             None,
                             (calibration_laser_map[int(star_x), int(star_y)]
                              / nm_laser),
-                            step, order, n_phase, filter_min=filter_min,
+                            step, order, self.cube_A.dimz, filter_min=filter_min,
                             filter_max=filter_max))
                 weights[weights_min_pix:weights_max_pix] = 1.
-            elif n_phase == 0:
+            elif not phase_correction:
                 ext_phase = None
                 weights = None
             
@@ -5264,7 +5235,7 @@ class InterferogramMerger(Tools):
                 calibration_laser_map[int(star_x), int(star_y)],
                 step, order, window_type, zpd_shift,
                 bad_frames_vector=bad_frames_vector,
-                n_phase=0,
+                phase_correction=phase_correction,
                 ext_phase=ext_phase,
                 balanced=True,
                 weights=weights,
@@ -5558,82 +5529,83 @@ class Spectrum(HDFCube):
 
             for icol in range(spectrum_col.shape[0]):
 
-                corr = calibration_laser_col[icol]/nm_laser
+                if not np.any(np.isnan(spectrum_col[icol,:])):
+                    corr = calibration_laser_col[icol]/nm_laser
 
-                if wavenumber:
-                    cm1_axis_corr = orb.utils.create_cm1_axis(
-                        spectrum_col.shape[1], step, order, corr=corr)
+                    if wavenumber:
+                        cm1_axis_corr = orb.utils.create_cm1_axis(
+                            spectrum_col.shape[1], step, order, corr=corr)
 
-                    # filter function and spectrum are projected
-                    if spectral_calibration: # spectrum proj
-                        [imin_index, imax_index] = [min_index, max_index]
-                        ifilter = filter_function
-                        spectrum_col[icol,:] = orb.utils.interpolate_axis(
-                            spectrum_col[icol,:], cm1_axis, 1,
-                            old_axis=cm1_axis_corr) 
-                    else: # filter proj
-                        [imin_index, imax_index] = orb.utils.cm12pix(
-                            cm1_axis_corr, [filter_min_nm, filter_max_nm])
-                        ifilter = orb.utils.interpolate_axis(
-                            filter_function, cm1_axis_corr, 1,
-                            old_axis=cm1_axis) 
+                        # filter function and spectrum are projected
+                        if spectral_calibration: # spectrum proj
+                            [imin_index, imax_index] = [min_index, max_index]
+                            ifilter = filter_function
+                            spectrum_col[icol,:] = orb.utils.interpolate_axis(
+                                spectrum_col[icol,:], cm1_axis, 1,
+                                old_axis=cm1_axis_corr) 
+                        else: # filter proj
+                            [imin_index, imax_index] = orb.utils.cm12pix(
+                                cm1_axis_corr, [filter_min_nm, filter_max_nm])
+                            ifilter = orb.utils.interpolate_axis(
+                                filter_function, cm1_axis_corr, 1,
+                                old_axis=cm1_axis) 
 
-                    imin_index = int(imin_index)
-                    imax_index = int(imax_index)
-                    spectrum_col[icol, imin_index:imax_index] /= (
-                        ifilter[imin_index:imax_index])
-                    spectrum_col[icol,:imin_index] = np.nan
-                    spectrum_col[icol,imax_index:] = np.nan
+                        imin_index = int(imin_index)
+                        imax_index = int(imax_index)
+                        spectrum_col[icol, imin_index:imax_index] /= (
+                            ifilter[imin_index:imax_index])
+                        spectrum_col[icol,:imin_index] = np.nan
+                        spectrum_col[icol,imax_index:] = np.nan
 
-                else:
-                    nm_axis_corr = orb.utils.create_nm_axis(
-                        spectrum_col.shape[1], step, order, corr=corr)
-                    # filter function and spectrum are projected
-                    if spectral_calibration: # spectrum proj
-                        [imin_index, imax_index] = [min_index, max_index]
-                        ifilter = filter_function
-                        spectrum_col[icol,:] = orb.utils.interpolate_axis(
-                            spectrum_col[icol,:], nm_axis, 1,
-                            old_axis=nm_axis_corr) 
-                    else: # filter proj
-                        [imin_index, imax_index] = orb.utils.nm2pix(
-                            nm_axis_corr, [filter_min_nm, filter_max_nm])
-                        ifilter = orb.utils.interpolate_axis(
-                            filter_function, nm_axis_corr, 1,
-                            old_axis=nm_axis)
+                    else:
+                        nm_axis_corr = orb.utils.create_nm_axis(
+                            spectrum_col.shape[1], step, order, corr=corr)
+                        # filter function and spectrum are projected
+                        if spectral_calibration: # spectrum proj
+                            [imin_index, imax_index] = [min_index, max_index]
+                            ifilter = filter_function
+                            spectrum_col[icol,:] = orb.utils.interpolate_axis(
+                                spectrum_col[icol,:], nm_axis, 1,
+                                old_axis=nm_axis_corr) 
+                        else: # filter proj
+                            [imin_index, imax_index] = orb.utils.nm2pix(
+                                nm_axis_corr, [filter_min_nm, filter_max_nm])
+                            ifilter = orb.utils.interpolate_axis(
+                                filter_function, nm_axis_corr, 1,
+                                old_axis=nm_axis)
 
-                    imin_index = int(imin_index)
-                    imax_index = int(imax_index)
-                    spectrum_col[icol, imin_index:imax_index] /= (
-                        ifilter[imin_index:imax_index])
-                    spectrum_col[icol,:imin_index] = np.nan
-                    spectrum_col[icol,imax_index:] = np.nan
+                        imin_index = int(imin_index)
+                        imax_index = int(imax_index)
+                        spectrum_col[icol, imin_index:imax_index] /= (
+                            ifilter[imin_index:imax_index])
+                        spectrum_col[icol,:imin_index] = np.nan
+                        spectrum_col[icol,imax_index:] = np.nan
 
-                    #####################################
-                    ## ifilter = orb.utils.interpolate_axis(
-                    ##     filter_function, nm_axis_ireg_corr, 1,
-                    ##     old_axis=nm_axis)
-                    ## spectrum_col[icol, :] = orb.utils.interpolate_axis(
-                    ##     spectrum_col[icol, :], nm_axis_ireg, 5,
-                    ##     old_axis=nm_axis)
+                        #####################################
+                        ## ifilter = orb.utils.interpolate_axis(
+                        ##     filter_function, nm_axis_ireg_corr, 1,
+                        ##     old_axis=nm_axis)
+                        ## spectrum_col[icol, :] = orb.utils.interpolate_axis(
+                        ##     spectrum_col[icol, :], nm_axis_ireg, 5,
+                        ##     old_axis=nm_axis)
 
-                    ## [imin_index, imax_index] = orb.utils.nm2pix(
-                    ##     nm_axis_ireg_corr, [filter_min_nm, filter_max_nm])
+                        ## [imin_index, imax_index] = orb.utils.nm2pix(
+                        ##     nm_axis_ireg_corr, [filter_min_nm, filter_max_nm])
 
-                    ## imin_index = int(imin_index)
-                    ## imax_index = int(imax_index)
-                    ## spectrum_col[icol, imin_index:imax_index] /= (
-                    ##     ifilter[imin_index:imax_index])
-                    ## spectrum_col[icol,:imin_index] = np.nan
-                    ## spectrum_col[icol,imax_index:] = np.nan
+                        ## imin_index = int(imin_index)
+                        ## imax_index = int(imax_index)
+                        ## spectrum_col[icol, imin_index:imax_index] /= (
+                        ##     ifilter[imin_index:imax_index])
+                        ## spectrum_col[icol,:imin_index] = np.nan
+                        ## spectrum_col[icol,imax_index:] = np.nan
 
-                    ## # once the spectrum has been divided by the
-                    ## # filter it is interpolated back to its
-                    ## # original axis
-                    ## spectrum_col[icol, :] = orb.utils.interpolate_axis(
-                    ##     spectrum_col[icol, :], nm_axis, 5,
-                    ##     old_axis=nm_axis_ireg)
-                        
+                        ## # once the spectrum has been divided by the
+                        ## # filter it is interpolated back to its
+                        ## # original axis
+                        ## spectrum_col[icol, :] = orb.utils.interpolate_axis(
+                        ##     spectrum_col[icol, :], nm_axis, 5,
+                        ##     old_axis=nm_axis_ireg)
+
 
             # flux calibration
             if flux_calibration_vector is not None:
@@ -5792,9 +5764,7 @@ class Spectrum(HDFCube):
                 progress.update(iframe, info='Writing data frame {}'.format(
                     iframe))
             progress.end()
-            
-          
-        
+
         # update header
         if wavenumber:
             axis = orb.utils.create_nm_axis(self.dimz, step, order)
@@ -6006,6 +5976,18 @@ class Phase(HDFCube):
       cubes into a phase cube using :class:`process.Interferogram`.
     """
 
+    def _get_calibration_laser_map_path(self):
+        """Return path to the calibration laser map created during the
+        fitting procedure of the phase map (with a SITELLE's fit model
+        of the phase)."""
+        return self._data_path_hdr + 'calibration_laser_map.fits'
+
+    def _get_calibration_laser_map_header(self):
+        return (self._get_basic_header('Calibration laser map')
+                + self._project_header
+                + self._calibration_laser_header
+                + self._get_basic_frame_header(self.dimx, self.dimy))
+
     def _get_phase_map_path(self, order, phase_map_type=None):
         """Return the default path to the phase map.
 
@@ -6142,7 +6124,7 @@ class Phase(HDFCube):
 
         def _fit_phase_in_column(phase_column, filter_min_column,
                                  filter_max_column, fit_order,
-                                 interferogram_length):
+                                 interferogram_length, order):
             EDGE_COEFF = 0.05
             phase_coeff_column = np.zeros((phase_column.shape[0],
                                            fit_order + 1),
@@ -6150,6 +6132,7 @@ class Phase(HDFCube):
             res_column = np.zeros((phase_column.shape[0]), dtype=float)
             for icol in range(phase_column.shape[0]):
                 iphase = phase_column[icol,:]
+                if not int(order)&1: iphase = iphase[::-1]
                 # If the interferogram length is different from the
                 # phase vector length, the phase vector is resized to
                 # get good fit coefficients for a full length vector
@@ -6177,6 +6160,12 @@ class Phase(HDFCube):
                             iphase, fit_order, w=weights,
                             full=True)
                         if len(coeffs[1][0]) == 1:
+                            ## if coeffs[1][0] < 20:
+                            ##     import pylab as pl
+                            ##     pl.plot(iphase)
+                            ##     pl.axvline(x=filter_min)
+                            ##     pl.axvline(x=filter_max)
+                            ##     pl.show()
                             phase_coeff_column[icol,:] = np.array(coeffs[0])
                             res_column[icol] = coeffs[1][0]
                         
@@ -6292,7 +6281,7 @@ class Phase(HDFCube):
                     args=(iquad_data[ii+ijob,:,:],
                           filter_min_map[x_min+ii+ijob, y_min:y_max],
                           filter_max_map[x_min+ii+ijob, y_min:y_max],
-                          fit_order, interferogram_length),
+                          fit_order, interferogram_length, order),
                     modules=("numpy as np", "import orb.utils"))) 
                         for ijob in range(ncpus)]
 
@@ -6384,81 +6373,151 @@ class Phase(HDFCube):
 
         :param phase_map_path: Path to the phase map
         """
-                
-        def smooth_columns(pmap):
-            progress = ProgressBar(pmap.shape[0])
-            for ii in range(1, pmap.shape[0]):
-                coli = np.mean((pmap[ii,:])[np.nonzero(pmap[ii,:])])
-                coli_1 = np.mean((pmap[ii-1,:])[np.nonzero(pmap[ii-1,:])])
-                column_diff = coli - coli_1
-                while abs(column_diff) >= math.pi / 2.:
-                    if column_diff >= 0.:
-                        pmap[ii,:] -= math.pi
-                        column_diff -= math.pi
-                    else:
-                        pmap[ii,:] += math.pi
-                        column_diff += math.pi
-                        
-                progress.update(ii, info="Smoothing columns values")
-            progress.end()
-            return pmap
+        def smooth_quad(pm_quad):
+            def smooth_columns(pmap):
+                for ii in range(1, pmap.shape[0]):
+                    coli = np.mean((pmap[ii,:])[np.nonzero(pmap[ii,:])])
+                    coli_1 = np.mean((pmap[ii-1,:])[np.nonzero(pmap[ii-1,:])])
+                    column_diff = coli - coli_1
+                    while abs(column_diff) >= math.pi / 2.:
+                        if column_diff >= 0.:
+                            pmap[ii,:] -= math.pi
+                            column_diff -= math.pi
+                        else:
+                            pmap[ii,:] += math.pi
+                            column_diff += math.pi
+                return pmap
 
-        def smooth_phase(pmap, deg=10):
-            def smooth_box(ii, ij, pmap, deg):
-                if ii > 0: xmin = ii - deg
-                else: xmin = 0
-                if ii < pmap.shape[0] - deg: xmax = ii + deg
-                else: xmax = pmap.shape[0] - deg
-                if ij > 0: ymin = ij - deg
-                else: ymin = 0
-                if ij < pmap.shape[1] - deg: ymax = ij + deg
-                else: ymax = pmap.shape[1] - deg
+            def smooth_phase(pmap, deg=10):
+                def smooth_box(ii, ij, pmap, deg):
+                    xmin, xmax, ymin, ymax = orb.utils.get_box_coords(
+                        ii, ij, deg*2, 0, pmap.shape[0], 0, pmap.shape[1])
 
-                box = np.copy(pmap[xmin:xmax+1, ymin:ymax+1])
-                box_mask = np.nonzero(box)
-                box_mask_inv = np.nonzero(box == 0)
-                if np.any(box):
-                    box -= float(np.mean(box[box_mask]))
-                    box[box_mask_inv] = 0.
-                    bad_values = np.nonzero(abs(box) >= math.pi / 2. )
-                    for ibad in range(len(bad_values[0])):
-                        badx = bad_values[0][ibad]
-                        bady = bad_values[1][ibad]
-                        while abs(box[badx, bady]) >= math.pi / 2.:
-                            if box[badx, bady] >= 0.:
-                                box[badx, bady] -= math.pi
-                                pmap[xmin + badx,
-                                     ymin + bady] -= math.pi
-                            else:
-                                box[badx, bady] += math.pi
-                                pmap[xmin + badx,
-                                     ymin + bady] += math.pi
+                    box = np.copy(pmap[xmin:xmax, ymin:ymax])
+                    box_mask = np.nonzero(box)
+                    box_mask_inv = np.nonzero(box == 0)
+    
+                    if np.any(box) and np.size(box) > 1:
+                        box -= float(np.mean(box[box_mask]))
+                        box[box_mask_inv] = 0.
+                        bad_values = np.nonzero(abs(box) >= math.pi / 2. )
+                        for ibad in range(len(bad_values[0])):
+                            badx = bad_values[0][ibad]
+                            bady = bad_values[1][ibad]
+                            while abs(box[badx, bady]) >= math.pi / 2.:
+                                if box[badx, bady] >= 0.:
+                                    box[badx, bady] -= math.pi
+                                    pmap[xmin + badx,
+                                         ymin + bady] -= math.pi
+                                else:
+                                    box[badx, bady] += math.pi
+                                    pmap[xmin + badx,
+                                         ymin + bady] += math.pi
 
+                for ii in range(pmap.shape[1]):
+                    for ij in range(pmap.shape[0]):
+                        smooth_box(ii, ij, pmap, deg)
 
-            progress = ProgressBar(pmap.shape[0] - 2*deg)
-            for ii in range(deg, pmap.shape[1] - deg):
-                for ij in range(deg, pmap.shape[0] - deg):
-                    smooth_box(ii, ij, pmap, deg)
-                                        
-                progress.update(ii - deg, info="Smoothing phase values")
-            progress.end()
+                return pmap
 
-            return pmap
-
-
-        SMOOTH_DEG_COEFF = 0.025 # ratio of the smoothing degree to
-                                 # the phase map shape
+            SMOOTH_DEG_COEFF = 0.025 # ratio of the smoothing degree to
+                                     # the phase map shape
+                                     
+            mask = np.nonzero(pm_quad == 0)
+            deg = int(SMOOTH_DEG_COEFF
+                      * (pm_quad.shape[0] + pm_quad.shape[1])/2.)
+            pm_quad = smooth_phase(pm_quad, deg)
+            pm_quad[mask] = 0.
+            pm_quad = smooth_columns(pm_quad)
+            pm_quad[mask] = 0.
+            
+            return pm_quad
+        
 
         # Load map
         phase_map = self.read_fits(phase_map_path)
 
         # Smooth map
-        mask = np.nonzero(phase_map == 0)
-        phase_map = smooth_phase(phase_map, deg=int(SMOOTH_DEG_COEFF * (phase_map.shape[0] + phase_map.shape[1])/2.))
-        phase_map[mask] = 0.
-        phase_map = smooth_columns(phase_map)
-        phase_map[mask] = 0.    
+        job_server, ncpus = self._init_pp_server()
 
+        DIV_NB = int(math.sqrt(ncpus)) * 2
+        QUAD_NB = DIV_NB**2
+
+        progress = ProgressBar(QUAD_NB)
+        for iquad_stack in range(0, QUAD_NB, ncpus):
+            
+            if (iquad_stack + ncpus >= QUAD_NB):
+                ncpus = QUAD_NB - iquad_stack
+
+            limits = list()
+
+            for ijob in range(ncpus):
+                limits.append(self.get_quadrant_dims(
+                    iquad_stack + ijob, div_nb=DIV_NB))
+            
+            jobs = [(ijob, job_server.submit(
+                smooth_quad, 
+                args=(phase_map[
+                    limits[ijob][0]:limits[ijob][1],
+                    limits[ijob][2]:limits[ijob][3]],),
+                modules=("numpy as np", "import orb.utils", "import math")))
+                    for ijob in range(ncpus)]
+
+            for ijob, job in jobs:
+
+                (x_min, x_max, y_min, y_max) = limits[ijob]
+                phase_map[x_min:x_max,y_min:y_max] = job()
+                
+            progress.update(iquad_stack+ncpus)
+
+        self._close_pp_server(job_server)
+        progress.end()
+
+      
+        phase_map[np.nonzero(phase_map == 0)] = np.nan
+        
+        add_map = np.empty((DIV_NB, DIV_NB), dtype=float)
+        add_map.fill(np.nan)
+        
+        for ij in range(DIV_NB):
+            for ii in range(DIV_NB):
+                (x_min, x_max, y_min, y_max) = self.get_quadrant_dims(
+                    ii+ij*DIV_NB, div_nb=DIV_NB)
+                refquad = phase_map[x_min:x_max,y_min:y_max]
+                
+                # x + 1
+                if ii + 1 < DIV_NB:
+                    (x_min, x_max, y_min, y_max) = self.get_quadrant_dims(
+                        (ii+1)+ij*DIV_NB, div_nb=DIV_NB)
+            
+                    neiquad = phase_map[x_min:x_max,y_min:y_max]
+                    refmed = np.nanmedian(refquad[-10:,:])
+                    neimed = np.nanmedian(neiquad[:10,:])
+                    while abs(neimed - refmed) > math.pi/4.:
+                        if neimed - refmed > 0.:
+                            phase_map[x_min:x_max,y_min:y_max] -= math.pi/2.
+                            neimed -= math.pi/2.
+                        else:
+                            phase_map[x_min:x_max,y_min:y_max] += math.pi/2.
+                            neimed += math.pi/2.
+                    add_map[ii+1,ij] = 1
+                # y + 1
+                if ij + 1 < DIV_NB:
+                    (x_min, x_max, y_min, y_max) = self.get_quadrant_dims(
+                         (ii)+(ij+1)*DIV_NB, div_nb=DIV_NB)
+                    neiquad = phase_map[x_min:x_max,y_min:y_max]
+                    refmed = np.nanmedian(refquad[:,-10:])
+                    neimed = np.nanmedian(neiquad[:,:10])
+                    while abs(neimed - refmed) > math.pi/2.:
+                        if neimed - refmed > 0:
+                            phase_map[x_min:x_max,y_min:y_max] -= math.pi
+                            neimed -= math.pi
+                        else:
+                            phase_map[x_min:x_max,y_min:y_max] += math.pi
+                            neimed += math.pi
+                    add_map[ii,ij+1] = 1
+        
+        phase_map[np.nonzero(np.isnan(phase_map))] = 0.
         # Save smoothed map
         phase_map_path = self._get_phase_map_path(0, phase_map_type='smoothed')
 
@@ -6469,15 +6528,35 @@ class Phase(HDFCube):
         if self.indexer is not None:
             self.indexer['phase_map_smoothed_0'] = phase_map_path
     
-    def fit_phase_map(self, phase_map_path, residual_map_path):
+    def fit_phase_map(self, phase_map_path, residual_map_path,
+                      phase_model='spiomm',
+                      calibration_laser_map_path=None,
+                      calibration_laser_nm=None):
         """Fit the phase map.
 
-        Help remove most of the noise. This process is useful if the phase
-        map has been computed from astronomical data without a high SNR.
+        Help remove most of the noise. This process is useful if the
+        phase map has been computed from astronomical data without a
+        high SNR for every pixel in all the filter bandpass.
 
         :param phase_map_path: Path to the phase map
 
         :param residual_map_path: Path to the residual on phase fit
+
+        :param phase_model: (Optional) Model used to fit phase, can be
+          'spiomm' or 'sitelle'. If 'spiomm', the model is a very
+          basic one considering only linear variation of the phase map
+          along the columns. If 'sitelle', the phase model is based on
+          a the calibration laser map, tip tilt and rotation of the
+          calibration laser map are considered in the fit, along with
+          the first order of the phase (default 'spiomm').
+
+        :param calibration_laser_map_path: (Optional) Path to the
+          calibration laser map. Only useful if the phase model is
+          'sitelle' (default None).
+
+        :param calibration_laser_nm: (Optional) Wavelength of the
+          calibration laser (in nm). Only useful if the phase model is
+          'sitelle' (default None).
         """
 
         FIT_DEG = 1 # Degree of the polynomial used fo the fit
@@ -6501,9 +6580,23 @@ class Phase(HDFCube):
         err_map[np.nonzero(mask)] = np.nan
         err_map = np.sqrt(err_map)
 
-        fitted_phase_map, error_map, fit_error = orb.utils.fit_map(
-            phase_map, err_map, FIT_DEG)
-        
+        # load calibration laser map
+        calibration_laser_map = self.read_fits(calibration_laser_map_path)
+        if (calibration_laser_map.shape[0] != self.dimx):
+            calibration_laser_map = orb.utils.interpolate_map(
+                calibration_laser_map, self.dimx, self.dimy)
+
+        if phase_model == 'spiomm':
+            fitted_phase_map, error_map, fit_error = orb.utils.fit_map(
+                phase_map, err_map, FIT_DEG)
+            new_calibration_laser_map = calibration_laser_map
+            
+        elif phase_model == 'sitelle':
+            fitted_phase_map, error_map, fit_error, new_calibration_laser_map = (
+                orb.utils.fit_sitelle_phase_map(
+                    phase_map, err_map, calibration_laser_map,
+                    calibration_laser_nm))
+            
         self._print_msg(
             "Normalized root-mean-square deviation on the fit: %f%%"%(
                 fit_error*100.))
@@ -6514,6 +6607,16 @@ class Phase(HDFCube):
         ## save fitted phase map and error map
         error_map_path = self._get_phase_map_path(0, phase_map_type='error')
         fitted_map_path = self._get_phase_map_path(0, phase_map_type='fitted')
+
+        if new_calibration_laser_map is not None:
+            self.write_fits(
+                self._get_calibration_laser_map_path(),
+                new_calibration_laser_map, 
+                fits_header=self._get_calibration_laser_map_header(),
+                overwrite=self.overwrite)
+            if self.indexer is not None:
+                self.indexer['phase_calibration_laser_map'] = self._get_calibration_laser_map_path()
+        
         self.write_fits(
             error_map_path, error_map, 
             fits_header= self._get_phase_map_header(0, phase_map_type='error'),

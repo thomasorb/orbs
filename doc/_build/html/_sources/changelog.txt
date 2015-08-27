@@ -1011,7 +1011,7 @@ The HDF5 format is also very useful to display large data cubes with
 v3.9.0
 ======
 
-Nearly all classe in :file:`orbs.py` (see :ref:`orbs_module`) and
+Nearly all classes in :file:`orbs.py` (see :ref:`orbs_module`) and
 :file:`process.py` (see :ref:`process_module`) have been modified to
 accept hdf5 cubes as input and output hdf5 cubes.
 
@@ -1049,3 +1049,90 @@ comprehensive format for eye checking. The best format would be:
 * Apodization 1.0 
 * Wavenumber
 * Uncalibrated
+
+
+v3.10: handling real SITELLE's data cubes
+*****************************************
+
+
+
+v3.10.0
+=======
+
+
+Phase correction
+----------------
+
+SITELLE's phase map is nearly ideal so that a **better kind of phase
+correction is possible**. Now, the 'order 0 phase map' depends only on
+the OPD path i.e. the incident angle of the light (if we consider that
+the surfaces ot the interferometer's optics are perfect, which seems
+to be a good enough assumption up to now). The order 0 phase map can
+thus be modeled directly from the calibration laser map which gives
+the incident angle at each pixels. As the calibration laser map can be
+tilted (2 angles along X and Y axes) and rotated around its center,
+the model must take into account all those 3 parameters.
+
+There are at least two major **advantages**:
+
+  * We have an **understood model** with physical parameters to fit
+    the phase map (and the fitting approximation is really great,
+    giving a gaussian shaped error distribution with no apparent bias
+    or skewness).
+
+  * **We get the real calibration laser map** which corresponds to the
+    scientific cube and not a calibration laser map taken in different
+    conditions (gravity vector, temperature and so on).
+
+
+* :py:class:`~process.Phase`:
+
+  * :py:meth:`~process.Phase.fit_phase_map` can be set to use a
+    'sitelle' model to fit the phase. In this case the new calibration
+    laser map is also
+    returned. :py:meth:`orbs.orbs.Orbs.calibrate_spectrum` will use
+    the new calibration laser map.
+
+  * :py:meth:`~process.Phase.smooth_phase_map` is now parallelized to
+    smooth the phase map by quadrants ('unwrap' instead of 'smooth'
+    would be more precise). A special algorithm has been developped to
+    reorder the quadrants (each one being individually smoothed) and
+    get a perfectly unwrapped phase map.
+
+* :py:class:`orbs.orbs.Orbs` has been adapted to all those changes.
+
+* **n_phase** argument (which gives the number of points used to
+  compute the phase) has been definitly removed. Now, the whole
+  interferogram is always considered because there is no interest in
+  using less points instead for a more aesthetic and smoother phase
+  vector (but the fitting precision is exactly the same).
+
+
+
+Cosmic rays detection
+---------------------
+
+* A lot of high incident angle CR are visible and they are badly
+  detected by the actual process. The levels of detections have bee
+  lowered but the whole detection process must be recoded to get a
+  more robust detection (using both cameras for example).
+
+* All point sources are shielded (see ORB's documentation for the
+  detection of all sources).
+
+
+Miscellaneous
+-------------
+
+* **orbs** script accepts a new special target: '--raw' to get a
+  faster and robust reduction with no cosmic ray detection nor phase
+  correction (useful for fast verification of the general quality of a
+  data cube). Also, the old argument --nphase has been replaced
+  by --nophase to simply avoid phase correction.
+
+* :py:meth:`orbs.orbs.Orbs.calibrate_spectrum` now does not fail on
+  bad WCS calibration.
+
+* script **orbs-sitelle-makejob** created to help in creating a job
+  file from a list of the files to reduce (object files, flats and
+  calibration map)

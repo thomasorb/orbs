@@ -55,10 +55,17 @@ def main(args):
     olist = make_files_list(args.object_path)
     first_file = to.read_fits(olist[0], return_hdu_only=True)
     hdr = first_file[0].header
-            
-    s = """
+
+    if not args.nice:
+        s = """
 WAVENUMBER 1
 WAVE_CALIB 0
+APOD 1.0
+"""
+    else:
+        s = """
+WAVENUMBER 0
+WAVE_CALIB 1
 APOD 1.0
 """
 
@@ -92,8 +99,12 @@ APOD 1.0
         else:
             for oline in olist:
                 f.write('COMPARISON {}\n'.format(oline))
-        ## for fline in flist:
-        ##     f.write('FLAT '+ fline)
+
+        if args.flat_list_path is not None:
+           with open(args.flat_list_path, 'r') as flist:
+               for fline in flist:
+                   f.write('FLAT '+ fline)
+                   
         ## for dline in dlist:
         ##     f.write('DARK '+ dline)
         ## for cline in clist:
@@ -123,9 +134,18 @@ if __name__ == "__main__":
                         default=False,
                         help='This option must be set if the object is a laser cube')
 
+    parser.add_argument('--nice', dest='nice',
+                        action='store_true',
+                        default=False,
+                        help='Spectral cube flavor will be the nice one (i.e. in wavelength and calibrated in wavelength). By default the spectral cube flavor is in wavenumber and uncalibrated in wavenumber.')
+
     parser.add_argument('-c', dest='calibration_laser_map_path',
                         default=None,
                         help='Path to the calibration laser map (needed for an object reduction).')
+
+    parser.add_argument('-f', dest='flat_list_path',
+                        default=None,
+                        help='Path to the list of flat field images.')
 
     parser.add_argument('job_file_name',
                         action='store',

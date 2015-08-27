@@ -22,7 +22,6 @@
 
   <step name='compute_phase' cam='1'>
     <arg value='1' type='int'></arg>
-    <kwarg name='n_phase'></kwarg>
   </step>
 
   <step name='compute_phase_maps' cam='1'>
@@ -31,7 +30,7 @@
 
   <step name='compute_spectrum' cam='1'>
     <arg value='1' type='int'></arg>
-    <kwarg name='n_phase'></kwarg>
+    <kwarg name='phase_correction'></kwarg>
     <kwarg name='apodization_function'></kwarg>
   </step>
 

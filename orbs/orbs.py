@@ -199,7 +199,7 @@ class Orbs(Tools):
         "barthann","bartlett", "blackman", "blackmanharris",
         "bohman","hamming","hann","nuttall","parzen",
         '1.0', '1.1', '1.2', '1.3', '1.4', '1.5',
-        '1.6', '1.7', '1.8', '1.9', '2.0']
+        '1.6', '1.7', '1.8', '1.9', '2.0', 'learner95']
     """Apodization functions that are recognized by
     :py:class:`scipy.signal` or
     :py:meth:`orb.utils.norton_beer_window` and that can be used
@@ -1227,7 +1227,8 @@ class Orbs(Tools):
 
 
     def start_reduction(self, apodization_function=None, start_step=0,
-                        n_phase=None, alt_merge=False, save_as_quads=False,
+                        phase_correction=True, alt_merge=False,
+                        save_as_quads=False,
                         add_frameB=True):
         
         """Run the whole reduction process for two cameras using
@@ -1240,12 +1241,9 @@ class Orbs(Tools):
           cover from an error at a certain step without having to
           run the whole process one more time (default 0).  
            
-        :param n_phase: (Optional) Number of points around ZPD to use
-          for phase correction during spectrum computation. If 0, no
-          phase correction will be done and the resulting spectrum
-          will be the absolute value of the complex spectrum. If
-          None, the number of points is set to 50 percent of the
-          interferogram length (default None). 
+        :param phase_correction: (Optional) If False, no phase
+          correction will be done and the resulting spectrum will be
+          the absolute value of the complex spectrum (default True).
 
         :param alt_merge: (Optional) If True, alternative merging
           process will be choosen. Star photometry is not used during
@@ -1308,7 +1306,8 @@ class Orbs(Tools):
 
 
     def detect_stars(self, cube, camera_number, 
-                     saturation_threshold=None, return_fwhm_pix=False):
+                     saturation_threshold=None, return_fwhm_pix=False,
+                     all_sources=False):
         """Detect stars in a cube and save the star list in a file.
 
         This method is a simple wrapper around
@@ -1333,6 +1332,10 @@ class Orbs(Tools):
         :param return_fwhm_pix: (Optional) If True, the returned fwhm
           will be given in pixels instead of arcseconds (default
           False).
+
+        :param all_sources: (Optional) If True, all point sources ar
+          detected regardless of their FWHM (galaxies, HII regions,
+          filamentary knots and stars might be detected).
         
         :return: Path to a star list, mean FWHM of stars in arcseconds.
 
@@ -1377,10 +1380,14 @@ class Orbs(Tools):
                 
             self._print_msg('Autodetecting stars', color=True)
             astrom = self._init_astrometry(cube, camera_number)
-            star_list_path, mean_fwhm = astrom.detect_stars(
-                min_star_number=self.config['DETECT_STAR_NB'],
-                saturation_threshold=saturation_threshold,
-                try_catalogue=self.options['try_catalogue'])
+            if not all_sources:
+                star_list_path, mean_fwhm = astrom.detect_stars(
+                    min_star_number=self.config['DETECT_STAR_NB'],
+                    saturation_threshold=saturation_threshold,
+                    try_catalogue=self.options['try_catalogue'])
+            else:
+                star_list_path, mean_fwhm = astrom.detect_all_sources()
+                    
             if return_fwhm_pix: mean_fwhm = astrom.arc2pix(mean_fwhm)
             del astrom
 
@@ -1498,7 +1505,7 @@ class Orbs(Tools):
             bad_frames_vector = []
 
         star_list_path, mean_fwhm_pix = self.detect_stars(
-            cube, camera_number, return_fwhm_pix=True)
+            cube, camera_number, return_fwhm_pix=True, all_sources=True)
             
         cube.create_cosmic_ray_map(z_coeff=z_coeff, step_number=step_number,
                                    bad_frames_vector=bad_frames_vector,
@@ -2004,30 +2011,26 @@ class Orbs(Tools):
 
 
     def compute_spectrum(self, camera_number, apodization_function=None,
-                         polyfit_deg=1, n_phase=None,
+                         polyfit_deg=1, phase_correction=True,
                          phase_cube=False,
                          phase_coeffs=None,
                          smoothing_deg=2, no_star=False):
 
-        """Run the computation of the spectrum from an interferogram
-        cube.  
+        """Compute a spectral cube from an interferogram cube.
      
         :param apodization_function: (Optional) Apodization function. Default
           None.
-
-        :param n_phase: (Optional) Number of points around ZPD to use
-          for phase correction. If 0, no phase correction will be done
-          and the resulting spectrum will be the absolute value of the
-          complex spectrum. If None, the number of points is set to 50
-          percent of the interferogram length (default None).
+    
+        :param phase_correction: (Optional) If False, no phase correction
+          will be done and the resulting spectrum will be the absolute value
+          of the complex spectrum (default True).
 
         :param polyfit_deg: (Optional) Degree of the polynomial fit to
           the computed phase. If < 0, no fit will be performed
           (Default 1).  
 
         :param phase_cube: (Optional) If True, only the phase cube is
-          returned. The number of points of the phase can be defined
-          with the option n_phase (default False).   
+          returned (default False).   
 
         :param phase_coeffs: (Optional) Polynomial coefficients of
           order higher than 0. If given those coefficients are used to
@@ -2058,18 +2061,16 @@ class Orbs(Tools):
         .. seealso:: :meth:`process.Interferogram.compute_spectrum`
         .. seealso:: :meth:`orb.utils.transform_interferogram`
         """
+        if phase_cube: phase_correction = False
+        
         # get calibration laser map path
-        if phase_cube:
-            calibration_laser_map_path = self._get_calibration_laser_map(
-                camera_number)
-        else:
-            calibration_laser_map_path = None
+        calibration_laser_map_path = None
       
         ## Load phase maps and create phase coefficients vector
         phase_map_correction = False
 
         if (phase_coeffs is None
-            and not phase_cube and n_phase != 0):
+            and not phase_cube and phase_correction):
             
             phase_map_correction = True
             
@@ -2215,7 +2216,7 @@ class Orbs(Tools):
             calibration_laser_map_path, bin_factor, step, order,
             self.config["CALIB_NM_LASER"],
             bad_frames_vector=bad_frames_vector,
-            n_phase=n_phase,
+            phase_correction=phase_correction,
             polyfit_deg=polyfit_deg,
             window_type=apodization_function,
             phase_cube=phase_cube,
@@ -2233,20 +2234,14 @@ class Orbs(Tools):
         return perf_stats
 
 
-    def compute_phase(self, camera_number, n_phase=None):
+    def compute_phase(self, camera_number):
         """Create a phase cube.
 
         :param camera_number: Camera number (must be 1, 2 or 0 for
-          merged data)
-
-        :param n_phase: (Optional) Number of points around ZPD to use
-          for phase correction. If 0, no phase correction will be done
-          and the resulting spectrum will be the absolute value of the
-          complex spectrum. If None, the number of points is set to 50
-          percent of the interferogram length (default None).
+          merged data)   
         """
-        self.compute_spectrum(camera_number, apodization_function='2.0', 
-                              n_phase=n_phase, phase_cube=True)
+        self.compute_spectrum(camera_number, apodization_function='learner95', 
+                              phase_correction=False, phase_cube=True)
 
 
     def compute_phase_maps(self, camera_number, fit=True,
@@ -2292,7 +2287,7 @@ class Orbs(Tools):
         if filter_path is None:
             self._print_warning("Unknown filter name.")
             
-        # get calibration laser map path   
+        # get calibration laser map path
         calibration_laser_map_path = self._get_calibration_laser_map(
             camera_number)
 
@@ -2343,16 +2338,27 @@ class Orbs(Tools):
             fit_order=self.config["PHASE_FIT_DEG"],
             flat_cube=flat_cube)
 
-        # smooth the 0th order phase map
+        # smooth 0th order phase map
         phase_map_path = phase._get_phase_map_path(0)
         phase.smooth_phase_map(phase_map_path)
         if fit:
-            # fit the 0th order phase map
+            # fit 0th order phase map
             phase_map_path = phase._get_phase_map_path(
                 0, phase_map_type='smoothed')
             residual_map_path = phase._get_phase_map_path(
-                0, phase_map_type='residual') 
-            phase.fit_phase_map(phase_map_path, residual_map_path)
+                0, phase_map_type='residual')
+            
+            if self.config["INSTRUMENT_NAME"] == 'SITELLE':
+                phase_model = 'sitelle'
+            else:
+                phase_model = 'spiomm'
+                
+            phase.fit_phase_map(
+                phase_map_path, residual_map_path,
+                phase_model=phase_model,
+                calibration_laser_map_path=calibration_laser_map_path,
+                calibration_laser_nm=self.config["CALIB_NM_LASER"])
+            
         perf_stats = perf.print_stats()
         del perf
         return perf_stats
@@ -2436,7 +2442,7 @@ class Orbs(Tools):
                 self.options['order'], self.options['exp_time'],
                 self._get_filter_file_path(self.options["filter_name"]))
         else:
-            self._print_warning("Standard related options were not given or the name of the filer is unknown. Flux calibration cannot be done")
+            self._print_warning("Standard related options were not given or the name of the filter is unknown. Flux calibration cannot be done")
             flux_calibration_vector = None
         
         # Get WCS
@@ -2449,7 +2455,11 @@ class Orbs(Tools):
             correct_wcs = None
         else:
             astrom = self._init_astrometry(spectrum, camera_number)
-            correct_wcs = astrom.register(full_deep_frame=True)
+            try:
+                correct_wcs = astrom.register(full_deep_frame=True)
+            except Exception, e:
+                self._print_warning('Error during WCS computation, check WCS parameters in the option file: {}'.format(e))
+                correct_wcs = None
 
         # Get deep frame
         if camera_number == 0 and cam1_scale:
@@ -2458,10 +2468,16 @@ class Orbs(Tools):
         else:
             deep_frame_path = self.indexer.get_path('deep_frame', camera_number)
         
-        # check wavelength calibration
-        calibration_laser_map_path = self._get_calibration_laser_map(
-            camera_number)
-            
+        # Check wavelength calibration
+        calibration_laser_map_path = self.indexer.get_path('phase_calibration_laser_map', camera_number)
+        
+        if calibration_laser_map_path is None:
+            calibration_laser_map_path = self._get_calibration_laser_map(
+                camera_number)
+        else:
+            self._print_msg('Calibration laser map used: {}'.format(
+                calibration_laser_map_path))
+        
         # Calibration
         spectrum.calibrate(
             filter_path, step, order,
@@ -2480,7 +2496,7 @@ class Orbs(Tools):
 
     def extract_stars_spectrum(self, camera_number, apodization_function,
                                star_list_path=None,
-                               aperture_photometry=True, n_phase=None,
+                               aperture_photometry=True, phase_correction=True,
                                auto_phase=False, filter_correct=True,
                                aper_coeff=3., saturation=None):
         
@@ -2507,18 +2523,17 @@ class Orbs(Tools):
         :param aperture_photometry: (Optional) If True, star flux is
           computed by aperture photometry. If False, star flux is
           computed from the results of the fit.
-
-        :param n_phase: (Optional) Number of points around ZPD to use
-          for phase correction. If 0, no phase correction will be done
-          and the resulting spectrum will be the absolute value of the
-          complex spectrum. If None, the number of points is set to 50
-          percent of the interferogram length (default None).
-
+          
+        :param phase_correction: (Optional) If False, no phase
+          correction will be done and the resulting spectrum will be
+          the absolute value of the complex spectrum (default True).
+     
         :param auto_phase: (Optional) If True, phase is computed for
           each star independantly. Useful for high SNR stars when no
           reliable external phase can be provided (e.g. Standard
           stars). Note that if auto_phase is set to True, phase will
-          be corrected even if n_phase is set to 0. (default False).
+          be corrected even if phase_correction is False (default
+          False).
 
         :param filter_correct: (Optional) If True returned spectra
           are corrected for filter. Points out of the filter band
@@ -2571,7 +2586,7 @@ class Orbs(Tools):
         # get phase coefficents
         phase_map_0_path = None
         phase_coeffs = None
-        if n_phase != 0 and not auto_phase:
+        if phase_correction and not auto_phase:
             phase_map_0_path = self.indexer.get_path(
                             'phase_map_fitted_0', 0)
             phase_map_paths = list()
@@ -2638,7 +2653,7 @@ class Orbs(Tools):
                 aperture=aperture_photometry,
                 profile_name=self.config["PSF_PROFILE"],
                 moffat_beta=self.config["MOFFAT_BETA"],
-                n_phase=n_phase, 
+                phase_correction=phase_correction, 
                 auto_phase=auto_phase, filter_correct=filter_correct,
                 flat_spectrum_path=flat_spectrum_path,
                 aper_coeff=aper_coeff,
@@ -2758,7 +2773,7 @@ class Orbs(Tools):
         spectrum.export(spectrum_path, header=spectrum_header,
                         overwrite=self.overwrite)
 
-    def export_standard_spectrum(self, camera_number, n_phase=None,
+    def export_standard_spectrum(self, camera_number, phase_correction=None,
                                  aperture_photometry=True,
                                  apodization_function='2.0',
                                  auto_phase=True):
@@ -2770,13 +2785,11 @@ class Orbs(Tools):
 
         :param camera_number: Camera number (must be 1, 2 or 0 for
           merged data).
-
-        :param n_phase: (Optional) Number of points around ZPD to use
-          for phase correction. If 0, no phase correction will be done
-          and the resulting spectrum will be the absolute value of the
-          complex spectrum. If None, the number of points is set to 50
-          percent of the interferogram length (default None).
-
+    
+        :param phase_correction: (Optional) If False, no phase
+          correction will be done and the resulting spectrum will be
+          the absolute value of the complex spectrum (default True).
+    
         :param apodization_function: (Optional) Apodization function to use for
           spectrum computation (default '2.0').
 
@@ -2788,14 +2801,15 @@ class Orbs(Tools):
           each star independantly. Useful for high SNR stars when no
           reliable external phase can be provided (e.g. Standard
           stars). Note that if auto_phase is set to True, phase will
-          be corrected even if n_phase is set to 0. (default True).
+          be corrected even if phase_correction is False (default True).
         """
         std_list = [[self.options['target_x'], self.options['target_y']]]
 
         std_spectrum = self.extract_stars_spectrum(
             camera_number, apodization_function, star_list_path=std_list,
             aperture_photometry=aperture_photometry,
-            n_phase=n_phase, auto_phase=auto_phase, filter_correct=True)[0]
+            phase_correction=phase_correction, auto_phase=auto_phase,
+            filter_correct=True)[0]
 
         nm_axis = orb.utils.create_nm_axis(
             std_spectrum.shape[0], self.options['step'], self.options['order'])
@@ -2946,7 +2960,7 @@ class RoadMap(Tools):
 
              <step name='compute_spectrum' cam='0'>
                <arg value='0' type='int'></arg>
-               <kwarg name='n_phase'></kwarg>
+               <kwarg name='phase_correction'></kwarg>
                <kwarg name='apodization_function'></kwarg>
              </step>
            </steps>
