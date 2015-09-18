@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Process module &mdash; Orbs 3.10.0 documentation</title>
+  <title>Process module &mdash; Orbs 3.10.1 documentation</title>
   
 
   
@@ -32,7 +32,7 @@
   
 
   
-    <link rel="top" title="Orbs 3.10.0 documentation" href="index.html"/>
+    <link rel="top" title="Orbs 3.10.1 documentation" href="index.html"/>
         <link rel="next" title="Changelog" href="changelog.html"/>
         <link rel="prev" title="Orbs module" href="orbs_module.html"/> 
 
@@ -201,6 +201,8 @@
 <li class="toctree-l2"><a class="reference internal" href="#spectrum-class">Spectrum class</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#phase-class">Phase class</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#standard-class">Standard class</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#sourceextractor-class">SourceExtractor class</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#phasemaps-class">PhaseMaps class</a></li>
 </ul>
 </li>
 </ul>
@@ -383,6 +385,12 @@
 <li class="toctree-l4"><a class="reference internal" href="changelog.html#id28">Miscellaneous</a></li>
 </ul>
 </li>
+<li class="toctree-l3"><a class="reference internal" href="changelog.html#v3-10-1">v3.10.1</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="changelog.html#source-extraction">Source extraction</a></li>
+<li class="toctree-l4"><a class="reference internal" href="changelog.html#phase-maps">Phase maps</a></li>
+<li class="toctree-l4"><a class="reference internal" href="changelog.html#id29">Miscellaneous</a></li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>
@@ -437,6 +445,8 @@
 <li><a class="reference internal" href="#spectrum-class" id="id7">Spectrum class</a></li>
 <li><a class="reference internal" href="#phase-class" id="id8">Phase class</a></li>
 <li><a class="reference internal" href="#standard-class" id="id9">Standard class</a></li>
+<li><a class="reference internal" href="#sourceextractor-class" id="id10">SourceExtractor class</a></li>
+<li><a class="reference internal" href="#phasemaps-class" id="id11">PhaseMaps class</a></li>
 </ul>
 </li>
 </ul>
@@ -1117,6 +1127,44 @@ Transform (FFT).</p>
 </dd></dl>
 
 <dl class="method">
+<dt id="process.Interferogram._get_phase_map_header">
+<code class="descname">_get_phase_map_header</code><span class="sig-paren">(</span><em>order</em>, <em>res=False</em><span class="sig-paren">)</span><a class="headerlink" href="#process.Interferogram._get_phase_map_header" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return phase map header</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>order</strong> &#8211; Order of the phase map.</li>
+<li><strong>res</strong> &#8211; (Optional) If True, map is a residual map (default
+False).</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="process.Interferogram._get_phase_map_path">
+<code class="descname">_get_phase_map_path</code><span class="sig-paren">(</span><em>order</em>, <em>res=False</em><span class="sig-paren">)</span><a class="headerlink" href="#process.Interferogram._get_phase_map_path" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return path to phase map</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>order</strong> &#8211; Order of the phase map.</li>
+<li><strong>res</strong> &#8211; (Optional) If True, map is a residual map (default
+False).</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
 <dt id="process.Interferogram._get_spectrum_cube_path">
 <code class="descname">_get_spectrum_cube_path</code><span class="sig-paren">(</span><em>phase=False</em><span class="sig-paren">)</span><a class="headerlink" href="#process.Interferogram._get_spectrum_cube_path" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return the default path to a spectrum HDF5 cube.</p>
@@ -1200,28 +1248,6 @@ in wavelength (default False).</li>
 <dt id="process.Interferogram._get_transmission_vector_path">
 <code class="descname">_get_transmission_vector_path</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#process.Interferogram._get_transmission_vector_path" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return the path to the transmission vector</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.Interferogram.compute_phase_coeffs_vector">
-<code class="descname">compute_phase_coeffs_vector</code><span class="sig-paren">(</span><em>phase_map_paths</em>, <em>residual_map_path=None</em><span class="sig-paren">)</span><a class="headerlink" href="#process.Interferogram.compute_phase_coeffs_vector" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return a vector containing the mean of the phase
-coefficients for each given phase map.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>phase_maps</strong> &#8211; Tuple of phase map paths. Coefficients are
-sorted in the same order as the phase maps.</li>
-<li><strong>residual_map</strong> &#8211; (Optional) If given this map is used to
-get only the well fitted coefficients in order to compute a
-more precise mean coefficent.</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
 </dd></dl>
 
 <dl class="method">
@@ -1436,6 +1462,32 @@ better precision (because both cubes are used to compute it)</p>
 </dd></dl>
 
 <dl class="method">
+<dt id="process.Interferogram.create_phase_maps">
+<code class="descname">create_phase_maps</code><span class="sig-paren">(</span><em>step</em>, <em>order</em>, <em>zpd_shift=None</em>, <em>binning=4</em><span class="sig-paren">)</span><a class="headerlink" href="#process.Interferogram.create_phase_maps" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create phase maps directly from the interferogram cube.</p>
+<p>For the order 1, a median interferogram taken over the whole
+cube is fitted.</p>
+<p>The order 0 map is then computed by minimizing the imaginary
+part of the spectrum with the order 1 fixed.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>step</strong> &#8211; Step size in nm.</li>
+<li><strong>order</strong> &#8211; Folding order.</li>
+<li><strong>zpd_shift</strong> &#8211; (Optional) ZPD shift. If None, ZPD shift is
+computed from the median interferogram vector (default None).</li>
+<li><strong>binning</strong> &#8211; (Optional) Binning factor of the cube to
+acclerate the phase map computation (default 4).</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
 <dt id="process.Interferogram.extract_stars_spectrum">
 <code class="descname">extract_stars_spectrum</code><span class="sig-paren">(</span><em>star_list_path</em>, <em>fwhm_arc</em>, <em>fov</em>, <em>transmission_vector_path</em>, <em>stray_light_vector_path</em>, <em>calibration_laser_map_path</em>, <em>step</em>, <em>order</em>, <em>nm_laser</em>, <em>filter_file_path</em>, <em>step_nb</em>, <em>window_type=None</em>, <em>bad_frames_vector=None</em>, <em>smoothing_deg=2</em>, <em>aperture=True</em>, <em>profile_name='gaussian'</em>, <em>moffat_beta=3.5</em>, <em>filter_correct=True</em>, <em>flat_spectrum_path=None</em>, <em>aper_coeff=3.0</em>, <em>saturation=None</em><span class="sig-paren">)</span><a class="headerlink" href="#process.Interferogram.extract_stars_spectrum" title="Permalink to this definition">¶</a></dt>
 <dd><p>Extract the spectrum of the stars in a list of stars location
@@ -1514,7 +1566,7 @@ the saturation level are removed from the fit (default None).</li>
 <h2><a class="toc-backref" href="#id5">InterferogramMerger class</a><a class="headerlink" href="#interferogrammerger-class" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt id="process.InterferogramMerger">
-<em class="property">class </em><code class="descclassname">process.</code><code class="descname">InterferogramMerger</code><span class="sig-paren">(</span><em>interf_cube_path_A=None</em>, <em>interf_cube_path_B=None</em>, <em>bin_A=None</em>, <em>bin_B=None</em>, <em>pix_size_A=None</em>, <em>pix_size_B=None</em>, <em>data_prefix='temp_data_'</em>, <em>alignment_coeffs=None</em>, <em>project_header=[]</em>, <em>config_file_name='config.orb'</em>, <em>cube_A_project_header=[]</em>, <em>cube_B_project_header=[]</em>, <em>wcs_header=[]</em>, <em>overwrite=False</em>, <em>tuning_parameters={}</em>, <em>indexer=None</em>, <em>logfile_name=None</em><span class="sig-paren">)</span><a class="headerlink" href="#process.InterferogramMerger" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descclassname">process.</code><code class="descname">InterferogramMerger</code><span class="sig-paren">(</span><em>interf_cube_path_A=None</em>, <em>interf_cube_path_B=None</em>, <em>bin_A=None</em>, <em>bin_B=None</em>, <em>pix_size_A=None</em>, <em>pix_size_B=None</em>, <em>data_prefix='temp_data_'</em>, <em>alignment_coeffs=None</em>, <em>project_header=[]</em>, <em>config_file_name='config.orb'</em>, <em>cube_A_project_header=[]</em>, <em>cube_B_project_header=[]</em>, <em>wcs_header=[]</em>, <em>overwrite=False</em>, <em>tuning_parameters={}</em>, <em>indexer=None</em><span class="sig-paren">)</span><a class="headerlink" href="#process.InterferogramMerger" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">orb.core.Tools</span></code></p>
 <p>ORBS interferogram merging class.</p>
 <p>The InterferogramMerger class is aimed to merge the interferogram
@@ -1526,7 +1578,7 @@ letter &#8216;B&#8217; to the camera 2</p>
 </div>
 <dl class="method">
 <dt id="process.InterferogramMerger.__init__">
-<code class="descname">__init__</code><span class="sig-paren">(</span><em>interf_cube_path_A=None</em>, <em>interf_cube_path_B=None</em>, <em>bin_A=None</em>, <em>bin_B=None</em>, <em>pix_size_A=None</em>, <em>pix_size_B=None</em>, <em>data_prefix='temp_data_'</em>, <em>alignment_coeffs=None</em>, <em>project_header=[]</em>, <em>config_file_name='config.orb'</em>, <em>cube_A_project_header=[]</em>, <em>cube_B_project_header=[]</em>, <em>wcs_header=[]</em>, <em>overwrite=False</em>, <em>tuning_parameters={}</em>, <em>indexer=None</em>, <em>logfile_name=None</em><span class="sig-paren">)</span><a class="headerlink" href="#process.InterferogramMerger.__init__" title="Permalink to this definition">¶</a></dt>
+<code class="descname">__init__</code><span class="sig-paren">(</span><em>interf_cube_path_A=None</em>, <em>interf_cube_path_B=None</em>, <em>bin_A=None</em>, <em>bin_B=None</em>, <em>pix_size_A=None</em>, <em>pix_size_B=None</em>, <em>data_prefix='temp_data_'</em>, <em>alignment_coeffs=None</em>, <em>project_header=[]</em>, <em>config_file_name='config.orb'</em>, <em>cube_A_project_header=[]</em>, <em>cube_B_project_header=[]</em>, <em>wcs_header=[]</em>, <em>overwrite=False</em>, <em>tuning_parameters={}</em>, <em>indexer=None</em><span class="sig-paren">)</span><a class="headerlink" href="#process.InterferogramMerger.__init__" title="Permalink to this definition">¶</a></dt>
 <dd><p>Initialize InterferogramMerger class</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -1574,13 +1626,23 @@ implemented into the method itself with the method
 <li><strong>indexer</strong> &#8211; (Optional) Must be a <code class="xref py py-class docutils literal"><span class="pre">orb.core.Indexer</span></code>
 instance. If not None created files can be indexed by this
 instance.</li>
-<li><strong>logfile_name</strong> &#8211; (Optional) Give a specific name to the
-logfile (default None).</li>
 </ul>
 </td>
 </tr>
 </tbody>
 </table>
+</dd></dl>
+
+<dl class="method">
+<dt id="process.InterferogramMerger._get_alignment_parameters_header">
+<code class="descname">_get_alignment_parameters_header</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#process.InterferogramMerger._get_alignment_parameters_header" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the header of the alignment parameters.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="process.InterferogramMerger._get_alignment_parameters_path">
+<code class="descname">_get_alignment_parameters_path</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#process.InterferogramMerger._get_alignment_parameters_path" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the path to the alignment parameters.</p>
 </dd></dl>
 
 <dl class="method">
@@ -1779,7 +1841,7 @@ Frame_{n,2}}{Frame_{n,1} + Frame_{n,2}}\]</div>
 
 <dl class="method">
 <dt id="process.InterferogramMerger.extract_stars_spectrum">
-<code class="descname">extract_stars_spectrum</code><span class="sig-paren">(</span><em>star_list_path</em>, <em>fwhm_arc</em>, <em>fov</em>, <em>modulation_ratio_path</em>, <em>transmission_vector_path</em>, <em>ext_illumination_vector_path</em>, <em>calibration_laser_map_path</em>, <em>step</em>, <em>order</em>, <em>nm_laser</em>, <em>filter_file_path</em>, <em>step_nb</em>, <em>window_type=None</em>, <em>bad_frames_vector=None</em>, <em>phase_map_0_path=None</em>, <em>phase_coeffs=None</em>, <em>smoothing_deg=2</em>, <em>aperture=True</em>, <em>profile_name='gaussian'</em>, <em>moffat_beta=3.5</em>, <em>phase_correction=True</em>, <em>auto_phase=False</em>, <em>filter_correct=True</em>, <em>flat_spectrum_path=None</em>, <em>aper_coeff=3.0</em>, <em>saturation=None</em><span class="sig-paren">)</span><a class="headerlink" href="#process.InterferogramMerger.extract_stars_spectrum" title="Permalink to this definition">¶</a></dt>
+<code class="descname">extract_stars_spectrum</code><span class="sig-paren">(</span><em>star_list_path</em>, <em>fwhm_arc</em>, <em>fov</em>, <em>modulation_ratio_path</em>, <em>transmission_vector_path</em>, <em>ext_illumination_vector_path</em>, <em>calibration_laser_map_path</em>, <em>step</em>, <em>order</em>, <em>nm_laser</em>, <em>filter_file_path</em>, <em>step_nb</em>, <em>window_type=None</em>, <em>bad_frames_vector=None</em>, <em>phase_map_0_path=None</em>, <em>phase_coeffs=None</em>, <em>smoothing_deg=2</em>, <em>aperture=True</em>, <em>profile_name='gaussian'</em>, <em>moffat_beta=3.5</em>, <em>phase_correction=True</em>, <em>auto_phase=False</em>, <em>filter_correct=True</em>, <em>flat_spectrum_path=None</em>, <em>aper_coeff=3.0</em>, <em>saturation=None</em>, <em>no_prefit=False</em>, <em>recompute_modulation_ratio=True</em><span class="sig-paren">)</span><a class="headerlink" href="#process.InterferogramMerger.extract_stars_spectrum" title="Permalink to this definition">¶</a></dt>
 <dd><p>Extract the spectrum of the stars in a list of stars location
 list by photometry.</p>
 <p>This method may be used after
@@ -1863,6 +1925,15 @@ with varying FWHM and 3. to account for the flux in the
 wings (default 3., better for star with a high SNR).</li>
 <li><strong>saturation</strong> &#8211; (Optional) If not None, allpixels above the
 saturation level are removed from the fit (default None).</li>
+<li><strong>no_prefit</strong> &#8211; (Optional) If True, the first fit on deep
+frame to enhance positions and get a better FWHM guess is
+not made (default for source extraction because the sources
+can be difficult to see on a deep frame, e.g. planetary
+nebulae) (default False).</li>
+<li><strong>recompute_modulation_ratio</strong> &#8211; (Optional) If True,
+modulation ratio is re-computed for each source. Must be
+done if the modulation ratio is not very well known
+(e.g. for SpIOMM) (default True)</li>
 </ul>
 </td>
 </tr>
@@ -1872,7 +1943,7 @@ saturation level are removed from the fit (default None).</li>
 
 <dl class="method">
 <dt id="process.InterferogramMerger.find_alignment">
-<code class="descname">find_alignment</code><span class="sig-paren">(</span><em>star_list_path_A</em>, <em>init_angle</em>, <em>init_dx</em>, <em>init_dy</em>, <em>fwhm_arc_A</em>, <em>fov_A</em><span class="sig-paren">)</span><a class="headerlink" href="#process.InterferogramMerger.find_alignment" title="Permalink to this definition">¶</a></dt>
+<code class="descname">find_alignment</code><span class="sig-paren">(</span><em>star_list_path_A</em>, <em>init_angle</em>, <em>init_dx</em>, <em>init_dy</em>, <em>fwhm_arc_A</em>, <em>fov_A</em>, <em>combine_first_frames=False</em><span class="sig-paren">)</span><a class="headerlink" href="#process.InterferogramMerger.find_alignment" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return the alignment coefficients to align the cube of the
 camera 2 on the cube of the camera 1</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -1888,6 +1959,8 @@ camera 2 on the cube of the camera 1</p>
 camera A.</li>
 <li><strong>fov_A</strong> &#8211; Field of view of the camera A in arcminutes (given
 along x axis.</li>
+<li><strong>combine_first_frames</strong> &#8211; If True, only the fist frames are
+combined to compute alignement parameters (default False).</li>
 </ul>
 </td>
 </tr>
@@ -2192,14 +2265,32 @@ in wavelength (default False).</li>
 
 <dl class="method">
 <dt id="process.Spectrum._get_modulation_efficiency_map_header">
-<code class="descname">_get_modulation_efficiency_map_header</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#process.Spectrum._get_modulation_efficiency_map_header" title="Permalink to this definition">¶</a></dt>
+<code class="descname">_get_modulation_efficiency_map_header</code><span class="sig-paren">(</span><em>imag=False</em><span class="sig-paren">)</span><a class="headerlink" href="#process.Spectrum._get_modulation_efficiency_map_header" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return the header of the modulation efficiency map.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>imag</strong> &#8211; (Optional) True for imaginary part of the
+modulation efficiency (default False).</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="method">
 <dt id="process.Spectrum._get_modulation_efficiency_map_path">
-<code class="descname">_get_modulation_efficiency_map_path</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#process.Spectrum._get_modulation_efficiency_map_path" title="Permalink to this definition">¶</a></dt>
+<code class="descname">_get_modulation_efficiency_map_path</code><span class="sig-paren">(</span><em>imag=False</em><span class="sig-paren">)</span><a class="headerlink" href="#process.Spectrum._get_modulation_efficiency_map_path" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return path to the modulation efficiency map.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>imag</strong> &#8211; (Optional) True for imaginary part of the
+modulation efficiency (default False).</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="method">
@@ -2238,7 +2329,8 @@ function, correct WCS parameters and flux calibration.</p>
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>filter_file_path</strong> &#8211; The path to the file containing the
-filter transmission function.</li>
+filter transmission function (If None, no filter correction
+will be made).</li>
 <li><strong>step</strong> &#8211; Step size of the interferogram in nm.</li>
 <li><strong>order</strong> &#8211; Folding order of the interferogram.</li>
 <li><strong>calibration_laser_map_path</strong> &#8211; Path to the calibration
@@ -2358,14 +2450,6 @@ standard data.</p>
 cubes into a phase cube using <a class="reference internal" href="#process.Interferogram" title="process.Interferogram"><code class="xref py py-class docutils literal"><span class="pre">process.Interferogram</span></code></a>.</p>
 </div>
 <dl class="method">
-<dt id="process.Phase._get_calibration_laser_map_path">
-<code class="descname">_get_calibration_laser_map_path</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#process.Phase._get_calibration_laser_map_path" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return path to the calibration laser map created during the
-fitting procedure of the phase map (with a SITELLE&#8217;s fit model
-of the phase).</p>
-</dd></dl>
-
-<dl class="method">
 <dt id="process.Phase._get_phase_map_header">
 <code class="descname">_get_phase_map_header</code><span class="sig-paren">(</span><em>order</em>, <em>phase_map_type=None</em><span class="sig-paren">)</span><a class="headerlink" href="#process.Phase._get_phase_map_header" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return the header of the phase map.</p>
@@ -2459,57 +2543,6 @@ different phase maps will be created by this method.</p>
 </div>
 </dd></dl>
 
-<dl class="method">
-<dt id="process.Phase.fit_phase_map">
-<code class="descname">fit_phase_map</code><span class="sig-paren">(</span><em>phase_map_path</em>, <em>residual_map_path</em>, <em>phase_model='spiomm'</em>, <em>calibration_laser_map_path=None</em>, <em>calibration_laser_nm=None</em><span class="sig-paren">)</span><a class="headerlink" href="#process.Phase.fit_phase_map" title="Permalink to this definition">¶</a></dt>
-<dd><p>Fit the phase map.</p>
-<p>Help remove most of the noise. This process is useful if the
-phase map has been computed from astronomical data without a
-high SNR for every pixel in all the filter bandpass.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>phase_map_path</strong> &#8211; Path to the phase map</li>
-<li><strong>residual_map_path</strong> &#8211; Path to the residual on phase fit</li>
-<li><strong>phase_model</strong> &#8211; (Optional) Model used to fit phase, can be
-&#8216;spiomm&#8217; or &#8216;sitelle&#8217;. If &#8216;spiomm&#8217;, the model is a very
-basic one considering only linear variation of the phase map
-along the columns. If &#8216;sitelle&#8217;, the phase model is based on
-a the calibration laser map, tip tilt and rotation of the
-calibration laser map are considered in the fit, along with
-the first order of the phase (default &#8216;spiomm&#8217;).</li>
-<li><strong>calibration_laser_map_path</strong> &#8211; (Optional) Path to the
-calibration laser map. Only useful if the phase model is
-&#8216;sitelle&#8217; (default None).</li>
-<li><strong>calibration_laser_nm</strong> &#8211; (Optional) Wavelength of the
-calibration laser (in nm). Only useful if the phase model is
-&#8216;sitelle&#8217; (default None).</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.Phase.smooth_phase_map">
-<code class="descname">smooth_phase_map</code><span class="sig-paren">(</span><em>phase_map_path</em><span class="sig-paren">)</span><a class="headerlink" href="#process.Phase.smooth_phase_map" title="Permalink to this definition">¶</a></dt>
-<dd><p>Smooth values of a phase map.</p>
-<p>This method smooth a phase map by trying to clear most of the
-difference between adjacent pixels (remember that the phase is
-defined modulo PI).</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>phase_map_path</strong> &#8211; Path to the phase map</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
 </dd></dl>
 
 </div>
@@ -2517,11 +2550,11 @@ defined modulo PI).</p>
 <h2><a class="toc-backref" href="#id9">Standard class</a><a class="headerlink" href="#standard-class" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt id="process.Standard">
-<em class="property">class </em><code class="descclassname">process.</code><code class="descname">Standard</code><span class="sig-paren">(</span><em>std_name</em>, <em>logfile_name=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#process.Standard" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descclassname">process.</code><code class="descname">Standard</code><span class="sig-paren">(</span><em>std_name</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#process.Standard" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">orb.core.Tools</span></code></p>
 <dl class="method">
 <dt id="process.Standard.__init__">
-<code class="descname">__init__</code><span class="sig-paren">(</span><em>std_name</em>, <em>logfile_name=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#process.Standard.__init__" title="Permalink to this definition">¶</a></dt>
+<code class="descname">__init__</code><span class="sig-paren">(</span><em>std_name</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#process.Standard.__init__" title="Permalink to this definition">¶</a></dt>
 <dd><p>Initialize Standard class.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -2529,8 +2562,6 @@ defined modulo PI).</p>
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>std_name</strong> &#8211; Name of the standard.</li>
-<li><strong>logfile_name</strong> &#8211; (Optional) Give a specific name to the
-logfile (default None).</li>
 <li><strong>kwargs</strong> &#8211; Kwargs are <code class="xref py py-meth docutils literal"><span class="pre">core.Tools()</span></code> properties.</li>
 </ul>
 </td>
@@ -2641,6 +2672,200 @@ in erg/cm^2/s/A.</p>
 </dd></dl>
 
 </div>
+<div class="section" id="sourceextractor-class">
+<h2><a class="toc-backref" href="#id10">SourceExtractor class</a><a class="headerlink" href="#sourceextractor-class" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="process.SourceExtractor">
+<em class="property">class </em><code class="descclassname">process.</code><code class="descname">SourceExtractor</code><span class="sig-paren">(</span><em>interf_cube_path_A=None</em>, <em>interf_cube_path_B=None</em>, <em>bin_A=None</em>, <em>bin_B=None</em>, <em>pix_size_A=None</em>, <em>pix_size_B=None</em>, <em>data_prefix='temp_data_'</em>, <em>alignment_coeffs=None</em>, <em>project_header=[]</em>, <em>config_file_name='config.orb'</em>, <em>cube_A_project_header=[]</em>, <em>cube_B_project_header=[]</em>, <em>wcs_header=[]</em>, <em>overwrite=False</em>, <em>tuning_parameters={}</em>, <em>indexer=None</em><span class="sig-paren">)</span><a class="headerlink" href="#process.SourceExtractor" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#process.InterferogramMerger" title="process.InterferogramMerger"><code class="xref py py-class docutils literal"><span class="pre">process.InterferogramMerger</span></code></a></p>
+<dl class="method">
+<dt id="process.SourceExtractor._get_extracted_source_interferograms_header">
+<code class="descname">_get_extracted_source_interferograms_header</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#process.SourceExtractor._get_extracted_source_interferograms_header" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return header of extracted source interferograms data file</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="process.SourceExtractor._get_extracted_source_interferograms_path">
+<code class="descname">_get_extracted_source_interferograms_path</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#process.SourceExtractor._get_extracted_source_interferograms_path" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return path to extracted source interferograms</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="process.SourceExtractor._get_extracted_source_spectra_header">
+<code class="descname">_get_extracted_source_spectra_header</code><span class="sig-paren">(</span><em>apodization_function</em><span class="sig-paren">)</span><a class="headerlink" href="#process.SourceExtractor._get_extracted_source_spectra_header" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return header of extracted source spectra data file</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="process.SourceExtractor._get_extracted_source_spectra_path">
+<code class="descname">_get_extracted_source_spectra_path</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#process.SourceExtractor._get_extracted_source_spectra_path" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return path to extracted source spectra</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="process.SourceExtractor.compute_source_spectra">
+<code class="descname">compute_source_spectra</code><span class="sig-paren">(</span><em>source_list</em>, <em>source_interf_path</em>, <em>step</em>, <em>order</em>, <em>apodization_function</em>, <em>filter_file_path</em>, <em>phase_map_0_path</em>, <em>phase_coeffs</em>, <em>nm_laser</em>, <em>calibration_laser_map_path</em>, <em>phase_correction=True</em>, <em>wavenumber=True</em>, <em>spectral_calibration=False</em>, <em>filter_correction=True</em>, <em>cube_A_is_balanced=True</em>, <em>zpd_shift=None</em><span class="sig-paren">)</span><a class="headerlink" href="#process.SourceExtractor.compute_source_spectra" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute source spectra</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="process.SourceExtractor.extract_source_interferograms">
+<code class="descname">extract_source_interferograms</code><span class="sig-paren">(</span><em>source_list</em>, <em>fov</em>, <em>alignment_vector_1_path</em>, <em>alignment_vector_2_path</em>, <em>modulation_ratio_path</em>, <em>transmission_vector_path</em>, <em>ext_illumination_vector_path</em>, <em>fwhm_arc</em>, <em>profile_name='gaussian'</em>, <em>moffat_beta=3.5</em><span class="sig-paren">)</span><a class="headerlink" href="#process.SourceExtractor.extract_source_interferograms" title="Permalink to this definition">¶</a></dt>
+<dd><p>Extract the interferogram of all sources.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="phasemaps-class">
+<h2><a class="toc-backref" href="#id11">PhaseMaps class</a><a class="headerlink" href="#phasemaps-class" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="process.PhaseMaps">
+<em class="property">class </em><code class="descclassname">process.</code><code class="descname">PhaseMaps</code><span class="sig-paren">(</span><em>phase_map_path_list</em>, <em>residual_map_path_list</em>, <em>dimx_unbinned</em>, <em>dimy_unbinned</em>, <em>project_header=[]</em>, <em>calibration_laser_header=[]</em>, <em>overwrite=False</em>, <em>indexer=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#process.PhaseMaps" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">orb.core.Tools</span></code></p>
+<dl class="method">
+<dt id="process.PhaseMaps.__init__">
+<code class="descname">__init__</code><span class="sig-paren">(</span><em>phase_map_path_list</em>, <em>residual_map_path_list</em>, <em>dimx_unbinned</em>, <em>dimy_unbinned</em>, <em>project_header=[]</em>, <em>calibration_laser_header=[]</em>, <em>overwrite=False</em>, <em>indexer=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#process.PhaseMaps.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize PhaseMaps class.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>phase_map_path_list</strong> &#8211; List of phase map paths as a
+tuple.</li>
+<li><strong>residual_map_path_list</strong> &#8211; List of residual map paths as a
+tuple.</li>
+<li><strong>dimx_unbinned</strong> &#8211; Unbinned X dimension of the maps.</li>
+<li><strong>dimy_unbinned</strong> &#8211; Unbinned Y dimension of the maps.</li>
+<li><strong>project_header</strong> &#8211; (Optional) header section describing
+the observation parameters that can be added to each output
+files (an empty list() by default).</li>
+<li><strong>calibration_laser_header</strong> &#8211; (Optional) header section
+describing the calibration laser parameters that can be
+added to the concerned output files e.g. calibration laser map,
+spectral cube (an empty list() by default).</li>
+<li><strong>overwrite</strong> &#8211; (Optional) If True existing FITS files will
+be overwritten (default False).</li>
+<li><strong>indexer</strong> &#8211; (Optional) Must be a <code class="xref py py-class docutils literal"><span class="pre">core.Indexer</span></code>
+instance. If not None created files can be indexed by this
+instance.</li>
+<li><strong>kwargs</strong> &#8211; Kwargs are <code class="xref py py-meth docutils literal"><span class="pre">core.Tools()</span></code> properties.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="process.PhaseMaps._get_calibration_laser_map_path">
+<code class="descname">_get_calibration_laser_map_path</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#process.PhaseMaps._get_calibration_laser_map_path" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return path to the calibration laser map created during the
+fitting procedure of the phase map (with a SITELLE&#8217;s fit model
+of the phase).</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="process.PhaseMaps._get_phase_map_header">
+<code class="descname">_get_phase_map_header</code><span class="sig-paren">(</span><em>order</em>, <em>phase_map_type=None</em><span class="sig-paren">)</span><a class="headerlink" href="#process.PhaseMaps._get_phase_map_header" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the header of the phase map.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>order</strong> &#8211; Order of the parameter of the polynomial fitted
+to the phase.</li>
+<li><strong>phase_map_type</strong> &#8211; (Optional) Type of phase map. Must be
+None, &#8216;smoothed&#8217;, &#8216;fitted&#8217;, &#8216;error&#8217; or &#8216;residual&#8217;</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">smoothed, fitted and error are incompatible. If more
+than one of those options are set to True the priority order
+is smoothed, then fitted, then error.</p>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="process.PhaseMaps._get_phase_map_path">
+<code class="descname">_get_phase_map_path</code><span class="sig-paren">(</span><em>order</em>, <em>phase_map_type=None</em><span class="sig-paren">)</span><a class="headerlink" href="#process.PhaseMaps._get_phase_map_path" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the default path to the phase map.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>order</strong> &#8211; Order of the parameter of the polynomial fitted
+to the phase.</li>
+<li><strong>phase_map_type</strong> &#8211; (Optional) Type of phase map. Must be
+None, &#8216;smoothed&#8217;, &#8216;fitted&#8217;, &#8216;error&#8217; or &#8216;residual&#8217;</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="process.PhaseMaps.fit_phase_map_0">
+<code class="descname">fit_phase_map_0</code><span class="sig-paren">(</span><em>phase_model='spiomm'</em>, <em>calibration_laser_map_path=None</em>, <em>calibration_laser_nm=None</em><span class="sig-paren">)</span><a class="headerlink" href="#process.PhaseMaps.fit_phase_map_0" title="Permalink to this definition">¶</a></dt>
+<dd><p>Fit the phase map of order 0.</p>
+<p>Help remove most of the noise. This process is useful if the
+phase map has been computed from astronomical data without a
+high SNR for every pixel in all the filter bandpass.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>phase_model</strong> &#8211; (Optional) Model used to fit phase, can be
+&#8216;spiomm&#8217; or &#8216;sitelle&#8217;. If &#8216;spiomm&#8217;, the model is a very
+basic one considering only linear variation of the phase map
+along the columns. If &#8216;sitelle&#8217;, the phase model is based on
+a the calibration laser map, tip tilt and rotation of the
+calibration laser map are considered in the fit, along with
+the first order of the phase (default &#8216;spiomm&#8217;).</li>
+<li><strong>calibration_laser_map_path</strong> &#8211; (Optional) Path to the
+calibration laser map. Only useful if the phase model is
+&#8216;sitelle&#8217; (default None).</li>
+<li><strong>calibration_laser_nm</strong> &#8211; (Optional) Wavelength of the
+calibration laser (in nm). Only useful if the phase model is
+&#8216;sitelle&#8217; (default None).</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="process.PhaseMaps.smooth_phase_map_0">
+<code class="descname">smooth_phase_map_0</code><span class="sig-paren">(</span><em>div_nb=None</em><span class="sig-paren">)</span><a class="headerlink" href="#process.PhaseMaps.smooth_phase_map_0" title="Permalink to this definition">¶</a></dt>
+<dd><p>Smooth values of the 0th order phase map</p>
+<p>This method smooth a phase map by trying to clear most of the
+difference between adjacent pixels (order 0 of the phase is
+defined modulo PI/2).</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>div_nb</strong> &#8211; (Optional) Number of quadrants divisions to
+accelerate the fitting processus. If None, this number is
+automatically choosen (default None).</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
 </div>
 
 
@@ -2682,7 +2907,7 @@ in erg/cm^2/s/A.</p>
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'3.10.0',
+            VERSION:'3.10.1',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true

@@ -9,7 +9,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Index &mdash; Orbs 3.10.0 documentation</title>
+  <title>Index &mdash; Orbs 3.10.1 documentation</title>
   
 
   
@@ -33,7 +33,7 @@
   
 
   
-    <link rel="top" title="Orbs 3.10.0 documentation" href="index.html"/> 
+    <link rel="top" title="Orbs 3.10.1 documentation" href="index.html"/> 
 
   
   <script src="_static/js/modernizr.min.js"></script>
@@ -200,6 +200,8 @@
 <li class="toctree-l2"><a class="reference internal" href="process_module.html#spectrum-class">Spectrum class</a></li>
 <li class="toctree-l2"><a class="reference internal" href="process_module.html#phase-class">Phase class</a></li>
 <li class="toctree-l2"><a class="reference internal" href="process_module.html#standard-class">Standard class</a></li>
+<li class="toctree-l2"><a class="reference internal" href="process_module.html#sourceextractor-class">SourceExtractor class</a></li>
+<li class="toctree-l2"><a class="reference internal" href="process_module.html#phasemaps-class">PhaseMaps class</a></li>
 </ul>
 </li>
 </ul>
@@ -382,6 +384,12 @@
 <li class="toctree-l4"><a class="reference internal" href="changelog.html#id28">Miscellaneous</a></li>
 </ul>
 </li>
+<li class="toctree-l3"><a class="reference internal" href="changelog.html#v3-10-1">v3.10.1</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="changelog.html#source-extraction">Source extraction</a></li>
+<li class="toctree-l4"><a class="reference internal" href="changelog.html#phase-maps">Phase maps</a></li>
+<li class="toctree-l4"><a class="reference internal" href="changelog.html#id29">Miscellaneous</a></li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>
@@ -466,12 +474,24 @@
   </dt>
 
         
+  <dt><a href="process_module.html#process.PhaseMaps.__init__">(process.PhaseMaps method)</a>
+  </dt>
+
+        
   <dt><a href="process_module.html#process.Standard.__init__">(process.Standard method)</a>
   </dt>
 
       </dl></dd>
       
   <dt><a href="orbs_module.html#orbs.orbs.Step.__weakref__">__weakref__ (orbs.orbs.Step attribute)</a>
+  </dt>
+
+      
+  <dt><a href="process_module.html#process.InterferogramMerger._get_alignment_parameters_header">_get_alignment_parameters_header() (process.InterferogramMerger method)</a>
+  </dt>
+
+      
+  <dt><a href="process_module.html#process.InterferogramMerger._get_alignment_parameters_path">_get_alignment_parameters_path() (process.InterferogramMerger method)</a>
   </dt>
 
       
@@ -546,7 +566,7 @@
   </dt>
 
         
-  <dt><a href="process_module.html#process.Phase._get_calibration_laser_map_path">(process.Phase method)</a>
+  <dt><a href="process_module.html#process.PhaseMaps._get_calibration_laser_map_path">(process.PhaseMaps method)</a>
   </dt>
 
       </dl></dd>
@@ -639,6 +659,28 @@
   </dt>
 
       
+  <dt><a href="process_module.html#process.SourceExtractor._get_extracted_source_interferograms_header">_get_extracted_source_interferograms_header() (process.SourceExtractor method)</a>
+  </dt>
+
+      
+  <dt><a href="process_module.html#process.SourceExtractor._get_extracted_source_interferograms_path">_get_extracted_source_interferograms_path() (process.SourceExtractor method)</a>
+  </dt>
+
+      
+  <dt><a href="process_module.html#process.SourceExtractor._get_extracted_source_spectra_header">_get_extracted_source_spectra_header() (process.SourceExtractor method)</a>
+  </dt>
+
+      
+  <dt><a href="orbs_module.html#orbs.orbs.Orbs._get_extracted_source_spectra_path">_get_extracted_source_spectra_path() (orbs.orbs.Orbs method)</a>
+  </dt>
+
+      <dd><dl>
+        
+  <dt><a href="process_module.html#process.SourceExtractor._get_extracted_source_spectra_path">(process.SourceExtractor method)</a>
+  </dt>
+
+      </dl></dd>
+      
   <dt><a href="process_module.html#process.Interferogram._get_extracted_star_spectra_header">_get_extracted_star_spectra_header() (process.Interferogram method)</a>
   </dt>
 
@@ -648,6 +690,8 @@
   </dt>
 
       </dl></dd>
+  </dl></td>
+  <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="process_module.html#process.Interferogram._get_extracted_star_spectra_path">_get_extracted_star_spectra_path() (process.Interferogram method)</a>
   </dt>
@@ -662,8 +706,6 @@
   <dt><a href="orbs_module.html#orbs.orbs.Orbs._get_flat_phase_map_path">_get_flat_phase_map_path() (orbs.orbs.Orbs method)</a>
   </dt>
 
-  </dl></td>
-  <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="process_module.html#process.RawData._get_hp_map_path">_get_hp_map_path() (process.RawData method)</a>
   </dt>
@@ -715,13 +757,41 @@
   </dt>
 
       
-  <dt><a href="process_module.html#process.Phase._get_phase_map_header">_get_phase_map_header() (process.Phase method)</a>
+  <dt><a href="orbs_module.html#orbs.orbs.Orbs._get_phase_coeffs">_get_phase_coeffs() (orbs.orbs.Orbs method)</a>
   </dt>
 
       
-  <dt><a href="process_module.html#process.Phase._get_phase_map_path">_get_phase_map_path() (process.Phase method)</a>
+  <dt><a href="orbs_module.html#orbs.orbs.Orbs._get_phase_map_0_path">_get_phase_map_0_path() (orbs.orbs.Orbs method)</a>
   </dt>
 
+      
+  <dt><a href="process_module.html#process.Interferogram._get_phase_map_header">_get_phase_map_header() (process.Interferogram method)</a>
+  </dt>
+
+      <dd><dl>
+        
+  <dt><a href="process_module.html#process.Phase._get_phase_map_header">(process.Phase method)</a>
+  </dt>
+
+        
+  <dt><a href="process_module.html#process.PhaseMaps._get_phase_map_header">(process.PhaseMaps method)</a>
+  </dt>
+
+      </dl></dd>
+      
+  <dt><a href="process_module.html#process.Interferogram._get_phase_map_path">_get_phase_map_path() (process.Interferogram method)</a>
+  </dt>
+
+      <dd><dl>
+        
+  <dt><a href="process_module.html#process.Phase._get_phase_map_path">(process.Phase method)</a>
+  </dt>
+
+        
+  <dt><a href="process_module.html#process.PhaseMaps._get_phase_map_path">(process.PhaseMaps method)</a>
+  </dt>
+
+      </dl></dd>
       
   <dt><a href="orbs_module.html#orbs.orbs.Orbs._get_project_dir">_get_project_dir() (orbs.orbs.Orbs method)</a>
   </dt>
@@ -808,6 +878,10 @@
 
       
   <dt><a href="orbs_module.html#orbs.orbs.Orbs._init_raw_data_cube">_init_raw_data_cube() (orbs.orbs.Orbs method)</a>
+  </dt>
+
+      
+  <dt><a href="orbs_module.html#orbs.orbs.Orbs._is_balanced">_is_balanced() (orbs.orbs.Orbs method)</a>
   </dt>
 
       
@@ -907,13 +981,19 @@
   </dt>
 
       
-  <dt><a href="process_module.html#process.Interferogram.compute_phase_coeffs_vector">compute_phase_coeffs_vector() (process.Interferogram method)</a>
-  </dt>
-
-      
   <dt><a href="orbs_module.html#orbs.orbs.Orbs.compute_phase_maps">compute_phase_maps() (orbs.orbs.Orbs method)</a>
   </dt>
 
+      
+  <dt><a href="orbs_module.html#orbs.orbs.Orbs.compute_source_spectra">compute_source_spectra() (orbs.orbs.Orbs method)</a>
+  </dt>
+
+      <dd><dl>
+        
+  <dt><a href="process_module.html#process.SourceExtractor.compute_source_spectra">(process.SourceExtractor method)</a>
+  </dt>
+
+      </dl></dd>
   </dl></td>
   <td style="width: 33%" valign="top"><dl>
       
@@ -973,9 +1053,15 @@
   </dt>
 
       
-  <dt><a href="process_module.html#process.Phase.create_phase_maps">create_phase_maps() (process.Phase method)</a>
+  <dt><a href="process_module.html#process.Interferogram.create_phase_maps">create_phase_maps() (process.Interferogram method)</a>
   </dt>
 
+      <dd><dl>
+        
+  <dt><a href="process_module.html#process.Phase.create_phase_maps">(process.Phase method)</a>
+  </dt>
+
+      </dl></dd>
   </dl></td>
 </tr></table>
 
@@ -1004,6 +1090,10 @@
   <dt><a href="orbs_module.html#orbs.orbs.Orbs.export_flat_phase_map">export_flat_phase_map() (orbs.orbs.Orbs method)</a>
   </dt>
 
+      
+  <dt><a href="orbs_module.html#orbs.orbs.Orbs.export_source_spectra">export_source_spectra() (orbs.orbs.Orbs method)</a>
+  </dt>
+
   </dl></td>
   <td style="width: 33%" valign="top"><dl>
       
@@ -1011,14 +1101,14 @@
   </dt>
 
       
-  <dt><a href="orbs_module.html#orbs.orbs.Orbs.extract_stars_spectrum">extract_stars_spectrum() (orbs.orbs.Orbs method)</a>
+  <dt><a href="process_module.html#process.SourceExtractor.extract_source_interferograms">extract_source_interferograms() (process.SourceExtractor method)</a>
+  </dt>
+
+      
+  <dt><a href="process_module.html#process.Interferogram.extract_stars_spectrum">extract_stars_spectrum() (process.Interferogram method)</a>
   </dt>
 
       <dd><dl>
-        
-  <dt><a href="process_module.html#process.Interferogram.extract_stars_spectrum">(process.Interferogram method)</a>
-  </dt>
-
         
   <dt><a href="process_module.html#process.InterferogramMerger.extract_stars_spectrum">(process.InterferogramMerger method)</a>
   </dt>
@@ -1037,7 +1127,7 @@
   </dl></td>
   <td style="width: 33%" valign="top"><dl>
       
-  <dt><a href="process_module.html#process.Phase.fit_phase_map">fit_phase_map() (process.Phase method)</a>
+  <dt><a href="process_module.html#process.PhaseMaps.fit_phase_map_0">fit_phase_map_0() (process.PhaseMaps method)</a>
   </dt>
 
   </dl></td>
@@ -1177,11 +1267,15 @@
   </dt>
 
       
-  <dt><a href="orbs_module.html#orbs.orbs.Performance.print_stats">print_stats() (orbs.orbs.Performance method)</a>
+  <dt><a href="process_module.html#process.PhaseMaps">PhaseMaps (class in process)</a>
   </dt>
 
   </dl></td>
   <td style="width: 33%" valign="top"><dl>
+      
+  <dt><a href="orbs_module.html#orbs.orbs.Performance.print_stats">print_stats() (orbs.orbs.Performance method)</a>
+  </dt>
+
       
   <dt><a href="orbs_module.html#orbs.orbs.RoadMap.print_status">print_status() (orbs.orbs.RoadMap method)</a>
   </dt>
@@ -1229,7 +1323,11 @@
   </dt>
 
       
-  <dt><a href="process_module.html#process.Phase.smooth_phase_map">smooth_phase_map() (process.Phase method)</a>
+  <dt><a href="process_module.html#process.PhaseMaps.smooth_phase_map_0">smooth_phase_map_0() (process.PhaseMaps method)</a>
+  </dt>
+
+      
+  <dt><a href="process_module.html#process.SourceExtractor">SourceExtractor (class in process)</a>
   </dt>
 
       
@@ -1316,7 +1414,7 @@
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'3.10.0',
+            VERSION:'3.10.1',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true

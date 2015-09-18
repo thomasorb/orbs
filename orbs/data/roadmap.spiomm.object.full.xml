@@ -35,10 +35,6 @@
     <arg value='1' type='int'></arg>
   </step>
 
-  <step name='compute_phase' cam='0'>
-    <arg value='0' type='int'></arg>
-  </step>
-
   <step name='compute_phase_maps' cam='0'>
     <arg value='0' type='int'></arg>
   </step>
@@ -51,6 +47,9 @@
 
   <step name='calibrate_spectrum' cam='0'>
     <arg value='0' type='int'></arg>
+    <kwarg name='filter_correction'></kwarg>
+    <kwarg name='wcs_calibration'></kwarg>
+
   </step>
 
   

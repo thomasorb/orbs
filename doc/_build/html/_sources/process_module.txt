@@ -67,3 +67,22 @@ Standard class
    :private-members:
    :show-inheritance:
    :special-members:
+
+
+SourceExtractor class
+---------------------
+
+.. autoclass:: process.SourceExtractor
+   :members:
+   :private-members:
+   :show-inheritance:
+   :special-members:
+
+PhaseMaps class
+---------------
+
+.. autoclass:: process.PhaseMaps
+   :members:
+   :private-members:
+   :show-inheritance:
+   :special-members:

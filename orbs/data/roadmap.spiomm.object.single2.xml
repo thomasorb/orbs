@@ -36,6 +36,8 @@
 
   <step name='calibrate_spectrum' cam='2'>
     <arg value='2' type='int'></arg>
+    <kwarg name='filter_correction'></kwarg>
+    <kwarg name='wcs_calibration'></kwarg>
   </step>
 
 </steps>

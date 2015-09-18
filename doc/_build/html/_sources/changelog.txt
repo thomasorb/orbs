@@ -1054,11 +1054,8 @@ comprehensive format for eye checking. The best format would be:
 v3.10: handling real SITELLE's data cubes
 *****************************************
 
-
-
 v3.10.0
 =======
-
 
 Phase correction
 ----------------
@@ -1136,3 +1133,45 @@ Miscellaneous
 * script **orbs-sitelle-makejob** created to help in creating a job
   file from a list of the files to reduce (object files, flats and
   calibration map)
+
+
+
+v3.10.1
+=======
+
+
+Source extraction
+-----------------
+
+Source extraction has been implemented. The new target **--sources**
+is available in orbs command. The keyword SOURCE_LIST_PATH can be set
+to the path of a source list in the option file.
+
+Source spectra are not background subtracted.
+
+
+Source extraction is handled by
+:py:class:`~process.SourceExtractor`.
+
+Phase maps
+----------
+
+Phase computation process has completely changed. It is now based on a
+binned interferogram cube from which the order 1 of the phase is
+extracted by a fitting process. The order 0 maps is then computed
+knowing the order 1 with precision by minimization of the imaginary
+part at each binned pixel. The obtained order 0 map is much more
+precise and can be fitted with an opto-mechanical model. Phase map
+unwrapping process (generally called smoothing, which must be made
+before fitting) has also been improved.
+
+Smoothing and fitting is now handled with
+:py:class:`~process.PhaseMaps`.
+
+
+Miscellaneous
+-------------
+
+* Flat frames are now normalized before being combined to avoid an
+  intensity change problem when they are combined.
+

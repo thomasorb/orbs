@@ -1,0 +1,71 @@
+#!/usr/bin/python
+# *-* coding: utf-8 *-*
+# Author: Thomas Martin <thomas.martin.1@ulaval.ca> 
+# File: orb-fit-calibration-laser-map
+
+## Copyright (c) 2010-2015 Thomas Martin <thomas.martin.1@ulaval.ca>
+## 
+## This file is part of ORB
+##
+## ORB is free software: you can redistribute it and/or modify it
+## under the terms of the GNU General Public License as published by
+## the Free Software Foundation, either version 3 of the License, or
+## (at your option) any later version.
+##
+## ORB is distributed in the hope that it will be useful, but WITHOUT
+## ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+## or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public
+## License for more details.
+##
+## You should have received a copy of the GNU General Public License
+## along with ORB.  If not, see <http://www.gnu.org/licenses/>.
+
+import sys, os
+import gtk
+from argparse import ArgumentParser
+import argparse
+
+from orb.core import Tools, HDFCube
+import orb
+
+import orb.utils
+
+###########################################
+### MAIN ##################################
+###########################################
+    
+def main(args):
+    if args.mode == 'sitelle': config_file_name='config.sitelle.orb'
+    elif args.mode == 'spiomm': config_file_name='config.spiomm.orb'
+    
+    to = Tools(config_file_name=config_file_name, no_log=True)
+    calib_map = to.read_fits(args.calibration_laser_map_path)
+    params, calib_map_fit = orb.utils.fit_calibration_laser_map(
+        calib_map, float(to._get_config_parameter('CALIB_NM_LASER')),
+        binning=2)
+    to.write_fits(
+        os.path.splitext(args.calibration_laser_map_path)[0] + '.fit.fits',
+        calib_map_fit, overwrite=True)
+    to.write_fits(
+        os.path.splitext(args.calibration_laser_map_path)[0] + '.fit.err.fits',
+        calib_map - calib_map_fit, overwrite=True)
+    
+
+if __name__ == "__main__":
+
+    parser = ArgumentParser(version=('ORB-version {}'.format(
+        orb.core.__version__)),
+                            description=
+                            "Fit a calibration laser map.")
+    
+    parser.add_argument(dest='calibration_laser_map_path', help='Path to the calibration laser map (FITS file)')
+
+    parser.add_argument('--mode', dest="mode", default='spiomm',
+                        choices=['sitelle', 'spiomm'],
+                        help="Instrument mode (can be 'sitelle' or 'spiomm')")
+                            
+    args = parser.parse_args()
+
+    main(args)
+        
+

@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Orbs module &mdash; Orbs 3.10.0 documentation</title>
+  <title>Orbs module &mdash; Orbs 3.10.1 documentation</title>
   
 
   
@@ -32,7 +32,7 @@
   
 
   
-    <link rel="top" title="Orbs 3.10.0 documentation" href="index.html"/>
+    <link rel="top" title="Orbs 3.10.1 documentation" href="index.html"/>
         <link rel="next" title="Process module" href="process_module.html"/>
         <link rel="prev" title="ORBS Common reduction errors" href="reduction_errors.html"/> 
 
@@ -201,6 +201,8 @@
 <li class="toctree-l2"><a class="reference internal" href="process_module.html#spectrum-class">Spectrum class</a></li>
 <li class="toctree-l2"><a class="reference internal" href="process_module.html#phase-class">Phase class</a></li>
 <li class="toctree-l2"><a class="reference internal" href="process_module.html#standard-class">Standard class</a></li>
+<li class="toctree-l2"><a class="reference internal" href="process_module.html#sourceextractor-class">SourceExtractor class</a></li>
+<li class="toctree-l2"><a class="reference internal" href="process_module.html#phasemaps-class">PhaseMaps class</a></li>
 </ul>
 </li>
 </ul>
@@ -383,6 +385,12 @@
 <li class="toctree-l4"><a class="reference internal" href="changelog.html#id28">Miscellaneous</a></li>
 </ul>
 </li>
+<li class="toctree-l3"><a class="reference internal" href="changelog.html#v3-10-1">v3.10.1</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="changelog.html#source-extraction">Source extraction</a></li>
+<li class="toctree-l4"><a class="reference internal" href="changelog.html#phase-maps">Phase maps</a></li>
+<li class="toctree-l4"><a class="reference internal" href="changelog.html#id29">Miscellaneous</a></li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>
@@ -556,6 +564,10 @@ option is set to True by default</td>
 </tr>
 <tr class="field-even field"><th class="field-name">NOSTAR:</th><td class="field-body">If True (an integer &gt; 0) star-dependant processes are skipped.</td>
 </tr>
+<tr class="field-odd field"><th class="field-name" colspan="2">SOURCE_LIST_PATH:</th></tr>
+<tr class="field-odd field"><td>&nbsp;</td><td class="field-body">Path to a list of sources (X Y), one source by
+line. Used for sources extraction.</td>
+</tr>
 </tbody>
 </table>
 <div class="admonition note">
@@ -588,7 +600,7 @@ name (OBJECT) and the filter name (FILTER)</p>
 <li><strong>option_file_path</strong> &#8211; Path to the option file.</li>
 <li><strong>target</strong> &#8211; Target type to reduce. Used to define the
 reduction road map. Target may be &#8216;object&#8217;, &#8216;flat&#8217;,
-&#8216;standard&#8217;, &#8216;laser&#8217; or &#8216;raw&#8217;.</li>
+&#8216;standard&#8217;, &#8216;laser&#8217;, &#8216;raw&#8217; or &#8216;sources&#8217;.</li>
 <li><strong>config_file_name</strong> &#8211; (Optional) Name of the config file to
 use. Must be located in orbs/data/.</li>
 <li><strong>overwrite</strong> &#8211; (Optional) If True, any existing FITS file
@@ -713,6 +725,21 @@ can be:</p>
 </dd></dl>
 
 <dl class="method">
+<dt id="orbs.orbs.Orbs._get_extracted_source_spectra_path">
+<code class="descname">_get_extracted_source_spectra_path</code><span class="sig-paren">(</span><em>camera_number</em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.orbs.Orbs._get_extracted_source_spectra_path" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return path to the source spectra</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>camera_number</strong> &#8211; Camera number (must be 1, 2 or 0 for
+merged data).</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
 <dt id="orbs.orbs.Orbs._get_flat_phase_map_path">
 <code class="descname">_get_flat_phase_map_path</code><span class="sig-paren">(</span><em>camera_number</em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.orbs.Orbs._get_flat_phase_map_path" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return path to the order 0 phase map from a flat cube.</p>
@@ -738,6 +765,34 @@ or the merged interferogram (camera_number = 0)</p>
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>camera_number</strong> &#8211; Camera number (can be 1, 2 or 0 
 for merged data).</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="orbs.orbs.Orbs._get_phase_coeffs">
+<code class="descname">_get_phase_coeffs</code><span class="sig-paren">(</span><em>camera_number</em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.orbs.Orbs._get_phase_coeffs" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return phase coefficients other than 0.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>camera_number</strong> &#8211; Camera number. Can be 0, 1 or 2.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="orbs.orbs.Orbs._get_phase_map_0_path">
+<code class="descname">_get_phase_map_0_path</code><span class="sig-paren">(</span><em>camera_number</em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.orbs.Orbs._get_phase_map_0_path" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return order 0 phase map.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>camera_number</strong> &#8211; Camera number. Can be 0, 1 or 2.</td>
 </tr>
 </tbody>
 </table>
@@ -839,8 +894,22 @@ for merged data).</li>
 </dd></dl>
 
 <dl class="method">
+<dt id="orbs.orbs.Orbs._is_balanced">
+<code class="descname">_is_balanced</code><span class="sig-paren">(</span><em>camera_number</em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.orbs.Orbs._is_balanced" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return True if the camera is balanced.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>camera_number</strong> &#8211; Camera number, can be 0, 1 or 2.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
 <dt id="orbs.orbs.Orbs.calibrate_spectrum">
-<code class="descname">calibrate_spectrum</code><span class="sig-paren">(</span><em>camera_number</em>, <em>cam1_scale=False</em>, <em>no_star=False</em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.orbs.Orbs.calibrate_spectrum" title="Permalink to this definition">¶</a></dt>
+<code class="descname">calibrate_spectrum</code><span class="sig-paren">(</span><em>camera_number</em>, <em>cam1_scale=False</em>, <em>no_star=False</em>, <em>filter_correction=True</em>, <em>wcs_calibration=True</em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.orbs.Orbs.calibrate_spectrum" title="Permalink to this definition">¶</a></dt>
 <dd><p>Calibrate spectrum cube and correct WCS.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -856,6 +925,10 @@ two-camera calibration process (default False).</li>
 <li><strong>no_star</strong> &#8211; (Optional) If True, data is considered to
 contain no star, so no WCS calibration is possible (default
 False).</li>
+<li><strong>filter_correction</strong> &#8211; (Optional) If True, spectral cube
+will be corrected for filter (default True).</li>
+<li><strong>wcs_calibration</strong> &#8211; (Optional) If True, WCS calibration is
+intended (default True).</li>
 </ul>
 </td>
 </tr>
@@ -1051,6 +1124,21 @@ a flat cube with a high SNR at all wavelengths.</li>
 <p class="first admonition-title">See also</p>
 <p class="last"><a class="reference internal" href="process_module.html#process.Phase.create_phase_maps" title="process.Phase.create_phase_maps"><code class="xref py py-meth docutils literal"><span class="pre">process.Phase.create_phase_maps()</span></code></a></p>
 </div>
+</dd></dl>
+
+<dl class="method">
+<dt id="orbs.orbs.Orbs.compute_source_spectra">
+<code class="descname">compute_source_spectra</code><span class="sig-paren">(</span><em>camera_number</em>, <em>phase_correction=True</em>, <em>filter_correction=True</em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.orbs.Orbs.compute_source_spectra" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute source spectra</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>filter_correction</strong> &#8211; (Optional) If True, spectral cube
+will be corrected for filter (default True).</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="method">
@@ -1317,6 +1405,21 @@ merged data).</td>
 </dd></dl>
 
 <dl class="method">
+<dt id="orbs.orbs.Orbs.export_source_spectra">
+<code class="descname">export_source_spectra</code><span class="sig-paren">(</span><em>camera_number</em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.orbs.Orbs.export_source_spectra" title="Permalink to this definition">¶</a></dt>
+<dd><p>Export computed source spectra to the root folder.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>camera_number</strong> &#8211; Camera number (must be 1, 2 or 0 for
+merged data).</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
 <dt id="orbs.orbs.Orbs.export_standard_spectrum">
 <code class="descname">export_standard_spectrum</code><span class="sig-paren">(</span><em>camera_number</em>, <em>phase_correction=None</em>, <em>aperture_photometry=True</em>, <em>apodization_function='2.0'</em>, <em>auto_phase=True</em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.orbs.Orbs.export_standard_spectrum" title="Permalink to this definition">¶</a></dt>
 <dd><p>Extract spectrum of the standard stars and write it at the
@@ -1346,57 +1449,6 @@ each star independantly. Useful for high SNR stars when no
 reliable external phase can be provided (e.g. Standard
 stars). Note that if auto_phase is set to True, phase will
 be corrected even if phase_correction is False (default True).</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
-<dt id="orbs.orbs.Orbs.extract_stars_spectrum">
-<code class="descname">extract_stars_spectrum</code><span class="sig-paren">(</span><em>camera_number</em>, <em>apodization_function</em>, <em>star_list_path=None</em>, <em>aperture_photometry=True</em>, <em>phase_correction=True</em>, <em>auto_phase=False</em>, <em>filter_correct=True</em>, <em>aper_coeff=3.0</em>, <em>saturation=None</em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.orbs.Orbs.extract_stars_spectrum" title="Permalink to this definition">¶</a></dt>
-<dd><p>Extract the spectrum of the stars in a list of stars location
-list by photometry.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>camera_number</strong> &#8211; Camera number (can be 1, 2 or 0 for
-merged data).</li>
-<li><strong>apodization_function</strong> &#8211; Apodization function to use during
-spectrum computation.</li>
-<li><strong>star_list_path</strong> &#8211; (Optional) Path to a list of stars
-positions. If None, stars are autodetected.</li>
-<li><strong>stars_fwhm_arc</strong> &#8211; (Optional) FWHM of the stars in
-arcsec. Used only when an external list of stars is given
-(using &#8216;star_list_path=&#8217; parameter).</li>
-<li><strong>min_star_number</strong> &#8211; (Optional) Minimum number of star to
-be detected by the automatic detection process (used if no
-path to a list of stars is given). Default 15.</li>
-<li><strong>aperture_photometry</strong> &#8211; (Optional) If True, star flux is
-computed by aperture photometry. If False, star flux is
-computed from the results of the fit.</li>
-<li><strong>phase_correction</strong> &#8211; (Optional) If False, no phase
-correction will be done and the resulting spectrum will be
-the absolute value of the complex spectrum (default True).</li>
-<li><strong>auto_phase</strong> &#8211; (Optional) If True, phase is computed for
-each star independantly. Useful for high SNR stars when no
-reliable external phase can be provided (e.g. Standard
-stars). Note that if auto_phase is set to True, phase will
-be corrected even if phase_correction is False (default
-False).</li>
-<li><strong>filter_correct</strong> &#8211; (Optional) If True returned spectra
-are corrected for filter. Points out of the filter band
-are set to NaN (default True).</li>
-<li><strong>aper_coeff</strong> &#8211; (Optional) Aperture coefficient. The
-aperture radius is Rap = aper_coeff * FWHM. Better when
-between 1.5 to reduce the variation of the collected photons
-with varying FWHM and 3. to account for the flux in the
-wings (default 3., better for star with a high SNR).</li>
-<li><strong>saturation</strong> &#8211; (Optional) If not None, all pixels above
-the saturation level are removed from the fit (default None).</li>
 </ul>
 </td>
 </tr>
@@ -1538,6 +1590,7 @@ others created during initialization needed by processing classes.</p>
 <li>spectral_calibration: WAVE_CALIB</li>
 <li>prebinning: PREBINNING</li>
 <li>no_sky: NOSKY</li>
+<li>source_list_path: SOURCE_LIST_PATH</li>
 </ul>
 </div>
 </dd></dl>
@@ -1581,7 +1634,7 @@ of <code class="xref py py-const docutils literal"><span class="pre">orbs.orbs.O
 
 <dl class="method">
 <dt id="orbs.orbs.Orbs.start_reduction">
-<code class="descname">start_reduction</code><span class="sig-paren">(</span><em>apodization_function=None</em>, <em>start_step=0</em>, <em>phase_correction=True</em>, <em>alt_merge=False</em>, <em>save_as_quads=False</em>, <em>add_frameB=True</em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.orbs.Orbs.start_reduction" title="Permalink to this definition">¶</a></dt>
+<code class="descname">start_reduction</code><span class="sig-paren">(</span><em>apodization_function=None</em>, <em>start_step=0</em>, <em>phase_correction=True</em>, <em>alt_merge=False</em>, <em>save_as_quads=False</em>, <em>add_frameB=True</em>, <em>filter_correction=True</em>, <em>wcs_calibration=True</em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.orbs.Orbs.start_reduction" title="Permalink to this definition">¶</a></dt>
 <dd><p>Run the whole reduction process for two cameras using
 default options</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -1610,6 +1663,10 @@ is useful for big data cubes (default False).</li>
 <li><strong>add_frameB</strong> &#8211; (Optional) If False use the images of the
 camera 2 only to correct for the variations of the sky
 transmission. Default True.</li>
+<li><strong>filter_correction</strong> &#8211; (Optional) If True, spectral cube is
+corrected for filter during calibration step (default True).</li>
+<li><strong>wcs_calibration</strong> &#8211; (Optional) If True, WCS calibratio is
+intented during calibration step (default True).</li>
 </ul>
 </td>
 </tr>
@@ -1625,7 +1682,7 @@ transmission. Default True.</li>
 
 <dl class="attribute">
 <dt id="orbs.orbs.Orbs.targets">
-<code class="descname">targets</code><em class="property"> = ['object', 'flat', 'standard', 'laser', 'nostar', 'raw']</em><a class="headerlink" href="#orbs.orbs.Orbs.targets" title="Permalink to this definition">¶</a></dt>
+<code class="descname">targets</code><em class="property"> = ['object', 'flat', 'standard', 'laser', 'nostar', 'raw', 'sources']</em><a class="headerlink" href="#orbs.orbs.Orbs.targets" title="Permalink to this definition">¶</a></dt>
 <dd><p>Possible target types</p>
 </dd></dl>
 
@@ -1854,7 +1911,7 @@ as optional arguments of the step function.</li>
 
 <dl class="attribute">
 <dt id="orbs.orbs.RoadMap.types_dict">
-<code class="descname">types_dict</code><em class="property"> = {'int': &lt;type 'int'&gt;, 'float': &lt;type 'float'&gt;, 'bool': &lt;function _str2bool at 0x2ad607ec1668&gt;, 'str': &lt;type 'str'&gt;}</em><a class="headerlink" href="#orbs.orbs.RoadMap.types_dict" title="Permalink to this definition">¶</a></dt>
+<code class="descname">types_dict</code><em class="property"> = {'int': &lt;type 'int'&gt;, 'float': &lt;type 'float'&gt;, 'bool': &lt;function _str2bool at 0x2b030cabf5f0&gt;, 'str': &lt;type 'str'&gt;}</em><a class="headerlink" href="#orbs.orbs.RoadMap.types_dict" title="Permalink to this definition">¶</a></dt>
 <dd><p>Dictionary of the defined arguments types</p>
 </dd></dl>
 
@@ -2025,7 +2082,7 @@ run this function for a single reduction step.</p>
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'3.10.0',
+            VERSION:'3.10.1',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true

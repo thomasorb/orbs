@@ -30,6 +30,7 @@ import argparse
 from argparse import ArgumentParser
 import orb.core, orbs.version
 from orb.core import Tools
+import os
 
 #!/usr/bin/python -W ignore::VisibleDeprecationWarning
 # *-* coding: utf-8 *-*
@@ -104,6 +105,14 @@ APOD 1.0
            with open(args.flat_list_path, 'r') as flist:
                for fline in flist:
                    f.write('FLAT '+ fline)
+
+        if args.source_list_path is not None:
+            if os.path.exists(args.source_list_path):
+                f.write('SOURCE_LIST_PATH {}\n'.format(
+                    args.source_list_path))
+            else:
+                raise Exception('Source list file {} does not exist'.format(
+                    args.source_list_path))
                    
         ## for dline in dlist:
         ##     f.write('DARK '+ dline)
@@ -146,7 +155,11 @@ if __name__ == "__main__":
     parser.add_argument('-f', dest='flat_list_path',
                         default=None,
                         help='Path to the list of flat field images.')
-
+    
+    parser.add_argument('-s', dest='source_list_path',
+                        default=None,
+                        help='Path to the list of sources to extract.')
+    
     parser.add_argument('job_file_name',
                         action='store',
                         help="Job file name.")

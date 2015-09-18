@@ -43,7 +43,7 @@ orbs_path = os.path.normpath(('%s'%os.sep).join(str(script_path[0]).split(os.sep
 sys.path.append(orbs_path)
 
 import orb
-from orb.core import Tools, OptionFile
+from orb.core import Tools, OptionFile, Logger
 import orbs
 from orbs.orbs import Orbs, RoadMap
 
@@ -248,8 +248,11 @@ def check_option_file(to, path):
                 option_file_params['PREBINNING'] = ofile.options['PREBINNING']
             else:
                 prebin = None
-            
-            
+
+            # add source list path
+            if 'SOURCE_LIST_PATH' in ofile.options:
+                option_file_params['SOURCE_LIST_PATH'] = ofile.options['SOURCE_LIST_PATH']
+                
             ## generate list of files
             def generate_file_list(to, path, options, key, ftype,
                                    chip_index, prebin):
@@ -293,10 +296,7 @@ def check_option_file(to, path):
                 option_file_params['DIRCAL1'] = generate_file_list(to, option_file_path, ofile.options, 'COMPARISON', 'calib', 1, prebin)
                 # CALIB2
                 option_file_params['DIRCAL2'] = generate_file_list(to, option_file_path, ofile.options, 'COMPARISON', 'calib', 2, prebin)
-            
-            
                 
-            
             # write params in the option file           
             for key in option_file_params:
                 f.write('{} {}\n'.format(key, option_file_params[key]))
@@ -305,8 +305,7 @@ def check_option_file(to, path):
     else:
         return path, dict(), 'option_file'
 
-def get_config_file_name(args):
-    
+def get_config_file_name(args):    
     if args.mode == 'sitelle':
         return 'config.sitelle.orb'
         
@@ -315,8 +314,7 @@ def get_config_file_name(args):
 
 
 def get_to(args):
-    return Tools(logfile_name=os.path.basename(args.option_file_path) + '.log',
-                 config_file_name=get_config_file_name(args))
+    return Tools(config_file_name=get_config_file_name(args))
 
 def init_orbs(args, target, cams, silent=False, fast_init=False):
     # load option file and init Orbs class
@@ -361,12 +359,15 @@ def clean(args):
                      project.indexer)
 
         remove(project._get_project_dir())
-        remove(project._logfile_name)
+        remove(get_logfile_name)
         remove(project.indexer._get_index_path())
-        remove(project._memfile_name)
         remove(recfile.file_path)
 
     print_msg('Working directory clean')
+
+
+def get_logfile_name(args):
+     return os.path.basename(args.option_file_path) + '.log'
 
 def start(args, resume=False):
     """Start reduction operation
@@ -380,16 +381,15 @@ def start(args, resume=False):
     cams = 'full'
 
     to = get_to(args)
+
+    logfile_name = get_logfile_name(args)
+    Logger(logfile_name, noprint=args.noprint)
     
     #################
     # Check options #
     #################
-    
-    if args.noprint:
-        sys.stdout = open("stdout.log", "a")
-        sys.stderr = open("stdout.log", "a")
 
-    # singe camera mode are mutually exclusive
+    # single camera mode are mutually exclusive
     if args.single1 and args.single2:
         print_error("options -1 and -2 are not compatible. You must choose the camera you want to reduce in single mode")
         sys.exit(2)
@@ -398,8 +398,8 @@ def start(args, resume=False):
     elif args.single2: cams = 'single2'
 
     # special targets are mutually exclusive
-    if np.sum([args.flat, args.standard, args.stars, args.laser, args.raw]) > 1:
-        print_error("only one special target (flat, standard, laser, stars, raw) can be choosen")
+    if np.sum([args.flat, args.standard, args.stars, args.laser, args.raw, args.sources]) > 1:
+        print_error("only one special target (flat, standard, laser, stars, raw, sources) can be choosen")
         sys.exit(2)
     if args.flat: target = 'flat'
     elif args.standard: target = 'standard'
@@ -409,6 +409,7 @@ def start(args, resume=False):
     elif args.raw:
         target = 'raw'
         args.nophase = True
+    elif args.sources: target = 'sources'
 
     # check first if reduction can be resumed
     if not resume and args.start_step == 0:
@@ -463,6 +464,14 @@ def start(args, resume=False):
         to._print_warning(
             "Star-dependant processes will be skipped")
 
+    if args.nofilter:
+        to._print_warning(
+            "No filter correction during calibration")
+
+    if args.nowcs:
+        to._print_warning(
+            "No WCS calibration")
+
     if args.alt_merge:
         to._print_warning(
             "Alternative merging process")
@@ -470,6 +479,10 @@ def start(args, resume=False):
     if args.raw:
         to._print_warning(
             "Raw (faster) reduction process: no cosmic rays removal and no phase correction.")
+
+    if args.sources:
+        to._print_msg(
+            "Sources extraction process.")
 
     if args.flat:
         to._print_msg(
@@ -503,7 +516,6 @@ def start(args, resume=False):
     
     
     project = init_orbs(args, target, cams)
-    logfile_name = project._logfile_name
 
     if args.init_angle is not None:
         project.set_init_angle(args.init_angle)
@@ -525,18 +537,15 @@ def start(args, resume=False):
             save_as_quads=args.quadrants,
             phase_correction=not args.nophase,
             alt_merge=args.alt_merge,
-            add_frameB=args.add_frameB)
+            add_frameB=args.add_frameB,
+            filter_correction=not args.nofilter,
+            wcs_calibration=not args.nowcs)
        
     except BaseException, e:
-        with open(logfile_name, 'a') as logfile:
-            exc_type, exc_value, exc_traceback = sys.exc_info()
-            # print on screen
-            traceback.print_exception(exc_type, exc_value, exc_traceback,
-                                      limit=10, file=sys.stdout)
+        exc_type, exc_value, exc_traceback = sys.exc_info()
+        traceback.print_exception(exc_type, exc_value, exc_traceback,
+                                  limit=10, file=sys.stdout)
 
-            # log error and traceback
-            traceback.print_exception(exc_type, exc_value, exc_traceback,
-                                      limit=10, file=logfile)
         
         sys.exit(2)
         
@@ -658,6 +667,10 @@ if __name__ == "__main__":
                               default=False,
                               help='Run a fast raw reduction of astronomical data. Skip cosmic-ray detection and phase correction. Resulting spectra then have a sinc^2 instrumental line shape.')
 
+    group_target.add_argument('--sources', dest='sources', action='store_true',
+                              default=False,
+                              help='Run a sources extraction process. Make sure SOURCE_LIST_PATH is set to a valid source file (X Y coordinates in pixels, one source by line; index of the first pixel is 0, which is different from ds9 indexing).')
+
     parser_start.add_argument('--step',
                               dest='start_step',
                               action='store',
@@ -673,11 +686,20 @@ if __name__ == "__main__":
     
     group_special = parser_start.add_argument_group('Special arguments', 'Arguments less often used.')
         
+    group_special.add_argument('--nofilter', dest='nofilter',
+                               action='store_true',
+                               default=False,
+                               help='No filter correction of the spectral cube will be made during calibration')
+
+    group_special.add_argument('--nowcs', dest='nowcs',
+                               action='store_true',
+                               default=False,
+                               help='No WCS calibration of the spectral cube')
 
     group_special.add_argument('--quadrants', dest='quadrants',
                                action='store_true',
                                default=False,
-                               help='save the resulting spectral cube in quadrants to avoid the manipulation of a large data set. A quadrant can be seen as an independent cubes of smaller field of view.')
+                               help='Save the resulting spectral cube in quadrants to avoid the manipulation of a large data set. A quadrant can be seen as an independent cubes of smaller field of view.')
 
     
     group_spiomm = parser_start.add_argument_group('SpIOMM specific options', '')
@@ -749,8 +771,6 @@ if __name__ == "__main__":
     ###################
     # start operation #
     ###################
-
-    
     
     if args.subparser_name == 'start':
         print_msg("Start %s"%args.option_file_path.strip(), color=True)

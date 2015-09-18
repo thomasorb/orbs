@@ -51,6 +51,7 @@ import bottleneck as bn
 from orb.core import Tools, Cube, Indexer, OptionFile, HDFCube
 from process import RawData, InterferogramMerger, Interferogram
 from process import Phase, Spectrum, CalibrationLaser
+from process import SourceExtractor, PhaseMaps
 from orb.astrometry import Astrometry
 import orb.utils
 import orb.constants
@@ -171,6 +172,9 @@ class Orbs(Tools):
     :NOSKY: If True (an integer > 0) sky-dependant processes are skipped.
 
     :NOSTAR: If True (an integer > 0) star-dependant processes are skipped.
+
+    :SOURCE_LIST_PATH: Path to a list of sources (X Y), one source by
+       line. Used for sources extraction.
 
 
     .. note::
@@ -366,6 +370,8 @@ class Orbs(Tools):
         * prebinning: PREBINNING
 
         * no_sky: NOSKY
+
+        * source_list_path: SOURCE_LIST_PATH
     """
     tuning_parameters = dict()
     """Dictionary containg the tuning parameters of some methods
@@ -389,7 +395,7 @@ class Orbs(Tools):
     option_file_path = None
     """Path to the option file"""
 
-    targets = ['object', 'flat', 'standard', 'laser', 'nostar', 'raw']
+    targets = ['object', 'flat', 'standard', 'laser', 'nostar', 'raw', 'sources']
     """Possible target types"""
     
     target = None
@@ -404,7 +410,7 @@ class Orbs(Tools):
 
         :param target: Target type to reduce. Used to define the
           reduction road map. Target may be 'object', 'flat',
-          'standard', 'laser' or 'raw'.
+          'standard', 'laser', 'raw' or 'sources'.
 
         :param config_file_name: (Optional) Name of the config file to
           use. Must be located in orbs/data/.
@@ -504,7 +510,6 @@ class Orbs(Tools):
 
         self.option_file_path = option_file_path
         self.config_file_name = config_file_name
-        self._logfile_name = os.path.basename(option_file_path) + '.log'
         self._msg_class_hdr = self._get_msg_class_hdr()
         self.overwrite = overwrite
         self.__version__ = __version__
@@ -633,6 +638,7 @@ class Orbs(Tools):
         store_option_parameter('spectral_calibration', 'WAVE_CALIB', bool)
         store_option_parameter('no_sky', 'NOSKY', bool)
         store_option_parameter('prebinning', 'PREBINNING', int)
+        store_option_parameter('source_list_path', 'SOURCE_LIST_PATH', str)
         
         fringes = self.optionfile.get_fringes()
         if fringes is not None:
@@ -754,7 +760,24 @@ class Orbs(Tools):
                     dimz1, self.options['step_number'], dimz1))
                 self.options['step_number'] = dimz1
 
-
+        # get ZPD shift in SITELLE's case
+        if self.config["INSTRUMENT_NAME"] == 'SITELLE':
+            cube1 = Cube(self.options['image_list_path_1'],
+                         silent_init=True,
+                         config_file_name=self.config_file_name)
+            steps = list()
+            for ihdr in range(cube1.dimz):
+                steps.append(cube1.get_frame_header(ihdr)['SITSTEP'])
+            steps = np.array(steps)
+            
+        
+            zpd_index = np.nonzero(steps==0)[0][0]
+            zpd_shift = int(int(cube1.dimz/2.) - zpd_index)
+            self.options['zpd_index'] = zpd_index
+            self.options['zpd_shift'] = zpd_shift
+            self._print_msg('ZPD index: {}, ZPD shift:{}'.format(
+                self.options['zpd_index'], self.options['zpd_shift']))
+            
         # Init Indexer
         self.indexer = Indexer(data_prefix=self.options['object_name']
                                + '_' + self.options['filter_name'] + '.',
@@ -795,6 +818,11 @@ class Orbs(Tools):
                             self.compute_spectrum)
         self.roadmap.attach('calibrate_spectrum',
                             self.calibrate_spectrum)
+        self.roadmap.attach('extract_source_interferograms',
+                            self.extract_source_interferograms)
+        self.roadmap.attach('compute_source_spectra',
+                            self.compute_source_spectra)
+        
         
         
         
@@ -1013,7 +1041,7 @@ class Orbs(Tools):
         else: calib = '.uncalib'
             
         return (self._get_root_data_path_hdr(camera_number)
-                + wave_type + '.' + apod + calib + '.fits')
+                + wave_type + '.' + apod + calib + '.hdf5')
 
     def _get_standard_spectrum_path(self, camera_number):
         """Return path to the standard star spectrum
@@ -1023,6 +1051,15 @@ class Orbs(Tools):
         """
         return (self._get_root_data_path_hdr(camera_number)
                 + 'standard_spectrum.fits')
+
+    def _get_extracted_source_spectra_path(self, camera_number):
+        """Return path to the source spectra
+        
+        :param camera_number: Camera number (must be 1, 2 or 0 for
+          merged data).
+        """
+        return (self._get_root_data_path_hdr(camera_number)
+                + 'extracted_source_spectra.fits')
     
     def _init_raw_data_cube(self, camera_number):
         """Return instance of :class:`orbs.process.RawData` class
@@ -1039,7 +1076,6 @@ class Orbs(Tools):
                     overwrite=self.overwrite,
                     tuning_parameters=self.tuning_parameters,
                     indexer=self.indexer,
-                    logfile_name=self._logfile_name,
                     config_file_name=self.config_file_name)
             else:
                 self._print_error("No image list file for camera 1 given, please check option file")
@@ -1053,7 +1089,6 @@ class Orbs(Tools):
                     overwrite=self.overwrite,
                     tuning_parameters=self.tuning_parameters,
                     indexer=self.indexer,
-                    logfile_name=self._logfile_name,
                     config_file_name=self.config_file_name)
             else:
                 self._print_error("No image list file for camera 2 given, please check option file")
@@ -1147,7 +1182,6 @@ class Orbs(Tools):
                           moffat_beta=self.config["MOFFAT_BETA"],
                           detect_stack=self.config["DETECT_STACK"],
                           data_prefix=self._get_data_prefix(camera_number),
-                          logfile_name=self._logfile_name,
                           tuning_parameters=self.tuning_parameters,
                           target_radec=target_radec, target_xy=target_xy,
                           wcs_rotation=wcs_rotation,
@@ -1175,6 +1209,78 @@ class Orbs(Tools):
             else:
                 return self.indexer.get_path('cam2.interfero_cube', err=True)
         else: self._print_error('Camera number must be 0, 1 or 2')
+
+
+    
+    def _get_phase_map_0_path(self, camera_number):
+        """Return order 0 phase map.
+
+        :param camera_number: Camera number. Can be 0, 1 or 2.
+        """
+        if 'phase_map_path' not in self.options:
+            phase_map_0_path = self.indexer.get_path(
+                'phase_map_fitted_0', camera_number)
+            if  phase_map_0_path is None:
+                self._print_warning(
+                    "No phase map found for the order 0.")
+        else:
+            phase_map_0_path = self.options['phase_map_path']        
+            self._print_msg("Order 0 phase map taken from external source: %s"%phase_map_0_path)
+        return phase_map_0_path
+
+    def _get_phase_coeffs(self, camera_number):
+        """Return phase coefficients other than 0.
+
+        :param camera_number: Camera number. Can be 0, 1 or 2.
+        """
+        phase_map_paths = list()
+        for iorder in range(1, self.config["PHASE_FIT_DEG"] + 1):
+            phase_map_path = self.indexer.get_path(
+                'phase_map_%d'%iorder, camera_number)
+            if phase_map_path is None:
+                self._print_warning("No phase map found for the order %d. Phase correction will not use phase maps and will be less accurate !"%iorder)
+                return None                    
+            elif os.path.exists(phase_map_path):
+                phase_map_paths.append(phase_map_path)
+            else:
+                self._print_warning("No phase map found for the order %d. Phase correction will not use phase maps and will be less accurate !"%iorder)
+                return None
+
+        # get residual map path
+        residual_map_path = self.indexer.get_path(
+            'phase_map_1_residual', camera_number)
+        if residual_map_path is None:
+            self._print_warning("No residual map path found")
+            return None
+        elif not os.path.exists(residual_map_path):
+            self._print_warning("No residual map path found")
+            return None
+
+        phase_coeffs = orb.utils.compute_phase_coeffs_vector(
+            phase_map_paths,
+            residual_map_path=residual_map_path)
+        
+        return phase_coeffs
+
+    def _is_balanced(self, camera_number):
+        """Return True if the camera is balanced.
+
+        :param camera_number: Camera number, can be 0, 1 or 2.
+        """
+        if (camera_number == 1):
+            if self.config["BALANCED_CAM"] == 1:
+                balanced = True
+            else: balanced = False
+        elif (camera_number == 2):
+            if self.config["BALANCED_CAM"] == 2:
+                balanced = True
+            else: balanced = False
+        elif (camera_number == 0):
+            balanced = True
+        else:
+            self._print_error(
+                "Please choose a correct camera number : 0, 1 or 2")
+        return balanced
 
     def set_init_angle(self, init_angle):
         """Change config variable :py:const:`orbs.orbs.Orbs.INIT_ANGLE`. 
@@ -1229,7 +1335,8 @@ class Orbs(Tools):
     def start_reduction(self, apodization_function=None, start_step=0,
                         phase_correction=True, alt_merge=False,
                         save_as_quads=False,
-                        add_frameB=True):
+                        add_frameB=True, filter_correction=True,
+                        wcs_calibration=True):
         
         """Run the whole reduction process for two cameras using
         default options 
@@ -1259,11 +1366,16 @@ class Orbs(Tools):
     
         :param add_frameB: (Optional) If False use the images of the
           camera 2 only to correct for the variations of the sky
-          transmission. Default True.  
+          transmission. Default True.
+
+        :param filter_correction: (Optional) If True, spectral cube is
+          corrected for filter during calibration step (default True).
+
+        :param wcs_calibration: (Optional) If True, WCS calibratio is
+          intented during calibration step (default True).
         """
         # save passed kwargs
         local_kwargs = locals()
-
         for istep in range(self.roadmap.get_road_len()):
             f, args, kwargs = self.roadmap.get_step_func(istep)
             
@@ -1303,6 +1415,7 @@ class Orbs(Tools):
         if self.target == 'laser': self.export_calibration_laser_map(cam)
         if self.target == 'standard': self.export_standard_spectrum(
             cam, auto_phase=True)
+        if self.target == 'sources': self.export_source_spectra(cam)
 
 
     def detect_stars(self, cube, camera_number, 
@@ -1687,7 +1800,6 @@ class Orbs(Tools):
             overwrite=self.overwrite,
             tuning_parameters=self.tuning_parameters,
             indexer=self.indexer,
-            logfile_name=self._logfile_name,
             config_file_name=self.config_file_name)
 
         perf = Performance(cube.cube_B, "Cube B transformation", 2,
@@ -1746,7 +1858,6 @@ class Orbs(Tools):
             overwrite=self.overwrite,
             tuning_parameters=self.tuning_parameters,
             indexer=self.indexer,
-            logfile_name=self._logfile_name,
             config_file_name=self.config_file_name)
         
         perf = Performance(cube.cube_A, "Alternative merging process", 1,
@@ -1807,7 +1918,6 @@ class Orbs(Tools):
             overwrite=self.overwrite,
             tuning_parameters=self.tuning_parameters,
             indexer=self.indexer,
-            logfile_name=self._logfile_name,
             config_file_name=self.config_file_name)
         
         perf = Performance(cube.cube_A, "Merging process", 1,
@@ -1888,7 +1998,6 @@ class Orbs(Tools):
             overwrite=self.overwrite,
             tuning_parameters=self.tuning_parameters,
             indexer=self.indexer,
-            logfile_name=self._logfile_name,
             config_file_name=self.config_file_name)
         perf = Performance(cube, "Calibration laser map processing",
                            camera_number,
@@ -1943,7 +2052,6 @@ class Orbs(Tools):
             overwrite=self.overwrite,
             tuning_parameters=self.tuning_parameters,
             indexer=self.indexer,
-            logfile_name=self._logfile_name,
             config_file_name=self.config_file_name)
         perf = Performance(cube, "Interferogram correction", camera_number,
                            config_file_name=self.config_file_name)
@@ -2075,44 +2183,18 @@ class Orbs(Tools):
             phase_map_correction = True
             
             # get phase map 0 path
-            if 'phase_map_path' not in self.options:
-                phase_map_0_path = self.indexer.get_path(
-                        'phase_map_fitted_0', camera_number)
-                if  phase_map_0_path is None:
-                    self._print_warning("No phase map found for the zeroth order. Phase correction will not use phase maps and will be less accurate !")
-                    phase_map_correction = False
-            else:
-                phase_map_0_path = self.options['phase_map_path']
-                    
-                self._print_msg("Oth order phase map taken from external source: %s"%phase_map_0_path)
+            phase_map_0_path = self._get_phase_map_0_path(camera_number)
+            if phase_map_0_path is None: phase_map_correction = False
                 
             # get other phase map paths
             if phase_coeffs is None:
-                phase_map_paths = list()
-                for iorder in range(1, self.config["PHASE_FIT_DEG"] + 1):
-                    phase_map_path = self.indexer.get_path(
-                        'phase_map_%d'%iorder, camera_number)
-                    if phase_map_path is None:
-                        self._print_warning("No phase map found for the order %d. Phase correction will not use phase maps and will be less accurate !"%iorder)
-                        phase_map_correction = False
-                        
-                    elif os.path.exists(phase_map_path):
-                        phase_map_paths.append(phase_map_path)
-                    else:
-                        self._print_warning("No phase map found for the order %d. Phase correction will not use phase maps and will be less accurate !"%iorder)
-                        phase_map_correction = False
-                    
-            # get residual map path
-            residual_map_path = self.indexer.get_path(
-                'phase_map_residual', camera_number)
-            if residual_map_path is None:
-                self._print_warning("No residual map path found. Phase correction will not use phase maps and will be less accurate !")
-                phase_map_correction = False
-            elif not os.path.exists(residual_map_path):
-                self._print_warning("No residual map path found. Phase correction will not use phase maps and will be less accurate !")
-                phase_map_correction = False
+                phase_coeffs = self._get_phase_coeffs(camera_number)
+                if phase_coeffs is None:
+                    phase_map_correction = False
 
-        else: phase_map_0_path = None
+        else:
+            phase_map_0_path = None
+            phase_coeffs = None
         
         # Load interferogram frames
         cube_path = self._get_interfero_cube_path(
@@ -2144,28 +2226,21 @@ class Orbs(Tools):
         perf = Performance(cube, "Spectrum computation", camera_number,
                            config_file_name=self.config_file_name)
         
-        if (camera_number == 1):
-            if self.config["BALANCED_CAM"] == 1:
-                balanced = True
-            else: balanced = False
-            
+        balanced = self._is_balanced(camera_number)
+        
+        if (camera_number == 1):    
             if "bin_cam_1" in self.options: 
                 bin_factor = self.options["bin_cam_1"]
             else: 
                 self._print_error("No binning factor for the camera 1 given, check the option file")
 
         elif (camera_number == 2):
-            if self.config["BALANCED_CAM"] == 2:
-                balanced = True
-            else: balanced = False
-            
             if "bin_cam_2" in self.options: 
                 bin_factor = self.options["bin_cam_2"]
             else: 
                 self._print_error("No binning factor for the camera 2 given, check the option file")
 
         elif (camera_number == 0):
-            balanced = True
             if "bin_cam_1" in self.options: 
                 bin_factor = self.options["bin_cam_1"]
             else: 
@@ -2178,10 +2253,17 @@ class Orbs(Tools):
             step = self.options["step"]
         else: 
             self._print_error("No step size given, check the option file")
+            
         if "order" in self.options:
             order = self.options["order"]
         else: 
             self._print_error("No folding order given, check the option file")
+
+        if 'zpd_shift' in self.options:
+            zpd_shift = self.options['zpd_shift']
+        else:
+            zpd_shift = None
+
 
         if apodization_function is None:
             if 'apodization_function' in self.options:
@@ -2202,14 +2284,6 @@ class Orbs(Tools):
         if not phase_cube:
             if 'wavenumber' in self.options:
                 wavenumber = self.options['wavenumber']
-                
-        ## Compute phase coeffs vector
-        if (phase_coeffs is None
-            and not phase_cube
-            and phase_map_correction):
-            phase_coeffs = cube.compute_phase_coeffs_vector(
-                phase_map_paths,
-                residual_map_path=residual_map_path)
 
         ## Compute spectrum
         cube.compute_spectrum(
@@ -2227,7 +2301,8 @@ class Orbs(Tools):
             balanced=balanced,
             smoothing_deg=smoothing_deg,
             fringes=fringes,
-            wavenumber=wavenumber)
+            wavenumber=wavenumber,
+            zpd_shift=zpd_shift)
 
         perf_stats = perf.print_stats()
         del cube, perf
@@ -2278,10 +2353,16 @@ class Orbs(Tools):
             step = self.options["step"]
         else: 
             self._print_error("No step size given, check the option file")
+            
         if "order" in self.options:
             order = self.options["order"]
         else: 
             self._print_error("No folding order given, check the option file")
+
+        if 'zpd_shift' in self.options:
+            zpd_shift = self.options['zpd_shift']
+        else:
+            zpd_shift = None
 
         filter_path = self._get_filter_file_path(self.options["filter_name"])
         if filter_path is None:
@@ -2301,60 +2382,65 @@ class Orbs(Tools):
         else:
             self._print_error('Camera number must be 1, 2 or 0')
                 
-        # get default interferogram length
+        # get base phase maps
         if not no_star:
             interfero_cube_path = self._get_interfero_cube_path(
                 camera_number, corrected=True)
         else:
             interfero_cube_path = self._get_interfero_cube_path(
-                camera_number, corrected=False)
-        cube = Interferogram(interfero_cube_path, silent_init=True,
-                             logfile_name=self._logfile_name,
-                             config_file_name=self.config_file_name)
-        interferogram_length = cube.dimz
-        del cube
-
+                camera_number, corrected=False)        
+            
         self.indexer.set_file_group(camera_number)
-        phase = Phase(
-            phase_cube_path, 
-            data_prefix=self._get_data_prefix(camera_number),
-            project_header = self._get_project_fits_header(
-                camera_number),
-            calibration_laser_header=self._get_calibration_laser_fits_header(),
+        cube = Interferogram(interfero_cube_path, silent_init=True,
+                             config_file_name=self.config_file_name,
+                             overwrite=self.overwrite,
+                             tuning_parameters=self.tuning_parameters,
+                             indexer=self.indexer,
+                             project_header = self._get_project_fits_header(
+                                 camera_number),
+                             data_prefix=self._get_data_prefix(camera_number),
+                             calibration_laser_header=self._get_calibration_laser_fits_header())
+        
+        perf = Performance(cube, "Phase map creation", camera_number,
+                           config_file_name=self.config_file_name)
+
+        if self.config["INSTRUMENT_NAME"] == 'SITELLE':
+            binning = 6
+            div_nb = None
+        else:
+            binning = 3
+            div_nb = 1
+        
+        cube.create_phase_maps(
+            self.options['step'], self.options['order'],
+            zpd_shift=zpd_shift, binning=binning)
+
+        # smooth and fit phase maps
+        phasemaps = PhaseMaps(
+            [cube._get_phase_map_path(0),
+             cube._get_phase_map_path(1)],
+            [cube._get_phase_map_path(0, res=True),
+             cube._get_phase_map_path(1, res=True)],
+            cube.dimx, cube.dimy,
+            config_file_name=self.config_file_name,
             overwrite=self.overwrite,
             tuning_parameters=self.tuning_parameters,
             indexer=self.indexer,
-            logfile_name=self._logfile_name,
-            config_file_name=self.config_file_name)
-        
-        perf = Performance(phase, "Phase map creation", camera_number,
-                           config_file_name=self.config_file_name)
-        # create phase map
-        phase.create_phase_maps(
-            calibration_laser_map_path,
-            filter_path,
-            self.config["CALIB_NM_LASER"], step, order,
-            interferogram_length=interferogram_length,
-            fit_order=self.config["PHASE_FIT_DEG"],
-            flat_cube=flat_cube)
+            project_header = self._get_project_fits_header(
+                camera_number),
+            data_prefix=self._get_data_prefix(camera_number),
+            calibration_laser_header=self._get_calibration_laser_fits_header())
 
-        # smooth 0th order phase map
-        phase_map_path = phase._get_phase_map_path(0)
-        phase.smooth_phase_map(phase_map_path)
+        
+        phasemaps.smooth_phase_map_0(div_nb=div_nb)
+
         if fit:
-            # fit 0th order phase map
-            phase_map_path = phase._get_phase_map_path(
-                0, phase_map_type='smoothed')
-            residual_map_path = phase._get_phase_map_path(
-                0, phase_map_type='residual')
-            
             if self.config["INSTRUMENT_NAME"] == 'SITELLE':
                 phase_model = 'sitelle'
             else:
                 phase_model = 'spiomm'
-                
-            phase.fit_phase_map(
-                phase_map_path, residual_map_path,
+            
+            phasemaps.fit_phase_map_0(
                 phase_model=phase_model,
                 calibration_laser_map_path=calibration_laser_map_path,
                 calibration_laser_nm=self.config["CALIB_NM_LASER"])
@@ -2364,7 +2450,8 @@ class Orbs(Tools):
         return perf_stats
         
     def calibrate_spectrum(self, camera_number, cam1_scale=False,
-                           no_star=False):
+                           no_star=False, filter_correction=True,
+                           wcs_calibration=True):
         
         """Calibrate spectrum cube and correct WCS.
 
@@ -2379,6 +2466,12 @@ class Orbs(Tools):
         :param no_star: (Optional) If True, data is considered to
           contain no star, so no WCS calibration is possible (default
           False).
+
+        :param filter_correction: (Optional) If True, spectral cube
+          will be corrected for filter (default True).
+
+        :param wcs_calibration: (Optional) If True, WCS calibration is
+          intended (default True).
 
         .. seealso:: :py:class:`process.Spectrum`
         """
@@ -2408,10 +2501,14 @@ class Orbs(Tools):
         else: target_y = None
 
         # Check if filter file exists
-        filter_path = self._get_filter_file_path(self.options["filter_name"])
-        if filter_path is None:
-            self._print_warning(
-                "Unknown filter. No filter correction can be made")
+        if filter_correction:
+            filter_path = self._get_filter_file_path(self.options["filter_name"])
+            if filter_path is None:
+                self._print_warning(
+                    "Unknown filter. No filter correction can be made")
+        else:
+            filter_path = None
+            self._print_warning('No filter correction')
     
         spectrum_cube_path = self.indexer.get_path(
             'spectrum_cube', camera_number)
@@ -2426,7 +2523,6 @@ class Orbs(Tools):
             overwrite=self.overwrite,
             tuning_parameters=self.tuning_parameters,
             indexer=self.indexer,
-            logfile_name=self._logfile_name,
             config_file_name=self.config_file_name)
         perf = Performance(spectrum, "Spectrum calibration", camera_number,
                            config_file_name=self.config_file_name)
@@ -2453,6 +2549,9 @@ class Orbs(Tools):
         elif no_star:
             self._print_warning("No-star reduction: no WCS calibration.")
             correct_wcs = None
+        elif not wcs_calibration:
+            self._print_warning('No WCS calibration')
+            correct_wcs = None
         else:
             astrom = self._init_astrometry(spectrum, camera_number)
             try:
@@ -2469,14 +2568,16 @@ class Orbs(Tools):
             deep_frame_path = self.indexer.get_path('deep_frame', camera_number)
         
         # Check wavelength calibration
-        calibration_laser_map_path = self.indexer.get_path('phase_calibration_laser_map', camera_number)
+        #calibration_laser_map_path = self.indexer.get_path(
+        #    'phase_calibration_laser_map', camera_number)
+        calibration_laser_map_path = None
         
         if calibration_laser_map_path is None:
             calibration_laser_map_path = self._get_calibration_laser_map(
                 camera_number)
-        else:
-            self._print_msg('Calibration laser map used: {}'.format(
-                calibration_laser_map_path))
+        
+        self._print_msg('Calibration laser map used: {}'.format(
+            calibration_laser_map_path))
         
         # Calibration
         spectrum.calibrate(
@@ -2494,206 +2595,377 @@ class Orbs(Tools):
         del perf, spectrum
         return perf_stats
 
-    def extract_stars_spectrum(self, camera_number, apodization_function,
-                               star_list_path=None,
-                               aperture_photometry=True, phase_correction=True,
-                               auto_phase=False, filter_correct=True,
-                               aper_coeff=3., saturation=None):
+    ## def extract_sources_spectrum(self, camera_number, apodization_function,
+    ##                              source_list_path=None,
+    ##                              aperture_photometry=True, phase_correction=True,
+    ##                              auto_phase=False, filter_correct=True,
+    ##                              aper_coeff=3., saturation=None, no_prefit=False,
+    ##                              recompute_modulation_ratio=True):
         
-        """Extract the spectrum of the stars in a list of stars location
-        list by photometry.
+    ##     """Extract the spectrum of the sources (given a list of sources
+    ##     positions) by photometry.
         
-        :param camera_number: Camera number (can be 1, 2 or 0 for
-          merged data).
+    ##     :param camera_number: Camera number (can be 1, 2 or 0 for
+    ##       merged data).
           
-        :param apodization_function: Apodization function to use during
-          spectrum computation.
+    ##     :param apodization_function: Apodization function to use during
+    ##       spectrum computation.
 
-        :param star_list_path: (Optional) Path to a list of stars
-          positions. If None, stars are autodetected.
+    ##     :param source_list_path: (Optional) Path to a list of sources
+    ##       positions. If None, sources are autodetected.
 
-        :param stars_fwhm_arc: (Optional) FWHM of the stars in
-          arcsec. Used only when an external list of stars is given
-          (using 'star_list_path=' parameter).
-
-        :param min_star_number: (Optional) Minimum number of star to
-          be detected by the automatic detection process (used if no
-          path to a list of stars is given). Default 15.
-
-        :param aperture_photometry: (Optional) If True, star flux is
-          computed by aperture photometry. If False, star flux is
-          computed from the results of the fit.
+    ##     :param aperture_photometry: (Optional) If True, source flux is
+    ##       computed by aperture photometry. If False, source flux is
+    ##       computed from the results of the fit.
           
-        :param phase_correction: (Optional) If False, no phase
-          correction will be done and the resulting spectrum will be
-          the absolute value of the complex spectrum (default True).
+    ##     :param phase_correction: (Optional) If False, no phase
+    ##       correction will be done and the resulting spectrum will be
+    ##       the absolute value of the complex spectrum (default True).
      
-        :param auto_phase: (Optional) If True, phase is computed for
-          each star independantly. Useful for high SNR stars when no
-          reliable external phase can be provided (e.g. Standard
-          stars). Note that if auto_phase is set to True, phase will
-          be corrected even if phase_correction is False (default
-          False).
+    ##     :param auto_phase: (Optional) If True, phase is computed for
+    ##       each source independantly. Useful for high SNR source when no
+    ##       reliable external phase can be provided (e.g. Standard
+    ##       stars). Note that if auto_phase is set to True, phase will
+    ##       be corrected even if phase_correction is False (default
+    ##       False).
 
-        :param filter_correct: (Optional) If True returned spectra
-          are corrected for filter. Points out of the filter band
-          are set to NaN (default True).
+    ##     :param filter_correct: (Optional) If True returned spectra
+    ##       are corrected for filter. Points out of the filter band
+    ##       are set to NaN (default True).
 
-        :param aper_coeff: (Optional) Aperture coefficient. The
-          aperture radius is Rap = aper_coeff * FWHM. Better when
-          between 1.5 to reduce the variation of the collected photons
-          with varying FWHM and 3. to account for the flux in the
-          wings (default 3., better for star with a high SNR).
+    ##     :param aper_coeff: (Optional) Aperture coefficient. The
+    ##       aperture radius is Rap = aper_coeff * FWHM. Better when
+    ##       between 1.5 to reduce the variation of the collected photons
+    ##       with varying FWHM and 3. to account for the flux in the
+    ##       wings (default 3.).
           
-        :param saturation: (Optional) If not None, all pixels above
-          the saturation level are removed from the fit (default None).
-        """
+    ##     :param saturation: (Optional) If not None, all pixels above
+    ##       the saturation level are removed from the fit (default None).
 
-        self._print_msg('Extracting stars spectra', color=True)
+    ##     :param no_prefit: (Optional) If True, the first fit on deep
+    ##       frame to enhance positions and get a better FWHM guess is
+    ##       not made (default for source extraction because the sources
+    ##       can be difficult to see on a deep frame, e.g. planetary
+    ##       nebulae) (default False).
 
-        if 'flat_spectrum_path' in self.options:
-            flat_spectrum_path = self.options['flat_spectrum_path']
-        else:
-            flat_spectrum_path = None
+    ##     :param recompute_modulation_ratio: (Optional) If True,
+    ##       modulation ratio is re-computed for each source. Must be
+    ##       done if the modulation ratio is not very well known
+    ##       (e.g. for SpIOMM) (default True)
+
+    ##     """
+
+    ##     self._print_msg('Extracting sources spectrum', color=True)
+
+    ##     if 'flat_spectrum_path' in self.options:
+    ##         flat_spectrum_path = self.options['flat_spectrum_path']
+    ##     else:
+    ##         flat_spectrum_path = None
         
-        # detect stars
-        if star_list_path is None:
-            if camera_number == 0 or camera_number == 1:
-                raw_cube = self._init_raw_data_cube(1)
-            else:
-                raw_cube = self._init_raw_data_cube(2)
-            star_list_path, stars_fwhm_arc = self.detect_stars(
-                raw_cube, camera_number, self.config['DETECT_STAR_NB'])
-            del raw_cube
-        else: stars_fwhm_arc = self.config['INIT_FWHM']
+    ##     # detect sources
+    ##     if source_list_path is None:
+    ##         if camera_number == 0 or camera_number == 1:
+    ##             raw_cube = self._init_raw_data_cube(1)
+    ##         else:
+    ##             raw_cube = self._init_raw_data_cube(2)
+    ##         source_list_path, sources_fwhm_arc = self.detect_stars(
+    ##             raw_cube, camera_number, self.config['DETECT_STAR_NB'])
+    ##         del raw_cube
+    ##     else: sources_fwhm_arc = self.config['INIT_FWHM']
         
-        # get frame list paths
-        interf_cube_path_1 = self.indexer['cam1.interfero_cube']
-        if camera_number == 0:
-            interf_cube_path_2 = self.indexer[
-                'merged.transformed_interfero_cube']
+    ##     # get frame list paths
+    ##     interf_cube_path_1 = self.indexer['cam1.interfero_cube']
+    ##     if camera_number == 0:
+    ##         interf_cube_path_2 = self.indexer[
+    ##             'merged.transformed_interfero_cube']
 
-        # load calibration laser map
-        if 'calibration_laser_map_path' in self.options:
-            calibration_laser_map_path = self.options[
-                'calibration_laser_map_path']
-            self._print_msg('Using an external calibration laser map: %s'%(
-                calibration_laser_map_path))
-        else:
-            calibration_laser_map_path = self.indexer[
-                'cam1.calibration_laser_map']
+    ##     # load calibration laser map
+    ##     if 'calibration_laser_map_path' in self.options:
+    ##         calibration_laser_map_path = self.options[
+    ##             'calibration_laser_map_path']
+    ##         self._print_msg('Using an external calibration laser map: %s'%(
+    ##             calibration_laser_map_path))
+    ##     else:
+    ##         calibration_laser_map_path = self.indexer[
+    ##             'cam1.calibration_laser_map']
 
-        # get phase coefficents
-        phase_map_0_path = None
-        phase_coeffs = None
-        if phase_correction and not auto_phase:
-            phase_map_0_path = self.indexer.get_path(
-                            'phase_map_fitted_0', 0)
-            phase_map_paths = list()
-            for iorder in range(1, self.config["PHASE_FIT_DEG"] + 1):
-                phase_map_path = self.indexer.get_path(
-                    'phase_map_%d'%iorder, 0)
-                if phase_map_path is not None:
-                    phase_map_paths.append(phase_map_path)
-            residual_map_path = self.indexer.get_path(
-                'phase_map_residual', 0)
+    ##     # get phase coefficents
+    ##     phase_map_0_path = None
+    ##     phase_coeffs = None
+    ##     if phase_correction and not auto_phase:
+    ##         phase_map_0_path = self.indexer.get_path(
+    ##                         'phase_map_fitted_0', 0)
+    ##         phase_map_paths = list()
+    ##         for iorder in range(1, self.config["PHASE_FIT_DEG"] + 1):
+    ##             phase_map_path = self.indexer.get_path(
+    ##                 'phase_map_%d'%iorder, 0)
+    ##             if phase_map_path is not None:
+    ##                 phase_map_paths.append(phase_map_path)
+    ##         residual_map_path = self.indexer.get_path(
+    ##             'phase_map_residual', 0)
 
-            if (phase_map_0_path is not None and residual_map_path is not None
-                and len(phase_map_paths) > 0):
-                cube = Interferogram(
-                    '', config_file_name=self.config_file_name)
-                phase_coeffs = cube.compute_phase_coeffs_vector(
-                    phase_map_paths,
-                    residual_map_path=residual_map_path)
+    ##         if (phase_map_0_path is not None and residual_map_path is not None
+    ##             and len(phase_map_paths) > 0):
+    ##             cube = Interferogram(
+    ##                 '', config_file_name=self.config_file_name)
+    ##             phase_coeffs = orb.utils.compute_phase_coeffs_vector(
+    ##                 phase_map_paths,
+    ##                 residual_map_path=residual_map_path)
                 
-        # get bad frames vector
-        if "bad_frames" in self.options:
-            bad_frames_list = self.options["bad_frames"]
-        else: bad_frames_list = []
-        bad_frames_vector = self.create_bad_frames_vector(
-            camera_number,
-            bad_frames_list=bad_frames_list)
+    ##     # get bad frames vector
+    ##     if "bad_frames" in self.options:
+    ##         bad_frames_list = self.options["bad_frames"]
+    ##     else: bad_frames_list = []
+    ##     bad_frames_vector = self.create_bad_frames_vector(
+    ##         camera_number,
+    ##         bad_frames_list=bad_frames_list)
         
-        # check parameters
-        if 'apodization_function' in self.options and apodization_function is None:
-            apodization_function = self.options['apodization_function']
+    ##     # check parameters
+    ##     if 'apodization_function' in self.options and apodization_function is None:
+    ##         apodization_function = self.options['apodization_function']
             
-        if apodization_function is not None and apodization_function not in self._APODIZATION_FUNCTIONS:
-                self._print_error("Unrecognized apodization function. Please try : " + str(self._APODIZATION_FUNCTIONS))
+    ##     if apodization_function is not None and apodization_function not in self._APODIZATION_FUNCTIONS:
+    ##             self._print_error("Unrecognized apodization function. Please try : " + str(self._APODIZATION_FUNCTIONS))
 
-        if camera_number == 0:
-            cube = InterferogramMerger(
-                interf_cube_path_A=interf_cube_path_1,
-                interf_cube_path_B=interf_cube_path_2,
-                data_prefix=self._get_data_prefix(0),
-                project_header=self._get_project_fits_header(0),
-                alignment_coeffs=None,
-                overwrite=self.overwrite,
-                tuning_parameters=self.tuning_parameters,
-                logfile_name=self._logfile_name,
-                config_file_name=self.config_file_name)
+    ##     if camera_number == 0:
+    ##         cube = InterferogramMerger(
+    ##             interf_cube_path_A=interf_cube_path_1,
+    ##             interf_cube_path_B=interf_cube_path_2,
+    ##             data_prefix=self._get_data_prefix(0),
+    ##             project_header=self._get_project_fits_header(0),
+    ##             alignment_coeffs=None,
+    ##             overwrite=self.overwrite,
+    ##             tuning_parameters=self.tuning_parameters,
+    ##             config_file_name=self.config_file_name)
 
-            perf = Performance(cube.cube_A, "Extract stars spectrum", 0,
-                               config_file_name=self.config_file_name)
+    ##         perf = Performance(cube.cube_A, "Extract sources spectrum", 0,
+    ##                            config_file_name=self.config_file_name)
 
-            stars_spectrum = cube.extract_stars_spectrum(
-                star_list_path,
-                self.config["INIT_FWHM"], self.config["FIELD_OF_VIEW"],
-                cube._get_modulation_ratio_path(),
-                cube._get_transmission_vector_path(),
-                cube._get_ext_illumination_vector_path(),
-                calibration_laser_map_path, self.options['step'],
-                self.options['order'], self.config["CALIB_NM_LASER"],
-                self._get_filter_file_path(self.options["filter_name"]),
-                self.options['step_number'],
-                window_type=apodization_function,
-                bad_frames_vector=bad_frames_vector,
-                phase_map_0_path=phase_map_0_path,
-                phase_coeffs=phase_coeffs,
-                aperture=aperture_photometry,
-                profile_name=self.config["PSF_PROFILE"],
-                moffat_beta=self.config["MOFFAT_BETA"],
-                phase_correction=phase_correction, 
-                auto_phase=auto_phase, filter_correct=filter_correct,
-                flat_spectrum_path=flat_spectrum_path,
-                aper_coeff=aper_coeff,
-                saturation=saturation)
+    ##         sources_spectrum = cube.extract_stars_spectrum(
+    ##             source_list_path,
+    ##             self.config["INIT_FWHM"], self.config["FIELD_OF_VIEW"],
+    ##             cube._get_modulation_ratio_path(),
+    ##             cube._get_transmission_vector_path(),
+    ##             cube._get_ext_illumination_vector_path(),
+    ##             calibration_laser_map_path, self.options['step'],
+    ##             self.options['order'], self.config["CALIB_NM_LASER"],
+    ##             self._get_filter_file_path(self.options["filter_name"]),
+    ##             self.options['step_number'],
+    ##             window_type=apodization_function,
+    ##             bad_frames_vector=bad_frames_vector,
+    ##             phase_map_0_path=phase_map_0_path,
+    ##             phase_coeffs=phase_coeffs,
+    ##             aperture=aperture_photometry,
+    ##             profile_name=self.config["PSF_PROFILE"],
+    ##             moffat_beta=self.config["MOFFAT_BETA"],
+    ##             phase_correction=phase_correction, 
+    ##             auto_phase=auto_phase, filter_correct=filter_correct,
+    ##             flat_spectrum_path=flat_spectrum_path,
+    ##             aper_coeff=aper_coeff,
+    ##             saturation=saturation,
+    ##             no_prefit=no_prefit,
+    ##             recompute_modulation_ratio=recompute_modulation_ratio)
 
-            perf.print_stats()
+    ##         perf.print_stats()
+    ##     else:
+    ##         cube = Interferogram(
+    ##             interf_cube_path_1,          
+    ##             data_prefix=self._get_data_prefix(camera_number),
+    ##             project_header = self._get_project_fits_header(
+    ##                 camera_number),
+    ##             calibration_laser_header=
+    ##             self._get_calibration_laser_fits_header(),
+    ##             overwrite=self.overwrite,
+    ##             tuning_parameters=self.tuning_parameters,
+    ##             indexer=self.indexer,
+    ##             config_file_name=self.config_file_name)
+            
+    ##         sources_spectrum = cube.extract_stars_spectrum(
+    ##             source_list_path,
+    ##             self.config["INIT_FWHM"], self.config["FIELD_OF_VIEW"],
+    ##             cube._get_transmission_vector_path(),
+    ##             cube._get_stray_light_vector_path(),
+    ##             calibration_laser_map_path, self.options['step'],
+    ##             self.options['order'], self.config["CALIB_NM_LASER"],
+    ##             self._get_filter_file_path(self.options["filter_name"]),
+    ##             self.options['step_number'],
+    ##             window_type=apodization_function,
+    ##             bad_frames_vector=bad_frames_vector,
+    ##             aperture=aperture_photometry,
+    ##             profile_name=self.config["PSF_PROFILE"],
+    ##             moffat_beta=self.config["MOFFAT_BETA"],
+    ##             filter_correct=filter_correct,
+    ##             flat_spectrum_path=flat_spectrum_path,
+    ##             aper_coeff=aper_coeff,
+    ##             saturation=saturation,
+    ##             no_prefit=no_prefit,
+    ##             recompute_modulation_ratio=recompute_modulation_ratio)
+            
+    ##     return sources_spectrum
+
+    def extract_source_interferograms(self, camera_number,
+                                      alignment_coeffs=None):
+     
+        # get binning factor for each camera
+        if "bin_cam_1" in self.options: 
+            bin_cam_1 = self.options["bin_cam_1"]
         else:
-            cube = Interferogram(
-                interf_cube_path_1,          
-                data_prefix=self._get_data_prefix(camera_number),
-                project_header = self._get_project_fits_header(
-                    camera_number),
-                calibration_laser_header=
-                self._get_calibration_laser_fits_header(),
-                overwrite=self.overwrite,
-                tuning_parameters=self.tuning_parameters,
-                indexer=self.indexer,
-                logfile_name=self._logfile_name,
-                config_file_name=self.config_file_name)
+            self._print_error("No binning for the camera 1 given")
+
+        if "bin_cam_2" in self.options: 
+            bin_cam_2 = self.options["bin_cam_2"]
+        else:
+            self._print_error("No binning for the camera 2 given")
+
+        # get initial shift
+        init_dx = self.config["INIT_DX"] / bin_cam_2
+        init_dy = self.config["INIT_DY"] / bin_cam_2
+
+        # get interferograms frames paths
+        interf_cube_path_1 = self.options["image_list_path_1.hdf5"]
+        interf_cube_path_2 = self.options["image_list_path_2.hdf5"]
+
+        # get computed alignement parameters
+        alignment_parameters_path = self.indexer.get_path('alignment_parameters',
+                                                     file_group=camera_number)
+        if alignment_parameters_path is not None:
+            alignment_coeffs = self.read_fits(alignment_parameters_path)[:5]
+            mean_fwhm_1_arc = self.read_fits(alignment_parameters_path)[8]
+        else:
+            alignment_coeffs = None
+
+        # Init SourceExtractor class
+        self.indexer.set_file_group('merged')
+        sex = SourceExtractor(
+            interf_cube_path_1, interf_cube_path_2,
+            bin_A=bin_cam_1, bin_B=bin_cam_2,
+            pix_size_A=self.config["PIX_SIZE_CAM1"],
+            pix_size_B=self.config["PIX_SIZE_CAM2"],
+            data_prefix=self._get_data_prefix(0),
+            project_header=self._get_project_fits_header(0),
+            cube_A_project_header=self._get_project_fits_header(1),
+            cube_B_project_header=self._get_project_fits_header(2),
+            alignment_coeffs=alignment_coeffs,
+            overwrite=self.overwrite,
+            tuning_parameters=self.tuning_parameters,
+            indexer=self.indexer,
+            config_file_name=self.config_file_name)
+
+        perf = Performance(sex.cube_B, "Extraction of source interferograms", 0,
+                           config_file_name=self.config_file_name)
+
+        # find alignment coefficients
+        if alignment_coeffs is None:
+            # detect stars in cube 1
+            cube1 = self._init_raw_data_cube(1)
+            star_list_path_1, mean_fwhm_1_arc = self.detect_stars(
+                cube1, 0, saturation_threshold=self.config[
+                    'SATURATION_THRESHOLD'])
+            del cube1
+            sex.find_alignment(
+                star_list_path_1,
+                self.config["INIT_ANGLE"], init_dx, init_dy,
+                mean_fwhm_1_arc, self.config["FIELD_OF_VIEW"],
+                combine_first_frames=True)
+        
+        self._print_msg("Alignment parameters: {} {} {} {} {}".format(
+            sex.dx, sex.dy, sex.dr, sex.da, sex.db))
+        self._print_msg("Mean FWHM {} arcseconds".format(mean_fwhm_1_arc))
+
+        # get source list
+        source_list = list()
+        if not 'source_list_path' in self.options:
+            self._print_error('A list of sources must be given (option file keyword SOURCE_LIST_PATH)')
             
-            stars_spectrum = cube.extract_stars_spectrum(
-                star_list_path,
-                self.config["INIT_FWHM"], self.config["FIELD_OF_VIEW"],
-                cube._get_transmission_vector_path(),
-                cube._get_stray_light_vector_path(),
-                calibration_laser_map_path, self.options['step'],
-                self.options['order'], self.config["CALIB_NM_LASER"],
-                self._get_filter_file_path(self.options["filter_name"]),
-                self.options['step_number'],
-                window_type=apodization_function,
-                bad_frames_vector=bad_frames_vector,
-                aperture=aperture_photometry,
-                profile_name=self.config["PSF_PROFILE"],
-                moffat_beta=self.config["MOFFAT_BETA"],
-                filter_correct=filter_correct,
-                flat_spectrum_path=flat_spectrum_path,
-                aper_coeff=aper_coeff,
-                saturation=saturation)
+        with self.open_file(self.options['source_list_path'], 'r') as f:
+            for line in f:
+                x,y = line.strip().split()[:2]
+                source_list.append([float(x),float(y)])
+
+        self._print_msg('{} sources to extract'.format(len(source_list)))
+        
+        sex.extract_source_interferograms(
+            source_list, self.config["FIELD_OF_VIEW"],
+            self.indexer['cam1.alignment_vector'],
+            self.indexer['cam2.alignment_vector'],
+            self.indexer['merged.modulation_ratio'],
+            self.indexer['merged.transmission_vector'],
+            self.indexer['merged.ext_illumination_vector'],
+            mean_fwhm_1_arc)
+        
+        perf.print_stats()
+
+    def compute_source_spectra(self, camera_number,
+                               phase_correction=True,
+                               filter_correction=True):
+        """Compute source spectra
+
+        
+        :param filter_correction: (Optional) If True, spectral cube
+          will be corrected for filter (default True).
+
+        """
+        
+        # get source list
+        source_list = list()
+        if not 'source_list_path' in self.options:
+            self._print_error('A list of sources must be given (option file keyword SOURCE_LIST_PATH)')
             
-        return stars_spectrum
+        with self.open_file(self.options['source_list_path'], 'r') as f:
+            for line in f:
+                x,y = line.strip().split()[:2]
+                source_list.append([float(x),float(y)])
+
+        # get filter path
+        if filter_correction:
+            filter_path = self._get_filter_file_path(self.options["filter_name"])
+            if filter_path is None:
+                self._print_warning("Unknown filter name.")
+        else:
+            filter_path = None
+            
+        for i in range(len(source_list)):
+            self._print_msg('source {}: {} {}'.format(
+                i, source_list[i][0], source_list[i][1]))
+        self.indexer.set_file_group('merged')
+
+        if 'zpd_shift' in self.options:
+            zpd_shift = self.options['zpd_shift']
+        else:
+            zpd_shift = None
+            
+        # get phase map and phase coeffs
+        phase_map_0_path = self._get_phase_map_0_path(camera_number)
+        phase_coeffs = self._get_phase_coeffs(camera_number)
+        
+        sex = SourceExtractor(
+            self._get_interfero_cube_path(
+                camera_number, corrected=True),
+            data_prefix=self._get_data_prefix(0),
+            project_header=self._get_project_fits_header(0),
+            cube_A_project_header=self._get_project_fits_header(1),
+            cube_B_project_header=self._get_project_fits_header(2),
+            overwrite=self.overwrite,
+            tuning_parameters=self.tuning_parameters,
+            indexer=self.indexer,
+            config_file_name=self.config_file_name)
+
+        sex.compute_source_spectra(
+            source_list,
+            self.indexer.get_path('extracted_source_interferograms',
+                                  file_group=camera_number),
+            self.options['step'],
+            self.options['order'],
+            self.options['apodization_function'],
+            filter_path, phase_map_0_path, phase_coeffs,
+            self.config['CALIB_NM_LASER'],
+            self.indexer.get_path('phase_calibration_laser_map',
+                                  file_group=0),
+            spectral_calibration=False,#self.options['spectral_calibration'],
+            filter_correction=filter_correction,
+            cube_A_is_balanced = self._is_balanced(1),
+            phase_correction=phase_correction,
+            zpd_shift=zpd_shift)
 
 
     def export_calibration_laser_map(self, camera_number):
@@ -2765,13 +3037,25 @@ class Orbs(Tools):
         
         spectrum_header.set('FILETYPE', 'Calibrated Spectrum Cube')
 
+        # get zpd index
+        if 'zpd_index' in self.options:
+            zpd_index = self.options['zpd_index']
+        else:
+            cube = HDFCube(self._get_interfero_cube_path(
+                camera_number, corrected=True))
+            zpd_index = orb.utils.find_zpd(
+                cube.get_zmedian(nozero=True))
+            
+        spectrum_header.set('ZPDINDEX', zpd_index)
+
+        # get apodization
         apod = spectrum_header['APODIZ']
         spectrum_path = self._get_calibrated_spectrum_cube_path(
             camera_number, apod, wavenumber=wavenumber,
             spectral_calibration=self.options['spectral_calibration'])
         
         spectrum.export(spectrum_path, header=spectrum_header,
-                        overwrite=self.overwrite)
+                        overwrite=self.overwrite, force_hdf5=True)
 
     def export_standard_spectrum(self, camera_number, phase_correction=None,
                                  aperture_photometry=True,
@@ -2803,9 +3087,11 @@ class Orbs(Tools):
           stars). Note that if auto_phase is set to True, phase will
           be corrected even if phase_correction is False (default True).
         """
+
+        self._print_error('must be reimplemented')
         std_list = [[self.options['target_x'], self.options['target_y']]]
 
-        std_spectrum = self.extract_stars_spectrum(
+        std_spectrum = self.extract_source_spectra(
             camera_number, apodization_function, star_list_path=std_list,
             aperture_photometry=aperture_photometry,
             phase_correction=phase_correction, auto_phase=auto_phase,
@@ -2824,7 +3110,34 @@ class Orbs(Tools):
                         fits_header=std_header,
                         overwrite=True)
         
+    def export_source_spectra(self, camera_number):
+        """Export computed source spectra to the root folder.
 
+        :param camera_number: Camera number (must be 1, 2 or 0 for
+          merged data).
+        """
+        source_spectra = self.read_fits(self.indexer.get_path(
+            'extracted_source_spectra', file_group=camera_number))
+        if len(source_spectra.shape) == 1:
+            step_nb = source_spectra.shape[0]
+        else:
+            step_nb = source_spectra.shape[1]
+
+        nm_axis = orb.utils.create_nm_axis(
+            step_nb, self.options['step'], self.options['order'])
+        source_header = (self._get_project_fits_header()
+                         + self._get_basic_header('Extracted source spectra')
+                         + self._get_fft_params_header(self.options[
+                             'apodization_function'])
+                         + self._get_basic_spectrum_cube_header(nm_axis))
+        
+        source_spectra_path = self._get_extracted_source_spectra_path(
+            camera_number)
+        
+        self.write_fits(source_spectra_path, source_spectra,
+                        fits_header=source_header,
+                        overwrite=True)
+    
         
         
             

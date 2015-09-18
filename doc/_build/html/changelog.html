@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Changelog &mdash; Orbs 3.10.0 documentation</title>
+  <title>Changelog &mdash; Orbs 3.10.1 documentation</title>
   
 
   
@@ -32,7 +32,7 @@
   
 
   
-    <link rel="top" title="Orbs 3.10.0 documentation" href="index.html"/>
+    <link rel="top" title="Orbs 3.10.1 documentation" href="index.html"/>
         <link rel="prev" title="Process module" href="process_module.html"/> 
 
   
@@ -200,6 +200,8 @@
 <li class="toctree-l2"><a class="reference internal" href="process_module.html#spectrum-class">Spectrum class</a></li>
 <li class="toctree-l2"><a class="reference internal" href="process_module.html#phase-class">Phase class</a></li>
 <li class="toctree-l2"><a class="reference internal" href="process_module.html#standard-class">Standard class</a></li>
+<li class="toctree-l2"><a class="reference internal" href="process_module.html#sourceextractor-class">SourceExtractor class</a></li>
+<li class="toctree-l2"><a class="reference internal" href="process_module.html#phasemaps-class">PhaseMaps class</a></li>
 </ul>
 </li>
 </ul>
@@ -380,6 +382,12 @@
 <li class="toctree-l4"><a class="reference internal" href="#phase-correction">Phase correction</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#id27">Cosmic rays detection</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#id28">Miscellaneous</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#v3-10-1">v3.10.1</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#source-extraction">Source extraction</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#phase-maps">Phase maps</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id29">Miscellaneous</a></li>
 </ul>
 </li>
 </ul>
@@ -581,10 +589,10 @@ computation which can be unreliable.</p>
 phase data cubes. Those data cubes are useful to recover the phase
 maps. Three methods have been created:
 <a class="reference internal" href="process_module.html#process.Phase.create_phase_maps" title="process.Phase.create_phase_maps"><code class="xref py py-meth docutils literal"><span class="pre">create_phase_maps()</span></code></a> which create the phase
-maps from a phase cube, <a class="reference internal" href="process_module.html#process.Phase.smooth_phase_map" title="process.Phase.smooth_phase_map"><code class="xref py py-meth docutils literal"><span class="pre">smooth_phase_map()</span></code></a>
+maps from a phase cube, <code class="xref py py-meth docutils literal"><span class="pre">smooth_phase_map()</span></code>
 which smooth the values of the phase map of 0th order (remember that
 phase values are defined modulo PI) and
-<a class="reference internal" href="process_module.html#process.Phase.fit_phase_map" title="process.Phase.fit_phase_map"><code class="xref py py-meth docutils literal"><span class="pre">fit_phase_map()</span></code></a> which fit the created
+<code class="xref py py-meth docutils literal"><span class="pre">fit_phase_map()</span></code> which fit the created
 smoothed phase map of 0th order to remove noisy data.</p>
 </li>
 <li><p class="first"><code class="xref py py-meth docutils literal"><span class="pre">orbs.orbs.Orbs.full_reduction()</span></code> and
@@ -715,7 +723,7 @@ to make it more stable</li>
 <li><code class="xref py py-meth docutils literal"><span class="pre">get_lr_phase()</span></code> window changed to a NORTON_BEER 2.0
 to get a phase with much less artefacts: give a much more precise
 phase and thus much more precise phase maps.</li>
-<li><a class="reference internal" href="process_module.html#process.Interferogram.compute_phase_coeffs_vector" title="process.Interferogram.compute_phase_coeffs_vector"><code class="xref py py-meth docutils literal"><span class="pre">compute_phase_coeffs_vector()</span></code></a> use a
+<li><code class="xref py py-meth docutils literal"><span class="pre">compute_phase_coeffs_vector()</span></code> use a
 cleaner way to get the median phase coefficient for each phase map:
 used points are choosen from the residual map created by
 <a class="reference internal" href="process_module.html#process.Phase.create_phase_maps" title="process.Phase.create_phase_maps"><code class="xref py py-meth docutils literal"><span class="pre">create_phase_maps()</span></code></a> and sigma-clipped before the mean
@@ -1124,7 +1132,7 @@ account the fact that no wavelength calibration has been done.</p>
 <div class="section" id="enhanced-phase-map-fit">
 <h4>Enhanced phase map fit<a class="headerlink" href="#enhanced-phase-map-fit" title="Permalink to this headline">¶</a></h4>
 <ul class="simple">
-<li><a class="reference internal" href="process_module.html#process.Phase.fit_phase_map" title="process.Phase.fit_phase_map"><code class="xref py py-meth docutils literal"><span class="pre">fit_phase_map()</span></code></a> has been enhanced to give
+<li><code class="xref py py-meth docutils literal"><span class="pre">fit_phase_map()</span></code> has been enhanced to give
 better results and use the residual map on phase fit.</li>
 </ul>
 </div>
@@ -1480,12 +1488,12 @@ conditions (gravity vector, temperature and so on).</li>
 </div></blockquote>
 <ul class="simple">
 <li><a class="reference internal" href="process_module.html#process.Phase" title="process.Phase"><code class="xref py py-class docutils literal"><span class="pre">Phase</span></code></a>:<ul>
-<li><a class="reference internal" href="process_module.html#process.Phase.fit_phase_map" title="process.Phase.fit_phase_map"><code class="xref py py-meth docutils literal"><span class="pre">fit_phase_map()</span></code></a> can be set to use a
+<li><code class="xref py py-meth docutils literal"><span class="pre">fit_phase_map()</span></code> can be set to use a
 &#8216;sitelle&#8217; model to fit the phase. In this case the new calibration
 laser map is also
 returned. <a class="reference internal" href="orbs_module.html#orbs.orbs.Orbs.calibrate_spectrum" title="orbs.orbs.Orbs.calibrate_spectrum"><code class="xref py py-meth docutils literal"><span class="pre">orbs.orbs.Orbs.calibrate_spectrum()</span></code></a> will use
 the new calibration laser map.</li>
-<li><a class="reference internal" href="process_module.html#process.Phase.smooth_phase_map" title="process.Phase.smooth_phase_map"><code class="xref py py-meth docutils literal"><span class="pre">smooth_phase_map()</span></code></a> is now parallelized to
+<li><code class="xref py py-meth docutils literal"><span class="pre">smooth_phase_map()</span></code> is now parallelized to
 smooth the phase map by quadrants (&#8216;unwrap&#8217; instead of &#8216;smooth&#8217;
 would be more precise). A special algorithm has been developped to
 reorder the quadrants (each one being individually smoothed) and
@@ -1524,6 +1532,38 @@ bad WCS calibration.</li>
 <li>script <strong>orbs-sitelle-makejob</strong> created to help in creating a job
 file from a list of the files to reduce (object files, flats and
 calibration map)</li>
+</ul>
+</div>
+</div>
+<div class="section" id="v3-10-1">
+<h3>v3.10.1<a class="headerlink" href="#v3-10-1" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="source-extraction">
+<h4>Source extraction<a class="headerlink" href="#source-extraction" title="Permalink to this headline">¶</a></h4>
+<p>Source extraction has been implemented. The new target <strong>&#8211;sources</strong>
+is available in orbs command. The keyword SOURCE_LIST_PATH can be set
+to the path of a source list in the option file.</p>
+<p>Source spectra are not background subtracted.</p>
+<p>Source extraction is handled by
+<a class="reference internal" href="process_module.html#process.SourceExtractor" title="process.SourceExtractor"><code class="xref py py-class docutils literal"><span class="pre">SourceExtractor</span></code></a>.</p>
+</div>
+<div class="section" id="phase-maps">
+<h4>Phase maps<a class="headerlink" href="#phase-maps" title="Permalink to this headline">¶</a></h4>
+<p>Phase computation process has completely changed. It is now based on a
+binned interferogram cube from which the order 1 of the phase is
+extracted by a fitting process. The order 0 maps is then computed
+knowing the order 1 with precision by minimization of the imaginary
+part at each binned pixel. The obtained order 0 map is much more
+precise and can be fitted with an opto-mechanical model. Phase map
+unwrapping process (generally called smoothing, which must be made
+before fitting) has also been improved.</p>
+<p>Smoothing and fitting is now handled with
+<a class="reference internal" href="process_module.html#process.PhaseMaps" title="process.PhaseMaps"><code class="xref py py-class docutils literal"><span class="pre">PhaseMaps</span></code></a>.</p>
+</div>
+<div class="section" id="id29">
+<h4>Miscellaneous<a class="headerlink" href="#id29" title="Permalink to this headline">¶</a></h4>
+<ul class="simple">
+<li>Flat frames are now normalized before being combined to avoid an
+intensity change problem when they are combined.</li>
 </ul>
 </div>
 </div>
@@ -1567,7 +1607,7 @@ calibration map)</li>
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'3.10.0',
+            VERSION:'3.10.1',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true

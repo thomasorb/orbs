@@ -49,4 +49,12 @@
     <outfile name='calibrated_spectrum_cube'></outfile>
   </step>
 
+  <step name="extract_source_interferograms">
+    <outfile name='extracted_source_interferograms'></outfile>
+  </step>
+
+  <step name="compute_source_spectra">
+    <outfile name='extracted_source_spectra'></outfile>
+  </step>
+
 </steps>
