@@ -1,4 +1,4 @@
-#!/usr/bin/python 
+#!/usr/bin/env python 
 # *-* coding: utf-8 *-*
 # Author: Thomas Martin <thomas.martin.1@ulaval.ca>
 # File: orbs
@@ -30,7 +30,6 @@
 # To run this script simply use the following command :
 # $ ./orbs option_file.opt start
 # Remember : for any help please refer to the documentation
-
 import sys, os, time, traceback
 import argparse
 from argparse import ArgumentParser
@@ -256,12 +255,20 @@ def check_option_file(to, path):
             ## generate list of files
             def generate_file_list(to, path, options, key, ftype,
                                    chip_index, prebin):
+
+                # list is sorted in the job file order so the job file
+                # is assumed to give a sorted list of files
                 l = list()
                 for k in options:
                     if [''.join(i for i in k if not i.isdigit())][0] == key:
-                        l.append(options[k])
-                        
-                l = to.sort_image_list(l, 'sitelle')
+                        index_str = k[len(key):]
+                        if len(index_str) > 0:
+                            index = int(index_str)
+                        else:
+                            index = 1
+                        l.append((options[k], index))
+                l = sorted(l, key=lambda ifile: ifile[1])
+                l = [ifile[0] for ifile in l]
 
                 fpath = '{}.{}.cam{}.list'.format(path, ftype, chip_index)
                 with to.open_file(fpath, 'w') as flist:
@@ -311,7 +318,6 @@ def get_config_file_name(args):
         
     elif args.mode == 'spiomm':
         return 'config.spiomm.orb'
-
 
 def get_to(args):
     return Tools(config_file_name=get_config_file_name(args))
@@ -413,7 +419,8 @@ def start(args, resume=False):
 
     # check first if reduction can be resumed
     if not resume and args.start_step == 0:
-        project_fast_init = init_orbs(args, target, cams, fast_init=True, silent=True)
+        project_fast_init = init_orbs(
+            args, target, cams, fast_init=True, silent=True)
 
         if project_fast_init.roadmap.get_resume_step() > 0:
             project_fast_init.roadmap.print_status()

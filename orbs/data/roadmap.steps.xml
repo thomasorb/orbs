@@ -9,6 +9,10 @@
     <outfile name='cr_map_cube'></outfile>
   </step>
 
+  <step name="compute_cosmic_ray_maps">
+    <outfile name='cr_map_cube_1'></outfile>
+  </step>
+
   <step name="compute_interferogram">
     <outfile name='interfero_cube'></outfile>
   </step>

@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 # *-* coding: utf-8 *-*
 # Author: Thomas Martin <thomas.martin.1@ulaval.ca>
 # file: orbs-check
@@ -29,8 +29,8 @@ import os, sys
 import orbs
 from orbs.orbs import Orbs
 from orbs.process import InterferogramMerger, Interferogram
-from orb.core import Tools, Cube
-from orb.visual import BaseViewer
+from orb.core import Tools, Cube, HDFCube
+from orb.visual import ImageWindow
 import orb.utils
 import orb.astrometry
 
@@ -216,13 +216,22 @@ class OrbsCheck(Tools):
         """
         cube = self._orbs._init_raw_data_cube(camera_number)
         frame = cube.get_data_frame(frame_nb).transpose()
-        cr_list = np.nonzero(self.read_fits(cube._get_cr_map_frame_path(frame_nb)))
+        cr_map = HDFCube(cube._get_cr_map_cube_path())
+        cr_list = np.nonzero(cr_map[:,:,frame_nb])
         cr_final_list = list()
         for icr in range(len(cr_list[0])):
-            cr_final_list.append((cr_list[0][icr], cr_list[1][icr]))    
-        self._graph.pop_frame(frame)
-        self._graph.pop_stars(np.array(cr_final_list))
+            cr_final_list.append((cr_list[0][icr], cr_list[1][icr]))
+        cr_final_list = np.array(cr_final_list)
+        frame = cube[:,:,0]
+        vmax = orb.cutils.part_value(frame.flatten(), 0.85)
+        vmin = orb.cutils.part_value(frame.flatten(), 0.1)
 
+        imw = ImageWindow(frame)
+        imw.show()
+        
+        imw.scatter(cr_final_list[:,0], cr_final_list[:,1])
+        
+        
     def show_alignment_quality(self):
         """Compare the fitted position of the stars in a deep frame
         from the corrected interferogram of the first camera and a
@@ -438,7 +447,6 @@ class OrbsCheckGui(OrbsCheck):
     def __init__(self, option_file_path, mode):
         OrbsCheck.__init__(self, option_file_path, mode)
         
-
         self.window = gtk.Window(gtk.WINDOW_TOPLEVEL)
         self.window.connect('destroy', self.destroy)
         self.window.set_border_width(10)
@@ -462,6 +470,7 @@ class OrbsCheckGui(OrbsCheck):
 
         add_button('Alignement Vector', boxcams, self._show_alignment_vector_cb)
         add_button('Detected stars', boxcams, self._show_detected_stars_cb)
+        add_button('Detected cosmic rays', boxcams, self._show_detected_cosmic_rays_cb)
        
         boxmerged = gtk.VBox()
         liststore = gtk.ListStore(gobject.TYPE_STRING)
@@ -507,6 +516,9 @@ class OrbsCheckGui(OrbsCheck):
 
     def _show_detected_stars_cb(self, w):
         self.show_detected_stars(self.boxcams_camera)
+
+    def _show_detected_cosmic_rays_cb(self, w):
+        self.show_detected_cosmic_rays(self.boxcams_camera, 0)
         
     def _set_boxcams_camera_cb(self, w):
         val = w.get_active_text()

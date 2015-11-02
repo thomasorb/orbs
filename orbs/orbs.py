@@ -41,8 +41,6 @@ import numpy as np
 import xml.etree.ElementTree
     
 import astropy
-import astropy.wcs as pywcs
-import astropy.io.fits as pyfits
 
 import pp
 import bottleneck as bn
@@ -50,12 +48,16 @@ import bottleneck as bn
 
 from orb.core import Tools, Cube, Indexer, OptionFile, HDFCube
 from process import RawData, InterferogramMerger, Interferogram
-from process import Phase, Spectrum, CalibrationLaser
-from process import SourceExtractor, PhaseMaps
+from process import Spectrum, CalibrationLaser
+from process import SourceExtractor, PhaseMaps, CosmicRayDetector
 from orb.astrometry import Astrometry
-import orb.utils
 import orb.constants
 import orb.version
+import orb.utils.spectrum
+import orb.utils.fft
+import orb.utils.stats
+import orb.utils.image
+import orb.utils.vector
 
 
 ORBS_DATA_PATH = os.path.join(os.path.split(__file__)[0], "data")
@@ -468,15 +470,19 @@ class Orbs(Tools):
                                     prebinning=prebinning,
                                     check=not fast_init))
                         else:
-                             self.options[option_key] = value
+                            self.options[option_key] = value
                              
-
-                        # export fits frames as hdf5 cubes
+                        # export fits frames as an hdf5 cube
                         if not fast_init:
                             cube = Cube(self.options[option_key],
-                                        silent_init=True)
-                            export_path = os.path.splitext(
-                                self.options[option_key])[0] + '.hdf5'
+                                        silent_init=True, no_sort=True)
+                            
+                            export_path = (
+                                self._get_project_dir()
+                                + os.path.splitext(
+                                    os.path.split(
+                                        self.options[option_key])[1])[0]
+                                + '.hdf5')
 
                             # check if the hdf5 cube already
                             # exists. If the list of the imported
@@ -650,7 +656,6 @@ class Orbs(Tools):
             
         # In the case of LASER cube the parameters are set
         # automatically
-        
         if target == 'laser':
             self.options['object_name'] = 'LASER'
             self.options['filter_name'] = 'None'
@@ -700,16 +705,22 @@ class Orbs(Tools):
         store_option_parameter('flat_spectrum_path', 'DIRFLTS', str, True)
 
         if 'image_list_path_1' in self.options:
-            cube1 = Cube(self.options['image_list_path_1'],
-                         silent_init=True,
-                         config_file_name=self.config_file_name)
+            if fast_init:
+                cube1 = Cube(self.options['image_list_path_1'],
+                             silent_init=True,
+                             config_file_name=self.config_file_name,
+                             no_sort=True)
+            else:
+                cube1 = HDFCube(self.options['image_list_path_1.hdf5'],
+                                silent_init=True,
+                                config_file_name=self.config_file_name)
             dimz1 = cube1.dimz
             cam1_image_shape = [cube1.dimx, cube1.dimy]
             
             # Get data binning
             cam1_detector_shape = [self.config['CAM1_DETECTOR_SIZE_X'],
                                    self.config['CAM1_DETECTOR_SIZE_Y']]
-            bin_cam_1 = orb.utils.compute_binning(
+            bin_cam_1 = orb.utils.image.compute_binning(
                 cam1_image_shape, cam1_detector_shape)
             self._print_msg('Computed binning of camera 1: {}x{}'.format(
                 *bin_cam_1))
@@ -725,15 +736,21 @@ class Orbs(Tools):
                         * self.options['prebinning'])
                     
         if 'image_list_path_2' in self.options:
-            cube2 = Cube(self.options['image_list_path_2'],
-                         silent_init=True,
-                         config_file_name=self.config_file_name)
+            if fast_init:
+                cube2 = Cube(self.options['image_list_path_2'],
+                             silent_init=True,
+                             config_file_name=self.config_file_name,
+                             no_sort=True)
+            else:
+                cube2 = HDFCube(self.options['image_list_path_2.hdf5'],
+                                silent_init=True,
+                                config_file_name=self.config_file_name)
             dimz2 = cube2.dimz
             cam2_image_shape = [cube2.dimx, cube2.dimy]
             # Get data binning
             cam2_detector_shape = [self.config['CAM2_DETECTOR_SIZE_X'],
                                    self.config['CAM2_DETECTOR_SIZE_Y']]
-            bin_cam_2 = orb.utils.compute_binning(
+            bin_cam_2 = orb.utils.image.compute_binning(
                 cam2_image_shape, cam2_detector_shape)
             self._print_msg('Computed binning of camera 2: {}x{}'.format(
                 *bin_cam_2))
@@ -761,17 +778,21 @@ class Orbs(Tools):
                 self.options['step_number'] = dimz1
 
         # get ZPD shift in SITELLE's case
-        if self.config["INSTRUMENT_NAME"] == 'SITELLE':
+        if self.config["INSTRUMENT_NAME"] == 'SITELLE' and not fast_init:
             cube1 = Cube(self.options['image_list_path_1'],
                          silent_init=True,
-                         config_file_name=self.config_file_name)
-            steps = list()
-            for ihdr in range(cube1.dimz):
-                steps.append(cube1.get_frame_header(ihdr)['SITSTEP'])
-            steps = np.array(steps)
-            
-        
-            zpd_index = np.nonzero(steps==0)[0][0]
+                         config_file_name=self.config_file_name,
+                         no_sort=True)
+
+            zpd_found = False
+            for ik in range(cube1.dimz):
+                sitstep = cube1.get_frame_header(ik)['SITSTEP']
+                if sitstep == 0:
+                    zpd_index = ik
+                    zpd_found = True
+                    break
+            if not zpd_found: self._print_error('zpd index could not be found')
+                
             zpd_shift = int(int(cube1.dimz/2.) - zpd_index)
             self.options['zpd_index'] = zpd_index
             self.options['zpd_shift'] = zpd_shift
@@ -798,6 +819,8 @@ class Orbs(Tools):
                             self.compute_alignment_vector)
         self.roadmap.attach('compute_cosmic_ray_map',
                             self.compute_cosmic_ray_map)
+        self.roadmap.attach('compute_cosmic_ray_maps',
+                            self.compute_cosmic_ray_maps)
         self.roadmap.attach('compute_interferogram',
                             self.compute_interferogram)
         self.roadmap.attach('transform_cube_B',
@@ -1114,11 +1137,13 @@ class Orbs(Tools):
         """
 
         if "target_ra" in self.options:
-            target_ra = orb.utils.ra2deg(self.options["target_ra"])
+            target_ra = orb.utils.astrometry.ra2deg(
+                self.options["target_ra"])
         else: target_ra = None
             
         if "target_dec" in self.options:
-            target_dec = orb.utils.dec2deg(self.options["target_dec"])
+            target_dec = orb.utils.astrometry.dec2deg(
+                self.options["target_dec"])
         else: target_dec = None
         
         if "target_x" in self.options:
@@ -1256,9 +1281,10 @@ class Orbs(Tools):
             self._print_warning("No residual map path found")
             return None
 
-        phase_coeffs = orb.utils.compute_phase_coeffs_vector(
-            phase_map_paths,
-            residual_map_path=residual_map_path)
+        phase_maps = [self.read_fits(ipath) for ipath in phase_map_paths]
+        phase_coeffs = orb.utils.fft.compute_phase_coeffs_vector(
+            phase_maps,
+            res_map=self.read_fits(residual_map_path))
         
         return phase_coeffs
 
@@ -1323,7 +1349,7 @@ class Orbs(Tools):
 
         if bad_frames_list is not None:
             if np.all(np.array(bad_frames_list) >= 0):
-                bad_frames_list = orb.utils.correct_bad_frames_vector(
+                bad_frames_list = orb.utils.vector.correct_bad_frames_vector(
                     bad_frames_list, interf_cube.dimz)
                 bad_frames_vector[bad_frames_list] = 1
             else:
@@ -1482,7 +1508,7 @@ class Orbs(Tools):
                     f.write('{} {}\n'.format(
                         star_list[istar, 0], star_list[istar, 1]))
             star_list_path = star_list_fit_path
-            mean_fwhm = orb.utils.robust_median(fit_results[:,'fwhm_arc'])
+            mean_fwhm = orb.utils.stats.robust_median(fit_results[:,'fwhm_arc'])
             self._print_msg('Mean FWHM: {} arcsec'.format(mean_fwhm))
             
         
@@ -1593,20 +1619,47 @@ class Orbs(Tools):
         del cube, perf
         return perf_stats
 
+    def compute_cosmic_ray_maps(self):
+        """Run computation of cosmic ray maps.
+        
+        .. seealso:: :meth:`process.CosmicRayDetector.create_cosmic_ray_maps`
+        """
+        cube, star_list_path = self.compute_alignment_parameters(
+            no_star=False, raw=True,
+            return_star_list=True)
+
+        perf = Performance(
+            cube.cube_A, "Cosmic ray map computation", 0,
+            config_file_name=self.config_file_name)
+
+        alignment_vector_path_1 = self.indexer['cam1.alignment_vector']
+
+        cube.create_cosmic_ray_maps(alignment_vector_path_1, star_list_path,
+                                    self._get_init_fwhm_pix())
+        perf_stats = perf.print_stats()
+        del cube, perf
+        return perf_stats
+
+    def _get_init_fwhm_pix(self):
+        """Return init FWHM of the stars in pixels"""
+        return (float(self.config['INIT_FWHM'])
+                * float(self.config['CAM1_DETECTOR_SIZE_X'])
+                / float(self.config['FIELD_OF_VIEW'])
+                / 60.)
+
     def compute_cosmic_ray_map(self, camera_number, z_coeff=3.):
-        """Run the computation of the cosmic ray map.
+        """Run computation of cosmic ray map.
 
         :param camera_number: Camera number (can be either 1 or 2).
         
-        :param z_coeff: (Optional) Threshold coefficient for cosmic ray
-          detection, lower it to detect more cosmic rays (default : 3.).
+        :param z_coeff: (Optional) Threshold coefficient for cosmic
+          ray detection, lower it to detect more cosmic rays (default
+          : 3.).
 
         .. seealso:: :meth:`process.RawData.create_cosmic_ray_map`
         """
         cube = self._init_raw_data_cube(camera_number)
-        perf = Performance(cube, "Cosmic ray map computation", camera_number,
-                           config_file_name=self.config_file_name)
-        
+
         if "step_number" in self.options: 
             step_number = self.options["step_number"]
         else:
@@ -1619,10 +1672,14 @@ class Orbs(Tools):
 
         star_list_path, mean_fwhm_pix = self.detect_stars(
             cube, camera_number, return_fwhm_pix=True, all_sources=True)
-            
+
+        perf = Performance(cube, "Cosmic ray map computation", camera_number,
+                           config_file_name=self.config_file_name)
+
         cube.create_cosmic_ray_map(z_coeff=z_coeff, step_number=step_number,
                                    bad_frames_vector=bad_frames_vector,
                                    star_list_path=star_list_path)
+
 
         perf_stats = perf.print_stats()
         del cube, perf
@@ -1720,11 +1777,23 @@ class Orbs(Tools):
             bad_frames_vector = self.options["bad_frames"]
         else:
             bad_frames_vector = []
-            
+
+        if self.config["INSTRUMENT_NAME"] == 'SITELLE':
+            if camera_number == 1:
+                cr_map_cube_path = self.indexer.get_path(
+                    'cr_map_cube_1', 0)
+            elif camera_number == 2:
+                cr_map_cube_path = self.indexer.get_path(
+                    'cr_map_cube_2', 0)
+            self._print_msg('Cosmic ray map: {}'.format(
+                cr_map_cube_path))
+        else:
+            cr_map_cube_path = None
         cube.correct(
             bias_path=bias_path, dark_path=dark_path, 
             flat_path=flat_path, alignment_vector_path=None,
-            cr_map_cube_path=None, bad_frames_vector=bad_frames_vector, 
+            cr_map_cube_path=cr_map_cube_path,
+            bad_frames_vector=bad_frames_vector, 
             dark_int_time=dark_int_time, flat_int_time=None,
             exposition_time=exposition_time,
             optimize_dark_coeff=optimize_dark_coeff,
@@ -1737,7 +1806,6 @@ class Orbs(Tools):
         return perf_stats
 
     def transform_cube_B(self, interp_order=1, no_star=False):
-        
         """Calculate the alignment parameters of the camera 2
         relatively to the first one. Transform the images of the
         camera 2 using linear interpolation by default.
@@ -1749,9 +1817,40 @@ class Orbs(Tools):
           parameters (recorded in the configuration file :
           'data/config.orb') (default False).
                          
-        .. seealso:: :py:meth:`process.InterferogramMerger.find_alignment`
         .. seealso:: :py:meth:`process.InterferogramMerger.transform`
         """
+        # compute alignment parameters
+        cube = self.compute_alignment_parameters(no_star=no_star)
+
+        perf = Performance(cube.cube_B, "Cube B transformation", 2,
+                           config_file_name=self.config_file_name)
+        
+        # transform frames of cube B
+        cube.transform(interp_order=interp_order)
+        
+        perf_stats = perf.print_stats()
+        del cube, perf
+        return perf_stats
+
+    def compute_alignment_parameters(self, no_star=False, raw=False,
+                                     return_star_list=False):
+        """Compute alignement parameters between cubes and return a
+        :py:class:`process.InterferogramMerger instance`.
+
+        :param no_star: (Optional) If the cube does not contain any star, the
+          transformation is made using the default alignment
+          parameters (recorded in the configuration file :
+          'data/config.orb') (default False).
+
+        :param return_star_list: (Optional) If True, the star list
+          used is returned with the cube. This option is incompatible
+          with no_star option (default False).
+
+        .. seealso:: :py:meth:`process.InterferogramMerger.find_alignment`
+        """
+        if no_star and return_star_list:
+            self._print_error('return_star_list is incompatible with no_star')
+        
         # get binning factor for each camera
         if "bin_cam_1" in self.options: 
             bin_cam_1 = self.options["bin_cam_1"]
@@ -1768,8 +1867,12 @@ class Orbs(Tools):
         init_dy = self.config["INIT_DY"] / bin_cam_2
 
         # get interferograms frames paths
-        interf_cube_path_1 = self.indexer['cam1.interfero_cube']
-        interf_cube_path_2 = self.indexer['cam2.interfero_cube']
+        if raw:
+            interf_cube_path_1 = self.options["image_list_path_1.hdf5"]
+            interf_cube_path_2 = self.options["image_list_path_2.hdf5"]
+        else:
+            interf_cube_path_1 = self.indexer['cam1.interfero_cube']
+            interf_cube_path_2 = self.indexer['cam2.interfero_cube']
 
         # detect stars in cube 1
         if not no_star:
@@ -1787,7 +1890,11 @@ class Orbs(Tools):
 
         # Init InterferogramMerger class
         self.indexer.set_file_group('merged')
-        cube = InterferogramMerger(
+        if raw:
+            ComputingClass = CosmicRayDetector
+        else:
+            ComputingClass = InterferogramMerger
+        cube = ComputingClass(
             interf_cube_path_1, interf_cube_path_2,
             bin_A=bin_cam_1, bin_B=bin_cam_2,
             pix_size_A=self.config["PIX_SIZE_CAM1"],
@@ -1802,26 +1909,22 @@ class Orbs(Tools):
             indexer=self.indexer,
             config_file_name=self.config_file_name)
 
-        perf = Performance(cube.cube_B, "Cube B transformation", 2,
-                           config_file_name=self.config_file_name)
-
         # find alignment coefficients
         if not no_star and alignment_coeffs is None:
             cube.find_alignment(
                 star_list_path_1,
                 self.config["INIT_ANGLE"], init_dx, init_dy,
-                mean_fwhm_1_arc, self.config["FIELD_OF_VIEW"])
+                mean_fwhm_1_arc, self.config["FIELD_OF_VIEW"],
+                combine_first_frames=raw)
         else:
             self._print_msg("Alignment parameters: {} {} {} {} {}".format(
                 cube.dx, cube.dy, cube.dr, cube.da, cube.db))
-            
 
-        # transform frames of cube B
-        cube.transform(interp_order=interp_order)
+        if return_star_list:
+            return cube, star_list_path_1
+        else:
+            return cube
         
-        perf_stats = perf.print_stats()
-        del cube, perf
-        return perf_stats
 
     def merge_interferograms_alt(self, add_frameB=True):
         
@@ -2371,16 +2474,6 @@ class Orbs(Tools):
         # get calibration laser map path
         calibration_laser_map_path = self._get_calibration_laser_map(
             camera_number)
-
-        # get default phase list path
-        if camera_number == 0:
-            phase_cube_path = self.indexer['merged.phase_cube']
-        elif camera_number == 1:
-            phase_cube_path = self.indexer['cam1.phase_cube']
-        elif camera_number == 2:
-            phase_cube_path = self.indexer['cam2.phase_cube']
-        else:
-            self._print_error('Camera number must be 1, 2 or 0')
                 
         # get base phase maps
         if not no_star:
@@ -2406,7 +2499,9 @@ class Orbs(Tools):
 
         if self.config["INSTRUMENT_NAME"] == 'SITELLE':
             binning = 6
-            div_nb = None
+            div_nb = 1
+            if calibration_laser_map_path is None:
+                self._print_error('Calibration laser map path must be set fot a SITELLE phase map fit')
         else:
             binning = 3
             div_nb = 1
@@ -2415,7 +2510,7 @@ class Orbs(Tools):
             self.options['step'], self.options['order'],
             zpd_shift=zpd_shift, binning=binning)
 
-        # smooth and fit phase maps
+        # unwrap and fit phase maps
         phasemaps = PhaseMaps(
             [cube._get_phase_map_path(0),
              cube._get_phase_map_path(1)],
@@ -2431,9 +2526,9 @@ class Orbs(Tools):
             data_prefix=self._get_data_prefix(camera_number),
             calibration_laser_header=self._get_calibration_laser_fits_header())
 
+        # unwrap phase map
+        phasemaps.unwrap_phase_map_0()
         
-        phasemaps.smooth_phase_map_0(div_nb=div_nb)
-
         if fit:
             if self.config["INSTRUMENT_NAME"] == 'SITELLE':
                 phase_model = 'sitelle'
@@ -3024,10 +3119,10 @@ class Orbs(Tools):
             wavenumber = False
 
         if not wavenumber:
-            axis = orb.utils.create_nm_axis(
+            axis = orb.utils.spectrum.create_nm_axis(
                 spectrum.dimz, self.options['step'], self.options['order'])
         else:
-            axis = orb.utils.create_cm1_axis(
+            axis = orb.utils.spectrum.create_cm1_axis(
                 spectrum.dimz,  self.options['step'], self.options['order'])
         
         spectrum_header.extend(
@@ -3043,7 +3138,7 @@ class Orbs(Tools):
         else:
             cube = HDFCube(self._get_interfero_cube_path(
                 camera_number, corrected=True))
-            zpd_index = orb.utils.find_zpd(
+            zpd_index = orb.utils.fft.find_zpd(
                 cube.get_zmedian(nozero=True))
             
         spectrum_header.set('ZPDINDEX', zpd_index)
@@ -3097,7 +3192,7 @@ class Orbs(Tools):
             phase_correction=phase_correction, auto_phase=auto_phase,
             filter_correct=True)[0]
 
-        nm_axis = orb.utils.create_nm_axis(
+        nm_axis = orb.utils.spectrum.create_nm_axis(
             std_spectrum.shape[0], self.options['step'], self.options['order'])
         
         std_header = (self._get_project_fits_header()
@@ -3123,7 +3218,7 @@ class Orbs(Tools):
         else:
             step_nb = source_spectra.shape[1]
 
-        nm_axis = orb.utils.create_nm_axis(
+        nm_axis = orb.utils.spectrum.create_nm_axis(
             step_nb, self.options['step'], self.options['order'])
         source_header = (self._get_project_fits_header()
                          + self._get_basic_header('Extracted source spectra')

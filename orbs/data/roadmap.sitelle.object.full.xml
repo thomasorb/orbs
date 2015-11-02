@@ -8,12 +8,7 @@
     <arg value='2' type='int'></arg>
   </step>
 
-  <step name='compute_cosmic_ray_map' cam='1'>
-    <arg value='1' type='int'></arg>
-  </step>
-
-  <step name='compute_cosmic_ray_map' cam='2'>
-    <arg value='2' type='int'></arg>
+  <step name='compute_cosmic_ray_maps' cam='0'>
   </step>
 
   <step name='compute_interferogram' cam='1'>

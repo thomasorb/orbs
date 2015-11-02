@@ -1168,10 +1168,23 @@ before fitting) has also been improved.
 Smoothing and fitting is now handled with
 :py:class:`~process.PhaseMaps`.
 
+HDF5 Output
+-----------
+
+The final spectral cube generated at the output is now in HDF5
+format. Parts of it can be extracted and converted into FITS format
+with **orb-extract** script. 
+
 
 Miscellaneous
 -------------
 
 * Flat frames are now normalized before being combined to avoid an
   intensity change problem when they are combined.
+
+* orbs-fit-calibration-laser-map script has been created to fit exacly
+  a calibration laser map and remove the artefact generatd by small
+  calibration laser cubes (not enough resolution and SNR). The
+  precision obtained on a fitted calibration laser map is less than a
+  few 10 m/s (yes, meters !)
 

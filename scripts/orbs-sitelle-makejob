@@ -47,7 +47,7 @@ def main(args):
         with open(list_file_path, 'r') as f:
             for line in f:
                 files_list.append(line.strip())
-            files_list = to.sort_image_list(files_list, image_mode='sitelle')
+            #files_list = to.sort_image_list(files_list, image_mode='sitelle')
         return files_list
 
     
@@ -85,18 +85,42 @@ APOD 1.0
         f.write(s)
 
         if not args.laser:
+            object_list = list()
             for oline in olist:
+                fits_file = to.read_fits(oline, return_hdu_only=True)
+                istep = fits_file[0].header['SITSTEP']
+                iodom = os.path.split(oline)[1][:-6]
                 if args.object_name is not None:
                     try:
-                        fits_file = to.read_fits(oline, return_hdu_only=True)
                         fits_obj_name = fits_file[0].header['OBJECT']
                         if fits_obj_name.strip() == args.object_name.strip():
-                            f.write('OBS {}\n'.format(oline))
+                            object_list.append((oline, istep, iodom))
                     except Exception, e:
                         print 'Error opening FITS file: {}'.format(e)
         
                 else:
-                    f.write('OBS {}\n'.format(oline))
+                    object_list.append((oline, istep, iodom))
+
+            # remove doubles and keep only the latest file            
+            min_step = min([istep for oline, istep, iodom in object_list])
+            max_step = max([istep for oline, istep, iodom in object_list])
+            step_nb = max_step - min_step + 1
+
+            final_list = list()
+            for index in range(step_nb):
+                istep = index + min_step
+                files = [ifile for ifile in object_list if ifile[1] == istep]
+                if len(files) == 1:
+                    final_list.append(files[0])
+                else:
+                    files = sorted(files, key=lambda ifile: ifile[2])
+                    print 'step {} has been taken {} times: {} is the latest one'.format(istep, len(files), files[-1][0])
+                    final_list.append(files[-1])
+
+            # write object files
+            for oline, istep, iodom in final_list:
+                f.write('OBS {}\n'.format(oline))
+                
         else:
             for oline in olist:
                 f.write('COMPARISON {}\n'.format(oline))

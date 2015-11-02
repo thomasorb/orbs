@@ -30,12 +30,16 @@ __docformat__ = 'reStructuredText'
 import version
 __version__ = version.__version__
 
-from orb.core import Tools, Cube, ProgressBar, TextColor
+from orb.core import Tools, Cube, ProgressBar
 from orb.core import HDFCube, OutHDFCube
-import orb.utils
+import orb.utils.fft
+import orb.utils.filters
+import orb.utils.spectrum
+import orb.utils.image
+
 import orb.astrometry
 import orb.constants
-from orb.astrometry import Astrometry, Gaussian, Aligner
+from orb.astrometry import Astrometry, Aligner
 import bottleneck as bn
 
 import os
@@ -44,7 +48,6 @@ import math
 from scipy import optimize, interpolate
 
 import astropy.io.fits as pyfits
-import astropy.wcs as pywcs
 import warnings
 
 ##################################################
@@ -162,16 +165,16 @@ class RawData(HDFCube):
         :param reject: (Optional) Rejection operation. Can be
           'sigclip', 'minmax', 'avsigclip' or None (default
           'avsigclip'). See
-          :py:meth:`orb.utils.create_master_frame`.
+          :py:meth:`orb.utils.image.create_master_frame`.
         
         :param combine: (Optional) Combining operation. Can be
           'average' or 'median' (default 'average'). See
-          :py:meth:`orb.utils.create_master_frame`.
+          :py:meth:`orb.utils.image.create_master_frame`.
 
         .. note:: Bias images are resized if x and y dimensions of the
             flat images are not equal to the cube dimensions.
 
-        .. seealso:: :py:meth:`orb.utils.create_master_frame`
+        .. seealso:: :py:meth:`orb.utils.image.create_master_frame`
         """
         bias_cube = Cube(bias_list_path,
                          config_file_name=self.config_file_name)
@@ -207,13 +210,11 @@ class RawData(HDFCube):
             bias_frames = bias_cube.get_resized_data(self.dimx, self.dimy)
 
         if not self.BIG_DATA:
-            master_bias = orb.utils.create_master_frame(bias_frames,
-                                                        combine=combine,
-                                                        reject=reject)
+            master_bias = orb.utils.image.create_master_frame(
+                bias_frames, combine=combine, reject=reject)
         else:
-            master_bias = orb.utils.pp_create_master_frame(bias_frames,
-                                                           combine=combine,
-                                                           reject=reject)
+            master_bias = orb.utils.image.pp_create_master_frame(
+                bias_frames, combine=combine, reject=reject)
         
             
         self.write_fits(self._get_master_path('bias'),
@@ -239,16 +240,16 @@ class RawData(HDFCube):
         :param reject: (Optional) Rejection operation. Can be
           'sigclip', 'minmax', 'avsigclip' or None (default
           'avsigclip'). See
-          :py:meth:`orb.utils.create_master_frame`.
+          :py:meth:`orb.utils.image.create_master_frame`.
         
         :param combine: (Optional) Combining operation. Can be
           'average' or 'median' (default 'average'). See
-          :py:meth:`orb.utils.create_master_frame`.
+          :py:meth:`orb.utils.image.create_master_frame`.
 
         .. note:: Dark images are resized if x and y dimensions of the
             flat images are not equal to the cube dimensions.
 
-        .. seealso:: :py:meth:`orb.utils.create_master_frame`
+        .. seealso:: :py:meth:`orb.utils.image.create_master_frame`
         """
         dark_cube = Cube(dark_list_path,
                          config_file_name=self.config_file_name)
@@ -287,7 +288,7 @@ class RawData(HDFCube):
             dark_frames = np.empty((self.dimx, self.dimy), dtype=float)
             dark_median = list()
             for iframe in range(dark_cube.dimz):
-                dark_median.append(orb.utils.robust_median(
+                dark_median.append(orb.utils.stats.robust_median(
                     dark_frames_badsize[:,:,iframe]))
             dark_frames.fill(np.median(dark_median))
                 
@@ -299,13 +300,11 @@ class RawData(HDFCube):
 
         # Create master dark
         if not self.BIG_DATA:
-            master_dark = orb.utils.create_master_frame(dark_frames,
-                                                        combine=combine,
-                                                        reject=reject)
+            master_dark = orb.utils.image.create_master_frame(
+                dark_frames, combine=combine, reject=reject)
         else:
-            master_dark = orb.utils.pp_create_master_frame(dark_frames,
-                                                           combine=combine,
-                                                           reject=reject)
+            master_dark = orb.utils.image.pp_create_master_frame(
+                dark_frames, combine=combine, reject=reject)
 
         # Write master dark
         self.write_fits(self._get_master_path('dark'),
@@ -326,19 +325,19 @@ class RawData(HDFCube):
         :param reject: (Optional) Rejection operation. Can be
           'sigclip', 'minmax', 'avsigclip' or None (default
           'avsigclip'). See
-          :py:meth:`orb.utils.create_master_frame`.
+          :py:meth:`orb.utils.image.create_master_frame`.
         
         :param combine: (Optional) Combining operation. Can be
           'average' or 'median' (default 'average'). See
-          :py:meth:`orb.utils.create_master_frame`.
+          :py:meth:`orb.utils.image.create_master_frame`.
 
-        :param smooth_deg: (Optional) If > 0 smooth the master flat (help
+        :param smooth_deg: (Optional) If > 0 smooth the master flat (help in
           removing possible fringe pattern) (default 0).
 
         .. note:: Flat images are resized if the x and y dimensions of
             the flat images are not equal to the cube dimensions.
 
-        .. seealso:: :py:meth:`orb.utils.create_master_frame`
+        .. seealso:: :py:meth:`orb.utils.image.create_master_frame`
         """
         flat_cube = Cube(flat_list_path,
                          config_file_name=self.config_file_name)
@@ -360,17 +359,15 @@ class RawData(HDFCube):
 
         # create master flat
         if not self.BIG_DATA:
-            master_flat = orb.utils.create_master_frame(flat_frames,
-                                                        combine=combine,
-                                                        reject=reject)
+            master_flat = orb.utils.image.create_master_frame(
+                flat_frames, combine=combine, reject=reject)
         else:
-            master_flat = orb.utils.pp_create_master_frame(flat_frames,
-                                                           combine=combine,
-                                                           reject=reject)
+            master_flat = orb.utils.image.pp_create_master_frame(
+                flat_frames, combine=combine, reject=reject)
 
         if smooth_deg > 0:
-            master_flat = orb.utils.low_pass_image_filter(master_flat,
-                                                          smooth_deg)
+            master_flat = orb.utils.image.low_pass_image_filter(master_flat,
+                                                                smooth_deg)
             self._print_warning('Master flat smoothed (Degree: %d)'%smooth_deg)
 
 
@@ -524,8 +521,9 @@ class RawData(HDFCube):
                     
                 # FFT filtering: remove low frequency modes due to
                 # misalignment of the frames
-                test_vector = orb.utils.fft_filter(test_vector, FFT_CUT,
-                                                   width_coeff=0.1)
+                test_vector = orb.utils.vector.fft_filter(
+                    test_vector, FFT_CUT,
+                    width_coeff=0.1)
        
                 # median and std computed over the vector without
                 # its too deviant values
@@ -533,8 +531,10 @@ class RawData(HDFCube):
                     np.abs(test_vector))[-MAX_VALUES_NB]
                 filter_test_vector = test_vector[
                     np.nonzero(np.abs(test_vector) < max_threshold)]
-                z_median = orb.utils.robust_median(filter_test_vector, warn=False)
-                z_std = orb.utils.robust_std(filter_test_vector, warn=False)
+                z_median = orb.utils.stats.robust_median(
+                    filter_test_vector, warn=False)
+                z_std = orb.utils.stats.robust_std(
+                    filter_test_vector, warn=False)
                        
                 # CR detection: If too much CRs are pre detected the
                 # level of detection is raised
@@ -557,11 +557,11 @@ class RawData(HDFCube):
         def check_predected_crs_in_frame(frames, pre_cr_map, ik):
             """Check pre-detected cosmic rays in a frame"""
 
-            MINI_BOX_HSZ = 5 # length degree of the mini box (final
+            MINI_BOX_HSZ = 3 #5 # length degree of the mini box (final
                              # length is 2 * MINI_BOX_HSZ + 1)
                              
             
-            REJECT_COEFF = 2. # Rejection coefficient # 3.5
+            REJECT_COEFF = 3.5 # Rejection coefficient # 3.5
             
             dimx = frames.shape[0]
             dimy = frames.shape[1]
@@ -575,7 +575,7 @@ class RawData(HDFCube):
                 ii = pre_crs[0][icr]
                 ij = pre_crs[1][icr]
 
-                x_min, x_max, y_min, y_max = orb.utils.get_box_coords(
+                x_min, x_max, y_min, y_max = orb.utils.image.get_box_coords(
                     ii, ij, MINI_BOX_HSZ*2+1, 0, dimx, 0, dimy)
                 
                 box = frames[x_min:x_max, y_min:y_max, ik]
@@ -592,8 +592,8 @@ class RawData(HDFCube):
                 stat_box[ii-x_min, ij-y_min] = np.nan
                 stat_box = np.sort(stat_box.flatten())[:-MINI_BOX_HSZ]
                 
-                box_median = orb.utils.robust_median(stat_box)
-                box_std = orb.utils.robust_std(stat_box)
+                box_median = orb.utils.stats.robust_median(stat_box)
+                box_std = orb.utils.stats.robust_std(stat_box)
 
                 # pre-detected cr is finally checked
                 if (tested_pixel >
@@ -607,7 +607,7 @@ class RawData(HDFCube):
             """High pass filter applied on frame to help for cosmic
             ray detection
             """
-            return frame - orb.utils.low_pass_image_filter(frame,deg=1)
+            return frame - orb.utils.image.low_pass_image_filter(frame,deg=1)
 
 
 
@@ -631,7 +631,7 @@ class RawData(HDFCube):
             for icr in range(len(cr_coords[0])):
                 ii = cr_coords[0][icr]
                 ij = cr_coords[1][icr]
-                x_min, x_max, y_min, y_max = orb.utils.get_box_coords(
+                x_min, x_max, y_min, y_max = orb.utils.image.get_box_coords(
                         ii, ij, BOX_SIZE, 0, dimx, 0, dimy)
                 box = frame[x_min:x_max, y_min:y_max]
                 cr_box = cr_map_frame[x_min:x_max, y_min:y_max]
@@ -651,7 +651,7 @@ class RawData(HDFCube):
             for istar in range(star_list.shape[0]):
                  ii = star_list[istar,0]
                  ij = star_list[istar,1]
-                 x_min, x_max, y_min, y_max = orb.utils.get_box_coords(
+                 x_min, x_max, y_min, y_max = orb.utils.image.get_box_coords(
                      ii, ij, star_box_size, 0, dimx, 0, dimy)
                  cr_map_frame[x_min:x_max, y_min:y_max] = False
             
@@ -666,7 +666,7 @@ class RawData(HDFCube):
         
         cr_map = np.empty((self.dimx, self.dimy, self.dimz), dtype=np.bool)
 
-        for iquad in range(0, self.QUAD_NB):
+        for iquad in range(0, 1):#self.QUAD_NB):
             x_min, x_max, y_min, y_max = self.get_quadrant_dims(iquad)
             iquad_data = self.get_data(x_min, x_max, 
                                        y_min, y_max, 
@@ -688,7 +688,7 @@ class RawData(HDFCube):
                     filter_frame, 
                     args=(iquad_data[:,:,iframe+ijob],),
                     modules=("import numpy as np",
-                             "import orb.utils")))
+                             "import orb.utils.image")))
                         for ijob in range(ncpus)]
 
                 for ijob, job in jobs:
@@ -715,7 +715,8 @@ class RawData(HDFCube):
                     predetect_crs_in_column, 
                     args=(iquad_data[ii+ijob,:,:], z_coeff),
                     modules=("import numpy as np",
-                             "import orb.utils",)))
+                             "import orb.utils.vector",
+                             "import orb.utils.stats")))
                         for ijob in range(ncpus)]
                     
                 for ijob, job in jobs:
@@ -761,7 +762,8 @@ class RawData(HDFCube):
                           iquad_pre_cr_map[:,:,iframe+ijob],
                           iframe+ijob-z_min_list[ijob]),
                     modules=("import numpy as np",
-                             "import orb.utils")))
+                             "import orb.utils.image",
+                             "import orb.utils.stats")))
                         for ijob in range(ncpus)]
 
                 for ijob, job in jobs:
@@ -782,7 +784,7 @@ class RawData(HDFCube):
         
         cr_by_frame = [np.sum(cr_map[:,:,iz]) for iz in range(cr_map.shape[2])]
         cr_med = np.median(cr_by_frame)
-        cr_std = orb.utils.robust_std(cr_by_frame)
+        cr_std = orb.utils.stats.robust_std(cr_by_frame)
         
         strange_frames = list(np.nonzero(
             cr_by_frame > cr_med + STRANGE_DETECT_COEFF * cr_std)[0])
@@ -800,19 +802,20 @@ class RawData(HDFCube):
                 cry = cr_pos[istar,1]
                 cr_level = frame[crx, cry]
                 # define cr box
-                x_min, x_max, y_min, y_max = orb.utils.get_box_coords(
+                x_min, x_max, y_min, y_max = orb.utils.image.get_box_coords(
                     crx, cry, CR_BOX_SIZE, 0,
                     cr_frame.shape[0], 0, cr_frame.shape[1])
                 cr_box = frame[x_min:x_max, y_min:y_max]
 
                 # define a large box around cr box
-                x_min, x_max, y_min, y_max = orb.utils.get_box_coords(
+                x_min, x_max, y_min, y_max = orb.utils.image.get_box_coords(
                     crx, cry, LARGE_BOX_SIZE, 0,
                     cr_frame.shape[0], 0, cr_frame.shape[1])
                 large_box = frame[x_min:x_max, y_min:y_max]
 
                 # test
-                large_mean = orb.utils.robust_mean(orb.utils.sigmacut(large_box))
+                large_mean = orb.utils.stats.robust_mean(
+                    orb.utils.stats.sigmacut(large_box))
                 box_mean = (np.sum(cr_box) - cr_level) / (np.size(cr_box) - 1)
                 if box_mean > 2.* large_mean:
                     cr_map[crx,cry,iframe] = 0
@@ -825,40 +828,40 @@ class RawData(HDFCube):
         progress.end()  
      
         ## Second pass : check around the detected cosmic rays
-        self._print_msg("Checking CRs neighbourhood", color=True)
+        ## self._print_msg("Checking CRs neighbourhood", color=True)
         
-        # Init multiprocessing server
-        job_server, ncpus = self._init_pp_server()
-        progress = ProgressBar(self.dimz)
-        for ik in range(0, self.dimz, ncpus):
-            # No more jobs than frames to compute
-            if (ik + ncpus >= self.dimz): 
-                ncpus = self.dimz - ik
+        ## # Init multiprocessing server
+        ## job_server, ncpus = self._init_pp_server()
+        ## progress = ProgressBar(self.dimz)
+        ## for ik in range(0, self.dimz, ncpus):
+        ##     # No more jobs than frames to compute
+        ##     if (ik + ncpus >= self.dimz): 
+        ##         ncpus = self.dimz - ik
                 
-            frames = np.empty((self.dimx, self.dimy, ncpus), dtype=float)
-            for ijob in range(ncpus): 
-                frames[:,:,ijob] = self.get_data_frame(ik+ijob)
+        ##     frames = np.empty((self.dimx, self.dimy, ncpus), dtype=float)
+        ##     for ijob in range(ncpus): 
+        ##         frames[:,:,ijob] = self.get_data_frame(ik+ijob)
                 
-            cr_map_frames = np.copy(cr_map[:,:,ik: ik + ncpus + 1])
+        ##     cr_map_frames = np.copy(cr_map[:,:,ik: ik + ncpus + 1])
             
-            jobs = [(ijob, job_server.submit(
-                check_cr_frame, 
-                args=(frames[:,:,ijob], 
-                      cr_map_frames[:,:,ijob],
-                      star_list, stars_fwhm_pix),
-                modules=("import numpy as np",
-                         "import math",
-                         "import orb.utils",
-                         "import orb.astrometry")))
-                    for ijob in range(ncpus)]
+        ##     jobs = [(ijob, job_server.submit(
+        ##         check_cr_frame, 
+        ##         args=(frames[:,:,ijob], 
+        ##               cr_map_frames[:,:,ijob],
+        ##               star_list, stars_fwhm_pix),
+        ##         modules=("import numpy as np",
+        ##                  "import math",
+        ##                  "import orb.utils",
+        ##                  "import orb.astrometry")))
+        ##             for ijob in range(ncpus)]
             
-            for ijob, job in jobs:
-                cr_map[:,:,ik + ijob] = job()
+        ##     for ijob, job in jobs:
+        ##         cr_map[:,:,ik + ijob] = job()
 
-            progress.update(ik, info="checking frame: %d"%ik)
+        ##     progress.update(ik, info="checking frame: %d"%ik)
             
-        self._close_pp_server(job_server)
-        progress.end()
+        ## self._close_pp_server(job_server)
+        ## progress.end()
         
         self._print_msg("Total number of detected cosmic rays: %d"%np.sum(
             cr_map), color=True)
@@ -967,12 +970,12 @@ class RawData(HDFCube):
         :param reject: (Optional) Rejection operation for master
           frames creation. Can be 'sigclip', 'minmax', 'avsigclip' or
           None (default 'avsigclip'). See
-          :py:meth:`orb.utils.create_master_frame`.
+          :py:meth:`orb.utils.image.create_master_frame`.
         
         :param combine: (Optional) Combining operation for master
           frames creation. Can be 'average' or 'median' (default
           'average'). See
-          :py:meth:`orb.utils.create_master_frame`.
+          :py:meth:`orb.utils.image.create_master_frame`.
 
         :return: readout_noise, dark_current_level
         """
@@ -992,11 +995,11 @@ class RawData(HDFCube):
         min_y = int(bias_cube.dimy * BORDER_COEFF)
         max_y = int(bias_cube.dimy * (1. - BORDER_COEFF))
         
-        readout_noise = [orb.utils.robust_std(bias_cube[min_x:max_x,
-                                              min_y:max_y, ik])
+        readout_noise = [orb.utils.stats.robust_std(bias_cube[min_x:max_x,
+                                                              min_y:max_y, ik])
                          for ik in range(bias_cube.dimz)]
         
-        readout_noise = orb.utils.robust_mean(readout_noise)
+        readout_noise = orb.utils.stats.robust_mean(readout_noise)
         
         dark_cube = Cube(dark_path,
                          config_file_name=self.config_file_name)
@@ -1006,11 +1009,11 @@ class RawData(HDFCube):
             dark_cube = dark_cube.get_resized_data(self.dimx, self.dimy)
             dark_cube_dimz = dark_cube.shape[2]
 
-        dark_current_level = [orb.utils.robust_median(
+        dark_current_level = [orb.utils.stats.robust_median(
             (dark_cube[:,:,ik] - bias_image)[min_x:max_x, min_y:max_y])
                               for ik in range(dark_cube_dimz)]
         
-        dark_current_level = orb.utils.robust_mean(dark_current_level)
+        dark_current_level = orb.utils.stats.robust_mean(dark_current_level)
         dark_current_level = (dark_current_level
                               / dark_int_time * exposition_time)
         
@@ -1182,14 +1185,15 @@ class RawData(HDFCube):
                         # we try to minimize the std of the hot pixels in
                         # the frame 
                         std = np.sqrt(np.mean(
-                            ((orb.utils.robust_median(hp_frame)
-                              - orb.utils.robust_median(test_frame))**2.)))
+                            ((orb.utils.stats.robust_median(hp_frame)
+                              - orb.utils.stats.robust_median(
+                                  test_frame))**2.)))
                     else:
                         non_hp_frame = test_frame[np.nonzero(hp_map==0)]
                         non_hp_frame = non_hp_frame[np.nonzero(non_hp_frame)]
                         # We try to find the best dark coefficient to
                         # apply to the non hp frame
-                        std = orb.utils.robust_std(non_hp_frame)
+                        std = orb.utils.stats.robust_std(non_hp_frame)
                         
                 return std
 
@@ -1280,7 +1284,7 @@ class RawData(HDFCube):
 
                 # hot pixels correction
                 if np.any(hp_map):
-                    temporary_frame = orb.utils.correct_hot_pixels(
+                    temporary_frame = orb.utils.image.correct_hot_pixels(
                         temporary_frame, hp_map)
                     
                 
@@ -1290,7 +1294,7 @@ class RawData(HDFCube):
                 ##     frame, master_dark, hp_map_corr, only_hp=True)
                 ## hp_frame = (frame
                 ##             - master_dark * hp_dark_coeff
-                ##             - orb.utils.robust_median(master_dark) * dark_coeff)
+                ##             - orb.utils.stats.robust_median(master_dark) * dark_coeff)
                 ## temporary_frame[np.nonzero(hp_map)] = hp_frame[
                 ##     np.nonzero(hp_map)]
                 
@@ -1405,12 +1409,12 @@ class RawData(HDFCube):
         :param reject: (Optional) Rejection operation for master
           frames creation. Can be 'sigclip', 'minmax', 'avsigclip' or
           None (default 'avsigclip'). See
-          :py:meth:`orb.utils.create_master_frame`.
+          :py:meth:`orb.utils.image.create_master_frame`.
         
         :param combine: (Optional) Combining operation for master
           frames creation. Can be 'average' or 'median' (default
           'average'). See
-          :py:meth:`orb.utils.create_master_frame`.
+          :py:meth:`orb.utils.image.create_master_frame`.
 
         :param flat_smooth_deg: (Optional) If > 0 smooth the master
           flat (help removing possible fringe pattern) (default
@@ -1476,7 +1480,7 @@ class RawData(HDFCube):
                     if (ix < x_max and iy < y_max
                         and ix >= x_min and iy >= y_min):
                         (med_x_min, med_x_max,
-                         med_y_min, med_y_max) = orb.utils.get_box_coords(
+                         med_y_min, med_y_max) = orb.utils.image.get_box_coords(
                             ix, iy, MEDIAN_DEG*2+1,
                             x_min, x_max, y_min, y_max)
                         box = frame[med_x_min:med_x_max,
@@ -1516,13 +1520,14 @@ class RawData(HDFCube):
                 ## SHIFT
                 if (dx != 0.) and (dy != 0.):
                     
-                    frame = orb.utils.shift_frame(frame, dx, dy, 
-                                                  x_min, x_max, 
-                                                  y_min, y_max, 1)
+                    frame = orb.utils.image.shift_frame(frame, dx, dy, 
+                                                        x_min, x_max, 
+                                                        y_min, y_max, 1)
                     
-                    mask_frame = orb.utils.shift_frame(mask_frame, dx, dy, 
-                                                       x_min, x_max, 
-                                                       y_min, y_max, 1)
+                    mask_frame = orb.utils.image.shift_frame(
+                        mask_frame, dx, dy, 
+                        x_min, x_max, 
+                        y_min, y_max, 1)
                 else:
                     frame = frame[x_min:x_max, y_min:y_max]
                     mask_frame = mask_frame[x_min:x_max, y_min:y_max]
@@ -1549,7 +1554,7 @@ class RawData(HDFCube):
 
         self._print_msg("Creating interferogram")
         
-        x_min, x_max, y_min, y_max = orb.utils.get_box_coords(
+        x_min, x_max, y_min, y_max = orb.utils.image.get_box_coords(
             self.dimx/2., self.dimy/2.,
             max((self.dimx, self.dimy))*CENTER_SIZE_COEFF,
             0, self.dimx, 0, self.dimy)
@@ -1575,8 +1580,9 @@ class RawData(HDFCube):
             master_bias, master_bias_temp = self._load_bias(
                 bias_path, return_temperature=True, combine=combine,
                 reject=reject)
-            master_bias_level = orb.utils.robust_median(master_bias[x_min:x_max,
-                                                          y_min:y_max])
+            master_bias_level = orb.utils.stats.robust_median(
+                master_bias[x_min:x_max,
+                            y_min:y_max])
             self._print_msg('Master bias median level at the center of the frame: %f'%master_bias_level)
             if optimize_dark_coeff and master_bias_temp is None:
                 self._print_warning("The temperature of the master bias could not be defined. The bias level will not be optimized (less precise)")
@@ -1612,7 +1618,7 @@ class RawData(HDFCube):
             # master dark in counts/s
             master_dark /= dark_int_time
             
-            master_dark_level = orb.utils.robust_median(master_dark[
+            master_dark_level = orb.utils.stats.robust_median(master_dark[
                 x_min:x_max, y_min:y_max])
             self._print_msg('Master dark median level at the center of the frame: %f'%master_dark_level)
                 
@@ -1663,17 +1669,18 @@ class RawData(HDFCube):
             
 
         cr_map_cube = None
-        
         # Instanciating cosmic ray map cube
-        if (cr_map_cube_path is None):
+        if cr_map_cube_path is None:
             cr_map_cube_path = self._get_cr_map_cube_path()
-            if os.path.exists(cr_map_cube_path):
-                cr_map_cube = HDFCube(cr_map_cube_path,
-                                      config_file_name=self.config_file_name)
-            else:
-                self._print_warning("No cosmic ray map loaded")
+            
+        if os.path.exists(cr_map_cube_path):
+            cr_map_cube = HDFCube(cr_map_cube_path,
+                                  config_file_name=self.config_file_name)
+            self._print_msg("Loaded cosmic ray map: {}".format(cr_map_cube_path))
+        else:
+            self._print_warning("No cosmic ray map loaded")
                 
-        self._print_msg("computing interferogram")
+        self._print_msg("Computing interferogram")
 
         # Multiprocessing server init
         job_server, ncpus = self._init_pp_server() 
@@ -1720,7 +1727,8 @@ class RawData(HDFCube):
                       master_dark_level),
                 modules=("numpy as np", 
                          "from scipy import optimize",
-                         "import orb.utils")))
+                         "import orb.utils.stats",
+                         "import orb.utils.image")))
                     for ijob in range(ncpus)]
             
             for ijob, job in jobs:
@@ -1738,7 +1746,7 @@ class RawData(HDFCube):
                       bad_frames_vector, order, zeros),
                 modules=(
                     "numpy as np",
-                    "import orb.utils",
+                    "import orb.utils.image",
                     "import orb.cutils",
                     "from scipy import ndimage",))) 
                     for ijob in range(ncpus)]
@@ -1797,26 +1805,27 @@ class RawData(HDFCube):
             self.indexer['interfero_cube'] = self._get_interfero_cube_path()
             
         self._print_msg("Interferogram computed")
+        
+        energy_map = interf_cube.get_interf_energy_map()
+        deep_frame = interf_cube.get_mean_image()
 
+        del interf_cube
+        
         out_cube = OutHDFCube(self._get_interfero_cube_path(),
                               (self.dimx, self.dimy, z_max-z_min),
                               overwrite=self.overwrite)
         
         # create energy map
-        energy_map = interf_cube.get_interf_energy_map()
         out_cube.append_energy_map(energy_map)
         self.write_fits(
             self._get_energy_map_path(), energy_map,
             fits_header=self._get_energy_map_header(),
             overwrite=True, silent=False)
-
-        
         
         if self.indexer is not None:
             self.indexer['energy_map'] = self._get_energy_map_path()
 
         # Create deep frame
-        deep_frame = interf_cube.get_mean_image()
         out_cube.append_deep_frame(deep_frame)
         
         if bn.nanmedian(deep_frame) < 0.:
@@ -1951,7 +1960,7 @@ class CalibrationLaser(HDFCube):
                 bounds_error=False, fill_value=np.nan)
                         
             # FFT of the interferogram
-            column_spectrum = orb.utils.cube_raw_fft(column_data, apod=None)
+            column_spectrum = orb.utils.fft.cube_raw_fft(column_data, apod=None)
                 
             for ij in range(column_data.shape[0]):
                 spectrum_vector = column_spectrum[ij,:]
@@ -1969,7 +1978,7 @@ class CalibrationLaser(HDFCube):
 
                 # gaussian fit (fast)
                 if fast:
-                    fitp = orb.utils.fit_lines_in_vector(
+                    fitp = orb.utils.spectrum.fit_lines_in_vector(
                         spectrum_vector, [max_index], fmodel='gaussian',
                         fwhm_guess=fwhm_guess * 0.9,
                         poly_order=0,
@@ -1980,7 +1989,7 @@ class CalibrationLaser(HDFCube):
                     ##         'lines-params-err':[[0,0,0,0]]}
                 # or sinc2 fit (slow)
                 else:
-                    fitp = orb.utils.fit_lines_in_vector(
+                    fitp = orb.utils.spectrum.fit_lines_in_vector(
                         spectrum_vector, [max_index], fmodel='sinc2',
                         observation_params=[step, order],
                         fwhm_guess=fwhm_guess,
@@ -2023,7 +2032,7 @@ class CalibrationLaser(HDFCube):
         step = float(step)
 
         # create the fft axis in cm1
-        cm1_axis = orb.utils.create_cm1_axis(
+        cm1_axis = orb.utils.spectrum.create_cm1_axis(
             self.dimz, step, order)
 
         # guess fwhm
@@ -2063,7 +2072,8 @@ class CalibrationLaser(HDFCube):
                     modules=("numpy as np",
                              "math",
                              "from scipy import interpolate, fftpack",
-                             "import orb.utils",))) 
+                             "import orb.utils.fft",
+                             "import orb.utils.spectrum"))) 
                         for ijob in range(ncpus)]
 
                 # execute jobs
@@ -2095,8 +2105,8 @@ class CalibrationLaser(HDFCube):
         del out_cube
 
         # Correct non-fitted values by interpolation
-        max_array = orb.utils.correct_map2d(max_array, bad_value=np.nan)
-        max_array = orb.utils.correct_map2d(max_array, bad_value=0.)
+        max_array = orb.utils.image.correct_map2d(max_array, bad_value=np.nan)
+        max_array = orb.utils.image.correct_map2d(max_array, bad_value=0.)
 
         # Write calibration laser map to disk
         self.write_fits(self._get_calibration_laser_map_path(), max_array,
@@ -2316,7 +2326,7 @@ class Interferogram(HDFCube):
         SMOOTH_DEG = int(self._get_tuning_parameter('SMOOTH_DEG', 0))
 
         def _sigmean(frame):
-            return orb.utils.robust_mean(orb.utils.sigmacut(frame))
+            return orb.utils.stats.robust_mean(orb.utils.stats.sigmacut(frame))
         
         self._print_msg("Creating correction vectors", color=True)
 
@@ -2343,7 +2353,7 @@ class Interferogram(HDFCube):
             jobs = [(ijob, job_server.submit(
                 _sigmean,
                 args=(self.get_data_frame(ik+ijob),),
-                modules=('import orb.utils',)))
+                modules=('import orb.utils.stats',)))
                     for ijob in range(ncpus)]
 
             for ijob, job in jobs:
@@ -2377,7 +2387,7 @@ class Interferogram(HDFCube):
             photom[iph,:] /= np.median(photom[iph,:])
         
         transmission_vector = np.array(
-            [orb.utils.robust_mean(orb.utils.sigmacut(photom[:,iz]))
+            [orb.utils.stats.robust_mean(orb.utils.stats.sigmacut(photom[:,iz]))
              for iz in range(self.dimz)])
         
         # correct for zeros, bad frames and NaN values
@@ -2388,15 +2398,15 @@ class Interferogram(HDFCube):
         transmission_vector[bad_frames_vector] = np.nan
         stray_light_vector[bad_frames_vector] = np.nan
         
-        transmission_vector = orb.utils.correct_vector(
+        transmission_vector = orb.utils.vector.correct_vector(
             transmission_vector, bad_value=0., polyfit=False, deg=1)
-        stray_light_vector = orb.utils.correct_vector(
+        stray_light_vector = orb.utils.vector.correct_vector(
             stray_light_vector, bad_value=0., polyfit=False, deg=1)
         
         # correct for ZPD
         zmedian = self.get_zmedian(nozero=True)
-        zpd_index = orb.utils.find_zpd(zmedian,
-                                       step_number=step_number)
+        zpd_index = orb.utils.fft.find_zpd(zmedian,
+                                           step_number=step_number)
         self._print_msg('ZPD index: %d'%zpd_index)
         
         zpd_min = zpd_index - int((ZPD_SIZE * step_number)/2.)
@@ -2406,21 +2416,22 @@ class Interferogram(HDFCube):
             zpd_max = self.dimz - 1
         
         transmission_vector[zpd_min:zpd_max] = 0.
-        transmission_vector = orb.utils.correct_vector(
+        transmission_vector = orb.utils.vector.correct_vector(
             transmission_vector, bad_value=0., polyfit=False, deg=1)
         stray_light_vector[zpd_min:zpd_max] = 0.
-        stray_light_vector = orb.utils.correct_vector(
+        stray_light_vector = orb.utils.vector.correct_vector(
             stray_light_vector, bad_value=0., polyfit=False, deg=1)
         
         # smooth
         if SMOOTH_DEG > 0:
-            transmission_vector = orb.utils.smooth(transmission_vector,
-                                                   deg=SMOOTH_DEG)
-            stray_light_vector = orb.utils.smooth(stray_light_vector,
-                                                  deg=SMOOTH_DEG)
+            transmission_vector = orb.utils.vector.smooth(transmission_vector,
+                                                          deg=SMOOTH_DEG)
+            stray_light_vector = orb.utils.vector.smooth(stray_light_vector,
+                                                         deg=SMOOTH_DEG)
             
         # normalization of the transmission vector
-        transmission_vector /= orb.utils.robust_median(transmission_vector)
+        transmission_vector /= orb.utils.stats.robust_median(
+            transmission_vector)
 
         # save correction vectors
         self.write_fits(self._get_transmission_vector_path(),
@@ -2656,7 +2667,7 @@ class Interferogram(HDFCube):
            8. Wavelength correction using the data obtained with the
               calibration cube.
 
-        .. seealso:: :meth:`orb.utils.transform_interferogram`
+        .. seealso:: :meth:`orb.utils.fft.transform_interferogram`
         .. seealso:: :class:`process.Phase`
         """
 
@@ -2702,7 +2713,7 @@ class Interferogram(HDFCube):
                         and filter_max is not None):
                         weights += 1e-20
                         filter_min_pix, filter_max_pix = (
-                            orb.utils.get_filter_edges_pix(
+                            orb.utils.filters.get_filter_edges_pix(
                                 None,
                                 calibration_laser_map_column[ij] / nm_laser,
                                 step, order, dimz,
@@ -2715,14 +2726,14 @@ class Interferogram(HDFCube):
                     # defringe
                     if fringes is not None and not return_phase:
                         for ifringe in range(len(fringes)):
-                            fringe_vector = orb.utils.variable_me(
+                            fringe_vector = orb.utils.fft.variable_me(
                                 dimz, [fringes[ifringe, 0],
                                        fringes[ifringe, 1], 0.])
                             
                             interf = interf / fringe_vector
                     
                     # Spectrum computation
-                    spectrum_column[ij,:] = orb.utils.transform_interferogram(
+                    spectrum_column[ij,:] = orb.utils.fft.transform_interferogram(
                         interf, nm_laser, calibration_laser_map_column[ij],
                         step, order, window_type, zpd_shift,
                         bad_frames_vector=bad_frames_vector,
@@ -2758,7 +2769,7 @@ class Interferogram(HDFCube):
             wavelength_calibration = True
             calibration_laser_map = self.read_fits(calibration_laser_map_path)
             if (calibration_laser_map.shape[0] != self.dimx):
-                calibration_laser_map = orb.utils.interpolate_map(
+                calibration_laser_map = orb.utils.image.interpolate_map(
                     calibration_laser_map, self.dimx, self.dimy)
         else:
             # no calibration: the calibration laser wavelength is set
@@ -2780,16 +2791,17 @@ class Interferogram(HDFCube):
 
         ## Searching ZPD shift 
         if zpd_shift is None:
-            zpd_shift = orb.utils.find_zpd(self.get_zmedian(nozero=True),
-                                           return_zpd_shift=True)
+            zpd_shift = orb.utils.fft.find_zpd(self.get_zmedian(nozero=True),
+                                               return_zpd_shift=True)
             
-
         self._print_msg("Zpd will be shifted from %d frames"%zpd_shift)
 
         ## Loading phase map and phase coefficients
         if (phase_map_0_path is not None and phase_coeffs is not None
             and phase_correction):
             phase_map_0 = self.read_fits(phase_map_0_path)
+            self._print_msg('Loaded phase map: {}'.format(phase_map_0_path))
+            
         else:
             phase_map_0 = np.zeros((self.dimx, self.dimy), dtype=float)
             phase_coeffs = None
@@ -2810,7 +2822,7 @@ class Interferogram(HDFCube):
             
             # get mean interferogram
             #mean_interf = self.get_zmean(nozero=True)
-            xmin, xmax, ymin, ymax = orb.utils.get_box_coords(
+            xmin, xmax, ymin, ymax = orb.utils.image.get_box_coords(
                 self.dimx/2, self.dimy/2,
                 int(0.02*self.dimx), 0, self.dimx,
                 0, self.dimy)
@@ -2827,7 +2839,7 @@ class Interferogram(HDFCube):
                 coeffs_list_mean)
 
             # transform interferogram and check polarity
-            mean_spectrum = orb.utils.transform_interferogram(
+            mean_spectrum = orb.utils.fft.transform_interferogram(
                 mean_interf, nm_laser, nm_laser, step, order, '2.0', zpd_shift,
                 phase_correction=phase_correction, ext_phase=mean_phase_vector,
                 return_phase=False, balanced=balanced, wavenumber=wavenumber,
@@ -2837,8 +2849,8 @@ class Interferogram(HDFCube):
                 self._print_msg("Negative polarity : 0th order phase map has been corrected (add PI)")
                 phase_map_0 += math.pi
 
-            if (orb.utils.spectrum_mean_energy(mean_spectrum.imag)
-                > .5 * orb.utils.spectrum_mean_energy(mean_spectrum.real)):
+            if (orb.utils.fft.spectrum_mean_energy(mean_spectrum.imag)
+                > .5 * orb.utils.fft.spectrum_mean_energy(mean_spectrum.real)):
                 self._print_warning("Too much energy in the imaginary part, check the phase correction")
       
         ## Spectrum computation
@@ -2864,16 +2876,16 @@ class Interferogram(HDFCube):
         # in case no external phase is provided
         if phase_correction and filter_file_path is not None:
             (filter_nm, filter_trans,
-             filter_min, filter_max) = orb.utils.read_filter_file(
+             filter_min, filter_max) = orb.utils.filters.read_filter_file(
                 filter_file_path)
         else:
             filter_min = None
             filter_max = None
 
         if not wavenumber:
-            axis = orb.utils.create_nm_axis(axis_len, step, order)
+            axis = orb.utils.spectrum.create_nm_axis(axis_len, step, order)
         else:
-            axis = orb.utils.create_cm1_axis(axis_len, step, order)
+            axis = orb.utils.spectrum.create_cm1_axis(axis_len, step, order)
 
         out_cube = OutHDFCube(
             self._get_spectrum_cube_path(phase=phase_cube),
@@ -2915,7 +2927,8 @@ class Interferogram(HDFCube):
                     modules=("import numpy as np", "import math",  
                              "from scipy import interpolate", 
                              "from scipy import fftpack, signal", 
-                             "import orb.utils")))
+                             "import orb.utils.filters",
+                             "import orb.utils.fft")))
                         for ijob in range(ncpus)]
 
                 for ijob, job in jobs:
@@ -3108,7 +3121,7 @@ class Interferogram(HDFCube):
 
         # compute equivalent surface to substract stray light
         # correctly from the integrated flux
-        surf_eq = (4. * math.pi *  orb.utils.robust_median(
+        surf_eq = (4. * math.pi *  orb.utils.stats.robust_median(
             (astrom.fit_results[:,:,'fwhm']
              / orb.constants.FWHM_COEFF)**2.))
         
@@ -3125,13 +3138,13 @@ class Interferogram(HDFCube):
         self._print_msg("loading calibration laser map")
         calibration_laser_map = self.read_fits(calibration_laser_map_path)
         if (calibration_laser_map.shape[0] != self.dimx):
-            calibration_laser_map = orb.utils.interpolate_map(
+            calibration_laser_map = orb.utils.image.interpolate_map(
                 calibration_laser_map, self.dimx, self.dimy)
             
         ## Searching ZPD shift 
-        zpd_shift = orb.utils.find_zpd(self.get_zmedian(nozero=True),
-                                       return_zpd_shift=True,
-                                       step_number=step_nb)
+        zpd_shift = orb.utils.fft.find_zpd(self.get_zmedian(nozero=True),
+                                           return_zpd_shift=True,
+                                           step_number=step_nb)
         
         
         self._print_msg('Auto-phase: phase will be computed for each star independantly (No use of external phase)')
@@ -3148,13 +3161,15 @@ class Interferogram(HDFCube):
         # get filter min and filter max edges for weights definition
         # in case no external phase is provided
         (filter_nm, filter_trans,
-         filter_min, filter_max) = orb.utils.read_filter_file(filter_file_path)
+         filter_min, filter_max) = orb.utils.filters.read_filter_file(
+            filter_file_path)
 
         # load filter function for filter correction
         if filter_correct:
             (filter_function,
-             filter_min_pix, filter_max_pix) = orb.utils.get_filter_function(
-                filter_file_path, step, order, step_nb)
+             filter_min_pix, filter_max_pix) = (
+                orb.utils.filters.get_filter_function(
+                    filter_file_path, step, order, step_nb))
 
         star_spectrum_list = list()
         for istar in range(len(star_interf_list)):
@@ -3176,7 +3191,7 @@ class Interferogram(HDFCube):
             
             weights += 1e-20
             weights_min_pix, weights_max_pix = (
-                orb.utils.get_filter_edges_pix(
+                orb.utils.filters.get_filter_edges_pix(
                     None,
                     (calibration_laser_map[int(star_x), int(star_y)]
                      / nm_laser),
@@ -3184,7 +3199,7 @@ class Interferogram(HDFCube):
                     filter_max=filter_max))
             weights[weights_min_pix:weights_max_pix] = 1.
        
-            star_spectrum = orb.utils.transform_interferogram(
+            star_spectrum = orb.utils.fft.transform_interferogram(
                 star_interf, nm_laser,
                 calibration_laser_map[int(star_x), int(star_y)],
                 step, order, window_type, zpd_shift,
@@ -3200,8 +3215,8 @@ class Interferogram(HDFCube):
                 star_spectrum = -star_spectrum
 
             # rescale
-            scale = (orb.utils.spectrum_mean_energy(star_spectrum)
-                     / orb.utils.interf_mean_energy(star_interf))
+            scale = (orb.utils.fft.spectrum_mean_energy(star_spectrum)
+                     / orb.utils.fft.interf_mean_energy(star_interf))
             star_spectrum *= scale
             
             # filter correction
@@ -3214,16 +3229,16 @@ class Interferogram(HDFCube):
             if flat_cube is not None:
                 # extracting flat spectrum in the region of the star
                 (x_min, x_max,
-                 y_min, y_max) = orb.utils.get_box_coords(star_x, star_y,
-                                                astrom.box_size,
-                                                0, self.dimx,
-                                                0, self.dimy)
+                 y_min, y_max) = orb.utils.image.get_box_coords(
+                    star_x, star_y,  astrom.box_size,
+                    0, self.dimx, 0, self.dimy)
                 x_min = int(x_min)
                 x_max = int(x_max)
                 y_min = int(y_min)
                 y_max = int(y_max)
-                star_fwhm = orb.utils.robust_mean(
-                    orb.utils.sigmacut(astrom.fit_results[istar,:,'fwhm']))
+                star_fwhm = orb.utils.stats.robust_mean(
+                    orb.utils.stats.sigmacut(
+                        astrom.fit_results[istar,:,'fwhm']))
                 star_profile = astrom.profile(
                     astrom.fit_results[istar,0]).array2d(astrom.box_size,
                                                          astrom.box_size)
@@ -3240,8 +3255,8 @@ class Interferogram(HDFCube):
                 weights = np.zeros(flat_spectrum.shape[0])
                 weights[np.nonzero(flat_spectrum)] = 1.
                 
-                flat_spectrum /= orb.utils.polyfit1d(flat_spectrum, 1,
-                                           w=weights)
+                flat_spectrum /= orb.utils.vector.polyfit1d(
+                    flat_spectrum, 1, w=weights)
 
                 star_spectrum[:filter_min_pix] = np.nan
                 star_spectrum[filter_max_pix:] = np.nan
@@ -3250,7 +3265,7 @@ class Interferogram(HDFCube):
                 star_spectrum /= flat_spectrum
 
             self._print_msg('Star %d mean flux: %f ADU'%(
-                    istar, orb.utils.robust_mean(star_spectrum)))
+                    istar, orb.utils.stats.robust_mean(star_spectrum)))
             
             star_spectrum_list.append(star_spectrum)
         star_spectrum_list = np.array(star_spectrum_list)
@@ -3301,7 +3316,7 @@ class Interferogram(HDFCube):
                     cube_col[ij,:].fill(np.nan)
                     
                 if not np.all(np.isnan(cube_col[ij,:])):
-                    ifft = orb.utils.transform_interferogram(
+                    ifft = orb.utils.fft.transform_interferogram(
                         cube_col[ij,:], 1., 1., step, order, '2.0',
                         zpd_shift, wavenumber=True,
                         return_complex=True,
@@ -3353,7 +3368,7 @@ class Interferogram(HDFCube):
                 if np.all(cube_col[ij,:] == 0):
                     cube_col[ij,:].fill(np.nan)
                 if not np.all(np.isnan(cube_col[ij,:])):
-                    result = orb.utils.optimize_phase(
+                    result = orb.utils.fft.optimize_phase(
                         cube_col[ij,:],
                         step, order, zpd_shift,
                         guess=guess, return_coeffs=True,
@@ -3368,7 +3383,7 @@ class Interferogram(HDFCube):
         
         if zpd_shift is None:
             median_interf = self.get_zmedian()
-            zpd_shift = orb.utils.find_zpd(
+            zpd_shift = orb.utils.fft.find_zpd(
                 median_interf, return_zpd_shift=True)
            
         ## median_spec = orb.utils.transform_interferogram(
@@ -3400,7 +3415,7 @@ class Interferogram(HDFCube):
         # binning interferogram cube
         if binning > 1:
             self._print_msg('Binning interferogram cube')
-            image0_bin = orb.utils.nanbin_image(
+            image0_bin = orb.utils.image.nanbin_image(
                 self.get_data_frame(0), binning)
 
             cube_bin = np.empty((image0_bin.shape[0],
@@ -3411,7 +3426,7 @@ class Interferogram(HDFCube):
             progress = ProgressBar(self.dimz-1)
             for ik in range(1, self.dimz):
                 progress.update(ik, info='Binning cube')
-                cube_bin[:,:,ik] = orb.utils.nanbin_image(
+                cube_bin[:,:,ik] = orb.utils.image.nanbin_image(
                     self.get_data_frame(ik), binning)
             progress.end()
         else:
@@ -3438,7 +3453,7 @@ class Interferogram(HDFCube):
                 fit_phase_in_column, 
                 args=(cube_bin[ii+ijob,:,:],
                       step, order, zpd_shift),
-                modules=("numpy as np", "import orb.utils",
+                modules=("numpy as np", "import orb.utils.fft",
                          "import warnings"))) 
                     for ijob in range(ncpus)]
 
@@ -3467,9 +3482,10 @@ class Interferogram(HDFCube):
                 self._get_phase_map_path(1, res=True))
         
         # compute average order 1:
-        phase_coeffs = orb.utils.compute_phase_coeffs_vector(
-            [self._get_phase_map_path(1)],
-            residual_map_path=self._get_phase_map_path(1, res=True))
+        phase_maps = self.read_fits(self._get_phase_map_path(1))
+        phase_coeffs = orb.utils.fft.compute_phase_coeffs_vector(
+            [phase_maps],
+            res_map=self.read_fits(self._get_phase_map_path(1, res=True)))
         order1 = phase_coeffs[0]  
         
         # computing order 0 map
@@ -3493,7 +3509,7 @@ class Interferogram(HDFCube):
                 args=(cube_bin[ii+ijob,:,:],
                       step, order, zpd_shift,
                       [order1, 0], [1,0]),
-                modules=("numpy as np", "import orb.utils",
+                modules=("numpy as np", "import orb.utils.fft",
                          "import warnings"))) 
                     for ijob in range(ncpus)]
 
@@ -3893,8 +3909,8 @@ class InterferogramMerger(Tools):
             
 
         if HPFILTER: # Filter alignment frames
-            frameA = orb.utils.high_pass_diff_image_filter(frameA, deg=1)
-            frameB = orb.utils.high_pass_diff_image_filter(frameB, deg=1)
+            frameA = orb.utils.image.high_pass_diff_image_filter(frameA, deg=1)
+            frameB = orb.utils.image.high_pass_diff_image_filter(frameB, deg=1)
         
         aligner = Aligner(
             frameA, frameB, fwhm_arc_A, fov_A, fov_B,
@@ -3938,7 +3954,7 @@ class InterferogramMerger(Tools):
 
         :param interp_order: Order of interpolation. (1: linear by default)
 
-        .. seealso:: :meth:`orb.utils.transform_frame`
+        .. seealso:: :meth:`orb.utils.image.transform_frame`
         """
         # Init of the multiprocessing server
         job_server, ncpus = self._init_pp_server()
@@ -3984,7 +4000,7 @@ class InterferogramMerger(Tools):
 
             # transform frames of camera B to align them with those of camera A
             jobs = [(ijob, job_server.submit(
-                orb.utils.transform_frame, 
+                orb.utils.image.transform_frame, 
                 args=(framesB_init[:,:,ijob],
                       0, self.cube_A.dimx, 
                       0, self.cube_A.dimy, 
@@ -4114,7 +4130,7 @@ class InterferogramMerger(Tools):
             frameA[np.nonzero(frameA == 0.)] = 1.
             
             frames_ratio = frameB/frameA
-            return orb.utils.robust_mean((frames_ratio)[good_pix])
+            return orb.utils.stats.robust_mean((frames_ratio)[good_pix])
 
         SATURATION_LEVEL = 65000 # Level of image saturation
         
@@ -4339,7 +4355,8 @@ class InterferogramMerger(Tools):
             if np.any(frameB) and np.any(frameA):
                 result_frame = ((((frameB / modulation_ratio) + frameA)
                                  / transmission_factor) - ext_level)
-                stray_light_coeff = orb.utils.robust_median(result_frame) / 2.
+                
+                stray_light_coeff = orb.utils.stats.robust_median(result_frame) / 2.
             
             else:
                 stray_light_coeff = np.nan
@@ -4422,7 +4439,7 @@ class InterferogramMerger(Tools):
             """
             def get_sky_level(frame):
                 if len(np.nonzero(frame)[0]) > 0:
-                    return orb.astrometry.sky_background_level(
+                    return orb.utils.astrometry.sky_background_level(
                         frame[np.nonzero(frame)])
                 else:
                     return 0.
@@ -4448,7 +4465,7 @@ class InterferogramMerger(Tools):
                     get_sky_level, 
                     args=(cube.get_data_frame(ik+ijob)[xmin:xmax,ymin:ymax],),
                     modules=("import numpy as np",
-                             'import orb.astrometry')))
+                             'import orb.utils.astrometry')))
                         for ijob in range(ncpus)]
 
                 for ijob, job in jobs:
@@ -4557,8 +4574,8 @@ class InterferogramMerger(Tools):
         star_list_A = mean_params_A.get_star_list()
         star_list_B = mean_params_A.get_star_list()
 
-        fwhm_arc_A = orb.utils.robust_mean(mean_params_A[:,'fwhm_arc'])
-        fwhm_arc_B = orb.utils.robust_mean(mean_params_B[:,'fwhm_arc'])
+        fwhm_arc_A = orb.utils.stats.robust_mean(mean_params_A[:,'fwhm_arc'])
+        fwhm_arc_B = orb.utils.stats.robust_mean(mean_params_B[:,'fwhm_arc'])
 
         self._print_msg(
             'mean FWHM of the stars in camera 1: {} arc-seconds'.format(
@@ -4613,12 +4630,12 @@ class InterferogramMerger(Tools):
         photom_B = astrom_B.fit_results[:,:,photometry_type]
 
         # Find ZPD ################################################
-        bad_frames_vector = orb.utils.correct_bad_frames_vector(
+        bad_frames_vector = orb.utils.vector.correct_bad_frames_vector(
             bad_frames_vector, self.cube_A.dimz)
         zmedian = self.cube_A.get_zmedian(nozero=True)
         zmedian[bad_frames_vector] = 0.
-        zpd_index = orb.utils.find_zpd(zmedian,
-                                       step_number=step_number)
+        zpd_index = orb.utils.fft.find_zpd(zmedian,
+                                           step_number=step_number)
         
         self._print_msg('ZPD index: %d'%zpd_index)
 
@@ -4630,8 +4647,8 @@ class InterferogramMerger(Tools):
 
         # Optimization routine
         def photom_diff(modulation_ratio, photom_A, photom_B, zpd_min, zpd_max):
-            return orb.utils.robust_median((photom_A * modulation_ratio
-                                            - photom_B)**2.)
+            return orb.utils.stats.robust_median((photom_A * modulation_ratio
+                                                  - photom_B)**2.)
         
         # use EXT_ZPD_SIZE to remove ZPD from MODULATION RATION calculation
         ext_zpd_min = zpd_index - int(EXT_ZPD_SIZE * step_number / 2.)
@@ -4657,7 +4674,7 @@ class InterferogramMerger(Tools):
             flux_sum = np.nanmean(
                 photom_A * modulation_ratio + photom_B, axis=1)
          
-            flux_error_ratio = orb.utils.robust_mean(
+            flux_error_ratio = orb.utils.stats.robust_mean(
                 np.abs(flux_error/flux_sum),
                 weights=flux_sum/np.nansum(flux_sum))
   
@@ -4678,14 +4695,17 @@ class InterferogramMerger(Tools):
                         index_mod.append(photom_B_nozpd[istar,index]
                                          / photom_A_nozpd[istar,index])
                 if len(index_mod) > 0:
-                    modulation_ratios.append(orb.utils.robust_mean(
-                        orb.utils.sigmacut(index_mod, sigma=SIGMA_CUT_COEFF)))
+                    modulation_ratios.append(orb.utils.stats.robust_mean(
+                        orb.utils.stats.sigmacut(
+                            index_mod, sigma=SIGMA_CUT_COEFF)))
 
-            modulation_ratio = orb.utils.robust_mean(
-                orb.utils.sigmacut(modulation_ratios, sigma=SIGMA_CUT_COEFF))
+            modulation_ratio = orb.utils.stats.robust_mean(
+                orb.utils.stats.sigmacut(
+                    modulation_ratios, sigma=SIGMA_CUT_COEFF))
 
-            modulation_ratio_std = orb.utils.robust_std(
-                orb.utils.sigmacut(modulation_ratios, sigma=SIGMA_CUT_COEFF))
+            modulation_ratio_std = orb.utils.stats.robust_std(
+                orb.utils.stats.sigmacut(
+                    modulation_ratios, sigma=SIGMA_CUT_COEFF))
 
             self._print_msg(
                 "Modulation ratio: %f (std: %f)"%(
@@ -4739,20 +4759,21 @@ class InterferogramMerger(Tools):
             if not np.all(np.isnan(photom_merged)):
                 trans = np.copy(photom_merged[istar,:])
                 trans_err = np.copy(photom_merged_err[istar,:])
-                trans_mean = orb.utils.robust_mean(orb.utils.sigmacut(trans))
+                trans_mean = orb.utils.stats.robust_mean(
+                    orb.utils.stats.sigmacut(trans))
                 trans /= trans_mean
                 trans_err /= trans_mean
                 transmission_vector_list.append(trans)
-                red_chisq = orb.utils.robust_mean(
-                    orb.utils.sigmacut(astrom_A.fit_results[
+                red_chisq = orb.utils.stats.robust_mean(
+                    orb.utils.stats.sigmacut(astrom_A.fit_results[
                         istar, :, 'reduced-chi-square']))
                 
                 trans_err_list.append(trans_err)
                 red_chisq_list.append(red_chisq)
 
         # reject stars with a bad reduced-chi-square
-        mean_red_chisq = orb.utils.robust_mean(
-            orb.utils.sigmacut(red_chisq_list))
+        mean_red_chisq = orb.utils.stats.robust_mean(
+            orb.utils.stats.sigmacut(red_chisq_list))
         temp_list_trans = list()
         temp_list_trans_err = list()
         for istar in range(len(transmission_vector_list)):
@@ -4783,16 +4804,16 @@ class InterferogramMerger(Tools):
             
             if len(np.nonzero(trans_ik)[0]) > 0:
                 if len(trans_ik) >= MIN_STAR_NUMBER:
-                    trans_cut, trans_cut_index = orb.utils.sigmacut(
+                    trans_cut, trans_cut_index = orb.utils.stats.sigmacut(
                         trans_ik, sigma=SIGMA_CUT_COEFF, return_index_list=True)
-                    transmission_vector[ik] = orb.utils.robust_mean(
+                    transmission_vector[ik] = orb.utils.stats.robust_mean(
                         trans_cut)
                     trans_cut_err = trans_err_ik[trans_cut_index]
                     transmission_vector_err[ik] = np.sqrt(
-                        orb.utils.robust_mean(trans_cut_err**2.))
+                        orb.utils.stats.robust_mean(trans_cut_err**2.))
         
         # Transmission is corrected for bad values
-        transmission_vector = orb.utils.correct_vector(
+        transmission_vector = orb.utils.vector.correct_vector(
             transmission_vector, bad_value=0., polyfit=True, deg=3)
 
         # correct vector for ZPD
@@ -4808,13 +4829,13 @@ class InterferogramMerger(Tools):
 
             transmission_vector[trans_zpd_min:trans_zpd_max] = 0.
         
-            transmission_vector = orb.utils.correct_vector(
+            transmission_vector = orb.utils.vector.correct_vector(
                 transmission_vector, bad_value=0., polyfit=True, deg=3)
             
         # Transmission vector smoothing
         if smooth_vector:
             if SMOOTH_DEG > 0:
-                transmission_vector = orb.utils.smooth(transmission_vector,
+                transmission_vector = orb.utils.vector.smooth(transmission_vector,
                                                        deg=SMOOTH_DEG)
 
         # Normalization of the star transmission vector to 1.5% clip
@@ -4879,18 +4900,18 @@ class InterferogramMerger(Tools):
                                 - median_frame_vector_A)
 
             # correct vector for nan values and zeros
-            ext_level_vector = orb.utils.correct_vector(
+            ext_level_vector = orb.utils.vector.correct_vector(
                 ext_level_vector, bad_value=0., polyfit=True, deg=3)
 
             
             # correct vector for ZPD
             ext_level_vector[ext_zpd_min:ext_zpd_max] = 0.
-            ext_level_vector = orb.utils.correct_vector(
+            ext_level_vector = orb.utils.vector.correct_vector(
                 ext_level_vector, bad_value=0., polyfit=True, deg=3)
             
             # vector smoothing
             if SMOOTH_RATIO_EXT > 0.:
-                ext_level_vector = orb.utils.smooth(
+                ext_level_vector = orb.utils.vector.smooth(
                     ext_level_vector, 
                     deg=int(ext_level_vector.shape[0] * SMOOTH_RATIO_EXT))
 
@@ -4979,7 +5000,7 @@ class InterferogramMerger(Tools):
                 if np.any(flux_frame_temp != 0.):
                     flux_frame += flux_frame_temp
                     flux_frame_nb += 1
-                    flux_vector[ik + ijob] = orb.utils.robust_median(
+                    flux_vector[ik + ijob] = orb.utils.stats.robust_median(
                         flux_frame_temp)
                 else:
                     flux_vector[ik + ijob] = np.nan
@@ -5262,8 +5283,10 @@ class InterferogramMerger(Tools):
             star_list_A = mean_params_A.get_star_list()
             star_list_B = mean_params_A.get_star_list()
 
-            fwhm_arc_A = orb.utils.robust_mean(mean_params_A[:,'fwhm_arc'])
-            fwhm_arc_B = orb.utils.robust_mean(mean_params_B[:,'fwhm_arc'])
+            fwhm_arc_A = orb.utils.stats.robust_mean(
+                mean_params_A[:,'fwhm_arc'])
+            fwhm_arc_B = orb.utils.stats.robust_mean(
+                mean_params_B[:,'fwhm_arc'])
         else:
             fwhm_arc_A = fwhm_arc
             fwhm_arc_B = fwhm_arc
@@ -5299,20 +5322,20 @@ class InterferogramMerger(Tools):
         astrom_B.reset_star_list(star_list)
 
         # Fit stars and get stars photometry
-        ## astrom_A.fit_stars_in_cube(local_background=True,
-        ##                            fix_aperture_size=True,
-        ##                            precise_guess=True,
-        ##                            aper_coeff=aper_coeff,
-        ##                            multi_fit=True,
-        ##                            saturation=saturation,
-        ##                            save=True)
-        ## astrom_B.fit_stars_in_cube(local_background=True,
-        ##                            fix_aperture_size=True,
-        ##                            precise_guess=True,
-        ##                            aper_coeff=aper_coeff,
-        ##                            multi_fit=True,
-        ##                            saturation=saturation,
-        ##                            save=True)
+        astrom_A.fit_stars_in_cube(local_background=True,
+                                   fix_aperture_size=True,
+                                   precise_guess=True,
+                                   aper_coeff=aper_coeff,
+                                   multi_fit=True,
+                                   saturation=saturation,
+                                   save=True)
+        astrom_B.fit_stars_in_cube(local_background=True,
+                                   fix_aperture_size=True,
+                                   precise_guess=True,
+                                   aper_coeff=aper_coeff,
+                                   multi_fit=True,
+                                   saturation=saturation,
+                                   save=True)
         
         astrom_A.load_fit_results(astrom_A._get_fit_results_path())
         astrom_B.load_fit_results(astrom_B._get_fit_results_path())
@@ -5338,8 +5361,9 @@ class InterferogramMerger(Tools):
         modulation_ratio_list = list()
         for istar in range(astrom_A.star_list.shape[0]):
             if recompute_modulation_ratio:
-                modulation_ratio = (orb.utils.robust_median(photom_B[istar,:]
-                                                            / photom_A[istar,:]))
+                modulation_ratio = (orb.utils.stats.robust_median(
+                    photom_B[istar,:]
+                    / photom_A[istar,:]))
                 modulation_ratio_list.append(modulation_ratio)
             
         
@@ -5352,11 +5376,12 @@ class InterferogramMerger(Tools):
                 transmission_vector = ((photom_B[istar,:]/modulation_ratio)
                                        + photom_A[istar,:])
                 if SMOOTH_DEG > 0:
-                    transmission_vector = orb.utils.smooth(transmission_vector,
-                                                           deg=SMOOTH_DEG)
+                    transmission_vector = orb.utils.vector.smooth(
+                        transmission_vector,
+                        deg=SMOOTH_DEG)
                 
                 if POLYFIT_DEG > 0:
-                    transmission_vector = orb.utils.polyfit1d(
+                    transmission_vector = orb.utils.vector.polyfit1d(
                         transmission_vector, POLYFIT_DEG)
                 
                     
@@ -5367,7 +5392,7 @@ class InterferogramMerger(Tools):
 
             # compute equivalent surface to substract ext_illumination
             # and stray light correctly from the integrated flux
-            surf_eq = (4. * math.pi *  orb.utils.robust_median(
+            surf_eq = (4. * math.pi *  orb.utils.stats.robust_median(
                 (astrom_A.fit_results[:,:,'fwhm']
                  / orb.constants.FWHM_COEFF)**2.))
 
@@ -5389,15 +5414,15 @@ class InterferogramMerger(Tools):
                                    config_file_name=self.config_file_name)
         astrom_merged.reset_star_list(star_list_B)
 
-        modulation_ratio = orb.utils.robust_mean(
-            orb.utils.sigmacut(modulation_ratio_list))
+        modulation_ratio = orb.utils.stats.robust_mean(
+            orb.utils.stats.sigmacut(modulation_ratio_list))
         
-        ## astrom_merged.fit_stars_in_cube(
-        ##     local_background=True,
-        ##     fix_aperture_size=True,
-        ##     add_cube=[self.cube_A, -modulation_ratio],
-        ##     no_fit=True,
-        ##     aper_coeff=aper_coeff, save=True)
+        astrom_merged.fit_stars_in_cube(
+            local_background=True,
+            fix_aperture_size=True,
+            add_cube=[self.cube_A, -modulation_ratio],
+            no_fit=True,
+            aper_coeff=aper_coeff, save=True)
         
         astrom_merged.load_fit_results(astrom_merged._get_fit_results_path())
         photom_merged = astrom_merged.fit_results[:,:,'aperture_flux']
@@ -5410,7 +5435,7 @@ class InterferogramMerger(Tools):
             
             # compute equivalent surface to substract ext_illumination
             # and stray light correctly from the integrated flux
-            surf_eq = (4. * math.pi *  orb.utils.robust_median(
+            surf_eq = (4. * math.pi *  orb.utils.stats.robust_median(
                 (astrom_A.fit_results[:,:,'fwhm']
                  / orb.constants.FWHM_COEFF)**2.))
 
@@ -5433,13 +5458,13 @@ class InterferogramMerger(Tools):
         self._print_msg("loading calibration laser map")
         calibration_laser_map = self.read_fits(calibration_laser_map_path)
         if (calibration_laser_map.shape[0] != self.cube_A.dimx):
-            calibration_laser_map = orb.utils.interpolate_map(
+            calibration_laser_map = orb.utils.image.interpolate_map(
                 calibration_laser_map, self.cube_A.dimx, self.cube_A.dimy)
             
         ## Searching ZPD shift 
-        zpd_shift = orb.utils.find_zpd(self.cube_A.get_zmedian(nozero=True),
-                                       return_zpd_shift=True,
-                                       step_number=step_nb)
+        zpd_shift = orb.utils.fft.find_zpd(self.cube_A.get_zmedian(nozero=True),
+                                           return_zpd_shift=True,
+                                           step_number=step_nb)
         
         ## Loading phase map and phase coefficients
         if (phase_map_0_path is not None and phase_coeffs is not None
@@ -5467,13 +5492,15 @@ class InterferogramMerger(Tools):
         # in case no external phase is provided
        
         (filter_nm, filter_trans,
-         filter_min, filter_max) = orb.utils.read_filter_file(filter_file_path)
+         filter_min, filter_max) = orb.utils.filters.read_filter_file(
+            filter_file_path)
 
         # load filter function for filter correction
         if filter_correct:
             (filter_function,
-             filter_min_pix, filter_max_pix) = orb.utils.get_filter_function(
-                filter_file_path, step, order, step_nb)
+             filter_min_pix, filter_max_pix) = (
+                orb.utils.filters.get_filter_function(
+                    filter_file_path, step, order, step_nb))
 
         star_spectrum_list = list()
         for istar in range(len(star_interf_list)):
@@ -5506,7 +5533,7 @@ class InterferogramMerger(Tools):
                 if ext_phase is None and phase_correction:
                     weights += 1e-20
                     weights_min_pix, weights_max_pix = (
-                        orb.utils.get_filter_edges_pix(
+                        orb.utils.filters.get_filter_edges_pix(
                             None,
                             (calibration_laser_map[int(star_x), int(star_y)]
                              / nm_laser),
@@ -5517,7 +5544,7 @@ class InterferogramMerger(Tools):
                 ext_phase = None
                 weights = None
 
-            star_spectrum = orb.utils.transform_interferogram(
+            star_spectrum = orb.utils.fft.transform_interferogram(
                 star_interf, nm_laser,
                 calibration_laser_map[int(star_x), int(star_y)],
                 step, order, window_type, zpd_shift,
@@ -5534,8 +5561,8 @@ class InterferogramMerger(Tools):
 
             # rescale to make sure that the same quantity of energy
             # correponds to a given number of counts
-            #scale_factor = (orb.utils.robust_mean(star_flux_list[istar])/
-            #                orb.utils.robust_mean(star_spectrum))
+            #scale_factor = (orb.utils.stats.robust_mean(star_flux_list[istar])/
+            #                orb.utils.stats.robust_mean(star_spectrum))
             self._print_warning('Hack: scale_factor not computed')
             scale_factor = 1
             
@@ -5551,16 +5578,18 @@ class InterferogramMerger(Tools):
             if flat_cube is not None:
                 # extracting flat spectrum in the region of the star
                 (x_min, x_max,
-                 y_min, y_max) = orb.utils.get_box_coords(star_x, star_y,
-                                                          astrom_A.box_size,
-                                                          0, astrom_A.dimx,
-                                                          0, astrom_A.dimy)
+                 y_min, y_max) = orb.utils.image.get_box_coords(
+                    star_x, star_y,
+                    astrom_A.box_size,
+                    0, astrom_A.dimx,
+                    0, astrom_A.dimy)
                 x_min = int(x_min)
                 x_max = int(x_max)
                 y_min = int(y_min)
                 y_max = int(y_max)
-                star_fwhm = orb.utils.robust_mean(
-                    orb.utils.sigmacut(astrom_A.fit_results[istar,:,'fwhm']))
+                star_fwhm = orb.utils.stats.robust_mean(
+                    orb.utils.stats.sigmacut(
+                        astrom_A.fit_results[istar,:,'fwhm']))
                 star_profile = astrom_A.profile(
                     astrom_A.fit_results[istar,0]).array2d(astrom_A.box_size,
                                                            astrom_A.box_size)
@@ -5577,7 +5606,7 @@ class InterferogramMerger(Tools):
                 weights = np.zeros(flat_spectrum.shape[0])
                 weights[np.nonzero(flat_spectrum)] = 1.
                 
-                flat_spectrum /= orb.utils.polyfit1d(flat_spectrum, 1,
+                flat_spectrum /= orb.utils.vector.polyfit1d(flat_spectrum, 1,
                                            w=weights)
 
                 star_spectrum[:filter_min_pix] = np.nan
@@ -5587,7 +5616,7 @@ class InterferogramMerger(Tools):
                 star_spectrum /= flat_spectrum
 
             self._print_msg('Star %d mean flux: %f ADU'%(
-                    istar, orb.utils.robust_mean(star_spectrum)))
+                    istar, orb.utils.stats.robust_mean(star_spectrum)))
             self._print_msg('Star %d mean modulation efficiency: %f %%'%(
                     istar, 1./scale_factor*100.))
             
@@ -5604,7 +5633,269 @@ class InterferogramMerger(Tools):
                 self._get_extracted_star_spectra_path())
    
         return star_spectrum_list
+
+
+##################################################
+#### CLASS CosmicRayDetector #####################
+##################################################
+
+class CosmicRayDetector(InterferogramMerger):
+    """Class created for cosmic ray detection using both cubes (cam1
+    and cam2).
+
+    .. warning:: This class has been designed for SITELLE's
+      data. Cosmic ray detection for SpIOMM must use the RawData
+      class.
+    """
         
+    def _get_cr_map_cube_path(self, camera_number):
+        """Return the default path to a HDF5 cube of the cosmic rays."""
+        return self._data_path_hdr + "cr_map.cam{}.hdf5".format(camera_number)
+
+    def _get_cr_map_frame_header(self):
+        """Return the header of the cosmic ray map."""
+        return (self._get_basic_header('Cosmic ray map')
+                + self._project_header)
+
+    def create_cosmic_ray_maps(self, alignment_vector_path_1,
+                               star_list_path, fwhm_pix):
+        """Create cosmic ray maps for both cubes.
+
+        :param alignment_vector_path_1: Alignement vector of the camera 1.
+        """
+
+        def detect_crs_in_frame(frameA, frameB, frameM, frameref, params,
+                                star_list, fwhm_pix, dx, dy):
+
+            warnings.simplefilter('ignore', RuntimeWarning)
+            
+            PREDETECT_COEFF = 15
+            PREDETECT_NEI_BOX_SIZE = 3 # must be odd
+            PREDETECT_NEI_COEFF = 2.
+            DETECT_BOX_SIZE = 7 # must be odd
+            DETECT_COEFF = 2.7
+            DETECT_NEI_BOX_SIZE = 3 # must be odd
+            DETECT_NEI_COEFF = 2.
+
+            framediv = frameM / frameref
+
+            
+            PREDETECT_COEFF = np.nanstd(orb.utils.stats.sigmacut(
+                framediv)) * PREDETECT_COEFF + 1.
+            
+
+            ## predetection in frameM
+            fcr_mapdiv = orb.cutils.check_cosmic_rays_neighbourhood(
+                framediv, (framediv > PREDETECT_COEFF).astype(np.uint8),
+                PREDETECT_NEI_BOX_SIZE, PREDETECT_NEI_COEFF)
+            #print len(np.nonzero(fcr_mapdiv)[0])
+
+            ## detection in frameM
+            fcr_mapM = orb.cutils.detect_cosmic_rays(
+                frameM, np.nonzero(fcr_mapdiv),
+                DETECT_BOX_SIZE, DETECT_COEFF)
+            #print len(np.nonzero(fcr_mapM)[0])
+
+            # neighbourhood check
+            fcr_mapM = orb.cutils.check_cosmic_rays_neighbourhood(
+                frameM, fcr_mapM,
+                DETECT_NEI_BOX_SIZE, DETECT_NEI_COEFF)
+            #print 'M', len(np.nonzero(fcr_mapM)[0])
+
+            ## detect crs in frame A
+            fcr_mapA = orb.cutils.detect_cosmic_rays(
+                frameA, np.nonzero(fcr_mapM),
+                             DETECT_BOX_SIZE, DETECT_COEFF)
+            # neighbourhood check
+            fcr_mapA = orb.cutils.check_cosmic_rays_neighbourhood(
+                frameA, fcr_mapA,
+                DETECT_NEI_BOX_SIZE, DETECT_NEI_COEFF)
+            #print 'A', len(np.nonzero(fcr_mapA)[0])
+
+            ## detect crs in frame B
+            cr_listM = np.nonzero(fcr_mapM)
+
+            # transforming list to frame B coordinates
+            cr_listBx = list()
+            cr_listBy = list()
+            for i in range(len(cr_listM[0])):
+                ixb, iyb = orb.cutils.transform_A_to_B(
+                    cr_listM[0][i], cr_listM[1][i], *params)
+                ixb = int(round(ixb)); iyb = int(round(iyb))
+                if (ixb >= 0 and ixb < frameB.shape[0]
+                    and iyb >= 0 and iyb < frameB.shape[1]):
+                    cr_listBx.append(ixb)
+                    cr_listBy.append(iyb)
+            cr_listB = (cr_listBx, cr_listBy)
+
+
+            fcr_mapB = orb.cutils.detect_cosmic_rays(frameB, cr_listB,
+                                                    DETECT_BOX_SIZE, DETECT_COEFF)
+
+            # remove cosmic rays detected near a star
+            star_list[:,0] += dx
+            star_list[:,1] += dy
+
+            for istar in range(star_list.shape[0]):
+        
+                xmin, xmax, ymin, ymax = orb.utils.image.get_box_coords(
+                    star_list[istar, 0], star_list[istar, 1],
+                    int(3.*fwhm_pix)+1,
+                    0, fcr_mapA.shape[0], 0, fcr_mapA.shape[1])
+                fcr_mapA[xmin:xmax, ymin:ymax] = 0
+
+                ixb, iyb = orb.cutils.transform_A_to_B(
+                    star_list[istar, 0], star_list[istar, 1], *params)
+                xmin, xmax, ymin, ymax = orb.utils.image.get_box_coords(
+                    ixb, iyb, int(3.*fwhm_pix)+1,
+                    0, fcr_mapB.shape[0], 0, fcr_mapB.shape[1])
+                fcr_mapB[xmin:xmax, ymin:ymax] = 0
+
+            # neighbourhood check
+            fcr_mapB = orb.cutils.check_cosmic_rays_neighbourhood(
+                frameB, fcr_mapB,
+                DETECT_NEI_BOX_SIZE, DETECT_NEI_COEFF)
+            #print 'B', len(np.nonzero(fcr_mapB)[0])
+
+            return fcr_mapA, fcr_mapB
+           
+
+        BIAS = 100000
+        MAX_CRS = 3 # Max nb of cosmic rays in one pixels
+        
+        alignment_vector_1 = self.read_fits(alignment_vector_path_1)
+        star_list = orb.astrometry.load_star_list(star_list_path)
+        
+        job_server, ncpus = self._init_pp_server()
+        ncpus_max = ncpus
+
+        framesA = np.empty((self.cube_A.dimx, self.cube_A.dimy, ncpus), 
+                           dtype=float)
+        framesB_init = np.empty((self.cube_B.dimx, self.cube_B.dimy, ncpus), 
+                                dtype=float)
+        framesB = np.empty((self.cube_A.dimx, self.cube_A.dimy, ncpus), 
+                           dtype=float)
+
+        cr_mapA = np.empty((self.cube_A.dimx, self.cube_A.dimy, self.cube_A.dimz), dtype=np.bool)
+        cr_mapB = np.empty((self.cube_B.dimx, self.cube_B.dimy, self.cube_B.dimz), dtype=np.bool)
+        
+        progress = ProgressBar(int(self.cube_A.dimz/ncpus_max))
+        for ik in range(0, self.cube_A.dimz, ncpus):
+            progress.update(int(ik/ncpus_max), info="frame : " + str(ik))
+            
+            # no more jobs than frames to compute
+            if (ik + ncpus >= self.cube_A.dimz):
+                ncpus = self.cube_A.dimz - ik
+            
+            for ijob in range(ncpus):
+                framesA[:,:,ijob] = self.cube_A.get_data_frame(ik + ijob)
+                framesB_init[:,:,ijob] = self.cube_B.get_data_frame(ik + ijob)
+
+            # transform frames of camera B to align them with those of camera A
+            jobs = [(ijob, job_server.submit(
+                orb.utils.image.transform_frame, 
+                args=(framesB_init[:,:,ijob],
+                      0, self.cube_A.dimx, 
+                      0, self.cube_A.dimy, 
+                      [self.dx - alignment_vector_1[ik+ijob, 0],
+                       self.dy - alignment_vector_1[ik+ijob, 1],
+                       self.dr, self.da, self.db],
+                      self.rc, self.zoom_factor, 1),
+                modules=("import numpy as np", 
+                         "from scipy import ndimage",
+                         "import orb.cutils as cutils"))) 
+                    for ijob in range(ncpus)]
+
+            for ijob, job in jobs:
+                framesB[:,:,ijob] = job()
+            
+                
+            framesM = framesA + framesB # ok for SITELLE, not for SpIOMM
+            framesM -= np.nanmean(np.nanmean(framesM, axis=0), axis=0)
+            framesM += BIAS
+            
+            frameref = bn.nanmedian(framesM, axis=2)
+
+            # detect CRS
+            jobs = [(ijob, job_server.submit(
+                detect_crs_in_frame, 
+                args=(framesA[:,:,ijob],
+                      framesB_init[:,:,ijob],
+                      framesM[:,:,ijob],
+                      frameref,
+                      [self.dx - alignment_vector_1[ik+ijob, 0],
+                       self.dy - alignment_vector_1[ik+ijob, 1],
+                       self.dr, self.da, self.db,
+                       self.rc[0], self.rc[1],
+                       self.zoom_factor, self.zoom_factor],
+                      star_list, fwhm_pix,
+                      alignment_vector_1[ik+ijob, 0],
+                      alignment_vector_1[ik+ijob, 1]),
+                modules=("import numpy as np", 
+                         "import orb.cutils",
+                         "import orb.utils.image",
+                         "import orb.utils.stats",
+                         "import warnings"))) 
+                    for ijob in range(ncpus)]
+            
+            for ijob, job in jobs:
+                cr_mapA[:,:,ik+ijob], cr_mapB[:,:,ik+ijob] = job()
+                
+        self._close_pp_server(job_server)   
+        progress.end()  
+        
+        # check to remove over detected pixels (stars)
+        cr_mapA_deep = np.sum(cr_mapA, axis=2)
+        cr_mapB_deep = np.sum(cr_mapB, axis=2)
+
+        badpixA = np.nonzero(cr_mapA_deep > MAX_CRS)
+        badpixB = np.nonzero(cr_mapB_deep > MAX_CRS)
+
+        if len(badpixA[0]) > 0:
+            cr_mapA[badpixA[0], badpixA[1], :] = 0
+            self._print_msg('{} pixels with too much detections cleaned in camera 1'.format(
+                len(badpixA[0])))
+        if len(badpixB[0]) > 0:
+            cr_mapB[badpixB[0], badpixB[1], :] = 0
+            self._print_msg('{} pixels with too much detections cleaned in camera 2'.format(
+                len(badpixB[0])))
+        
+        
+        self._print_msg('Final number of contaminated pixels in camera 1: {}'.format(
+            np.sum(cr_mapA)))
+        self._print_msg('Final number of contaminated pixels in camera 2: {}'.format(
+            np.sum(cr_mapB)))
+
+        out_cubeA = OutHDFCube(self._get_cr_map_cube_path(1),
+                               shape=cr_mapA.shape,
+                               overwrite=self.overwrite)
+        out_cubeB = OutHDFCube(self._get_cr_map_cube_path(2),
+                               shape=cr_mapB.shape,
+                               overwrite=self.overwrite)
+        for iframe in range(self.cube_A.dimz):
+            out_cubeA.write_frame(
+                iframe, cr_mapA[:,:,iframe].astype(np.bool_),
+                header=self._get_basic_header(file_type="Cosmic ray map"),
+                force_float32=False)
+            out_cubeB.write_frame(
+                iframe, cr_mapB[:,:,iframe].astype(np.bool_),
+                header=self._get_basic_header(file_type="Cosmic ray map"),
+                force_float32=False)
+
+        out_cubeA.close()
+        out_cubeB.close()
+        del out_cubeA
+        del out_cubeB
+      
+        if self.indexer is not None:
+            self.indexer['cr_map_cube_1'] = (
+                self._get_cr_map_cube_path(1))
+
+        if self.indexer is not None:
+            self.indexer['cr_map_cube_2'] = (
+                self._get_cr_map_cube_path(2))
+
+ 
 ##################################################
 #### CLASS Spectrum ##############################
 ##################################################
@@ -5813,18 +6104,28 @@ class Spectrum(HDFCube):
             """
             
             """
+
+            if np.all(filter_function == 1.):
+                filter_correction = False
+                imin_index = 0
+                imax_index = spectrum_col.shape[1]
+            else:
+                filter_correction = True
+
             # rescaling:
             if scale_factor is not None:
                 spectrum_col *= scale_factor
 
             if wavenumber:
-                cm1_axis = orb.utils.create_cm1_axis(spectrum_col.shape[1],
-                                                     step, order, corr=1.)
+                cm1_axis = orb.utils.spectrum.create_cm1_axis(
+                    spectrum_col.shape[1],
+                    step, order, corr=1.)
                 filter_min_nm = cm1_axis[min_index]
                 filter_max_nm = cm1_axis[max_index]
             else:
-                nm_axis = orb.utils.create_nm_axis(spectrum_col.shape[1],
-                                                   step, order)
+                nm_axis = orb.utils.spectrum.create_nm_axis(
+                    spectrum_col.shape[1],
+                    step, order)
                 filter_min_nm = nm_axis[min_index]
                 filter_max_nm = nm_axis[max_index]
 
@@ -5841,72 +6142,78 @@ class Spectrum(HDFCube):
                 spectrum_col[icol, nans] = 0.
                 
                 if wavenumber and ok_computer:
-                    cm1_axis_corr = orb.utils.create_cm1_axis(
+                    cm1_axis_corr = orb.utils.spectrum.create_cm1_axis(
                         spectrum_col.shape[1], step, order, corr=corr)
 
                     # filter function and spectrum are projected
                     if spectral_calibration: # spectrum proj
                         [imin_index, imax_index] = [min_index, max_index]
                         ifilter = filter_function
-                        spectrum_col[icol,:] = orb.utils.interpolate_axis(
-                            spectrum_col[icol,:], cm1_axis, 1,
-                            old_axis=cm1_axis_corr) 
-                    else: # filter proj
-                        [imin_index, imax_index] = orb.utils.cm12pix(
+                        spectrum_col[icol,:] = (
+                            orb.utils.vector.interpolate_axis(
+                                spectrum_col[icol,:], cm1_axis, 1,
+                                old_axis=cm1_axis_corr))
+                    elif filter_correction: # filter proj
+                        
+                        [imin_index, imax_index] = orb.utils.spectrum.cm12pix(
                             cm1_axis_corr, [filter_min_nm, filter_max_nm])
                         if filter_min_nm < np.nanmin(cm1_axis_corr):
                             imin_index = 0
                         if filter_max_nm < np.nanmax(cm1_axis_corr):
                             imax_index = spectrum_col.shape[1]
-                        ifilter = orb.utils.interpolate_axis(
+                        ifilter = orb.utils.vector.interpolate_axis(
                             filter_function, cm1_axis_corr, 1,
                             old_axis=cm1_axis) 
 
-                    imin_index = int(imin_index)
-                    imax_index = int(imax_index)
-                    spectrum_col[icol, imin_index:imax_index] /= (
-                        ifilter[imin_index:imax_index])
-                    spectrum_col[icol,:imin_index] = np.nan
-                    spectrum_col[icol,imax_index:] = np.nan
+                    if filter_correction:
+                        imin_index = int(imin_index)
+                        imax_index = int(imax_index)
+                        spectrum_col[icol, imin_index:imax_index] /= (
+                            ifilter[imin_index:imax_index])
+                        spectrum_col[icol,:imin_index] = np.nan
+                        spectrum_col[icol,imax_index:] = np.nan
 
                 elif ok_computer:
-                    nm_axis_corr = orb.utils.create_nm_axis(
+                    nm_axis_corr = orb.utils.spectrum.create_nm_axis(
                         spectrum_col.shape[1], step, order, corr=corr)
                     # filter function and spectrum are projected
                     if spectral_calibration: # spectrum proj
                         [imin_index, imax_index] = [min_index, max_index]
                         ifilter = filter_function
-                        spectrum_col[icol,:] = orb.utils.interpolate_axis(
-                            spectrum_col[icol,:], nm_axis, 1,
-                            old_axis=nm_axis_corr) 
-                    else: # filter proj
-                        [imin_index, imax_index] = orb.utils.nm2pix(
+                        spectrum_col[icol,:] = (
+                            orb.utils.vector.interpolate_axis(
+                                spectrum_col[icol,:], nm_axis, 1,
+                                old_axis=nm_axis_corr) )
+                    elif filter_correction: # filter proj
+                        [imin_index, imax_index] = orb.utils.spectrum.nm2pix(
                             nm_axis_corr, [filter_min_nm, filter_max_nm])
                         if filter_min_nm < np.nanmin(nm_axis_corr):
                             imin_index = 0
                         if filter_max_nm < np.nanmax(nm_axis_corr):
                             imax_index = spectrum_col.shape[1]
                         
-                        ifilter = orb.utils.interpolate_axis(
+                        ifilter = orb.utils.vector.interpolate_axis(
                             filter_function, nm_axis_corr, 1,
                             old_axis=nm_axis)
 
-                    imin_index = int(imin_index)
-                    imax_index = int(imax_index)
-                    spectrum_col[icol, imin_index:imax_index] /= (
-                        ifilter[imin_index:imax_index])
-                    spectrum_col[icol,:imin_index] = np.nan
-                    spectrum_col[icol,imax_index:] = np.nan
+                    if filter_correction:
+                        imin_index = int(imin_index)
+                        imax_index = int(imax_index)
+                        spectrum_col[icol, imin_index:imax_index] /= (
+                            ifilter[imin_index:imax_index])
+                        spectrum_col[icol,:imin_index] = np.nan
+                        spectrum_col[icol,imax_index:] = np.nan
+                        
 
                     #####################################
-                    ## ifilter = orb.utils.interpolate_axis(
+                    ## ifilter = orb.utils.vector.interpolate_axis(
                     ##     filter_function, nm_axis_ireg_corr, 1,
                     ##     old_axis=nm_axis)
-                    ## spectrum_col[icol, :] = orb.utils.interpolate_axis(
+                    ## spectrum_col[icol, :] = orb.utils.vector.interpolate_axis(
                     ##     spectrum_col[icol, :], nm_axis_ireg, 5,
                     ##     old_axis=nm_axis)
 
-                    ## [imin_index, imax_index] = orb.utils.nm2pix(
+                    ## [imin_index, imax_index] = orb.utils.spectrum.nm2pix(
                     ##     nm_axis_ireg_corr, [filter_min_nm, filter_max_nm])
 
                     ## imin_index = int(imin_index)
@@ -5919,7 +6226,7 @@ class Spectrum(HDFCube):
                     ## # once the spectrum has been divided by the
                     ## # filter it is interpolated back to its
                     ## # original axis
-                    ## spectrum_col[icol, :] = orb.utils.interpolate_axis(
+                    ## spectrum_col[icol, :] = orb.utils.vector.interpolate_axis(
                     ##     spectrum_col[icol, :], nm_axis, 5,
                     ##     old_axis=nm_axis_ireg)
                 else:
@@ -5944,10 +6251,13 @@ class Spectrum(HDFCube):
             spectrum_scale_map_box = spectrum_scale_map[x_min:x_max,
                                                         y_min:y_max]
             ref_scale_map_box = ref_scale_map[x_min:x_max, y_min:y_max]
-            return (orb.utils.robust_median(orb.utils.sigmacut(ref_scale_map_box
-                                         / spectrum_scale_map_box, sigma=2.5)),
-                    orb.utils.robust_std(orb.utils.sigmacut(ref_scale_map_box
-                                        / spectrum_scale_map_box, sigma=2.5)))
+            return (orb.utils.stats.robust_median(
+                orb.utils.stats.sigmacut(
+                    ref_scale_map_box
+                    / spectrum_scale_map_box, sigma=2.5)),
+                    orb.utils.stats.robust_std(orb.utils.stats.sigmacut(
+                        ref_scale_map_box
+                        / spectrum_scale_map_box, sigma=2.5)))
         
                 
         # Get FFT parameters
@@ -5962,14 +6272,16 @@ class Spectrum(HDFCube):
         # get calibration laser map
         calibration_laser_map = self.read_fits(calibration_laser_map_path)
         if (calibration_laser_map.shape[0] != self.dimx):
-            calibration_laser_map = orb.utils.interpolate_map(
+            calibration_laser_map = orb.utils.image.interpolate_map(
                 calibration_laser_map,
                 self.dimx, self.dimy)
             
         # Get filter parameters
         if filter_file_path is not None:
-            filter_function, filter_min, filter_max = orb.utils.get_filter_function(
-                filter_file_path, step, order, self.dimz, wavenumber=wavenumber)
+            filter_function, filter_min, filter_max = (
+                orb.utils.filters.get_filter_function(
+                    filter_file_path, step, order,
+                    self.dimz, wavenumber=wavenumber))
         else:
             filter_function = np.ones(self.dimz, dtype=float)
             filter_min = 0
@@ -5980,8 +6292,9 @@ class Spectrum(HDFCube):
     
         if flux_calibration_vector is not None:
             if mean_flux:
-                filter_function[filter_min:filter_max] /= orb.utils.robust_mean(
-                    filter_function[filter_min:filter_max])
+                filter_function[filter_min:filter_max] /= (
+                    orb.utils.stats.robust_mean(
+                        filter_function[filter_min:filter_max]))
             else:
                 filter_function.fill(1.)     
         
@@ -6038,7 +6351,7 @@ class Spectrum(HDFCube):
                 1./scale_factor * 100.))
 
             # control energy in the imaginary part ratio
-            imag_energy = orb.utils.sigmacut(
+            imag_energy = orb.utils.stats.sigmacut(
                 deep_frame_spectrum.imag/deep_frame_spectrum.real, sigma=2.5)
             self._print_msg("Median energy ratio imaginary/real: {:.2f} [std {:.3f}] %".format(np.nanmedian(imag_energy)*100., np.nanstd(imag_energy)*100.))
             
@@ -6086,7 +6399,9 @@ class Spectrum(HDFCube):
                         iquad_calibration_laser_map[ii+ijob,:],
                         nm_laser, step, order, wavenumber,
                         spectral_calibration),
-                    modules=("numpy as np", "import orb.utils"))) 
+                    modules=("numpy as np",
+                             "import orb.utils.spectrum",
+                             "import orb.utils.vector"))) 
                         for ijob in range(ncpus)]
 
                 for ijob, job in jobs:
@@ -6109,9 +6424,9 @@ class Spectrum(HDFCube):
 
         # update header
         if wavenumber:
-            axis = orb.utils.create_nm_axis(self.dimz, step, order)
+            axis = orb.utils.spectrum.create_nm_axis(self.dimz, step, order)
         else:
-            axis = orb.utils.create_cm1_axis(self.dimz, step, order)
+            axis = orb.utils.spectrum.create_cm1_axis(self.dimz, step, order)
 
         # update standard header
         if standard_header is not None:
@@ -6197,7 +6512,7 @@ class Spectrum(HDFCube):
         self._print_msg('Standard Name: %s'%std_name)
         self._print_msg('Standard spectrum path: %s'%std_spectrum_path)
 
-        nm_axis = orb.utils.create_nm_axis(self.dimz, step, order)
+        nm_axis = orb.utils.spectrum.create_nm_axis(self.dimz, step, order)
         
         # Get real spectrum
         re_spectrum, hdr = self.read_fits(std_spectrum_path, return_header=True)
@@ -6210,7 +6525,8 @@ class Spectrum(HDFCube):
         std_order = hdr['ORDER']
         std_exp_time = hdr['EXPTIME']
         std_step_nb = re_spectrum.shape[0]
-        std_nm_axis = orb.utils.create_nm_axis(std_step_nb, std_step, std_order)
+        std_nm_axis = orb.utils.spectrum.create_nm_axis(
+            std_step_nb, std_step, std_order)
 
         # Real spectrum is converted to ADU/s
         # We must divide by the exposition time
@@ -6218,8 +6534,9 @@ class Spectrum(HDFCube):
 
         # Remove portions outside the filter
         (filter_function,
-         filter_min_pix, filter_max_pix) = orb.utils.get_filter_function(
-            filter_file_path, step, order, re_spectrum.shape[0])
+         filter_min_pix, filter_max_pix) = (
+            orb.utils.filters.get_filter_function(
+                filter_file_path, step, order, re_spectrum.shape[0]))
         re_spectrum[:filter_min_pix] = np.nan
         re_spectrum[filter_max_pix:] = np.nan
         
@@ -6258,14 +6575,16 @@ class Spectrum(HDFCube):
         if mean_vector:
             self._print_msg('Mean flux calibration')
             calib = np.empty(self.dimz)
-            self._print_msg('Mean theoretical flux of the star: %e erg/cm^2/s/A'%orb.utils.robust_mean(th_spectrum))
-            self._print_msg('Mean flux of the star in the cube: %e ADU/s'%orb.utils.robust_mean(re_spectrum))
-            calib.fill(orb.utils.robust_mean(th_spectrum) / orb.utils.robust_mean(re_spectrum))
+            self._print_msg('Mean theoretical flux of the star: %e erg/cm^2/s/A'%orb.utils.stats.robust_mean(th_spectrum))
+            self._print_msg('Mean flux of the star in the cube: %e ADU/s'%orb.utils.stats.robust_mean(re_spectrum))
+            calib.fill(orb.utils.stats.robust_mean(th_spectrum) / orb.utils.stats.robust_mean(re_spectrum))
         else:
             self._print_error('Not tested yet')
             # absorption lines are removed from fit
-            mean = orb.utils.robust_mean(orb.utils.sigmacut(re_spectrum))
-            std = orb.utils.robust_std(orb.utils.sigmacut(re_spectrum))
+            mean = orb.utils.stats.robust_mean(orb.utils.stats.sigmacut(
+                re_spectrum))
+            std = orb.utils.stats.robust_std(orb.utils.stats.sigmacut(
+                re_spectrum))
             weights = np.ones_like(re_spectrum)
             weights[np.nonzero(re_spectrum < mean - 2.*std)] = 0.
 
@@ -6276,8 +6595,10 @@ class Spectrum(HDFCube):
             re_spectrum = re_spectrum[np.nonzero(~np.isnan(re_spectrum))]
 
             # spectra are fitted before being divided
-            re_spectrum = orb.utils.polyfit1d(re_spectrum, 1, w=weights) # ADU/s
-            th_spectrum = orb.utils.polyfit1d(th_spectrum, 1) # erg/cm^2/s/A
+            re_spectrum = orb.utils.vector.polyfit1d(
+                re_spectrum, 1, w=weights) # ADU/s
+            th_spectrum = orb.utils.vector.polyfit1d(
+                th_spectrum, 1) # erg/cm^2/s/A
 
             calib = th_spectrum / re_spectrum # [erg/cm^2/s/A/[ADU/s]]
 
@@ -6325,17 +6646,17 @@ class Phase(HDFCube):
           to the phase.
 
         :param phase_map_type: (Optional) Type of phase map. Must be
-          None, 'smoothed', 'fitted', 'error' or 'residual'
+          None, 'unwraped', 'fitted', 'error' or 'residual'
         """
         if phase_map_type is not None:
-            if phase_map_type == 'smoothed':
-                pm_type = "_smoothed"
+            if phase_map_type == 'unwraped':
+                pm_type = "_unwraped"
             elif phase_map_type == 'fitted':
                 pm_type = "_fitted"
             elif phase_map_type == 'error':
                 pm_type = "_fitted_error"
             elif phase_map_type != 'residual':
-                self._print_error("Phase_map_type must be set to 'smoothed', 'fitted', 'error', 'residual' or None")
+                self._print_error("Phase_map_type must be set to 'unwraped', 'fitted', 'error', 'residual' or None")
         else:
             pm_type = ""
             
@@ -6355,16 +6676,16 @@ class Phase(HDFCube):
           to the phase.
 
         :param phase_map_type: (Optional) Type of phase map. Must be
-          None, 'smoothed', 'fitted', 'error' or 'residual'
+          None, 'unwraped', 'fitted', 'error' or 'residual'
 
-        .. note:: smoothed, fitted and error are incompatible. If more
+        .. note:: unwraped, fitted and error are incompatible. If more
           than one of those options are set to True the priority order
-          is smoothed, then fitted, then error.
+          is unwraped, then fitted, then error.
         """
         if phase_map_type is not None:
-            if phase_map_type == 'smoothed':
+            if phase_map_type == 'unwraped':
                 header = self._get_basic_header(
-                    'Smoothed phase map order %d'%order)
+                    'Unwraped phase map order %d'%order)
             elif phase_map_type == 'fitted':
                 header = self._get_basic_header(
                     'Fitted phase map order %d'%order)
@@ -6375,7 +6696,7 @@ class Phase(HDFCube):
                 header = self._get_basic_header(
                     'Residual map on phase fit')
             else:
-                self._print_error("Phase_map_type must be set to 'smoothed', 'fitted', 'error', 'residual' or None")
+                self._print_error("Phase_map_type must be set to 'unwraped', 'fitted', 'error', 'residual' or None")
         else:
             header = self._get_basic_header('Phase map order %d'%order)
        
@@ -6437,10 +6758,11 @@ class Phase(HDFCube):
             filter_min_map_column = np.empty_like(correction_map_column)
             filter_max_map_column = np.empty_like(correction_map_column)
             for ij in range(correction_map_column.shape[0]):                
-                filter_min_pix, filter_max_pix = orb.utils.get_filter_edges_pix(
-                    None, correction_map_column[ij],
-                    step, order, dimz,
-                    filter_min=filter_min, filter_max=filter_max)
+                filter_min_pix, filter_max_pix = (
+                    orb.utils.filters.get_filter_edges_pix(
+                        None, correction_map_column[ij],
+                        step, order, dimz,
+                        filter_min=filter_min, filter_max=filter_max))
                 # edges are inversed if order is even because the
                 # phase vector is not returned (and must not be).
                 if int(order) & 1:
@@ -6469,7 +6791,7 @@ class Phase(HDFCube):
                 # get good fit coefficients for a full length vector
                 # and not a low resolution vector
                 if interferogram_length != iphase.shape[0]:
-                    iphase = orb.utils.interpolate_size(
+                    iphase = orb.utils.vector.interpolate_size(
                         iphase, interferogram_length, 1)
                 if (np.sum(iphase) != 0.):
                     # weights definition using filter edges. The part
@@ -6548,16 +6870,16 @@ class Phase(HDFCube):
         # Calibration laser map load and interpolation
         calibration_laser_map = self.read_fits(calibration_laser_map_path)
         if (calibration_laser_map.shape[0] != self.dimx):
-            calibration_laser_map = orb.utils.interpolate_map(
+            calibration_laser_map = orb.utils.image.interpolate_map(
                 calibration_laser_map,
                 self.dimx, self.dimy)
         ## Create filter min and max map
         if filter_file_path is not None:
             (filter_nm, filter_trans,
-             filter_min, filter_max) = orb.utils.read_filter_file(
+             filter_min, filter_max) = orb.utils.filters.read_filter_file(
                 filter_file_path)
         else:
-            nm_axis = orb.utils.create_nm_axis(self.dimz, step, order)
+            nm_axis = orb.utils.spectrum.create_nm_axis(self.dimz, step, order)
             nm_range = nm_axis[-1] - nm_axis[0]
             filter_min = int(FILTER_BORDER_COEFF * nm_range + nm_axis[0])
             filter_max = int((1. - FILTER_BORDER_COEFF) * nm_range + nm_axis[0])
@@ -6579,7 +6901,7 @@ class Phase(HDFCube):
                 args=(filter_min, filter_max,
                       correction_map[ii+ijob,:],
                       step, order, interferogram_length),
-                modules=("numpy as np", "import orb.utils"))) 
+                modules=("numpy as np", "import orb.utils.filters"))) 
                     for ijob in range(ncpus)]
 
             for ijob, job in jobs:
@@ -6615,7 +6937,7 @@ class Phase(HDFCube):
                           filter_min_map[x_min+ii+ijob, y_min:y_max],
                           filter_max_map[x_min+ii+ijob, y_min:y_max],
                           fit_order, interferogram_length, order),
-                    modules=("numpy as np", "import orb.utils"))) 
+                    modules=("numpy as np", "import orb.utils.vector"))) 
                         for ijob in range(ncpus)]
 
                 for ijob, job in jobs:
@@ -6643,7 +6965,7 @@ class Phase(HDFCube):
             # remove bad fitted phase values
             flat_res_map = res_map[np.nonzero(res_map)].flatten()
             res_map_med = np.median(flat_res_map)
-            res_map_std = orb.utils.robust_std(flat_res_map)
+            res_map_std = orb.utils.stats.robust_std(flat_res_map)
             flat_res_map = flat_res_map[np.nonzero(
                 flat_res_map < res_map_med + 0.5 * res_map_std)]
             res_threshold = (THRESHOLD_COEFF
@@ -6736,9 +7058,9 @@ class Standard(Tools):
         :param step: Step size in um
         :param n: Number of steps
         """
-        nm_axis = orb.utils.create_nm_axis(n, step, order)
+        nm_axis = orb.utils.spectrum.create_nm_axis(n, step, order)
         ang_axis = nm_axis * 10.
-        return orb.utils.interpolate_axis(
+        return orb.utils.vector.interpolate_axis(
             self.flux, ang_axis, 1, old_axis=self.ang)
 
     def read_massey_dat(self, file_path):
@@ -6765,7 +7087,7 @@ class Standard(Tools):
         spec_mag = np.array(spec_mag, dtype=float)
         
         # convert mag to flux in erg/cm^2/s/A
-        spec_flux = orb.utils.ABmag2flambda(spec_mag, spec_ang)
+        spec_flux = orb.utils.spectrum.ABmag2flambda(spec_mag, spec_ang)
 
         return spec_ang, spec_flux
 
@@ -6842,7 +7164,8 @@ class Standard(Tools):
         # read filter file
         filter_file_path = self._get_filter_file_path(filter_name)
         (filter_nm, filter_trans,
-         filter_min, filter_max) = orb.utils.read_filter_file(filter_file_path)
+         filter_min, filter_max) = orb.utils.filters.read_filter_file(
+            filter_file_path)
 
         # convert filter scale to A
         filter_ang = filter_nm * 10.
@@ -6886,10 +7209,10 @@ class Standard(Tools):
         elif std.dimz <= 3:
             std_master_frame = np.median(std[:,:,:], axis=2)
         elif std.dimz <= 15:
-            std_master_frame = orb.utils.create_master_frame(
+            std_master_frame = orb.utils.image.create_master_frame(
                 std[:,:,:], silent=True)
         else: # large number of frames to combine
-            std_master_frame = orb.utils.create_master_frame(
+            std_master_frame = orb.utils.image.create_master_frame(
                 std[:,:,:], silent=True, reject='minmax')
 
         astrom = Astrometry(std_master_frame, init_fwhm_arc,
@@ -6977,7 +7300,7 @@ class SourceExtractor(InterferogramMerger):
         
             source_listA[:,0] += dxA
             source_listA[:,1] += dyA
-            source_listB = utils.transform_star_position_A_to_B(
+            source_listB = orb.utils.astrometry.transform_star_position_A_to_B(
                 source_listA, alignment_coeffs, rc, zoom_factor)    
         
             fit_resA = orb.astrometry.fit_stars_in_frame(
@@ -7085,12 +7408,14 @@ class SourceExtractor(InterferogramMerger):
                       modulation_ratio,
                       alignment_vector_1[ik+ijob,0],
                       alignment_vector_1[ik+ijob,1]),
-                modules=("from orb.astrometry import fit_star, StarsParams, sky_background_level, aperture_photometry, get_profile",
+                modules=("from orb.utils.astrometry import fit_star, sky_background_level, aperture_photometry, get_profile",
+                         "from orb.astrometry import StarsParams",
                          "import orb.astrometry",
+                         "import orb.utils.astrometry",
                          "import numpy as np",
                          "import math",
-                         "import orb.cutils as cutils",
                          "import orb.utils as utils",
+                         "import orb.cutils as cutils",
                          "import bottleneck as bn",
                          "import warnings")))
                     for ijob in range(ncpus)]
@@ -7162,8 +7487,10 @@ class SourceExtractor(InterferogramMerger):
         # load filter function
         if filter_file_path is not None:
             (filter_function,
-             filter_min_pix, filter_max_pix) = orb.utils.get_filter_function(
-                filter_file_path, step, order, step_nb, wavenumber=wavenumber)
+             filter_min_pix, filter_max_pix) = (
+                orb.utils.filters.get_filter_function(
+                    filter_file_path, step, order,
+                    step_nb, wavenumber=wavenumber))
         else:
             self._print_warning('No filter correction')
             filter_function = None
@@ -7171,8 +7498,9 @@ class SourceExtractor(InterferogramMerger):
 
         # get zpd shift
         if zpd_shift is None:
-            zpd_shift = orb.utils.find_zpd(self.cube_A.get_zmedian(nozero=True),
-                                           return_zpd_shift=True)
+            zpd_shift = orb.utils.fft.find_zpd(
+                self.cube_A.get_zmedian(nozero=True),
+                return_zpd_shift=True)
         
         self._print_msg("ZPD shift: {}".format(zpd_shift))
 
@@ -7180,7 +7508,7 @@ class SourceExtractor(InterferogramMerger):
         if phase_correction:
             xc = int(self.cube_A.dimx/2)
             yc = int(self.cube_A.dimy/2)
-            xmin, xmax, ymin, ymax = orb.utils.get_box_coords(
+            xmin, xmax, ymin, ymax = orb.utils.image.get_box_coords(
                 xc, yc, int(0.02*self.cube_A.shape[0]),
                 0, self.cube_A.dimx, 0, self.cube_A.dimy)
 
@@ -7189,11 +7517,11 @@ class SourceExtractor(InterferogramMerger):
             zmedian = source_interf[0,:]
 
             phase_map_0 = self.read_fits(phase_map_0_path)
-            ext_phase = orb.utils.create_phase_vector(
+            ext_phase = orb.utils.fft.create_phase_vector(
                 np.nanmean(phase_map_0[xmin:xmax, ymin:ymax]),
                 phase_coeffs, step_nb)
 
-            medspec = orb.utils.transform_interferogram(
+            medspec = orb.utils.fft.transform_interferogram(
                 zmedian, nm_laser, nm_laser, step, order,
                 '2.0', zpd_shift, phase_correction=True,
                 ext_phase=ext_phase, wavenumber=wavenumber,
@@ -7221,7 +7549,7 @@ class SourceExtractor(InterferogramMerger):
             interf = source_interf[isource, :]
 
             if phase_correction:
-                ext_phase = orb.utils.create_phase_vector(
+                ext_phase = orb.utils.fft.create_phase_vector(
                     phase_map_0[int(x), int(y)],
                     phase_coeffs, step_nb)
             else:
@@ -7232,7 +7560,7 @@ class SourceExtractor(InterferogramMerger):
             else:
                 nm_laser_obs = nm_laser
             
-            spec = orb.utils.transform_interferogram(
+            spec = orb.utils.fft.transform_interferogram(
                 interf, nm_laser, nm_laser_obs, step, order,
                 apodization_function, zpd_shift,
                 phase_correction=phase_correction,
@@ -7342,17 +7670,17 @@ class PhaseMaps(Tools):
           to the phase.
 
         :param phase_map_type: (Optional) Type of phase map. Must be
-          None, 'smoothed', 'fitted', 'error' or 'residual'
+          None, 'unwraped', 'fitted', 'error' or 'residual'
         """
         if phase_map_type is not None:
-            if phase_map_type == 'smoothed':
-                pm_type = "_smoothed"
+            if phase_map_type == 'unwraped':
+                pm_type = "_unwraped"
             elif phase_map_type == 'fitted':
                 pm_type = "_fitted"
             elif phase_map_type == 'error':
                 pm_type = "_fitted_error"
             elif phase_map_type != 'residual':
-                self._print_error("Phase_map_type must be set to 'smoothed', 'fitted', 'error', 'residual' or None")
+                self._print_error("Phase_map_type must be set to 'unwraped', 'fitted', 'error', 'residual' or None")
         else:
             pm_type = ""
             
@@ -7370,16 +7698,16 @@ class PhaseMaps(Tools):
           to the phase.
 
         :param phase_map_type: (Optional) Type of phase map. Must be
-          None, 'smoothed', 'fitted', 'error' or 'residual'
+          None, 'unwraped', 'fitted', 'error' or 'residual'
 
-        .. note:: smoothed, fitted and error are incompatible. If more
+        .. note:: unwraped, fitted and error are incompatible. If more
           than one of those options are set to True the priority order
-          is smoothed, then fitted, then error.
+          is unwraped, then fitted, then error.
         """
         if phase_map_type is not None:
-            if phase_map_type == 'smoothed':
+            if phase_map_type == 'unwraped':
                 header = self._get_basic_header(
-                    'Smoothed phase map order %d'%order)
+                    'Unwraped phase map order %d'%order)
             elif phase_map_type == 'fitted':
                 header = self._get_basic_header(
                     'Fitted phase map order %d'%order)
@@ -7390,7 +7718,7 @@ class PhaseMaps(Tools):
                 header = self._get_basic_header(
                     'Residual map on phase fit')
             else:
-                self._print_error("Phase_map_type must be set to 'smoothed', 'fitted', 'error', 'residual' or None")
+                self._print_error("Phase_map_type must be set to 'unwraped', 'fitted', 'error', 'residual' or None")
         else:
             header = self._get_basic_header('Phase map order %d'%order)
        
@@ -7415,176 +7743,70 @@ class PhaseMaps(Tools):
                 + self._calibration_laser_header
                 + self._get_basic_frame_header(self.dimx, self.dimy))
 
-    def smooth_phase_map_0(self, div_nb=None):
-        """Smooth values of the 0th order phase map
 
-        This method smooth a phase map by trying to clear most of the
-        difference between adjacent pixels (order 0 of the phase is
-        defined modulo PI/2).
-
-        :param div_nb: (Optional) Number of quadrants divisions to
-          accelerate the fitting processus. If None, this number is
-          automatically choosen (default None).
-        """
-        def smooth_quad(pm_quad):
-            def smooth_columns(pmap):
-                for ii in range(1, pmap.shape[0]):
-                    coli = np.mean((pmap[ii,:])[np.nonzero(pmap[ii,:])])
-                    coli_1 = np.mean((pmap[ii-1,:])[np.nonzero(pmap[ii-1,:])])
-                    column_diff = coli - coli_1
-                    while abs(column_diff) >= math.pi / 2.:
-                        if column_diff >= 0.:
-                            pmap[ii,:] -= math.pi
-                            column_diff -= math.pi
-                        else:
-                            pmap[ii,:] += math.pi
-                            column_diff += math.pi
-                return pmap
-
-            def smooth_phase(pmap, deg=10):
-                def smooth_box(ii, ij, pmap, deg):
-                    xmin, xmax, ymin, ymax = orb.utils.get_box_coords(
-                        ii, ij, deg*2, 0, pmap.shape[0], 0, pmap.shape[1])
-
-                    box = np.copy(pmap[xmin:xmax, ymin:ymax])
-                    box_mask = np.nonzero(box)
-                    box_mask_inv = np.nonzero(box == 0)
-    
-                    if np.any(box) and np.size(box) > 1:
-                        box -= float(np.mean(box[box_mask]))
-                        box[box_mask_inv] = 0.
-                        bad_values = np.nonzero(abs(box) >= math.pi / 2. )
-                        for ibad in range(len(bad_values[0])):
-                            badx = bad_values[0][ibad]
-                            bady = bad_values[1][ibad]
-                            while abs(box[badx, bady]) >= math.pi / 2.:
-                                if box[badx, bady] >= 0.:
-                                    box[badx, bady] -= math.pi
-                                    pmap[xmin + badx,
-                                         ymin + bady] -= math.pi
-                                else:
-                                    box[badx, bady] += math.pi
-                                    pmap[xmin + badx,
-                                         ymin + bady] += math.pi
-
-                for ii in range(pmap.shape[1]):
-                    for ij in range(pmap.shape[0]):
-                        smooth_box(ii, ij, pmap, deg)
-
-                return pmap
-
-            SMOOTH_DEG_COEFF = 0.025 # ratio of the smoothing degree to
-                                     # the phase map shape
-                                     
-            mask = np.nonzero(pm_quad == 0)
-            deg = int(SMOOTH_DEG_COEFF
-                      * (pm_quad.shape[0] + pm_quad.shape[1])/2.)
-            pm_quad = smooth_phase(pm_quad, deg)
-            pm_quad[mask] = 0.
-            pm_quad = smooth_columns(pm_quad)
-            pm_quad[mask] = 0.
-            
-            return pm_quad
+    def unwrap_phase_map_0(self):
         
+        BIN_SIZE = 20
+        LINE_SIZE = 30
 
-        # Load map
+
         phase_map = self.phase_maps[0]
+        
+        def unwrap(val, target):
+            while abs(val - target) >= math.pi / 2.:
+                if val  - target >= 0. :
+                    val -= math.pi
+                else:
+                    val += math.pi
+            return val
 
-        # Smooth map
-        job_server, ncpus = self._init_pp_server()
+        def unwrap_columns(pm0, bin_size):
+            for ii in range(pm0.shape[0]):
+                for ij in range(pm0.shape[1]):
+                    colbin = pm0[ii,ij:ij+bin_size+1]
+                    colbin_med = np.nanmedian(colbin)
+                    for ik in range(colbin.shape[0]):
+                        colbin[ik] = unwrap(colbin[ik], colbin_med)
+                    pm0[ii,ij:ij+bin_size+1] = colbin
+            return pm0
 
-        if div_nb is None:
-            if self.binning < 3:
-                DIV_NB = int(math.sqrt(ncpus)) * 2
-            else:
-                DIV_NB = 2
-        else:
-            DIV_NB = int(div_nb)
-            
-        QUAD_NB = DIV_NB**2
+        def unwrap_all(pm0, bin_size):
+            test_line = np.nanmedian(
+                pm0[:, pm0.shape[1]/2-LINE_SIZE/2:pm0.shape[1]/2+LINE_SIZE/2],
+                axis=1)
+            test_line_init = np.copy(test_line)
+            for ii in range(0, test_line.shape[0]-bin_size/2):
+                linebin = test_line[ii:ii+bin_size+1]
+                linebin_med = np.nanmedian(orb.utils.stats.sigmacut(
+                    linebin, sigma=2))
+                for ik in range(linebin.shape[0]):
+                    linebin[ik] = unwrap(linebin[ik], linebin_med)
+                test_line[ii:ii+bin_size+1] = linebin
+            diff = test_line - test_line_init
+            pm0 = (pm0.T + diff.T).T
+            return pm0
+        
+        # unwrap pixels along columns
+        phase_map = unwrap_columns(phase_map, BIN_SIZE)
+        # unwrap columns along a line
+        phase_map = unwrap_all(phase_map, BIN_SIZE)
 
-        progress = ProgressBar(QUAD_NB)
-        for iquad_stack in range(0, QUAD_NB, ncpus):
-            
-            if (iquad_stack + ncpus >= QUAD_NB):
-                ncpus = QUAD_NB - iquad_stack
-
-            limits = list()
-
-            for ijob in range(ncpus):
-                limits.append(self.get_quadrant_dims(
-                    iquad_stack + ijob, self.dimx, self.dimy, DIV_NB))
-            jobs = [(ijob, job_server.submit(
-                smooth_quad, 
-                args=(phase_map[
-                    limits[ijob][0]:limits[ijob][1],
-                    limits[ijob][2]:limits[ijob][3]],),
-                modules=("numpy as np", "import orb.utils", "import math")))
-                    for ijob in range(ncpus)]
-
-            for ijob, job in jobs:
-                (x_min, x_max, y_min, y_max) = limits[ijob]
-                phase_map[x_min:x_max,y_min:y_max] = job()
-                
-            progress.update(iquad_stack+ncpus)
-
-        self._close_pp_server(job_server)
-        progress.end()
-        phase_map[np.nonzero(phase_map == 0)] = np.nan
-
-        # reorder quadrants 
-        for ij in range(DIV_NB):
-            for ii in range(DIV_NB):
-                (x_min, x_max, y_min, y_max) = self.get_quadrant_dims(
-                    ii+ij*DIV_NB, self.dimx, self.dimy, DIV_NB)
-                refquad = phase_map[x_min:x_max,y_min:y_max]
-                
-                # x + 1
-                if ii + 1 < DIV_NB:
-                    (x_min, x_max, y_min, y_max) = self.get_quadrant_dims(
-                        (ii+1)+ij*DIV_NB, self.dimx, self.dimy, DIV_NB)
-            
-                    neiquad = phase_map[x_min:x_max,y_min:y_max]
-                    refmed = np.nanmedian(refquad[-10:,:])
-                    neimed = np.nanmedian(neiquad[:10,:])
-                    while abs(neimed - refmed) > math.pi/4.:
-                        if neimed - refmed > 0.:
-                            phase_map[x_min:x_max,y_min:y_max] -= math.pi/2.
-                            neimed -= math.pi/2.
-                        else:
-                            phase_map[x_min:x_max,y_min:y_max] += math.pi/2.
-                            neimed += math.pi/2.
-            
-                # y + 1
-                if ij + 1 < DIV_NB:
-                    (x_min, x_max, y_min, y_max) = self.get_quadrant_dims(
-                         (ii)+(ij+1)*DIV_NB, self.dimx, self.dimy, DIV_NB)
-                    neiquad = phase_map[x_min:x_max,y_min:y_max]
-                    refmed = np.nanmedian(refquad[:,-10:])
-                    neimed = np.nanmedian(neiquad[:,:10])
-                    while abs(neimed - refmed) > math.pi/2.:
-                        if neimed - refmed > 0:
-                            phase_map[x_min:x_max,y_min:y_max] -= math.pi
-                            neimed -= math.pi
-                        else:
-                            phase_map[x_min:x_max,y_min:y_max] += math.pi
-                            neimed += math.pi
-            
         phase_map[np.nonzero(np.isnan(phase_map))] = 0.
         
-        # Save smoothed map
-        self.phase_map_order_0_smoothed = phase_map
-        phase_map_path = self._get_phase_map_path(0, phase_map_type='smoothed')
+        # Save unwraped map
+        self.phase_map_order_0_unwraped = np.copy(phase_map)
+        phase_map_path = self._get_phase_map_path(0, phase_map_type='unwraped')
 
         self.write_fits(phase_map_path,
                         orb.cutils.unbin_image(phase_map,
                                                self.dimx_unbinned,
                                                self.dimy_unbinned), 
                         fits_header=self._get_phase_map_header(
-                            0, phase_map_type='smoothed'),
+                            0, phase_map_type='unwraped'),
                         overwrite=self.overwrite)
         if self.indexer is not None:
-            self.indexer['phase_map_smoothed_0'] = phase_map_path
+            self.indexer['phase_map_unwraped_0'] = phase_map_path
+
     
     def fit_phase_map_0(self, 
                         phase_model='spiomm',
@@ -7622,7 +7844,7 @@ class PhaseMaps(Tools):
                       # border to fit the phase map (cannot be more
                       # than 0.5)
 
-        phase_map = self.phase_map_order_0_smoothed
+        phase_map = self.phase_map_order_0_unwraped
         # border points are removed
         mask = np.ones_like(phase_map, dtype=bool)
         border = (self.dimx + self.dimy)/2. * BORDER 
@@ -7634,22 +7856,26 @@ class PhaseMaps(Tools):
         err_map[np.nonzero(mask)] = np.nan
         err_map = err_map**0.5
 
+        if phase_model == 'sitelle' and calibration_laser_map_path is None:
+            self._print_error('Calibration laser map must be set for a SITELLE phase map fit')
+
         # load calibration laser map
         calibration_laser_map = self.read_fits(calibration_laser_map_path)
         if (calibration_laser_map.shape[0] != self.dimx_unbinned):
-            calibration_laser_map = orb.utils.interpolate_map(
+            calibration_laser_map = orb.utils.image.interpolate_map(
                 calibration_laser_map, self.dimx_unbinned, self.dimy_unbinned)
-        calibration_laser_map = orb.utils.nanbin_image(calibration_laser_map, self.binning)
+        calibration_laser_map = orb.utils.image.nanbin_image(
+            calibration_laser_map, self.binning)
 
         if phase_model == 'spiomm':
-            fitted_phase_map, error_map, fit_error = orb.utils.fit_map(
+            fitted_phase_map, error_map, fit_error = orb.utils.image.fit_map(
                 phase_map, err_map, FIT_DEG)
             new_calibration_laser_map = calibration_laser_map
             
         elif phase_model == 'sitelle':
             (fitted_phase_map, error_map,
              fit_error, new_calibration_laser_map) = (
-                orb.utils.fit_sitelle_phase_map(
+                orb.utils.image.fit_sitelle_phase_map(
                     phase_map, err_map, calibration_laser_map,
                     calibration_laser_nm,
                     pixel_size=float(self._get_config_parameter('PIX_SIZE_CAM1')) * self.binning,
