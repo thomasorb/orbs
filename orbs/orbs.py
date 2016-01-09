@@ -35,7 +35,8 @@ __version__ = version.__version__
 import os
 import time
 import resource
-
+import sys
+import traceback
 import scipy
 import numpy as np
 import xml.etree.ElementTree
@@ -475,7 +476,7 @@ class Orbs(Tools):
                         # export fits frames as an hdf5 cube
                         if not fast_init:
                             cube = Cube(self.options[option_key],
-                                        silent_init=True, no_sort=True)
+                                        silent_init=True, no_sort=False)
                             
                             export_path = (
                                 self._get_project_dir()
@@ -501,7 +502,7 @@ class Orbs(Tools):
                                             self._print_msg(
                                                 'HDF5 cube {} already created'.format(export_path))
                             if not already_exported:
-                                cube.export(export_path, force_hdf5 = True,
+                                cube.export(export_path, force_hdf5=True,
                                             overwrite=True)
 
 
@@ -779,19 +780,34 @@ class Orbs(Tools):
 
         # get ZPD shift in SITELLE's case
         if self.config["INSTRUMENT_NAME"] == 'SITELLE' and not fast_init:
-            cube1 = Cube(self.options['image_list_path_1'],
+            if target == 'laser':
+                cube_list = self.options['calib_path_1']
+            else:
+                cube_list = self.options['image_list_path_1']
+                
+            cube1 = Cube(cube_list,
                          silent_init=True,
                          config_file_name=self.config_file_name,
                          no_sort=True)
 
+           
             zpd_found = False
-            for ik in range(cube1.dimz):
-                sitstep = cube1.get_frame_header(ik)['SITSTEP']
-                if sitstep == 0:
-                    zpd_index = ik
-                    zpd_found = True
-                    break
-            if not zpd_found: self._print_error('zpd index could not be found')
+            if target == 'laser':
+                for ik in range(cube1.dimz):
+                    sitstep = cube1.get_frame_header(ik)['SITFRING']
+                    if sitstep > 0:
+                        zpd_index = ik
+                        zpd_found = True
+                        break
+                if not zpd_found: self._print_error('zpd index could not be found')
+            else:
+                for ik in range(cube1.dimz):
+                    sitstep = cube1.get_frame_header(ik)['SITSTEP']
+                    if sitstep == 0:
+                        zpd_index = ik
+                        zpd_found = True
+                        break
+                if not zpd_found: self._print_error('zpd index could not be found')
                 
             zpd_shift = int(int(cube1.dimz/2.) - zpd_index)
             self.options['zpd_index'] = zpd_index
@@ -1145,7 +1161,6 @@ class Orbs(Tools):
             target_dec = orb.utils.astrometry.dec2deg(
                 self.options["target_dec"])
         else: target_dec = None
-        
         if "target_x" in self.options:
             target_x = self.options["target_x"]
         else: target_x = None
@@ -2652,7 +2667,10 @@ class Orbs(Tools):
             try:
                 correct_wcs = astrom.register(full_deep_frame=True)
             except Exception, e:
+                exc_info = sys.exc_info()
                 self._print_warning('Error during WCS computation, check WCS parameters in the option file: {}'.format(e))
+                traceback.print_exception(*exc_info)
+                del exc_info
                 correct_wcs = None
 
         # Get deep frame

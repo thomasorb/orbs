@@ -36,8 +36,10 @@ import orb.utils.fft
 import orb.utils.filters
 import orb.utils.spectrum
 import orb.utils.image
+import orb.utils.misc
 
 import orb.astrometry
+import orb.utils.astrometry
 import orb.constants
 from orb.astrometry import Astrometry, Aligner
 import bottleneck as bn
@@ -406,7 +408,7 @@ class RawData(HDFCube):
 
         :param star_list_path: Path to a list of star coordinates that
           will be used to calculates the displacement vector. Please
-          refer to :meth:`orb.astrometry.load_star_list` for more
+          refer to :meth:`orb.utils.astrometry.load_star_list` for more
           information about a list of stars.
 
         :param init_fwhm_arc: Initial guess for the FWHM in arcsec
@@ -662,7 +664,7 @@ class RawData(HDFCube):
         self._print_msg("Creating cosmic ray map", color=True)
         self._print_msg("First detection pass", color=True)
 
-        star_list = orb.astrometry.load_star_list(star_list_path)
+        star_list = orb.utils.astrometry.load_star_list(star_list_path)
         
         cr_map = np.empty((self.dimx, self.dimy, self.dimz), dtype=np.bool)
 
@@ -1979,11 +1981,11 @@ class CalibrationLaser(HDFCube):
                 # gaussian fit (fast)
                 if fast:
                     fitp = orb.utils.spectrum.fit_lines_in_vector(
-                        spectrum_vector, [max_index], fmodel='gaussian',
+                        spectrum_vector, [max_index],
+                        fmodel='gaussian',
                         fwhm_guess=fwhm_guess * 0.9,
                         poly_order=0,
                         signal_range=[range_min, range_max],
-                        wavenumber=True,
                         fix_cont=True, cont_guess=[0.])
                     ## fitp = {'lines-params':[[0,1,max_index,1]],
                     ##         'lines-params-err':[[0,0,0,0]]}
@@ -1991,11 +1993,9 @@ class CalibrationLaser(HDFCube):
                 else:
                     fitp = orb.utils.spectrum.fit_lines_in_vector(
                         spectrum_vector, [max_index], fmodel='sinc2',
-                        observation_params=[step, order],
                         fwhm_guess=fwhm_guess,
                         poly_order=0,
                         signal_range=[range_min, range_max],
-                        wavenumber=True,
                         fix_cont=True, cont_guess=[0.])
                     
                 if (fitp != []):
@@ -2731,20 +2731,23 @@ class Interferogram(HDFCube):
                                        fringes[ifringe, 1], 0.])
                             
                             interf = interf / fringe_vector
-                    
                     # Spectrum computation
-                    spectrum_column[ij,:] = orb.utils.fft.transform_interferogram(
-                        interf, nm_laser, calibration_laser_map_column[ij],
-                        step, order, window_type, zpd_shift,
-                        bad_frames_vector=bad_frames_vector,
-                        phase_correction=phase_correction,
-                        polyfit_deg=polyfit_deg,
-                        ext_phase=ext_phase,
-                        return_phase=return_phase,
-                        balanced=balanced,
-                        weights=weights,
-                        smoothing_deg=smoothing_deg,
-                        wavenumber=wavenumber, return_complex=True)
+                    spectrum_column[ij,:] = (
+                        orb.utils.fft.transform_interferogram(
+                            interf, nm_laser, calibration_laser_map_column[ij],
+                            step, order, window_type, zpd_shift,
+                            bad_frames_vector=bad_frames_vector,
+                            phase_correction=phase_correction,
+                            polyfit_deg=polyfit_deg,
+                            ext_phase=ext_phase,
+                            return_phase=return_phase,
+                            balanced=balanced,
+                            weights=weights,
+                            smoothing_deg=smoothing_deg,
+                            wavenumber=wavenumber, return_complex=True))
+
+                    if not phase_correction:
+                        spectrum_column[ij,:] = np.abs(spectrum_column[ij,:])
                         
             return spectrum_column
             
@@ -3086,7 +3089,7 @@ class Interferogram(HDFCube):
             photometry_type = 'flux'
 
         if isinstance(star_list_path, str):
-            star_list = orb.astrometry.load_star_list(star_list_path)
+            star_list = orb.utils.astrometry.load_star_list(star_list_path)
         else:
             star_list = star_list_path
 
@@ -4010,7 +4013,7 @@ class InterferogramMerger(Tools):
                       framesB_init_mask[:,:,ijob]),
                 modules=("numpy as np", 
                          "from scipy import ndimage",
-                         "import orb.cutils as cutils"))) 
+                         "import orb.cutils"))) 
                     for ijob in range(ncpus)]
 
             for ijob, job in jobs:
@@ -4630,7 +4633,7 @@ class InterferogramMerger(Tools):
         photom_B = astrom_B.fit_results[:,:,photometry_type]
 
         # Find ZPD ################################################
-        bad_frames_vector = orb.utils.vector.correct_bad_frames_vector(
+        bad_frames_vector = orb.utils.misc.correct_bad_frames_vector(
             bad_frames_vector, self.cube_A.dimz)
         zmedian = self.cube_A.get_zmedian(nozero=True)
         zmedian[bad_frames_vector] = 0.
@@ -5248,7 +5251,7 @@ class InterferogramMerger(Tools):
             flat_cube = None
 
         if isinstance(star_list_path, str):
-            star_list = orb.astrometry.load_star_list(star_list_path)
+            star_list = orb.utils.astrometry.load_star_list(star_list_path)
         else:
             star_list = star_list_path
             
@@ -5764,7 +5767,7 @@ class CosmicRayDetector(InterferogramMerger):
         MAX_CRS = 3 # Max nb of cosmic rays in one pixels
         
         alignment_vector_1 = self.read_fits(alignment_vector_path_1)
-        star_list = orb.astrometry.load_star_list(star_list_path)
+        star_list = orb.utils.astrometry.load_star_list(star_list_path)
         
         job_server, ncpus = self._init_pp_server()
         ncpus_max = ncpus
@@ -5803,7 +5806,7 @@ class CosmicRayDetector(InterferogramMerger):
                       self.rc, self.zoom_factor, 1),
                 modules=("import numpy as np", 
                          "from scipy import ndimage",
-                         "import orb.cutils as cutils"))) 
+                         "import orb.cutils"))) 
                     for ijob in range(ncpus)]
 
             for ijob, job in jobs:
@@ -6448,11 +6451,11 @@ class Spectrum(HDFCube):
         else:
             hdr = new_hdr
             
-        hdr.set('PC1_1', after='CROTA2')
-        hdr.set('PC1_2', after='PC1_1')
-        hdr.set('PC2_1', after='PC1_2')
-        hdr.set('PC2_2', after='PC2_1')
-        hdr.set('WCSAXES', before='CTYPE1')
+        ## hdr.set('PC1_1', after='CROTA2')
+        ## hdr.set('PC1_2', after='PC1_1')
+        ## hdr.set('PC2_1', after='PC1_2')
+        ## hdr.set('PC2_2', after='PC2_1')
+        ## hdr.set('WCSAXES', before='CTYPE1')
         
         # Create Standard header
         if standard_header is not None:
@@ -7302,7 +7305,23 @@ class SourceExtractor(InterferogramMerger):
             source_listA[:,1] += dyA
             source_listB = orb.utils.astrometry.transform_star_position_A_to_B(
                 source_listA, alignment_coeffs, rc, zoom_factor)    
-        
+
+            ## photomA = np.empty(source_listA.shape[0], dtype=float)
+            ## photomB = np.empty(source_listA.shape[0], dtype=float)
+
+            ## star_box_size = int(fwhm_pix * 3)
+            ## for istar in range(source_listA.shape[0]):
+            ##     ix, iy = source_listA[istar,:]
+            ##     xmin, xmax, ymin, ymax = orb.utils.image.get_box_coords(
+            ##         ix, iy, star_box_size, 0, frameA.shape[0], 0, frameA.shape[1])
+            ##     photomA[istar] = np.nansum(frameA[xmin:xmax, ymin:ymax])
+                
+            ##     ix, iy = source_listB[istar,:]
+            ##     xmin, xmax, ymin, ymax = orb.utils.image.get_box_coords(
+            ##         ix, iy, star_box_size, 0, frameB.shape[0], 0, frameB.shape[1])
+            ##     photomB[istar] = np.nansum(frameB[xmin:xmax, ymin:ymax])
+            
+            
             fit_resA = orb.astrometry.fit_stars_in_frame(
                 frameA, source_listA, box_size,
                 profile_name=profile_name,
@@ -7331,7 +7350,7 @@ class SourceExtractor(InterferogramMerger):
 
             photomA = fit_resA[:,'aperture_flux']
             photomB = fit_resB[:,'aperture_flux']
-        
+                
             return (photomA - modulation_ratio * photomB,
                     photomA + modulation_ratio * photomB)
         
@@ -7411,6 +7430,7 @@ class SourceExtractor(InterferogramMerger):
                 modules=("from orb.utils.astrometry import fit_star, sky_background_level, aperture_photometry, get_profile",
                          "from orb.astrometry import StarsParams",
                          "import orb.astrometry",
+                         "import orb.utils.image",
                          "import orb.utils.astrometry",
                          "import numpy as np",
                          "import math",
@@ -7427,9 +7447,12 @@ class SourceExtractor(InterferogramMerger):
         progress.end()
 
         # interferogram correction
+        import pylab as pl
         for i in range(photom.shape[0]):
             photom[i,:] = photom[i,:] / transmission_vector
             transm[i,:] = transm[i,:] / transmission_vector
+            pl.plot(transm[i,:])
+        pl.show()
 
         self.write_fits(
             self._get_extracted_source_interferograms_path(),
