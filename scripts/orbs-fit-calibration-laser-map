@@ -28,7 +28,7 @@ import argparse
 from orb.core import Tools, HDFCube
 import orb
 
-import orb.utils
+import orb.utils.image
 
 ###########################################
 ### MAIN ##################################
@@ -40,7 +40,7 @@ def main(args):
     
     to = Tools(config_file_name=config_file_name, no_log=True)
     calib_map = to.read_fits(args.calibration_laser_map_path)
-    params, calib_map_fit = orb.utils.fit_calibration_laser_map(
+    params, calib_map_fit = orb.utils.image.fit_calibration_laser_map(
         calib_map, float(to._get_config_parameter('CALIB_NM_LASER')),
         binning=2)
     to.write_fits(

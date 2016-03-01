@@ -46,15 +46,25 @@ from orb.core import Tools, OptionFile, Logger
 import orbs
 from orbs.orbs import Orbs, RoadMap
 
+##############################################################
+##### CLASS RECORDFILE #######################################
+##############################################################
 
+class RecordFile(object):
+    """Manage a file where all the launched reductions are recorded.
 
-class RecordsFile(object):
+    This class is used for 'status', 'clean' and 'resume' operations
+    """
 
     file_path = None
     records = None
     last_command = None
     
     def __init__(self, option_file_path):
+        """Init class
+
+        :param option_file_path: Path to the option file.
+        """
         
         self.file_path = option_file_path + '.rec'
         # parse file
@@ -77,6 +87,7 @@ class RecordsFile(object):
                             'cams':rec[2]})
         
     def update(self):
+        """update file on disk"""
         with open(self.file_path, 'w') as f:
             for record in self.records:
                 f.write('{} {} {}\n'.format(
@@ -86,6 +97,7 @@ class RecordsFile(object):
             f.write('last_command ' + ' '.join(self.last_command) + '\n')
         
     def add_record(self, mode, target, cams):
+        """Add a new record and update file on disk"""
         record = {'instrument':mode,
                   'target':target,
                   'cams':cams}
@@ -93,7 +105,11 @@ class RecordsFile(object):
             self.records.append(record)
         self.update()
     
-    
+
+##############################################################
+##### MAIN FUNCTIONS #########################################
+##############################################################
+        
 def print_msg(msg, color=False):
     if color:
         color = '\033[94m'
@@ -110,7 +126,7 @@ def print_error(msg):
 def print_warning(msg):
     print '\033[93m' + msg + '\033[0m'
 
-def check_option_file(to, path):
+def check_option_file(to, path, is_laser):
     """Check the option file type.
 
     If the option file is a job file for SITELLE, parse the file
@@ -118,6 +134,7 @@ def check_option_file(to, path):
 
     :param to: an orb.Tools instance
     :param path: path of the option file to check
+    :param is_laser: If True, the target is a laser cube.
     """
     def get_value(opt, hdr, key, optional=False):
         if key in ofile.options:
@@ -177,12 +194,17 @@ def check_option_file(to, path):
             # step size in nm
             step_fringe = float(get_value(ofile.options, hdr, 'SITSTPSZ'))
             fringe_sz = float(get_value(ofile.options, hdr, 'SITFRGNM'))
-            option_file_params['SPESTEP'] = step_fringe * fringe_sz
+            if not is_laser:
+                option_file_params['SPESTEP'] = step_fringe * fringe_sz
             
             option_file_params = add_key(to, option_file_params, ofile.options,
                     hdr, 'SITSTEPS', 'SPESTNB')
-            option_file_params = add_key(to, option_file_params, ofile.options,
+
+            if not is_laser:
+                option_file_params = add_key(
+                    to, option_file_params, ofile.options,
                     hdr, 'SITORDER', 'SPEORDR')
+                
             option_file_params = add_key(to, option_file_params, ofile.options,
                     hdr, 'EXPTIME', 'SPEEXPT')
 
@@ -234,12 +256,18 @@ def check_option_file(to, path):
                 else:
                     print_error('Standard star file does not exist ({})'.format(std_path))
 
-            option_file_params = add_key(to, option_file_params, ofile.options,
-                    hdr, 'APOD', 'APOD', optional=True)
+            misc_keys = ['APOD','WAVENUMBER', 'WAVE_CALIB', 'INIT_DX', 'SITORDER']
+            for misc_key in misc_keys:
+                option_file_params = add_key(to, option_file_params, ofile.options,
+                    hdr, misc_key, misc_key, optional=True)
             option_file_params = add_key(to, option_file_params, ofile.options,
                     hdr, 'WAVENUMBER', 'WAVENUMBER', optional=True)
             option_file_params = add_key(to, option_file_params, ofile.options,
                     hdr, 'WAVE_CALIB', 'WAVE_CALIB', optional=True)
+            option_file_params = add_key(to, option_file_params, ofile.options,
+                    hdr, 'INIT_DX', 'INIT_DX', optional=True)
+            option_file_params = add_key(to, option_file_params, ofile.options,
+                    hdr, 'SITORDER', 'SPEORDR', optional=True)
 
             # get prebinning
             if 'PREBINNING' in ofile.options:
@@ -313,10 +341,10 @@ def check_option_file(to, path):
         return path, dict(), 'option_file'
 
 def get_config_file_name(args):    
-    if args.mode == 'sitelle':
+    if args.instrument_mode == 'sitelle':
         return 'config.sitelle.orb'
         
-    elif args.mode == 'spiomm':
+    elif args.instrument_mode == 'spiomm':
         return 'config.spiomm.orb'
 
 def get_to(args):
@@ -329,8 +357,8 @@ def init_orbs(args, target, cams, silent=False, fast_init=False):
                 fast_init=fast_init)
 
 def status(args):
-    # log in records file
-    recfile = RecordsFile(args.option_file_path)
+    # log in record file
+    recfile = RecordFile(args.option_file_path)
     if len(recfile.records) < 1:
         print_error('No reduction process started')
     for record in recfile.records:
@@ -341,7 +369,7 @@ def status(args):
         rm.print_status()
 
 def resume(args, parser):
-    recfile = RecordsFile(args.option_file_path)
+    recfile = RecordFile(args.option_file_path)
     if len(recfile.records) < 1:
         print_error('No reduction process to resume')
     args = parser.parse_args(recfile.last_command)
@@ -357,7 +385,7 @@ def clean(args):
                 print_msg('removing file {}'.format(path))
                 os.remove(path)
     
-    recfile = RecordsFile(args.option_file_path)
+    recfile = RecordFile(args.option_file_path)
     for record in recfile.records:
         project = init_orbs(args, record['target'], record['cams'], silent=True,
                             fast_init=True)
@@ -365,7 +393,7 @@ def clean(args):
                      project.indexer)
 
         remove(project._get_project_dir())
-        remove(get_logfile_name)
+        remove(get_logfile_name(args))
         remove(project.indexer._get_index_path())
         remove(recfile.file_path)
 
@@ -521,15 +549,14 @@ def start(args, resume=False):
     # Run ORBS with the given options #
     ###################################
     
+    # record roadmap
+    recfile = RecordFile(args.option_file_path)
+    recfile.add_record(args.instrument_mode, target, cams)
     
     project = init_orbs(args, target, cams)
 
     if args.init_angle is not None:
         project.set_init_angle(args.init_angle)
-
-    # record roadmap
-    recfile = RecordsFile(args.option_file_path)
-    recfile.add_record(args.mode, target, cams)
 
     # get resume step if reduction must be resumed
     if resume:
@@ -562,10 +589,134 @@ def start(args, resume=False):
 
 
 
+def add_all_operations(instrument_parser, epilog, epilog_steps):
 
-####################################
-#### MAIN ##########################
-####################################
+    instrument_parser.add_argument(
+        'option_file_path', action='store',
+        help="Path to the option file (can be a SITELLE job file).")
+
+    instrument_parser.add_argument(
+        '--noprint', dest='noprint', action='store_true',
+        default=False,
+        help="The standard output is redirected to the file 'stdout.log'. Helpful for logging error messages.")
+
+    subparsers = instrument_parser.add_subparsers(help='operation type', dest='subparser_name')
+
+    parser_start = subparsers.add_parser('start', help='Start the reduction process.', formatter_class=argparse.RawDescriptionHelpFormatter, epilog=epilog_steps+ epilog)
+
+
+    group_target = parser_start.add_argument_group('Particular targets', '')
+    group_target.add_argument('--flat', dest='flat',
+                              action='store_true',
+                              default=False,
+                              help="The reduction stops to the phase map step. This option must be used with flat cubes. All star dependant processes are skipped also (same as --nostar option).")
+
+    group_target.add_argument('--standard', dest='standard',
+                              action='store_true',
+                              default=False,
+                              help="Use it to reduce a standard star cube. Instead of returning a full cube, return the spectrum of the standard. The standard star position must be the target position defined in the option file (see TARGETR, TARGETD, TARGETX, TARGETY).")
+
+    group_target.add_argument('--stars', dest='stars',
+                              action='store_true',
+                              default=False,
+                              help="Compute only the spectra of the detected stars in the cube. The interferogram of each star is evaluated from star photometry. Note that this option is not compatible with the option --flat or the option --nostar.")
+
+    group_target.add_argument('--laser', dest='laser',
+                              action='store_true',
+                              default=False,
+                              help="Compute a calibration laser map from a calibration laser cube.")
+
+    group_target.add_argument('--nostar', dest='nostar', action='store_true',
+                               default=False,
+                               help='Run a reduction but skip all star-dependant processes. Warning, this kind of reduction is far less precise. The default alignement parameters (defined in the configuration file) are used.')
+
+    group_target.add_argument('--raw', dest='raw', action='store_true',
+                              default=False,
+                              help='Run a fast raw reduction of astronomical data. Skip cosmic-ray detection and phase correction. Resulting spectra then have a sinc^2 instrumental line shape.')
+
+    group_target.add_argument('--sources', dest='sources', action='store_true',
+                              default=False,
+                              help='Run a sources extraction process. Make sure SOURCE_LIST_PATH is set to a valid source file (X Y coordinates in pixels, one source by line; index of the first pixel is 0, which is different from ds9 indexing).')
+
+    parser_start.add_argument('--step',
+                              dest='start_step',
+                              action='store',
+                              default=0,
+                              type=int,
+                              help="Starting step. Use it to start (or restart) from a specific reduction step. To simply resume a reduction use the operation 'resume' instead. Note that the step designation is different for the full reduction (2 cameras) and the single camera reduction (1 camera). Note also that some processes are also skipped if the option --nostar is used (e.g. the first step: Compute alignment vectors).")
+
+    parser_start.add_argument('--apod', '-a',
+                              dest='apodization_function',
+                              action='store',
+                              default=None,
+                              help="Apodization function. Can be one of the extended Norton-Beer functions (Naylor & Tahic 2007) : enter one of following coefficients : 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0. The coefficient 1.0 stands for NO apodization (default is 2.0).")
+
+    group_special = parser_start.add_argument_group('Special arguments', 'Arguments less often used.')
+
+    group_special.add_argument('--nofilter', dest='nofilter',
+                               action='store_true',
+                               default=False,
+                               help='No filter correction of the spectral cube will be made during calibration')
+
+    group_special.add_argument('--nowcs', dest='nowcs',
+                               action='store_true',
+                               default=False,
+                               help='No WCS calibration of the spectral cube')
+
+    group_special.add_argument('--quadrants', dest='quadrants',
+                               action='store_true',
+                               default=False,
+                               help='Save the resulting spectral cube in quadrants to avoid the manipulation of a large data set. A quadrant can be seen as an independent cubes of smaller field of view.')
+
+
+    group_spiomm = parser_start.add_argument_group('SpIOMM specific options', '')
+
+    group_spiomm.add_argument('-1', dest='single1', action='store_true',
+                              default=False,
+                              help='(SpIOMM specific option) Reduction of camera 1 alone')
+
+    group_spiomm.add_argument('-2', dest='single2', action='store_true',
+                              default=False,
+                              help='(SpIOMM specific option) Reduction of camera 2 alone')
+
+    group_spiomm.add_argument('--nophase', dest='nophase', action='store_true',
+                              default=False,
+                              help='(SpIOMM specific option) If this argument is set no phase correction will be done and the resulting spectrum will be the absolute value of the complex spectrum.')
+
+    group_spiomm.add_argument('--nocam2', dest='add_frameB',
+                              action='store_false',
+                              default=True,
+                              help='(SpIOMM specific option) Use camera 2 only to compute transmission vector but do not merge frames. Use it for the full reduction process if camera 2 frames are too noisy or if the fringing effect must be removed. This option is used at the merging step.')
+
+    group_spiomm.add_argument('--altmerge', dest='alt_merge',
+                              action='store_true',
+                              default=False,
+                              help="(SpIOMM specific option) Alternative merging process. Star photometry is not used during the merging process. Might be more noisy but useful if for some reason the correction vectors cannot be well computed (e.g. not enough good stars, intense emission lines everywhere in the field).")
+
+    group_spiomm.add_argument('--init_angle',
+                              dest='init_angle',
+                              action='store',
+                              default=None,
+                              type=float,
+                              help="(SpIOMM specific option) Change default config variable INIT_ANGLE for this reduction only.")
+
+
+    group_spiomm.add_argument('--align',
+                              dest='alignment_coeffs',
+                              action='store',
+                              default=None,
+                              help="(SpIOMM specific option) Alignment coefficients if already known. Alignment step is skipped. Useful to compute a FLAT cube with alignments coefficients computed from an astrophysical object. Alignment coefficients must be formatted this way: dx,dy,dr,da,db (no space, 5 numbers comma separated): e.g. --align=25.2,36.5,-85.8,0.1,0.5.")
+
+
+    parser_resume = subparsers.add_parser('resume', help='Resume reduction process from the last completed step.')
+
+    parser_clean = subparsers.add_parser('clean', help='Clean all the temporary files. Final products are not removed.')
+
+    parser_status = subparsers.add_parser('status', help='Print the status of the reduction process.')
+        
+########################################################################
+##################### MAIN #############################################
+########################################################################
 
 
 if __name__ == "__main__":
@@ -573,6 +724,8 @@ if __name__ == "__main__":
     
     Parse arguments and launch the reduction process.
     """
+
+    # define epilog for command help
 
     epilog = """  ORBS version: {}, ORB version: {}
   Author: Thomas Martin (thomas.martin.1@ulaval.ca)""".format(
@@ -620,6 +773,8 @@ if __name__ == "__main__":
            rm_spiomm_laser_full.get_steps_str(indent=5),
            rm_spiomm_object_single1.get_steps_str(indent=5))
 
+
+    # define main parser
     parser = ArgumentParser(
         prog='orbs',
         version=('ORBS-version: {}, ORB-version: {}'.format(
@@ -628,148 +783,37 @@ if __name__ == "__main__":
         description="Run the whole reduction process.",
         epilog=epilog)
 
-    parser.add_argument('option_file_path',
-                        action='store',
-                        help="Path to the option file (can be a SITELLE job file).")
 
-    parser.add_argument('--mode', dest='mode', choices=['spiomm', 'sitelle'],
-                        action='store', default='spiomm',
-                        help="Reduction mode. Force the use of the reduction file of a particular instrument. Mode is set to 'spiomm' by default.")
-    
-    parser.add_argument('--noprint', dest='noprint', action='store_true',
-                        default=False,
-                        help="The standard output is redirected to the file 'stdout.log'. Helpful for logging error messages.")
+    instrument_parsers = parser.add_subparsers(help='instrument mode', dest='instrument_mode')
 
-    subparsers = parser.add_subparsers(help='operation type', dest='subparser_name')
-    
-    parser_start = subparsers.add_parser('start', help='Start the reduction process.', formatter_class=argparse.RawDescriptionHelpFormatter, epilog=epilog_steps+ epilog)
+    # add an instrument parser for each instrument
+    spiomm_parser = instrument_parsers.add_parser('spiomm', help='SpiOMM mode')
+    sitelle_parser = instrument_parsers.add_parser('sitelle', help='SITELLE mode')
 
-
-    group_target = parser_start.add_argument_group('Particular targets', '')
-    group_target.add_argument('--flat', dest='flat',
-                              action='store_true',
-                              default=False,
-                              help="The reduction stops to the phase map step. This option must be used with flat cubes. All star dependant processes are skipped also (same as --nostar option).")
-
-    group_target.add_argument('--standard', dest='standard',
-                              action='store_true',
-                              default=False,
-                              help="Use it to reduce a standard star cube. Instead of returning a full cube, return the spectrum of the standard. The standard star position must be the target position defined in the option file (see TARGETR, TARGETD, TARGETX, TARGETY).")
-
-    group_target.add_argument('--stars', dest='stars',
-                              action='store_true',
-                              default=False,
-                              help="Compute only the spectra of the detected stars in the cube. The interferogram of each star is evaluated from star photometry. Note that this option is not compatible with the option --flat or the option --nostar.")
-
-    group_target.add_argument('--laser', dest='laser',
-                              action='store_true',
-                              default=False,
-                              help="Compute a calibration laser map from a calibration laser cube.")
-    
-    group_target.add_argument('--nostar', dest='nostar', action='store_true',
-                               default=False,
-                               help='Run a reduction but skip all star-dependant processes. Warning, this kind of reduction is far less precise. The default alignement parameters (defined in the configuration file) are used.')
-
-    group_target.add_argument('--raw', dest='raw', action='store_true',
-                              default=False,
-                              help='Run a fast raw reduction of astronomical data. Skip cosmic-ray detection and phase correction. Resulting spectra then have a sinc^2 instrumental line shape.')
-
-    group_target.add_argument('--sources', dest='sources', action='store_true',
-                              default=False,
-                              help='Run a sources extraction process. Make sure SOURCE_LIST_PATH is set to a valid source file (X Y coordinates in pixels, one source by line; index of the first pixel is 0, which is different from ds9 indexing).')
-
-    parser_start.add_argument('--step',
-                              dest='start_step',
-                              action='store',
-                              default=0,
-                              type=int,
-                              help="Starting step. Use it to start (or restart) from a specific reduction step. To simply resume a reduction use the operation 'resume' instead. Note that the step designation is different for the full reduction (2 cameras) and the single camera reduction (1 camera). Note also that some processes are also skipped if the option --nostar is used (e.g. the first step: Compute alignment vectors).")
-
-    parser_start.add_argument('--apod', '-a',
-                              dest='apodization_function',
-                              action='store',
-                              default=None,
-                              help="Apodization function. Can be one of the extended Norton-Beer functions (Naylor & Tahic 2007) : enter one of following coefficients : 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0. The coefficient 1.0 stands for NO apodization (default is 2.0).")
-    
-    group_special = parser_start.add_argument_group('Special arguments', 'Arguments less often used.')
-        
-    group_special.add_argument('--nofilter', dest='nofilter',
-                               action='store_true',
-                               default=False,
-                               help='No filter correction of the spectral cube will be made during calibration')
-
-    group_special.add_argument('--nowcs', dest='nowcs',
-                               action='store_true',
-                               default=False,
-                               help='No WCS calibration of the spectral cube')
-
-    group_special.add_argument('--quadrants', dest='quadrants',
-                               action='store_true',
-                               default=False,
-                               help='Save the resulting spectral cube in quadrants to avoid the manipulation of a large data set. A quadrant can be seen as an independent cubes of smaller field of view.')
-
-    
-    group_spiomm = parser_start.add_argument_group('SpIOMM specific options', '')
-    
-    group_spiomm.add_argument('-1', dest='single1', action='store_true',
-                              default=False,
-                              help='(SpIOMM specific option) Reduction of camera 1 alone')
-
-    group_spiomm.add_argument('-2', dest='single2', action='store_true',
-                              default=False,
-                              help='(SpIOMM specific option) Reduction of camera 2 alone')
-
-    group_spiomm.add_argument('--nophase', dest='nophase', action='store_true',
-                              default=False,
-                              help='(SpIOMM specific option) If this argument is set no phase correction will be done and the resulting spectrum will be the absolute value of the complex spectrum.')
-    
-    group_spiomm.add_argument('--nocam2', dest='add_frameB',
-                              action='store_false',
-                              default=True,
-                              help='(SpIOMM specific option) Use camera 2 only to compute transmission vector but do not merge frames. Use it for the full reduction process if camera 2 frames are too noisy or if the fringing effect must be removed. This option is used at the merging step.')
-    
-    group_spiomm.add_argument('--altmerge', dest='alt_merge',
-                              action='store_true',
-                              default=False,
-                              help="(SpIOMM specific option) Alternative merging process. Star photometry is not used during the merging process. Might be more noisy but useful if for some reason the correction vectors cannot be well computed (e.g. not enough good stars, intense emission lines everywhere in the field).")
-
-    group_spiomm.add_argument('--init_angle',
-                              dest='init_angle',
-                              action='store',
-                              default=None,
-                              type=float,
-                              help="(SpIOMM specific option) Change default config variable INIT_ANGLE for this reduction only.")
-
-    
-    group_spiomm.add_argument('--align',
-                              dest='alignment_coeffs',
-                              action='store',
-                              default=None,
-                              help="(SpIOMM specific option) Alignment coefficients if already known. Alignment step is skipped. Useful to compute a FLAT cube with alignments coefficients computed from an astrophysical object. Alignment coefficients must be formatted this way: dx,dy,dr,da,db (no space, 5 numbers comma separated): e.g. --align=25.2,36.5,-85.8,0.1,0.5.")
-
-
-    parser_resume = subparsers.add_parser('resume', help='Resume reduction process from the last completed step.')
-
-    parser_clean = subparsers.add_parser('clean', help='Clean all the temporary files. Final products are not removed.')
-
-    parser_status = subparsers.add_parser('status', help='Print the status of the reduction process.')
-
+    # add the same operations to all instrument parsers
+    add_all_operations(spiomm_parser, epilog, epilog_steps)
+    add_all_operations(sitelle_parser, epilog, epilog_steps)
 
     if len(sys.argv) < 2:
         parser.print_usage()
         sys.exit(2)
         
     args = parser.parse_args()
-
+    
     # check option file existence
     if not os.path.exists(args.option_file_path):
         raise Exception('Option file %s does not exist'%args.option_file_path)
 
+    if args.subparser_name == 'start':
+        is_laser = args.laser
+    else:
+        is_laser = False
+
     # check whether the option file is a job file or a 'real' option file
     args.option_file_path, out_params, file_type = check_option_file(
-        get_to(args), args.option_file_path)
+        get_to(args), args.option_file_path, is_laser=is_laser)
 
-    if file_type == 'sitelle_job_file' and args.mode != 'sitelle':
+    if file_type == 'sitelle_job_file' and args.instrument_mode != 'sitelle':
         print_error("Input file is a SITELLE job file but mode is not set to 'sitelle'. Please restart with option --mode sitelle or change the input file")
 
     if 'calibration_laser_map_path' in out_params:
@@ -782,7 +826,7 @@ if __name__ == "__main__":
     if args.subparser_name == 'start':
         print_msg("Start %s"%args.option_file_path.strip(), color=True)
         # record last command
-        recfile = RecordsFile(args.option_file_path)
+        recfile = RecordFile(args.option_file_path)
         recfile.last_command = sys.argv[1:]
         recfile.update()
 
