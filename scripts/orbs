@@ -44,7 +44,7 @@ sys.path.append(orbs_path)
 import orb
 from orb.core import Tools, OptionFile, Logger
 import orbs
-from orbs.orbs import Orbs, RoadMap
+from orbs.orbs import Orbs, RoadMap, JobFile
 
 ##############################################################
 ##### CLASS RECORDFILE #######################################
@@ -124,7 +124,7 @@ def print_error(msg):
     sys.exit(2)
 
 def print_warning(msg):
-    print '\033[93m' + msg + '\033[0m'
+    print '\033[93m' + msg + '\033[0m'       
 
 def check_option_file(to, path, is_laser):
     """Check the option file type.
@@ -136,207 +136,9 @@ def check_option_file(to, path, is_laser):
     :param path: path of the option file to check
     :param is_laser: If True, the target is a laser cube.
     """
-    def get_value(opt, hdr, key, optional=False):
-        if key in ofile.options:
-            return str(ofile.options[key]).strip()
-        elif key in hdr:
-            return str(hdr[key]).strip()
-        elif not optional: print_error('{} must be defined in the header of the object files or in the job file'.format(key))
-            
-        else:
-            print_warning('{} appears to be missing but is optional'.format(key))
-            return ''
-    
-    def add_key(to, params, opt, hdr, job_key, opt_key, optional=False):
-        value = get_value(opt, hdr, job_key, optional=optional)
-        if len(value) == 0:
-            if not optional: print_error(
-                'Bad value for {}'.format(job_key))
-        else: params[opt_key] = value
-        return params
-
-    protected_keys = ['OBS', 'FLAT', 'DARK', 'COMPARISON']
-    ofile = OptionFile(path, protected_keys=protected_keys,
-                       config_file_name=to.config_file_name)
-
-    if ofile.header_line is None:
-        return path, dict(), 'option_file'
-    
-    if 'SITELLE_JOB_FILE' in ofile.header_line:
-
-        option_file_path = os.path.split(path)[1] + '.opt'
-        option_file_params = dict() # parameters to write in the option file
-        out_params = dict() # output parameters passed to orbs.full_reduction()
-        
-        with open(option_file_path, 'w') as f:
-            # create option file header
-            f.write('## ORBS Option file\n# Auto-generated from SITELLE job file: {}\n'.format(path))
-
-            ## get first object file
-            if 'OBS' in ofile.options:
-                hdu = to.read_fits(ofile.options['OBS'], return_hdu_only=True)
-                hdr = hdu[0].header
-            elif 'COMPARISON' in ofile.options:
-                hdu = to.read_fits(ofile.options['COMPARISON'],
-                                   return_hdu_only=True)
-                hdr = hdu[0].header
-            else:
-                raise Exception('Keywords OBS or COMPARISON must be at least in the job file.')
-            option_file_params = add_key(to, option_file_params, ofile.options,
-                    hdr, 'OBJNAME', 'OBJECT')
-            option_file_params['OBJECT'] = ''.join(option_file_params['OBJECT'].strip().split())
-            option_file_params = add_key(to, option_file_params, ofile.options,
-                    hdr, 'FILTER', 'FILTER')
-            # check that binning is the same in both axes
-            if hdr['CCDBIN1'] != hdr['CCDBIN2']:
-                print_error('CCD Binning appears to be different for both axes')
-            
-            # step size in nm
-            step_fringe = float(get_value(ofile.options, hdr, 'SITSTPSZ'))
-            fringe_sz = float(get_value(ofile.options, hdr, 'SITFRGNM'))
-            if not is_laser:
-                option_file_params['SPESTEP'] = step_fringe * fringe_sz
-            
-            option_file_params = add_key(to, option_file_params, ofile.options,
-                    hdr, 'SITSTEPS', 'SPESTNB')
-
-            if not is_laser:
-                option_file_params = add_key(
-                    to, option_file_params, ofile.options,
-                    hdr, 'SITORDER', 'SPEORDR')
-                
-            option_file_params = add_key(to, option_file_params, ofile.options,
-                    hdr, 'EXPTIME', 'SPEEXPT')
-
-            # get dark integration time
-            if 'DARK' in ofile.options:
-                dark_hdr = to.read_fits(
-                    ofile.options['DARK'], return_hdu_only=True)[0].header
-            
-                option_file_params['SPEDART'] = dark_hdr['EXPTIME']
-        
-            option_file_params = add_key(to, option_file_params, ofile.options,
-                    hdr, 'DATE-OBS', 'OBSDATE')
-            option_file_params = add_key(to, option_file_params, ofile.options,
-                    hdr, 'TIME-OBS', 'HOUR_UT')
-            
-            option_file_params = add_key(to, option_file_params, ofile.options,
-                    hdr, 'RA', 'TARGETR', optional=True)
-            option_file_params = add_key(to, option_file_params, ofile.options,
-                    hdr, 'DEC', 'TARGETD', optional=True)
-
-            # get center of the first chip to define target position in image
-            sec_cam1 = hdr['DSEC1']
-            sec_cam1 = sec_cam1[1:-1].split(',')
-            sec_cam1x = np.array(sec_cam1[0].split(':'), dtype=int)
-            sec_cam1y = np.array(sec_cam1[1].split(':'), dtype=int)
-            
-            option_file_params['TARGETX'] = (
-                float(sec_cam1x[1]-sec_cam1x[0]) / 2.)
-            option_file_params['TARGETY'] = (
-                float(sec_cam1y[1]-sec_cam1y[0]) / 2.)
-
-            # get calibration laser map path
-            if 'CALIB_MAP_PATH' in ofile.options:
-                out_params['calibration_laser_map_path'] = ofile.options['CALIB_MAP_PATH']
-                option_file_params['CALIBMAP'] = ofile.options['CALIB_MAP_PATH']
-            
-            # get standard star params
-            option_file_params = add_key(to, option_file_params, ofile.options,
-                    hdr, 'STANDARD', 'STDPATH', optional=True)
-
-            if 'STDPATH' in option_file_params:
-                std_path = option_file_params['STDPATH']
-                if os.path.exists(std_path):
-                    std_hdr = to.read_fits(std_path, return_hdu_only=True)[0].header
-                    if 'OBJECT' in std_hdr:
-                        option_file_params['STDNAME'] = std_hdr['OBJECT']
-                    else:
-                        print_error('OBJECT key is not in standard file header ({})'.format(std_path))
-                else:
-                    print_error('Standard star file does not exist ({})'.format(std_path))
-
-            misc_keys = ['APOD','WAVENUMBER', 'WAVE_CALIB', 'INIT_DX', 'SITORDER']
-            for misc_key in misc_keys:
-                option_file_params = add_key(to, option_file_params, ofile.options,
-                    hdr, misc_key, misc_key, optional=True)
-            option_file_params = add_key(to, option_file_params, ofile.options,
-                    hdr, 'WAVENUMBER', 'WAVENUMBER', optional=True)
-            option_file_params = add_key(to, option_file_params, ofile.options,
-                    hdr, 'WAVE_CALIB', 'WAVE_CALIB', optional=True)
-            option_file_params = add_key(to, option_file_params, ofile.options,
-                    hdr, 'INIT_DX', 'INIT_DX', optional=True)
-            option_file_params = add_key(to, option_file_params, ofile.options,
-                    hdr, 'SITORDER', 'SPEORDR', optional=True)
-
-            # get prebinning
-            if 'PREBINNING' in ofile.options:
-                prebin = ofile.options['PREBINNING']
-                option_file_params['PREBINNING'] = ofile.options['PREBINNING']
-            else:
-                prebin = None
-
-            # add source list path
-            if 'SOURCE_LIST_PATH' in ofile.options:
-                option_file_params['SOURCE_LIST_PATH'] = ofile.options['SOURCE_LIST_PATH']
-                
-            ## generate list of files
-            def generate_file_list(to, path, options, key, ftype,
-                                   chip_index, prebin):
-
-                # list is sorted in the job file order so the job file
-                # is assumed to give a sorted list of files
-                l = list()
-                for k in options:
-                    if [''.join(i for i in k if not i.isdigit())][0] == key:
-                        index_str = k[len(key):]
-                        if len(index_str) > 0:
-                            index = int(index_str)
-                        else:
-                            index = 1
-                        l.append((options[k], index))
-                l = sorted(l, key=lambda ifile: ifile[1])
-                l = [ifile[0] for ifile in l]
-
-                fpath = '{}.{}.cam{}.list'.format(path, ftype, chip_index)
-                with to.open_file(fpath, 'w') as flist:
-                    flist.write('# {} {}\n'.format('sitelle', chip_index))
-                    if prebin is not None:
-                        flist.write('# prebinning {}\n'.format(int(prebin)))
-                    for i in l: flist.write('{}\n'.format(i))
-                # TODO: check files
-
-                return fpath
-
-            if 'OBS' in ofile.options:
-                # CAM1
-                option_file_params['DIRCAM1'] = generate_file_list(to, option_file_path, ofile.options, 'OBS', 'object', 1, prebin)
-                # CAM2
-                option_file_params['DIRCAM2'] = generate_file_list(to, option_file_path, ofile.options, 'OBS', 'object', 2, prebin)
-
-            if 'FLAT' in ofile.options:
-                # FLAT1
-                option_file_params['DIRFLT1'] = generate_file_list(to, option_file_path, ofile.options, 'FLAT', 'flat', 1, prebin)
-                # FLAT2
-                option_file_params['DIRFLT2'] = generate_file_list(to, option_file_path, ofile.options, 'FLAT', 'flat', 2, prebin)
-
-            if 'DARK' in ofile.options:
-                # DARK1
-                option_file_params['DIRDRK1'] = generate_file_list(to, option_file_path, ofile.options, 'DARK', 'dark', 1, prebin)
-                # DARK2
-                option_file_params['DIRDRK2'] = generate_file_list(to, option_file_path, ofile.options, 'DARK', 'dark', 2, prebin)
-
-            if 'COMPARISON' in ofile.options:
-                # CALIB1
-                option_file_params['DIRCAL1'] = generate_file_list(to, option_file_path, ofile.options, 'COMPARISON', 'calib', 1, prebin)
-                # CALIB2
-                option_file_params['DIRCAL2'] = generate_file_list(to, option_file_path, ofile.options, 'COMPARISON', 'calib', 2, prebin)
-                
-            # write params in the option file           
-            for key in option_file_params:
-                f.write('{} {}\n'.format(key, option_file_params[key]))
-                
-            return option_file_path, out_params, 'sitelle_job_file'
+    jobfile = JobFile(path, is_laser=is_laser)
+    if jobfile.is_jobfile:
+        return jobfile.convert2opt()
     else:
         return path, dict(), 'option_file'
 

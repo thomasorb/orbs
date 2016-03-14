@@ -1188,3 +1188,11 @@ Miscellaneous
   precision obtained on a fitted calibration laser map is less than a
   few 10 m/s (yes, meters !)
 
+v3.10.2
+=======
+
+
+Miscellaneous
+-------------
+
+- Moved Standard class from orbs.process to orb.core

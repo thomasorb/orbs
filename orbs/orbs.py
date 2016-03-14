@@ -237,7 +237,7 @@ class Orbs(Tools):
         * INIT_DY: Rough disalignment along y axis between cameras 1
           and 2 for a 1x1 binning
           
-        * FIELD_OF_VIEW: Size of the field of view of the camera 1 in
+        * FIELD_OF_VIEW_1: Size of the field of view of the camera 1 in
           arc-minutes
           
         * FIELD_OF_VIEW_2: Size of the field of view of the camera 2 in
@@ -349,8 +349,6 @@ class Orbs(Tools):
         * standard_path: STDPATH
         
         * phase_map_path: PHAPATH
-        
-        * standard_name: STDNAME
         
         * fringes: FRINGES
         
@@ -493,14 +491,18 @@ class Orbs(Tools):
                             if os.path.exists(export_path):
                                 with self.open_hdf5(export_path, 'r') as f:
                                     if 'image_list' in f:
-                                        if (np.all(
-                                            f['image_list'][:]
-                                            == np.array(cube.image_list))
-                                            and f.attrs['dimz']
-                                            == len(cube.image_list)):
-                                            already_exported = True
-                                            self._print_msg(
-                                                'HDF5 cube {} already created'.format(export_path))
+                                        new_image_list = f['image_list'][:]
+                                        old_image_list = np.array(cube.image_list)
+                                        if (np.size(new_image_list)
+                                            == np.size(old_image_list)):
+                                            if (np.all(
+                                                new_image_list
+                                                == old_image_list)
+                                                and f.attrs['dimz']
+                                                == len(cube.image_list)):
+                                                already_exported = True
+                                                self._print_msg(
+                                                    'HDF5 cube {} already created'.format(export_path))
                             if not already_exported:
                                 cube.export(export_path, force_hdf5=True,
                                             overwrite=True)
@@ -544,7 +546,7 @@ class Orbs(Tools):
         store_config_parameter("INIT_ANGLE", float)
         store_config_parameter("INIT_DX", float)
         store_config_parameter("INIT_DY", float)
-        store_config_parameter("FIELD_OF_VIEW", float)
+        store_config_parameter("FIELD_OF_VIEW_1", float)
         store_config_parameter("FIELD_OF_VIEW_2", float)
         store_config_parameter("PIX_SIZE_CAM1", int)
         store_config_parameter("PIX_SIZE_CAM2", int)
@@ -634,7 +636,6 @@ class Orbs(Tools):
         store_option_parameter('target_x', 'TARGETX', float)
         store_option_parameter('target_y', 'TARGETY', float)
         store_option_parameter('standard_path', 'STDPATH', str)
-        store_option_parameter('standard_name', 'STDNAME', str)
         store_option_parameter('phase_map_path', 'PHAPATH', str)
         store_option_parameter('star_list_path_1', 'STARLIST1', str)
         store_option_parameter('star_list_path_2', 'STARLIST2', str)
@@ -704,6 +705,9 @@ class Orbs(Tools):
         store_option_parameter('calib_path_1', 'DIRCAL1', str, True, 1)
         store_option_parameter('calib_path_2', 'DIRCAL2', str, True, 2)
         store_option_parameter('flat_spectrum_path', 'DIRFLTS', str, True)
+        store_option_parameter('standard_image_path_1', 'DIRSTD1', str, True, 1)
+        store_option_parameter('standard_image_path_2', 'DIRSTD2', str, True, 2)
+        
 
         if 'image_list_path_1' in self.options:
             if fast_init:
@@ -865,22 +869,19 @@ class Orbs(Tools):
                             self.compute_source_spectra)
         
         
-        
-        
-        
-
     def _get_calibration_standard_fits_header(self):
 
-        if ('standard_name' in self.options
-            and 'standard_path' in self.options):
+        if 'standard_path' in self.options:
+            std_path = self.options['standard_path']
+            std_name = self._get_standard_name(std_path)
             hdr = list()
             hdr.append(('COMMENT','',''))
             hdr.append(('COMMENT','Calibration standard parameters',''))
             hdr.append(('COMMENT','-------------------------------',''))
             hdr.append(('COMMENT','',''))
-            hdr.append(('STDNAME', self.options['standard_name'],
+            hdr.append(('STDNAME', std_name,
                         'Name of the standard star'))
-            std_path = os.path.basename(self.options['standard_path'])[
+            std_path = os.path.basename(std_path)[
                 :orb.constants.FITS_CARD_MAX_STR_LENGTH]
             hdr.append(('STDPATH', std_path,
                         'Path to the standard star file'))
@@ -1215,7 +1216,7 @@ class Orbs(Tools):
             wcs_rotation = (self.config["WCS_ROTATION"]
                             - self.config["INIT_ANGLE"])
         else:
-            fov = self.config["FIELD_OF_VIEW"]
+            fov = self.config["FIELD_OF_VIEW_1"]
             wcs_rotation = self.config["WCS_ROTATION"]
             
         return Astrometry(cube, self.config["INIT_FWHM"],
@@ -1304,6 +1305,40 @@ class Orbs(Tools):
         else:
             return self.config["PHASE_FIT_DEG"]
 
+    def _get_source_list(self):
+        """Return the list of sources positions (option file keyword
+        SOURCE_LIST_PATH) or the position of the standard target if
+        the target is set to 'standard'
+        """
+        if not self.target == 'standard':
+            source_list = list()
+            if not 'source_list_path' in self.options:
+                self._print_error('A list of sources must be given (option file keyword SOURCE_LIST_PATH)')
+            with self.open_file(self.options['source_list_path'], 'r') as f:
+                for line in f:
+                    x,y = line.strip().split()[:2]
+                    source_list.append([float(x),float(y)])
+            
+            self._print_msg('Loaded {} sources to extract'.format(len(source_list)))
+            
+        else: # standard target
+            source_list = [[self.options['target_x'], self.options['target_y']]]
+            self._print_msg('Standard target position loaded'.format(len(source_list)))
+            
+        return source_list
+        
+    def _get_standard_name(self, std_path):
+        """Return value associated to keyword 'OBJECT'
+
+        :param std_path: Path to the file containing the standard.    
+        """
+        if 'hdf5' in std_path:
+            cube = HDFCube(std_path)
+            hdr = cube.get_frame_header(0)
+        else:
+            hdr = self.read_fits(std_path, return_hdu_only=True)[0].header
+        return ''.join(hdr['OBJECT'].strip().split()).upper()
+        
    
     def _is_balanced(self, camera_number):
         """Return True if the camera is balanced.
@@ -1419,11 +1454,15 @@ class Orbs(Tools):
         """
         # save passed kwargs
         local_kwargs = locals()
+
+        # launch the whole process    
         for istep in range(self.roadmap.get_road_len()):
             f, args, kwargs = self.roadmap.get_step_func(istep)
             
             if f is not None:
                 if istep >= start_step:
+                    # construct kwarg dict to be passed to the process
+                    # step
                     kwargs_dict = {}
                     for kwarg in kwargs:
                         if kwargs[kwarg] == 'undef':
@@ -1434,9 +1473,10 @@ class Orbs(Tools):
                                     'kwarg {} not defined'.format(kwarg))
                         else:
                             kwargs_dict[kwarg] = kwargs[kwarg]
+
+                    # launch process step        
                     self._print_msg('run {}({}, {})'.format(
                         f.__name__, str(args), str(kwargs)), color=True)
-                    
                     
                     f(*args, **kwargs_dict)
                     
@@ -1626,7 +1666,7 @@ class Orbs(Tools):
 
         cube.create_alignment_vector(
             star_list_path, mean_fwhm_arc,
-            self.config["FIELD_OF_VIEW"],
+            self.config["FIELD_OF_VIEW_1"],
             profile_name='gaussian', # Better for alignment tasks
             moffat_beta=self.config["MOFFAT_BETA"],
             readout_noise=readout_noise,
@@ -1661,7 +1701,7 @@ class Orbs(Tools):
         """Return init FWHM of the stars in pixels"""
         return (float(self.config['INIT_FWHM'])
                 * float(self.config['CAM1_DETECTOR_SIZE_X'])
-                / float(self.config['FIELD_OF_VIEW'])
+                / float(self.config['FIELD_OF_VIEW_1'])
                 / 60.)
 
     def compute_cosmic_ray_map(self, camera_number, z_coeff=3.):
@@ -1931,7 +1971,7 @@ class Orbs(Tools):
             cube.find_alignment(
                 star_list_path_1,
                 self.config["INIT_ANGLE"], init_dx, init_dy,
-                mean_fwhm_1_arc, self.config["FIELD_OF_VIEW"],
+                mean_fwhm_1_arc, self.config["FIELD_OF_VIEW_1"],
                 combine_first_frames=raw)
         else:
             self._print_msg("Alignment parameters: {} {} {} {} {}".format(
@@ -2044,7 +2084,7 @@ class Orbs(Tools):
                            config_file_name=self.config_file_name)
 
         cube.merge(star_list_path_1, step_number,
-                   mean_fwhm_arc, self.config["FIELD_OF_VIEW"],
+                   mean_fwhm_arc, self.config["FIELD_OF_VIEW_1"],
                    add_frameB=add_frameB, 
                    smooth_vector=smooth_vector,
                    profile_name=self.config["PSF_PROFILE"],
@@ -2197,7 +2237,7 @@ class Orbs(Tools):
         # create correction vectors
         cube.create_correction_vectors(
             star_list_path, mean_fwhm_arc,
-            self.config["FIELD_OF_VIEW"],
+            self.config["FIELD_OF_VIEW_1"],
             profile_name=self.config["PSF_PROFILE"],
             moffat_beta=self.config["MOFFAT_BETA"],
             step_number=step_number)
@@ -2246,7 +2286,7 @@ class Orbs(Tools):
 
 
     def compute_spectrum(self, camera_number, apodization_function=None,
-                         polyfit_deg=1, phase_correction=True,
+                         phase_correction=True,
                          wave_calibration=False,
                          phase_cube=False,
                          phase_coeffs=None,
@@ -2263,10 +2303,6 @@ class Orbs(Tools):
 
         :param wave_calibration: (Optional) If True
           wavenumber/wavelength calibration is done (default False).
-
-        :param polyfit_deg: (Optional) Degree of the polynomial fit to
-          the computed phase. If < 0, no fit will be performed
-          (Default 1).  
 
         :param phase_cube: (Optional) If True, only the phase cube is
           returned (default False).   
@@ -2389,7 +2425,6 @@ class Orbs(Tools):
             bad_frames_vector=bad_frames_vector,
             phase_correction=phase_correction,
             wave_calibration=wave_calibration,
-            polyfit_deg=polyfit_deg,
             window_type=apodization_function,
             phase_cube=phase_cube,
             phase_map_paths=phase_map_paths,
@@ -2570,6 +2605,50 @@ class Orbs(Tools):
         perf_stats = perf.print_stats()
         del perf
         return perf_stats
+
+
+    def _find_standard_star(self, camera_number):
+        """Register cube to find standard star position
+
+        :param camera_number: Camera number (can be 1 or 2)
+        
+        :return: star position as a tuple (x,y)
+        """
+
+        filter_path = self._get_filter_file_path(self.options["filter_name"])
+        std_path = self.options['standard_image_path_{}.hdf5'.format(camera_number)]
+        std_name = self._get_standard_name(std_path)
+        if (std_path is None
+            or filter_path is None):
+            
+            self._print_warning("Standard related options were not given or the name of the filter is unknown.")
+            return None, None, None
+            
+        self._print_msg('Registering standard image cube to find standard star position')
+        
+
+        # standard image registration to find std star
+        std_cube = HDFCube(std_path)
+        std_astrom = self._init_astrometry(std_cube, camera_number)
+        std_hdr = std_cube.get_frame_header(0)
+        std_ra, std_dec = self._get_standard_radec(std_name)
+        self._print_msg('Standard star {} RA/DEC: {} {}'.format(std_name, std_ra, std_dec))
+        std_astrom.target_ra = std_ra
+        std_astrom.target_dec = std_dec
+        try:
+            # register std frame
+            std_correct_wcs = std_astrom.register(full_deep_frame=True)
+            # get std_x and std_y
+            std_x, std_y = std_correct_wcs.wcs_world2pix(std_ra, std_dec, 0)
+
+        except Exception, e:
+            exc_info = sys.exc_info()
+            self._print_warning('Error during standard image registration')
+            traceback.print_exception(*exc_info)
+            del exc_info
+            std_x = None ; std_y = None
+            
+        return std_x, std_y, std_astrom.fwhm_pix
         
     def calibrate_spectrum(self, camera_number, cam1_scale=False,
                            no_star=False, filter_correction=True,
@@ -2579,11 +2658,6 @@ class Orbs(Tools):
 
         :param camera_number: Camera number (can be 1, 2 or
           0 for merged data).   
-
-        :param cam1_scale: (Optional) If True scale map used is cam 1
-          deep frame. Useful for SpIOMM which cam 2 frames cannot be
-          well corrected for bias. This option is used only for a
-          two-camera calibration process (default False).
 
         :param no_star: (Optional) If True, data is considered to
           contain no star, so no WCS calibration is possible (default
@@ -2622,15 +2696,10 @@ class Orbs(Tools):
             target_y = self.options["target_y"]
         else: target_y = None
 
-        # Check if filter file exists
-        if filter_correction:
-            filter_path = self._get_filter_file_path(self.options["filter_name"])
-            if filter_path is None:
-                self._print_warning(
-                    "Unknown filter. No filter correction can be made")
-        else:
-            filter_path = None
-            self._print_warning('No filter correction')
+        # get filter file
+        filter_path = self._get_filter_file_path(self.options["filter_name"])
+        if filter_path is None:
+            self._print_error('Filter file path must be given')
     
         spectrum_cube_path = self.indexer.get_path(
             'spectrum_cube', camera_number)
@@ -2646,23 +2715,10 @@ class Orbs(Tools):
             tuning_parameters=self.tuning_parameters,
             indexer=self.indexer,
             config_file_name=self.config_file_name)
+
         perf = Performance(spectrum, "Spectrum calibration", camera_number,
                            config_file_name=self.config_file_name)
 
-        # Get flux calibration vector
-        if ('standard_path' in self.options
-            and 'standard_name' in self.options
-            and filter_path is not None):
-            std_path = self.options['standard_path']
-            std_name = self.options['standard_name']
-            flux_calibration_vector = spectrum.get_flux_calibration_vector(
-                std_path, std_name, self.options['step'],
-                self.options['order'], self.options['exp_time'],
-                self._get_filter_file_path(self.options["filter_name"]))
-        else:
-            self._print_warning("Standard related options were not given or the name of the filter is unknown. Flux calibration cannot be done")
-            flux_calibration_vector = None
-        
         # Get WCS
         if (target_ra is None or target_dec is None
             or target_x is None or target_y is None):
@@ -2676,6 +2732,10 @@ class Orbs(Tools):
             correct_wcs = None
         else:
             astrom = self._init_astrometry(spectrum, camera_number)
+            deep_frame_path = self.indexer.get_path(
+                'deep_frame', camera_number)
+            astrom.set_deep_frame(deep_frame_path)
+
             try:
                 correct_wcs = astrom.register(full_deep_frame=True)
             except Exception, e:
@@ -2685,16 +2745,56 @@ class Orbs(Tools):
                 del exc_info
                 correct_wcs = None
 
-        # Get deep frame
-        if camera_number == 0 and cam1_scale:
-            self._print_warning('Flux rescaled relatively to camera 1')
-            deep_frame_path = self.indexer.get_path('deep_frame', 1)
-        else:
-            deep_frame_path = self.indexer.get_path('deep_frame', camera_number)
+
+        # Get flux calibration vector
+        (flux_calibration_axis,
+         flux_calibration_vector) = (None, None)
         
-        # Check wavelength calibration
-        #calibration_laser_map_path = self.indexer.get_path(
-        #    'phase_calibration_laser_map', camera_number)
+        if ('standard_path' in self.options
+            and filter_path is not None):
+            std_path = self.options['standard_path']
+            std_name = self._get_standard_name(std_path)
+            (flux_calibration_axis,
+             flux_calibration_vector) = spectrum.get_flux_calibration_vector(
+                std_path, std_name, self._get_filter_file_path(self.options["filter_name"]))
+        else:
+            self._print_warning("Standard related options were not given or the name of the filter is unknown. Flux calibration vector cannot be computed")
+            
+        # Get flux calibraton coeff
+        flux_calibration_coeff = None
+        if ('standard_image_path_1.hdf5' in self.options
+            and filter_path is not None):
+            
+            std_path = self.options['standard_image_path_1.hdf5']
+            std_name = self._get_standard_name(std_path)
+
+            # find the real star position
+            std_x1, std_y1, fwhm_pix1 = self._find_standard_star(1)
+            std_x2, std_y2, fwhm_pix2 = self._find_standard_star(2)
+            #std_x1, std_y1 = 1087.134, 1035.185
+            #std_x2, std_y2 = 1041.248, 1053.123
+            #fwhm_pix1 = 3.
+            
+            if std_x1 is not None and std_x2 is not None:
+                flux_calibration_coeff = spectrum.get_flux_calibration_coeff(
+                    self.options['standard_image_path_1.hdf5'],
+                    self.options['standard_image_path_2.hdf5'],
+                    std_name,
+                    (std_x1, std_y1),
+                    (std_x2, std_y2),
+                    fwhm_pix1,
+                    self.options['step'],
+                    self.options['order'],
+                    self._get_filter_file_path(self.options["filter_name"]),
+                    self._get_optics_file_path(self.options["filter_name"]))
+    
+        else:
+            self._print_warning("Standard related options were not given or the name of the filter is unknown. Flux calibration coeff cannot be computed")
+
+        # Get wavelentgh calibration from phase cube (remains to be
+        # tested)
+        ## calibration_laser_map_path = self.indexer.get_path(
+        ##     'phase_calibration_laser_map', camera_number)
         calibration_laser_map_path = None
         
         if calibration_laser_map_path is None:
@@ -2709,12 +2809,16 @@ class Orbs(Tools):
             filter_path, step, order,
             calibration_laser_map_path,
             self.config['CALIB_NM_LASER'],
+            self.options['exp_time'],
             correct_wcs=correct_wcs,
-            flux_calibration_vector=flux_calibration_vector,
-            deep_frame_path=deep_frame_path,
+            flux_calibration_vector=(
+                flux_calibration_axis,
+                flux_calibration_vector),
+            flux_calibration_coeff=flux_calibration_coeff,
             wavenumber=self.options['wavenumber'],
             standard_header = self._get_calibration_standard_fits_header(),
-            spectral_calibration=self.options['spectral_calibration'])
+            spectral_calibration=self.options['spectral_calibration'],
+            filter_correction=filter_correction)
         
         perf_stats = perf.print_stats()
         del perf, spectrum
@@ -2723,7 +2827,15 @@ class Orbs(Tools):
 
     def extract_source_interferograms(self, camera_number,
                                       alignment_coeffs=None):
-     
+        """Extract source interferograms
+
+        :param camera_number: Camera number, can be 0, 1 or 2.
+        
+        :param alignment_coeffs: (Optional) Alignement coefficients if
+          different from those calculated at merge step (default
+          None).
+        """
+
         # get binning factor for each camera
         if "bin_cam_1" in self.options: 
             bin_cam_1 = self.options["bin_cam_1"]
@@ -2784,7 +2896,7 @@ class Orbs(Tools):
             sex.find_alignment(
                 star_list_path_1,
                 self.config["INIT_ANGLE"], init_dx, init_dy,
-                mean_fwhm_1_arc, self.config["FIELD_OF_VIEW"],
+                mean_fwhm_1_arc, self.config["FIELD_OF_VIEW_1"],
                 combine_first_frames=True)
         
         self._print_msg("Alignment parameters: {} {} {} {} {}".format(
@@ -2792,19 +2904,10 @@ class Orbs(Tools):
         self._print_msg("Mean FWHM {} arcseconds".format(mean_fwhm_1_arc))
 
         # get source list
-        source_list = list()
-        if not 'source_list_path' in self.options:
-            self._print_error('A list of sources must be given (option file keyword SOURCE_LIST_PATH)')
-            
-        with self.open_file(self.options['source_list_path'], 'r') as f:
-            for line in f:
-                x,y = line.strip().split()[:2]
-                source_list.append([float(x),float(y)])
-
-        self._print_msg('{} sources to extract'.format(len(source_list)))
+        source_list = self._get_source_list()
         
         sex.extract_source_interferograms(
-            source_list, self.config["FIELD_OF_VIEW"],
+            source_list, self.config["FIELD_OF_VIEW_1"],
             self.indexer['cam1.alignment_vector'],
             self.indexer['cam2.alignment_vector'],
             self.indexer['merged.modulation_ratio'],
@@ -2816,7 +2919,8 @@ class Orbs(Tools):
 
     def compute_source_spectra(self, camera_number,
                                phase_correction=True,
-                               filter_correction=True):
+                               filter_correction=True,
+                               optimize_phase=False):
         """Compute source spectra
 
         
@@ -2824,40 +2928,50 @@ class Orbs(Tools):
           will be corrected for filter (default True).
 
         """
-        
-        # get source list
-        source_list = list()
-        if not 'source_list_path' in self.options:
-            self._print_error('A list of sources must be given (option file keyword SOURCE_LIST_PATH)')
-            
-        with self.open_file(self.options['source_list_path'], 'r') as f:
-            for line in f:
-                x,y = line.strip().split()[:2]
-                source_list.append([float(x),float(y)])
 
-        # get filter path
-        if filter_correction:
-            filter_path = self._get_filter_file_path(self.options["filter_name"])
-            if filter_path is None:
-                self._print_warning("Unknown filter name.")
+        # Force some options for standard star
+        if self.target == 'standard':
+            optimize_phase = True
+            filter_correction = False
+            apodization_function = '2.0'
+            spectral_calibration = True
         else:
-            filter_path = None
-            
+            apodization_function = self.options['apodization_function']
+            spectral_calibration = self.options['spectral_calibration']
+    
+        # get source list
+        source_list = self._get_source_list()
+        
+        # get filter path
+        filter_path = self._get_filter_file_path(self.options["filter_name"])
+        if filter_path is None:
+            self._print_error("Unknown filter {}".format(filter_path))
+
+        # print sources
         for i in range(len(source_list)):
             self._print_msg('source {}: {} {}'.format(
                 i, source_list[i][0], source_list[i][1]))
         self.indexer.set_file_group('merged')
 
+        # get zpd shift
         if 'zpd_shift' in self.options:
             zpd_shift = self.options['zpd_shift']
         else:
             zpd_shift = None
             
         # get phase map and phase coeffs
-        self._print_error('Phase maps access must be recoded')
-        phase_map_0_path = self._get_phase_map_0_path(camera_number)
-        phase_coeffs = self._get_phase_coeffs(camera_number)
+        phase_map_paths = self._get_phase_map_paths(camera_number)
+        self._print_msg('Loaded phase maps:')
+        for phase_map_path in phase_map_paths:
+            self._print_msg('  {}'.format(phase_map_path))
+
+        # get calibration laser map path
+        calibration_laser_map_path = self._get_calibration_laser_map(
+            camera_number)
         
+        self._print_msg('Calibration laser map used: {}'.format(
+            calibration_laser_map_path))
+            
         sex = SourceExtractor(
             self._get_interfero_cube_path(
                 camera_number, corrected=True),
@@ -2876,12 +2990,14 @@ class Orbs(Tools):
                                   file_group=camera_number),
             self.options['step'],
             self.options['order'],
-            self.options['apodization_function'],
-            filter_path, phase_map_0_path, phase_coeffs,
+            apodization_function,
+            filter_path, phase_map_paths,
             self.config['CALIB_NM_LASER'],
-            self.indexer.get_path('phase_calibration_laser_map',
-                                  file_group=0),
-            spectral_calibration=False,#self.options['spectral_calibration'],
+            calibration_laser_map_path,
+            phase_file_path=self._get_phase_file_path(
+                self.options["filter_name"]),
+            optimize_phase=optimize_phase,
+            spectral_calibration=spectral_calibration,
             filter_correction=filter_correction,
             cube_A_is_balanced = self._is_balanced(1),
             phase_correction=phase_correction,
@@ -2977,7 +3093,7 @@ class Orbs(Tools):
         spectrum.export(spectrum_path, header=spectrum_header,
                         overwrite=self.overwrite, force_hdf5=True)
 
-    def export_standard_spectrum(self, camera_number, phase_correction=None,
+    def export_standard_spectrum(self, camera_number, phase_correction=True,
                                  aperture_photometry=True,
                                  apodization_function='2.0',
                                  auto_phase=True):
@@ -3004,18 +3120,10 @@ class Orbs(Tools):
         :param auto_phase: (Optional) If True, phase is computed for
           each star independantly. Useful for high SNR stars when no
           reliable external phase can be provided (e.g. Standard
-          stars). Note that if auto_phase is set to True, phase will
-          be corrected even if phase_correction is False (default True).
+          stars).
         """
-
-        self._print_error('must be reimplemented')
-        std_list = [[self.options['target_x'], self.options['target_y']]]
-
-        std_spectrum = self.extract_source_spectra(
-            camera_number, apodization_function, star_list_path=std_list,
-            aperture_photometry=aperture_photometry,
-            phase_correction=phase_correction, auto_phase=auto_phase,
-            filter_correct=True)[0]
+        std_spectrum = self.read_fits(self.indexer.get_path(
+            'extracted_source_spectra', file_group=camera_number))
 
         nm_axis = orb.utils.spectrum.create_nm_axis(
             std_spectrum.shape[0], self.options['step'], self.options['order'])
@@ -3251,12 +3359,6 @@ class RoadMap(Tools):
     color_END = '\033[0m'
     color_KORED = '\033[91m'
 
-    
-    
-    
-
-    
-    
     def __init__(self, instrument, target, cams, indexer, **kwargs):
         """Init class.
 
@@ -3456,3 +3558,293 @@ class Step(object):
                 outfiles.append('merged.{}'.format(outf))
                 
         return outfiles
+
+
+##################################################
+#### CLASS JobFile ###############################
+##################################################
+class JobFile(OptionFile):
+    """This class is aimed to parse a SITELLE's job file (*.job) and
+    convert it to a classic option file (*.opt).
+    """
+
+    # special keywords that can be used mulitple times without being
+    # overriden.
+    protected_keys = ['OBS', 'FLAT', 'DARK', 'COMPARISON', 'STDIM']
+
+    # OptionFile params dict
+    option_file_params = dict()
+
+    # Header of the first file found, used to get observation
+    # parameters.
+    _first_hdr = None 
+
+    # If True input file is an object file, else it is an option file
+    _is_jobfile = False
+
+    # IF True target is a laser
+    _is_laser = False
+
+    # convertion dict between sitelle's file header keywords and
+    # optionf ile keywords
+    convert_key = {
+        'SITSTEPS':'SPESTNB',
+        'OBJNAME':'OBJECT',
+        'SITORDER':'SPEORDR',
+        'EXPTIME':'SPEEXPT',
+        'DATE-OBS':'OBSDATE',
+        'TIME-OBS':'HOUR_UT',
+        'RA':'TARGETR',
+        'DEC':'TARGETD',
+        'FILTER': 'FILTER'}
+
+    def __init__(self, option_file_path, protected_keys=[], is_laser=False,
+                 **kwargs):
+        """Initialize class
+
+        :param option_file_path: Path to the option file
+
+        :param protected_keys: (Optional) Add other protected keys to
+          the basic ones (default []).
+
+        :param kwargs: Kwargs are :meth:`core.Tools` properties.
+        """
+        OptionFile.__init__(self, option_file_path,
+                            protected_keys=protected_keys,
+                            **kwargs)
+
+        if is_laser:
+            self._is_laser = True
+
+        if self.header_line is not None:
+            if 'SITELLE_JOB_FILE' in self.header_line:
+                self._is_jobfile = True
+
+        if self._is_jobfile:
+            ## get first object file
+            if 'OBS' in self.options:
+                hdu = self.read_fits(self.options['OBS'],
+                                     return_hdu_only=True)
+                self._first_hdr = hdu[0].header
+            elif 'COMPARISON' in self.options:
+                hdu = self.read_fits(self.options['COMPARISON'],
+                                   return_hdu_only=True)
+                self._first_hdr = hdu[0].header
+            else:
+                self._print_error('Keywords OBS or COMPARISON must be at least in the job file.')
+
+            # check
+            if self._first_hdr['CCDBIN1'] != self._first_hdr['CCDBIN2']:
+                self.print_error(
+                    'CCD Binning appears to be different for both axes')
+
+    ## generate list of files
+    def _generate_file_list(self, key, ftype,
+                            chip_index, prebin):
+        """Generate a file list from the option file and write it in a file.
+
+        :param key: Base key of the files
+        
+        :param ftype: Type of list created ('object', 'dark', 'flat',
+          'calib')
+        
+        :param chip_index: SITELLE's chip index (1 or 2 for camera 1
+          or camera 2) :
+
+        :param prebin: Prebinning.
+        """
+
+        # list is sorted in the job file order so the job file
+        # is assumed to give a sorted list of files
+        l = list()
+        for k in self.options:
+            if [''.join(i for i in k if not i.isdigit())][0] == key:
+                index_str = k[len(key):]
+                if len(index_str) > 0:
+                    index = int(index_str)
+                else:
+                    index = 1
+                l.append((self.options[k], index))
+        l = sorted(l, key=lambda ifile: ifile[1])
+        l = [ifile[0] for ifile in l]
+
+        fpath = '{}.{}.cam{}.list'.format(self.input_file_path, ftype, chip_index)
+        with open(fpath, 'w') as flist:
+            flist.write('# {} {}\n'.format('sitelle', chip_index))
+            if prebin is not None:
+                flist.write('# prebinning {}\n'.format(int(prebin)))
+            for i in l: flist.write('{}\n'.format(i))
+        # TODO: check files
+        return fpath
+
+    def is_jobfile(self):
+        """Return True if input file is a job file. False if it is an
+        option file."""
+        return bool(self._is_jobfile)
+
+    def is_laser(self):
+        """Return True if target is a laser"""
+        return bool(self._is_laser)
+
+
+    def _get_from_hdr(self, key, cast=str, optional=False):
+        """Return the value associated to a keyword in the header of
+        the first file loaded. Return None if keyword does not exist
+        or raise an exception.
+
+        :param key: Keyword
+
+        :param cast: (Optional) Cast function for the returned value
+          (default str).
+
+        :param optional: (Optional) if True return None if the keyword
+          does not exist. If False raise an exception (default False).
+        """
+        if key in self._first_hdr:
+            param = self._first_hdr[key]
+        else:
+            if optional: return None
+            else: self._print_error(
+                'Keyword {} must be recorded in the header'.format(key))
+        
+        if cast is not bool:
+            return cast(param)
+        else:
+            return bool(int(param))
+        
+        
+    def convert2opt(self):
+        """Convert the job file to an option file"""
+
+        out_params = dict()
+        if not self._is_jobfile:
+            self._print_error('File is already an option file and cannot be converted')
+            
+        output_file_path = os.path.split(self.input_file_path)[1] + '.opt'
+        self.option_file_params = dict() # parameters to write in the option file
+
+        # parse header for basic keywords
+        for key in self.convert_key:
+            if key in self._first_hdr:
+                self.option_file_params[self.convert_key[key]] = self._first_hdr[key]
+            elif key in self.options:
+                self.option_file_params[self.convert_key[key]] = self.options[key]
+            elif self.convert_key[key] in self.options:
+                self.option_file_params[self.convert_key[key]] = self.options[self.convert_key[key]]
+            else:
+                self._print_error('Keyword {} must be in the header of the files or in the job file')
+        
+        # parse option file and replace duplicated key by the one in
+        # the option file (so that the option file as priority over
+        # the header)
+        for key in self.options:
+            if key in self.convert_key:
+                self.option_file_params[self.convert_key[key]] = self.options[key]
+            elif (''.join([i for i in key if not i.isdigit()])
+                  not in self.protected_keys):
+                self.option_file_params[key] = self.options[key]
+
+
+        # convert name
+        self.option_file_params['OBJECT'] = ''.join(
+            self.option_file_params['OBJECT'].strip().split())
+
+        # compute step size in nm
+        if not self.is_laser():
+            step_fringe = self._get_from_hdr('SITSTPSZ', cast=float)
+            fringe_sz = self._get_from_hdr('SITFRGNM', cast=float)
+            self.option_file_params['SPESTEP'] = step_fringe * fringe_sz
+        else:
+            self.option_file_params.pop('SPEORDR')
+
+        # get dark exposition time
+        if 'DARK' in self.options:
+            dark_hdr = to.read_fits(
+                self.options['DARK'], return_hdu_only=True)[0].header
+            self.option_file_params['SPEDART'] = dark_hdr['EXPTIME']
+            
+        # define target position in the frame
+        sec_cam1 =self._get_from_hdr('DSEC1')
+        sec_cam1 = sec_cam1[1:-1].split(',')
+        sec_cam1x = np.array(sec_cam1[0].split(':'), dtype=int)
+        sec_cam1y = np.array(sec_cam1[1].split(':'), dtype=int)
+
+        if 'TARGETX' not in self.options:
+            self.option_file_params['TARGETX'] = (
+                float(sec_cam1x[1]-sec_cam1x[0]) / 2.)
+            
+        if 'TARGETY' not in self.options:
+            self.option_file_params['TARGETY'] = (
+                float(sec_cam1y[1]-sec_cam1y[0]) / 2.)
+
+        # get calibration laser map path
+        if 'CALIBMAP' in self.options:
+            out_params['calibration_laser_map_path'] = self.options['CALIBMAP']
+        elif not self.is_laser():
+            self._print_error('CALIBMAP keyword must be set')
+
+
+        # get standard spectrum params
+        if 'STDPATH' in self.option_file_params:
+            std_path = self.option_file_params['STDPATH']
+            if os.path.exists(std_path):
+                std_hdr = self.read_fits(std_path, return_hdu_only=True)[0].header
+                if 'OBJECT' in std_hdr:
+                    self.option_file_params['STDNAME'] = std_hdr['OBJECT']
+                else:
+                    self._print_error('OBJECT key is not in standard file header ({})'.format(std_path))
+            else:
+                self._print_error('Standard star file does not exist ({})'.format(std_path))
+
+        # get standard image list parames
+        if 'STDIM' in self.options:
+            std_path = self.options['STDIM']
+            if os.path.exists(std_path):
+                std_hdr = self.read_fits(std_path, return_hdu_only=True)[0].header
+                if 'OBJECT' in std_hdr:
+                    self.option_file_params['STDNAME'] = ''.join(std_hdr['OBJECT'].strip().split())
+                else:
+                    self._print_error('OBJECT key is not in standard file header ({})'.format(std_path))
+            else:
+                self._print_error('Standard image file does not exist ({})'.format(std_path))
+
+        if 'OBS' in self.options: # target image list
+            self.option_file_params['DIRCAM1'] = self._generate_file_list(
+                'OBS', 'object', 1, self['PREBINNING'])
+            self.option_file_params['DIRCAM2'] = self._generate_file_list(
+                'OBS', 'object', 2, self['PREBINNING'])
+        if 'FLAT' in self.options: # flat image list
+            self.option_file_params['DIRFLT1'] = self._generate_file_list(
+                'FLAT', 'flat', 1, self['PREBINNING'])
+            self.option_file_params['DIRFLT2'] = self._generate_file_list(
+                'FLAT', 'flat', 2, self['PREBINNING'])
+        if 'DARK' in self.options: # dark image list
+            self.option_file_params['DIRDRK1'] = self._generate_file_list(
+                'DARK', 'dark', 1, self['PREBINNING'])
+            self.option_file_params['DIRDRK2'] = self._generate_file_list(
+                'DARK', 'dark', 2, self['PREBINNING'])
+        if 'COMPARISON' in self.options: # wavelength calibration file list
+            self.option_file_params['DIRCAL1'] = self._generate_file_list(
+                'COMPARISON', 'calib', 1, self['PREBINNING'])
+            self.option_file_params['DIRCAL2'] = self._generate_file_list(
+                'COMPARISON', 'calib', 2, self['PREBINNING'])
+        if 'STDIM' in self.options: # standard image list
+            self.option_file_params['DIRSTD1'] = self._generate_file_list(
+                'STDIM', 'stdim', 1, self['PREBINNING'])
+            self.option_file_params['DIRSTD2'] = self._generate_file_list(
+                'STDIM', 'stdim', 2, self['PREBINNING'])
+
+        with open(output_file_path, 'w') as f:
+            # create option file header
+            f.write('## ORBS Option file\n# Auto-generated from SITELLE job file: {}\n'.format(
+                self.input_file_path))
+            # write params in the option file           
+            for key in self.option_file_params:
+                f.write('{} {}\n'.format(key, self.option_file_params[key]))
+                
+        return output_file_path, out_params, 'sitelle_job_file'
+
+        
+
+
+    

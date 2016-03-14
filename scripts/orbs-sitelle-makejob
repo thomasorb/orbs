@@ -71,7 +71,7 @@ APOD 1.0
 """
 
     if args.calibration_laser_map_path is not None:
-        s += 'CALIB_MAP_PATH {}\n'.format(args.calibration_laser_map_path)
+        s += 'CALIBMAP {}\n'.format(args.calibration_laser_map_path)
 
     # correct ORDER for laser cube in case an invalid order is passed
     if args.laser:
@@ -128,7 +128,12 @@ APOD 1.0
         if args.flat_list_path is not None:
            with open(args.flat_list_path, 'r') as flist:
                for fline in flist:
-                   f.write('FLAT '+ fline)
+                   f.write('FLAT {}\n'.format(fline.strip()))
+
+        if args.standard_image_list_path is not None:
+           with open(args.standard_image_list_path, 'r') as flist:
+               for fline in flist:
+                   f.write('STDIM {}\n'.format(fline.strip()))
 
         if args.source_list_path is not None:
             if os.path.exists(args.source_list_path):
@@ -137,12 +142,16 @@ APOD 1.0
             else:
                 raise Exception('Source list file {} does not exist'.format(
                     args.source_list_path))
+            
+        if args.standard_spectrum_path is not None:
+            if os.path.exists(args.standard_spectrum_path):
+                f.write('STDPATH {}\n'.format(
+                    args.standard_spectrum_path))
+            else:
+                raise Exception('Standard spectrum file {} does not exist'.format(
+                    args.standard_spectrum_path))
+        
                    
-        ## for dline in dlist:
-        ##     f.write('DARK '+ dline)
-        ## for cline in clist:
-        ##     f.write('COMPARISON '+ cline)
-    
 
 if __name__ == "__main__":
     """Main entrance of the script.
@@ -179,8 +188,16 @@ if __name__ == "__main__":
     parser.add_argument('-f', dest='flat_list_path',
                         default=None,
                         help='Path to the list of flat field images.')
+
+    parser.add_argument('-si', dest='standard_image_list_path',
+                        default=None,
+                        help='Path to the list of standard images.')
+
+    parser.add_argument('-ss', dest='standard_spectrum_path',
+                        default=None,
+                        help='Path to the standard spectrum')
     
-    parser.add_argument('-s', dest='source_list_path',
+    parser.add_argument('--source', dest='source_list_path',
                         default=None,
                         help='Path to the list of sources to extract.')
     

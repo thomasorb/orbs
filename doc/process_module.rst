@@ -59,15 +59,6 @@ Phase class
    :show-inheritance:
    :special-members:
 
-Standard class
---------------
-
-.. autoclass:: process.Standard
-   :members:
-   :private-members:
-   :show-inheritance:
-   :special-members:
-
 
 SourceExtractor class
 ---------------------

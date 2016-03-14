@@ -22,5 +22,16 @@
   <step name='merge_interferograms' cam='0'>
     <kwarg name='add_frameB'></kwarg>
   </step>
+
+  <step name='extract_source_interferograms' cam='0'>
+    <arg value='0' type='int'></arg>
+  </step>
+
+  <step name='compute_source_spectra' cam='0'>
+    <arg value='0' type='int'></arg>
+    <kwarg name='phase_correction'></kwarg>
+    <kwarg name='filter_correction'></kwarg>
+  </step>
+
 </steps>
 

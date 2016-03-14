@@ -30,7 +30,7 @@ import orbs
 from orbs.orbs import Orbs
 from orbs.process import InterferogramMerger, Interferogram
 from orb.core import Tools, Cube, HDFCube
-from orb.visual import ImageWindow
+from orb.viewer import ImageWindow
 import orb.utils
 import orb.astrometry
 
