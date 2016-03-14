@@ -2719,7 +2719,7 @@ class Interferogram(HDFCube):
                             
                     else:
                         ext_phase = None
-
+                
                     interf = np.copy(data[ij,:])
 
                     # defringe
@@ -2920,7 +2920,7 @@ class Interferogram(HDFCube):
             axis, window_type, phase=phase_cube,
             wavenumber=wavenumber)))
 
-        for iquad in range(4, self.QUAD_NB):
+        for iquad in range(0, self.QUAD_NB):
             x_min, x_max, y_min, y_max = self.get_quadrant_dims(iquad)
             iquad_data = self.get_data(x_min, x_max, 
                                        y_min, y_max, 
@@ -3217,35 +3217,35 @@ class Interferogram(HDFCube):
             zpd_shift = orb.utils.fft.find_zpd(
                 median_interf, return_zpd_shift=True)
         
-        ## # binning interferogram cube
-        ## if binning > 1:
-        ##     self._print_msg('Binning interferogram cube')
-        ##     image0_bin = orb.utils.image.nanbin_image(
-        ##         self.get_data_frame(0), binning)
+        # binning interferogram cube
+        if binning > 1:
+            self._print_msg('Binning interferogram cube')
+            image0_bin = orb.utils.image.nanbin_image(
+                self.get_data_frame(0), binning)
             
-        ##     cube_bin = np.empty((image0_bin.shape[0],
-        ##                          image0_bin.shape[1],
-        ##                          self.dimz), dtype=float)
-        ##     cube_bin.fill(np.nan)
-        ##     cube_bin[:,:,0] = image0_bin
-        ##     progress = ProgressBar(self.dimz-1)
-        ##     for ik in range(1, self.dimz):
-        ##         progress.update(ik, info='Binning cube')
-        ##         cube_bin[:,:,ik] = orb.utils.image.nanbin_image(
-        ##             self.get_data_frame(ik), binning)
-        ##     progress.end()
+            cube_bin = np.empty((image0_bin.shape[0],
+                                 image0_bin.shape[1],
+                                 self.dimz), dtype=float)
+            cube_bin.fill(np.nan)
+            cube_bin[:,:,0] = image0_bin
+            progress = ProgressBar(self.dimz-1)
+            for ik in range(1, self.dimz):
+                progress.update(ik, info='Binning cube')
+                cube_bin[:,:,ik] = orb.utils.image.nanbin_image(
+                    self.get_data_frame(ik), binning)
+            progress.end()
           
-        ##     calibration_laser_map = orb.utils.image.nanbin_image(
-        ##         calibration_laser_map, binning)
-        ## else:
-        ##     cube_bin = self
-        ##     self._silent_load = True
+            calibration_laser_map = orb.utils.image.nanbin_image(
+                calibration_laser_map, binning)
+        else:
+            cube_bin = self
+            self._silent_load = True
 
         ## self.write_fits('cube_bin.fits', cube_bin, overwrite=True)
         ## self.write_fits('calibration_laser_map.fits',
         ##                 calibration_laser_map, overwrite=True)
-        calibration_laser_map = self.read_fits('calibration_laser_map.fits')
-        cube_bin = self.read_fits('cube_bin.fits')
+        ## calibration_laser_map = self.read_fits('calibration_laser_map.fits')
+        ## cube_bin = self.read_fits('cube_bin.fits')
         
             
         # compute orders > 0
