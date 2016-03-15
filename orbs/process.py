@@ -3040,7 +3040,7 @@ class Interferogram(HDFCube):
         def fit_phase_in_column(cube_col, step, order, zpd_shift,
                                 calib_col, filter_min_cm1, filter_max_cm1,
                                 nm_laser, fit_order, high_phase):
-
+        
             RANGE_BORDER_COEFF = 0.1
             
             warnings.simplefilter('ignore', RuntimeWarning)
@@ -3052,20 +3052,21 @@ class Interferogram(HDFCube):
             fit_res_col.fill(np.nan)
             
             for ij in range(cube_col.shape[0]):
-                if np.all(cube_col[ij,:] == 0):
-                    cube_col[ij,:].fill(np.nan)
+
+                interf = cube_col[ij,:]
+                # zeros are replaced by nans
+                interf[np.nonzero(interf == 0)] = np.nan
+
+                
+                # compute phase
+                ifft = orb.utils.fft.transform_interferogram(
+                    interf, 1., 1., step, order, '2.0',
+                    zpd_shift, wavenumber=True,
+                    return_complex=True,
+                    phase_correction=False)
                     
-                if not np.all(np.isnan(cube_col[ij,:])):
-                    interf = cube_col[ij,:]
-                    # zeros are replaced by nans
-                    interf[np.nonzero(interf == 0)] = np.nan
-                    
-                    # compute phase
-                    ifft = orb.utils.fft.transform_interferogram(
-                        interf, 1., 1., step, order, '2.0',
-                        zpd_shift, wavenumber=True,
-                        return_complex=True,
-                        phase_correction=False)
+                if ifft is not None:
+                
                     iphase = np.unwrap(np.angle(ifft))
                     if int(order) & 1: iphase = iphase[::-1]
 
@@ -3218,34 +3219,34 @@ class Interferogram(HDFCube):
                 median_interf, return_zpd_shift=True)
         
         # binning interferogram cube
-        if binning > 1:
-            self._print_msg('Binning interferogram cube')
-            image0_bin = orb.utils.image.nanbin_image(
-                self.get_data_frame(0), binning)
+        ## if binning > 1:
+        ##     self._print_msg('Binning interferogram cube')
+        ##     image0_bin = orb.utils.image.nanbin_image(
+        ##         self.get_data_frame(0), binning)
             
-            cube_bin = np.empty((image0_bin.shape[0],
-                                 image0_bin.shape[1],
-                                 self.dimz), dtype=float)
-            cube_bin.fill(np.nan)
-            cube_bin[:,:,0] = image0_bin
-            progress = ProgressBar(self.dimz-1)
-            for ik in range(1, self.dimz):
-                progress.update(ik, info='Binning cube')
-                cube_bin[:,:,ik] = orb.utils.image.nanbin_image(
-                    self.get_data_frame(ik), binning)
-            progress.end()
+        ##     cube_bin = np.empty((image0_bin.shape[0],
+        ##                          image0_bin.shape[1],
+        ##                          self.dimz), dtype=float)
+        ##     cube_bin.fill(np.nan)
+        ##     cube_bin[:,:,0] = image0_bin
+        ##     progress = ProgressBar(self.dimz-1)
+        ##     for ik in range(1, self.dimz):
+        ##         progress.update(ik, info='Binning cube')
+        ##         cube_bin[:,:,ik] = orb.utils.image.nanbin_image(
+        ##             self.get_data_frame(ik), binning)
+        ##     progress.end()
           
-            calibration_laser_map = orb.utils.image.nanbin_image(
-                calibration_laser_map, binning)
-        else:
-            cube_bin = self
-            self._silent_load = True
+        ##     calibration_laser_map = orb.utils.image.nanbin_image(
+        ##         calibration_laser_map, binning)
+        ## else:
+        ##     cube_bin = self
+        ##     self._silent_load = True
 
         ## self.write_fits('cube_bin.fits', cube_bin, overwrite=True)
         ## self.write_fits('calibration_laser_map.fits',
         ##                 calibration_laser_map, overwrite=True)
-        ## calibration_laser_map = self.read_fits('calibration_laser_map.fits')
-        ## cube_bin = self.read_fits('cube_bin.fits')
+        calibration_laser_map = self.read_fits('calibration_laser_map.fits')
+        cube_bin = self.read_fits('cube_bin.fits')
         
             
         # compute orders > 0
