@@ -31,7 +31,7 @@ import version
 __version__ = version.__version__
 
 from orb.core import Tools, Cube, ProgressBar, Standard
-from orb.core import HDFCube, OutHDFCube
+from orb.core import HDFCube, OutHDFCube, OutHDFQuadCube
 import orb.utils.fft
 import orb.utils.filters
 import orb.utils.spectrum
@@ -52,6 +52,7 @@ from scipy import optimize, interpolate
 
 import astropy.io.fits as pyfits
 import warnings
+import time
 
 ##################################################
 #### CLASS RawData ###############################
@@ -669,7 +670,7 @@ class RawData(HDFCube):
         
         cr_map = np.empty((self.dimx, self.dimy, self.dimz), dtype=np.bool)
 
-        for iquad in range(0, 1):#self.QUAD_NB):
+        for iquad in range(0, self.QUAD_NB):
             x_min, x_max, y_min, y_max = self.get_quadrant_dims(iquad)
             iquad_data = self.get_data(x_min, x_max, 
                                        y_min, y_max, 
@@ -2052,9 +2053,10 @@ class CalibrationLaser(HDFCube):
             fwhm_guess,
             fwhm_guess_cm1))
         
-        out_cube = OutHDFCube(
+        out_cube = OutHDFQuadCube(
             self._get_calibration_laser_spectrum_cube_path(),
-            shape=(self.dimx, self.dimy, self.dimz),
+            (self.dimx, self.dimy, self.dimz),
+            self.QUAD_NB,
             reset=True)
 
         fitparams = np.empty((self.dimx, self.dimy, 8), dtype=float)
@@ -2102,14 +2104,14 @@ class CalibrationLaser(HDFCube):
             progress.end()
 
             if get_calibration_laser_spectrum:
-                progress = ProgressBar(self.dimz)
-                for iframe in range(self.dimz):
-                    out_cube.write_frame(
-                        iframe, data=iquad_data[:,:,iframe],
-                        section=[x_min,x_max,y_min,y_max])
-                    progress.update(
-                        iframe, info='writing data frame {}'.format(iframe))
-                progress.end()
+                # save data
+                self._print_msg('Writing quad {}/{} to disk'.format(
+                    iquad, self.QUAD_NB))
+                write_start_time = time.time()
+                out_cube.write_quad(iquad, data=iquad_data)
+                self._print_msg('Quad {}/{} written in {} s'.format(
+                    iquad, self.QUAD_NB, time.time() - write_start_time))
+            
 
         out_cube.close()
         del out_cube
@@ -2911,9 +2913,10 @@ class Interferogram(HDFCube):
         else:
             axis = orb.utils.spectrum.create_cm1_axis(axis_len, step, order)
 
-        out_cube = OutHDFCube(
+        out_cube = OutHDFQuadCube(
             self._get_spectrum_cube_path(phase=phase_cube),
-            shape=(self.dimx, self.dimy, axis_len),
+            (self.dimx, self.dimy, axis_len),
+            self.QUAD_NB,
             overwrite=self.overwrite)
 
         out_cube.append_header(pyfits.Header(self._get_spectrum_header(
@@ -2968,16 +2971,15 @@ class Interferogram(HDFCube):
             progress.end()
             
             # save data
-            progress = ProgressBar(axis_len)
-            for iframe in range(axis_len):
-                out_cube.write_frame(
-                    iframe,
-                    data=iquad_data[:,:,iframe],
-                    section=[x_min,x_max,y_min,y_max],
-                    force_float32=False, force_complex64=True)
-                progress.update(iframe, info='Writing data frame {}'.format(
-                    iframe))
-            progress.end()
+            self._print_msg('Writing quad {}/{} to disk'.format(
+                iquad, self.QUAD_NB))
+            write_start_time = time.time()
+            out_cube.write_quad(
+                iquad, data=iquad_data,
+                force_float32=False, force_complex64=True)
+            self._print_msg('Quad {}/{} written in {} s'.format(
+                iquad, self.QUAD_NB, time.time() - write_start_time))
+            
             
         out_cube.close()
         del out_cube
@@ -3219,34 +3221,34 @@ class Interferogram(HDFCube):
                 median_interf, return_zpd_shift=True)
         
         # binning interferogram cube
-        ## if binning > 1:
-        ##     self._print_msg('Binning interferogram cube')
-        ##     image0_bin = orb.utils.image.nanbin_image(
-        ##         self.get_data_frame(0), binning)
+        if binning > 1:
+            self._print_msg('Binning interferogram cube')
+            image0_bin = orb.utils.image.nanbin_image(
+                self.get_data_frame(0), binning)
             
-        ##     cube_bin = np.empty((image0_bin.shape[0],
-        ##                          image0_bin.shape[1],
-        ##                          self.dimz), dtype=float)
-        ##     cube_bin.fill(np.nan)
-        ##     cube_bin[:,:,0] = image0_bin
-        ##     progress = ProgressBar(self.dimz-1)
-        ##     for ik in range(1, self.dimz):
-        ##         progress.update(ik, info='Binning cube')
-        ##         cube_bin[:,:,ik] = orb.utils.image.nanbin_image(
-        ##             self.get_data_frame(ik), binning)
-        ##     progress.end()
+            cube_bin = np.empty((image0_bin.shape[0],
+                                 image0_bin.shape[1],
+                                 self.dimz), dtype=float)
+            cube_bin.fill(np.nan)
+            cube_bin[:,:,0] = image0_bin
+            progress = ProgressBar(self.dimz-1)
+            for ik in range(1, self.dimz):
+                progress.update(ik, info='Binning cube')
+                cube_bin[:,:,ik] = orb.utils.image.nanbin_image(
+                    self.get_data_frame(ik), binning)
+            progress.end()
           
-        ##     calibration_laser_map = orb.utils.image.nanbin_image(
-        ##         calibration_laser_map, binning)
-        ## else:
-        ##     cube_bin = self
-        ##     self._silent_load = True
+            calibration_laser_map = orb.utils.image.nanbin_image(
+                calibration_laser_map, binning)
+        else:
+            cube_bin = self
+            self._silent_load = True
 
         ## self.write_fits('cube_bin.fits', cube_bin, overwrite=True)
         ## self.write_fits('calibration_laser_map.fits',
         ##                 calibration_laser_map, overwrite=True)
-        calibration_laser_map = self.read_fits('calibration_laser_map.fits')
-        cube_bin = self.read_fits('cube_bin.fits')
+        ## calibration_laser_map = self.read_fits('calibration_laser_map.fits')
+        ## cube_bin = self.read_fits('cube_bin.fits')
         
             
         # compute orders > 0
@@ -5616,9 +5618,10 @@ class Spectrum(HDFCube):
         ## self._print_msg("Median energy ratio imaginary/real: {:.2f} [std {:.3f}] %".format(np.nanmedian(imag_energy)*100., np.nanstd(imag_energy)*100.))
             
    
-        out_cube = OutHDFCube(
+        out_cube = OutHDFQuadCube(
             self._get_calibrated_spectrum_cube_path(),
-            shape=(self.dimx, self.dimy, self.dimz),
+            (self.dimx, self.dimy, self.dimz),
+            self.QUAD_NB,
             reset=True)
         
         # Init of the multiprocessing server    
@@ -5667,15 +5670,13 @@ class Spectrum(HDFCube):
             progress.end()
 
             # save data
-            progress = ProgressBar(self.dimz)
-            for iframe in range(self.dimz):
-                out_cube.write_frame(
-                    iframe,
-                    data=iquad_data[:,:,iframe],
-                    section=[x_min,x_max,y_min,y_max])
-                progress.update(iframe, info='Writing data frame {}'.format(
-                    iframe))
-            progress.end()
+            self._print_msg('Writing quad {}/{} to disk'.format(
+                iquad, self.QUAD_NB))
+            write_start_time = time.time()
+            out_cube.write_quad(iquad, data=iquad_data)
+            self._print_msg('Quad {}/{} written in {} s'.format(
+                iquad, self.QUAD_NB, time.time() - write_start_time))
+            
 
         # update header
         if wavenumber:
@@ -6183,13 +6184,21 @@ class SourceExtractor(InterferogramMerger):
                                spectral_calibration=True,
                                filter_correction=True,
                                cube_A_is_balanced=True,
-                               zpd_shift=None):
+                               zpd_shift=None,
+                               phase_order=None):
         
-        """Compute source spectra"""
+        """Compute source spectra
+
+
+        :param phase_order: (Optional) If phase_map_paths is set to None, phase_order must be given.
+        """
 
         RANGE_BORDER_COEFF = 0.1
         
         source_interf = self.read_fits(source_interf_path)
+
+        if phase_map_paths is None and phase_order is None and phase_correction:
+            self._print_error('If phase correction is required and phase_map_paths is not given, phase must be computed for each source independantly and phase_order must be set.')
         
         if len(source_interf.shape) == 1:
             source_interf = np.array([source_interf])
@@ -6306,11 +6315,15 @@ class SourceExtractor(InterferogramMerger):
 
             if phase_correction:                
                 coeffs_list = list()
-                for phase_map in phase_maps:
-                    if np.size(phase_map) > 1:
-                        coeffs_list.append(phase_map[int(x), int(y)])
-                    else:
-                        coeffs_list.append(phase_map)
+                if phase_maps is not None:
+                    for phase_map in phase_maps:
+                        if np.size(phase_map) > 1:
+                            coeffs_list.append(phase_map[int(x), int(y)])
+                        else:
+                            coeffs_list.append(phase_map)
+                else:
+                    optimize_phase = True
+                    coeffs_list = np.empty(phase_order+1, dtype=float)
                             
                 if optimize_phase:
                     guess = np.array(coeffs_list)

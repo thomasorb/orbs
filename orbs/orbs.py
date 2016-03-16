@@ -1274,7 +1274,7 @@ class Orbs(Tools):
     def _get_phase_map_paths(self, camera_number):
         """Return the list of fitted phase map paths.
 
-        :param camera_number: Camera number. Can be 0, 1 or 2.
+        :param camera_number: Camera number. Can be 0, 1 or 2.    
         """
         phase_map_path_list = list()
         # append order 0
@@ -2960,10 +2960,14 @@ class Orbs(Tools):
             zpd_shift = None
             
         # get phase map and phase coeffs
-        phase_map_paths = self._get_phase_map_paths(camera_number)
-        self._print_msg('Loaded phase maps:')
-        for phase_map_path in phase_map_paths:
-            self._print_msg('  {}'.format(phase_map_path))
+        if not optimize_phase:
+            phase_map_paths = self._get_phase_map_paths(camera_number)
+            self._print_msg('Loaded phase maps:')
+            for phase_map_path in phase_map_paths:
+                self._print_msg('  {}'.format(phase_map_path))
+        else:
+            phase_map_paths = None
+                
 
         # get calibration laser map path
         calibration_laser_map_path = self._get_calibration_laser_map(
@@ -3001,7 +3005,8 @@ class Orbs(Tools):
             filter_correction=filter_correction,
             cube_A_is_balanced = self._is_balanced(1),
             phase_correction=phase_correction,
-            zpd_shift=zpd_shift)
+            zpd_shift=zpd_shift,
+            phase_order=self._get_phase_fit_order())
 
 
     def export_calibration_laser_map(self, camera_number):
