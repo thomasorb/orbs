@@ -1192,7 +1192,18 @@ v3.10.2
 =======
 
 
+HDFQuad
+-------
+
+All calibrations updated and stable
+-----------------------------------
+
+* photometry
+* astrometry
+* source extraction
+
+
 Miscellaneous
 -------------
 
-- Moved Standard class from orbs.process to orb.core
+* Moved Standard class from orbs.process to orb.core

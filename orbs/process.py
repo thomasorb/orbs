@@ -5741,7 +5741,9 @@ class Spectrum(HDFCube):
                                    std_pos_1, std_pos_2,
                                    fwhm_pix,
                                    step, order, filter_file_path,
-                                   optics_file_path):
+                                   optics_file_path,
+                                   calibration_laser_map_path,
+                                   nm_laser):
         """Return flux calibration coefficient in [erg/cm2/s/A]/ADU
         from a set of images.
     
@@ -5765,6 +5767,13 @@ class Spectrum(HDFCube):
           filter edges can be used to give a weight to the phase
           points. See :meth:`process.Spectrum.correct_filter` for more
           information about the filter file.
+
+        :param optics_file_path: Path to the optics fileé
+
+        :param calibration_laser_map_path: Path to the calibration
+          laser map.
+
+        :param nm_laser: Calibration laser wavelength in nm.
 
         .. note:: This calibration coefficient must be used for non
           filter-corrected data
@@ -5810,20 +5819,25 @@ class Spectrum(HDFCube):
             std_image_cube_path_2))
 
         ## Compute standard flux in erg/cm2/s/A
+
+        # compute correction coeff from angle at center of the frame
+        calibration_laser_map = self.read_fits(calibration_laser_map_path)
+        corr = calibration_laser_map[
+            calibration_laser_map.shape[0]/2,
+            calibration_laser_map.shape[1]/2] / nm_laser
         
         # Get standard spectrum in erg/cm^2/s/A
         std = Standard(std_name, config_file_name=self.config_file_name)
         th_spectrum_axis, th_spectrum = std.get_spectrum(
             step, order, STEP_NB,
-            wavenumber=False)
+            wavenumber=False, corr=corr)
 
         # get filter function
         (filter_function,
          filter_min_pix, filter_max_pix) = (
             orb.utils.filters.get_filter_function(
                 filter_file_path, step, order, STEP_NB,
-                wavenumber=False))
-
+                wavenumber=False, corr=corr))
 
         # convert it to erg/cm2/s by summing all the photons
         std_th_flux = th_spectrum * filter_function / np.nanmax(filter_function)
@@ -5837,7 +5851,7 @@ class Spectrum(HDFCube):
         # compute simulated flux
         std_sim_flux = std.compute_star_flux_in_frame(
             step, order, filter_file_path,
-            optics_file_path, 1)
+            optics_file_path, 1, corr=corr)
 
         self._print_msg('Simulated star flux in one camera: {} ADU/s'.format(
             std_sim_flux))
@@ -5887,17 +5901,6 @@ class Spectrum(HDFCube):
             std_flux2 / std_sim_flux))
         
         coeff = std_th_flux / (std_flux1 + std_flux2) # erg/cm2/ADU
-        
-        # convert it to erg/cm2/s/A by dividing by the total fft_bandwidth
-        #nm_axis = orb.utils.spectrum.create_nm_axis(STEP_NB, step, order)
-        #fft_bandwidth = (nm_axis[-1] - nm_axis[0]) * 10.
-        #coeff /= fft_bandwidth
-        
-        
-        ## nm_axis = orb.utils.create_nm_axis(STEP_NB)
-        ## filter_bandwidth = orb.utils.photometry.compute_equivalent_bandwidth(
-        ##     nm_axis, filter_transmission)
-        ## fft_bandwidth = nm_axis
         
         self._print_msg('Flux calibration coeff: {} ergs/cm2/ADU'.format(coeff))
 

@@ -1139,7 +1139,7 @@ class Orbs(Tools):
             return None
         return cube
 
-    def _init_astrometry(self, cube, camera_number):
+    def _init_astrometry(self, cube, camera_number, standard_star=False):
         """Init Astrometry class.
 
         The Astrometry class is used for star detection and star fitting
@@ -1149,6 +1149,9 @@ class Orbs(Tools):
 
         :param camera_number: Camera number (can be 1, 2 or 0 
           for merged data).
+
+        :param standard_star: If True target x and y are derived fom
+          STD_X and STD_Y keywords in the option file.
         
         :return: :py:class:`orb.astrometry.Astrometry` instance
 
@@ -2630,16 +2633,22 @@ class Orbs(Tools):
         # standard image registration to find std star
         std_cube = HDFCube(std_path)
         std_astrom = self._init_astrometry(std_cube, camera_number)
-        std_hdr = std_cube.get_frame_header(0)
+        std_hdr = std_cube.get_frame_header(0) 
         std_ra, std_dec = self._get_standard_radec(std_name)
         self._print_msg('Standard star {} RA/DEC: {} {}'.format(std_name, std_ra, std_dec))
-        std_astrom.target_ra = std_ra
-        std_astrom.target_dec = std_dec
+        
+        # telescope center position is used to register std frame
+        std_astrom.target_ra = std_hdr['RA_DEG']
+        std_astrom.target_dec = std_hdr['DEC_DEG']
+        std_astrom.target_x = std_cube.dimx / 2.
+        std_astrom.target_y = std_cube.dimy / 2.
         try:
             # register std frame
             std_correct_wcs = std_astrom.register(full_deep_frame=True)
             # get std_x and std_y
             std_x, std_y = std_correct_wcs.wcs_world2pix(std_ra, std_dec, 0)
+
+            self._print_msg('Standard star found at X/Y: {} {}'.format(std_x, std_y))
 
         except Exception, e:
             exc_info = sys.exc_info()
@@ -2745,6 +2754,17 @@ class Orbs(Tools):
                 del exc_info
                 correct_wcs = None
 
+        # Get calibration laser map
+        calibration_laser_map_path = None
+        
+        if calibration_laser_map_path is None:
+            calibration_laser_map_path = self._get_calibration_laser_map(
+                camera_number)
+        
+        self._print_msg('Calibration laser map used: {}'.format(
+            calibration_laser_map_path))
+        
+
 
         # Get flux calibration vector
         (flux_calibration_axis,
@@ -2771,9 +2791,8 @@ class Orbs(Tools):
             # find the real star position
             std_x1, std_y1, fwhm_pix1 = self._find_standard_star(1)
             std_x2, std_y2, fwhm_pix2 = self._find_standard_star(2)
-            #std_x1, std_y1 = 1087.134, 1035.185
-            #std_x2, std_y2 = 1041.248, 1053.123
-            #fwhm_pix1 = 3.
+            #std_x1, std_y1, fwhm_pix1 = 1000, 1000, 3
+            #std_x2, std_y2, fwhm_pix2 = 1000, 1000, 3
             
             if std_x1 is not None and std_x2 is not None:
                 flux_calibration_coeff = spectrum.get_flux_calibration_coeff(
@@ -2786,7 +2805,9 @@ class Orbs(Tools):
                     self.options['step'],
                     self.options['order'],
                     self._get_filter_file_path(self.options["filter_name"]),
-                    self._get_optics_file_path(self.options["filter_name"]))
+                    self._get_optics_file_path(self.options["filter_name"]),
+                    calibration_laser_map_path, 
+                    self.config['CALIB_NM_LASER'])
     
         else:
             self._print_warning("Standard related options were not given or the name of the filter is unknown. Flux calibration coeff cannot be computed")
@@ -2795,14 +2816,6 @@ class Orbs(Tools):
         # tested)
         ## calibration_laser_map_path = self.indexer.get_path(
         ##     'phase_calibration_laser_map', camera_number)
-        calibration_laser_map_path = None
-        
-        if calibration_laser_map_path is None:
-            calibration_laser_map_path = self._get_calibration_laser_map(
-                camera_number)
-        
-        self._print_msg('Calibration laser map used: {}'.format(
-            calibration_laser_map_path))
         
         # Calibration
         spectrum.calibrate(
@@ -3590,6 +3603,9 @@ class JobFile(OptionFile):
     # IF True target is a laser
     _is_laser = False
 
+    # If True Init is fast, some checking is not done
+    _fast_init = False
+
     # convertion dict between sitelle's file header keywords and
     # optionf ile keywords
     convert_key = {
@@ -3604,7 +3620,7 @@ class JobFile(OptionFile):
         'FILTER': 'FILTER'}
 
     def __init__(self, option_file_path, protected_keys=[], is_laser=False,
-                 **kwargs):
+                 fast_init=False, **kwargs):
         """Initialize class
 
         :param option_file_path: Path to the option file
@@ -3612,7 +3628,14 @@ class JobFile(OptionFile):
         :param protected_keys: (Optional) Add other protected keys to
           the basic ones (default []).
 
-        :param kwargs: Kwargs are :meth:`core.Tools` properties.
+        :param is_laser: (Optional) If True target is a Laser (default
+          False)
+
+        :param fast_init: (Optional) If True conversion is fast and
+          some checking is not done but the result might be uncorrect
+          (default False).    
+
+        :param kwargs: Kwargs are :meth:`core.Tools` properties.    
         """
         OptionFile.__init__(self, option_file_path,
                             protected_keys=protected_keys,
@@ -3620,6 +3643,9 @@ class JobFile(OptionFile):
 
         if is_laser:
             self._is_laser = True
+
+        if fast_init:
+            self._fast_init = True
 
         if self.header_line is not None:
             if 'SITELLE_JOB_FILE' in self.header_line:
@@ -3785,7 +3811,8 @@ class JobFile(OptionFile):
         # get calibration laser map path
         if 'CALIBMAP' in self.options:
             out_params['calibration_laser_map_path'] = self.options['CALIBMAP']
-        elif not self.is_laser():
+       
+        elif not self.is_laser() and not self._fast_init:
             self._print_error('CALIBMAP keyword must be set')
 
 

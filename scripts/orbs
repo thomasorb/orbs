@@ -126,7 +126,7 @@ def print_error(msg):
 def print_warning(msg):
     print '\033[93m' + msg + '\033[0m'       
 
-def check_option_file(to, path, is_laser):
+def check_option_file(to, path, is_laser, fast_init):
     """Check the option file type.
 
     If the option file is a job file for SITELLE, parse the file
@@ -135,8 +135,9 @@ def check_option_file(to, path, is_laser):
     :param to: an orb.Tools instance
     :param path: path of the option file to check
     :param is_laser: If True, the target is a laser cube.
+    :param fast_init: If True init is fast ans some checking is not done
     """
-    jobfile = JobFile(path, is_laser=is_laser)
+    jobfile = JobFile(path, is_laser=is_laser, fast_init=fast_init)
     if jobfile.is_jobfile:
         return jobfile.convert2opt()
     else:
@@ -611,9 +612,15 @@ if __name__ == "__main__":
     else:
         is_laser = False
 
+    if (args.subparser_name == 'status'
+        or args.subparser_name == 'clean'):
+        fast_init = True
+    else:
+        fast_init = False
+
     # check whether the option file is a job file or a 'real' option file
     args.option_file_path, out_params, file_type = check_option_file(
-        get_to(args), args.option_file_path, is_laser=is_laser)
+        get_to(args), args.option_file_path, is_laser=is_laser, fast_init=fast_init)
 
     if file_type == 'sitelle_job_file' and args.instrument_mode != 'sitelle':
         print_error("Input file is a SITELLE job file but mode is not set to 'sitelle'. Please restart with option --mode sitelle or change the input file")
