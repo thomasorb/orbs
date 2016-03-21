@@ -2764,8 +2764,6 @@ class Orbs(Tools):
         self._print_msg('Calibration laser map used: {}'.format(
             calibration_laser_map_path))
         
-
-
         # Get flux calibration vector
         (flux_calibration_axis,
          flux_calibration_vector) = (None, None)
@@ -2791,8 +2789,6 @@ class Orbs(Tools):
             # find the real star position
             std_x1, std_y1, fwhm_pix1 = self._find_standard_star(1)
             std_x2, std_y2, fwhm_pix2 = self._find_standard_star(2)
-            #std_x1, std_y1, fwhm_pix1 = 1000, 1000, 3
-            #std_x2, std_y2, fwhm_pix2 = 1000, 1000, 3
             
             if std_x1 is not None and std_x2 is not None:
                 flux_calibration_coeff = spectrum.get_flux_calibration_coeff(
@@ -3079,10 +3075,16 @@ class Orbs(Tools):
 
         if not wavenumber:
             axis = orb.utils.spectrum.create_nm_axis(
-                spectrum.dimz, self.options['step'], self.options['order'])
+                spectrum.dimz,
+                spectrum_header['STEP'],
+                spectrum_header['ORDER'],
+                corr=spectrum_header['AXISCORR'])
         else:
             axis = orb.utils.spectrum.create_cm1_axis(
-                spectrum.dimz,  self.options['step'], self.options['order'])
+                spectrum.dimz,
+                spectrum_header['STEP'],
+                spectrum_header['ORDER'],
+                corr=spectrum_header['AXISCORR'])
         
         spectrum_header.extend(
             self._get_basic_spectrum_cube_header(

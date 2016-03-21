@@ -1207,3 +1207,15 @@ Miscellaneous
 -------------
 
 * Moved Standard class from orbs.process to orb.core
+
+
+
+Calibrated output
+-----------------
+
+Calibrated spectral cube are now projected on an axis at the center of
+the field instead of an axis on the interferometer axis (0
+degree). Avoids cutting the borders of the filters when the
+observation parameters are so well defined that there would be some
+folding on the interferometer axis (but no folding on the FOV, by
+definition).

@@ -2106,11 +2106,11 @@ class CalibrationLaser(HDFCube):
             if get_calibration_laser_spectrum:
                 # save data
                 self._print_msg('Writing quad {}/{} to disk'.format(
-                    iquad, self.QUAD_NB))
+                    iquad+1, self.QUAD_NB))
                 write_start_time = time.time()
                 out_cube.write_quad(iquad, data=iquad_data)
-                self._print_msg('Quad {}/{} written in {} s'.format(
-                    iquad, self.QUAD_NB, time.time() - write_start_time))
+                self._print_msg('Quad {}/{} written in {:.2f} s'.format(
+                    iquad+1, self.QUAD_NB, time.time() - write_start_time))
             
 
         out_cube.close()
@@ -2972,13 +2972,13 @@ class Interferogram(HDFCube):
             
             # save data
             self._print_msg('Writing quad {}/{} to disk'.format(
-                iquad, self.QUAD_NB))
+                iquad+1, self.QUAD_NB))
             write_start_time = time.time()
             out_cube.write_quad(
                 iquad, data=iquad_data,
                 force_float32=False, force_complex64=True)
-            self._print_msg('Quad {}/{} written in {} s'.format(
-                iquad, self.QUAD_NB, time.time() - write_start_time))
+            self._print_msg('Quad {}/{} written in {:.2f} s'.format(
+                iquad+1, self.QUAD_NB, time.time() - write_start_time))
             
             
         out_cube.close()
@@ -5404,7 +5404,8 @@ class Spectrum(HDFCube):
                                      exposure_time,
                                      calibration_laser_col, nm_laser,
                                      step, order, wavenumber,
-                                     spectral_calibration):
+                                     spectral_calibration,
+                                     base_axis_correction_coeff):
             """
             
             """
@@ -5419,10 +5420,12 @@ class Spectrum(HDFCube):
 
             if wavenumber:
                 axis_base = orb.utils.spectrum.create_cm1_axis(
-                    spectrum_col.shape[1], step, order).astype(float)
+                    spectrum_col.shape[1], step, order,
+                    corr=base_axis_correction_coeff).astype(float)
             else:
                 axis_base = orb.utils.spectrum.create_nm_axis(
-                    spectrum_col.shape[1], step, order).astype(float)
+                    spectrum_col.shape[1], step, order,
+                    corr=base_axis_correction_coeff).astype(float)
 
             for icol in range(spectrum_col.shape[0]):
 
@@ -5581,6 +5584,13 @@ class Spectrum(HDFCube):
             calibration_laser_map = orb.utils.image.interpolate_map(
                 calibration_laser_map,
                 self.dimx, self.dimy)
+
+        # get correction coeff at the center of the field (required to
+        # project the spectral cube at the center of the field instead
+        # of projecting it on the interferometer axis)
+        base_axis_correction_coeff = calibration_laser_map[
+            int(self.dimx/2), int(self.dimy/2)] / nm_laser
+        
             
         # set filter function to None if no filter correction
         if not filter_correction:
@@ -5656,7 +5666,8 @@ class Spectrum(HDFCube):
                         exposure_time,
                         iquad_calibration_laser_map[ii+ijob,:],
                         nm_laser, step, order, wavenumber,
-                        spectral_calibration),
+                        spectral_calibration,
+                        base_axis_correction_coeff),
                     modules=("numpy as np",
                              "import orb.utils.spectrum",
                              "import orb.utils.vector"))) 
@@ -5671,18 +5682,20 @@ class Spectrum(HDFCube):
 
             # save data
             self._print_msg('Writing quad {}/{} to disk'.format(
-                iquad, self.QUAD_NB))
+                iquad+1, self.QUAD_NB))
             write_start_time = time.time()
             out_cube.write_quad(iquad, data=iquad_data)
-            self._print_msg('Quad {}/{} written in {} s'.format(
-                iquad, self.QUAD_NB, time.time() - write_start_time))
+            self._print_msg('Quad {}/{} written in {:.2f} s'.format(
+                iquad+1, self.QUAD_NB, time.time() - write_start_time))
             
 
-        # update header
+        ### update header
         if wavenumber:
-            axis = orb.utils.spectrum.create_nm_axis(self.dimz, step, order)
+            axis = orb.utils.spectrum.create_nm_axis(self.dimz, step, order,
+                                                     corr=base_axis_correction_coeff)
         else:
-            axis = orb.utils.spectrum.create_cm1_axis(self.dimz, step, order)
+            axis = orb.utils.spectrum.create_cm1_axis(self.dimz, step, order,
+                                                      corr=base_axis_correction_coeff)
 
         # update standard header
         if standard_header is not None:
@@ -5694,6 +5707,10 @@ class Spectrum(HDFCube):
 
         hdr = self._get_calibrated_spectrum_header(
             axis, apodization_function, wavenumber=wavenumber)
+
+        hdr.append(('AXISCORR',
+                    base_axis_correction_coeff,
+                    'Wave axis correction coeff'))
         
         new_hdr = pyfits.PrimaryHDU(
             np.empty((self.dimx, self.dimy),
@@ -5703,7 +5720,7 @@ class Spectrum(HDFCube):
             hdr = self._update_hdr_wcs(new_hdr, correct_wcs.to_header())
         else:
             hdr = new_hdr
-            
+
         ## hdr.set('PC1_1', after='CROTA2')
         ## hdr.set('PC1_2', after='PC1_1')
         ## hdr.set('PC2_1', after='PC1_2')
