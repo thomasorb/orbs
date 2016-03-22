@@ -2582,7 +2582,7 @@ class Orbs(Tools):
         # fit order 1
         if fit_order > 0:
             phasemaps.fit_phase_map(1)
-
+        
         # fit higher order but the last one 
         for order in range(2, fit_order):
             phasemaps.fit_phase_map(order)

@@ -3244,13 +3244,12 @@ class Interferogram(HDFCube):
             cube_bin = self
             self._silent_load = True
 
-        ## self.write_fits('cube_bin.fits', cube_bin, overwrite=True)
-        ## self.write_fits('calibration_laser_map.fits',
-        ##                 calibration_laser_map, overwrite=True)
+        self.write_fits('cube_bin.fits', cube_bin, overwrite=True)
+        self.write_fits('calibration_laser_map.fits',
+                        calibration_laser_map, overwrite=True)
         ## calibration_laser_map = self.read_fits('calibration_laser_map.fits')
         ## cube_bin = self.read_fits('cube_bin.fits')
         
-            
         # compute orders > 0
         phase_cube = np.empty_like(cube_bin)
         fit_coeffs_map = np.empty((cube_bin.shape[0],
