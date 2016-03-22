@@ -32,14 +32,6 @@ import orb.core, orbs.version
 from orb.core import Tools
 import os
 
-#!/usr/bin/python -W ignore::VisibleDeprecationWarning
-# *-* coding: utf-8 *-*
-# Author: Thomas Martin <thomas.martin.1@ulaval.ca>
-
-## create a job file for SITELLE's data reduction
-
-
-
 
 def main(args):
     def make_files_list(list_file_path):
@@ -156,7 +148,7 @@ APOD 1.0
 if __name__ == "__main__":
     """Main entrance of the script.
     
-    Parse arguments and launch the reduction process.
+    Parse arguments and launch the process.
     """
     parser = ArgumentParser(
         version=('ORBS-version: {}, ORB-version: {}'.format(

@@ -1,0 +1,153 @@
+#!/usr/bin/python
+# *-* coding: utf-8 *-*
+# Author: Thomas Martin <thomas.martin.1@ulaval.ca>
+# File: orbs-create-phase-file
+
+## Copyright (c) 2010-2015 Thomas Martin <thomas.martin.1@ulaval.ca>
+##
+## This file is part of ORBS
+##
+## ORBS is free software: you can redistribute it and/or modify it
+## under the terms of the GNU General Public License as published by
+## the Free Software Foundation, either version 3 of the License, or
+## (at your option) any later version.
+##
+## ORBS is distributed in the hope that it will be useful, but WITHOUT
+## ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+## or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public
+## License for more details.
+##
+## You should have received a copy of the GNU General Public License
+## along with ORBS.  If not, see <http://www.gnu.org/licenses/>.
+
+####################################################
+############ ORBS CREATE PHASE FILE ################
+####################################################
+
+## Create a phase file from the binned phase cube created when
+## computing phase maps
+
+import argparse
+from argparse import ArgumentParser
+import orb.core, orbs.version
+import orb.utils.io
+import orb.utils.spectrum
+import orb.utils.vector
+import orb.utils.image
+import orb.utils.filters
+from orb.core import OptionFile, ProgressBar
+from orbs.orbs import Orbs
+import os
+import numpy as np
+
+def main(args):
+
+    if args.instrument_mode == 'sitelle':
+        config_file_name = 'config.sitelle.orb'
+    if args.instrument_mode == 'spiomm':
+        config_file_name = 'config.spiomm.orb'
+        
+    project = Orbs(args.option_file_path, 'object', 'full', silent=True, fast_init=True,
+                   config_file_name=config_file_name)
+
+    phase_cube = orb.utils.io.read_fits(project.indexer.get_path('merged.binned_phase_cube'))
+    step = project.options['step']
+    order = project.options['order']
+    nm_laser = project.config["CALIB_NM_LASER"]
+
+    calib_map = orb.utils.io.read_fits(project.indexer.get_path('merged.binned_calibration_laser_map'))
+
+    filter_file_path = project._get_filter_file_path(
+        project.options["filter_name"])
+
+    filter_min, filter_max = orb.utils.filters.get_filter_bandpass(filter_file_path)
+    filter_min_cm1, filter_max_cm1 = orb.utils.spectrum.nm2cm1([filter_max, filter_min])
+    
+
+    base_calib = calib_map[calib_map.shape[0]/2,
+                           calib_map.shape[1]/2]
+    
+    CROP_COEFF = 0.5 # proportion of the phase map to keep when
+                     # cropping
+    
+    xmin,xmax,ymin,ymax = orb.utils.image.get_box_coords(
+        phase_cube.shape[0]/2,
+        phase_cube.shape[1]/2,
+        int(CROP_COEFF*phase_cube.shape[0]),
+        0, phase_cube.shape[0],
+        0, phase_cube.shape[1])
+
+    cm1_axis_base = orb.utils.spectrum.create_cm1_axis(
+        phase_cube.shape[2], step, order, corr=base_calib/nm_laser)
+
+
+    final_phase = np.zeros(phase_cube.shape[2], dtype=float)
+
+    counts = 0
+    progress = ProgressBar(xmax-xmin)
+    for ii in range(xmin, xmax):
+        progress.update(ii-xmin, info='Creating mean phase vector')
+        for ij in range(ymin, ymax):
+            cm1_axis = orb.utils.spectrum.create_cm1_axis(
+                phase_cube.shape[2], step, order,
+                corr=calib_map[ii,ij]/nm_laser)
+    
+            
+            iphase = orb.utils.vector.interpolate_axis(
+                phase_cube[ii,ij,:],
+                cm1_axis_base,
+                3, old_axis=cm1_axis)
+
+            final_phase += iphase
+            counts += 1
+    progress.end()
+    final_phase /= counts
+
+    w, filter_range = orb.utils.filters.compute_weights(
+        base_calib, nm_laser, phase_cube.shape[2],
+        step, order, 0.05, filter_min_cm1, filter_max_cm1)
+    final_phase -= orb.utils.vector.polyfit1d(final_phase, 1,w=w)
+    final_phase[:min(filter_range)] = 0.
+    final_phase[max(filter_range):] = 0.
+
+    with open(args.output_file_path, 'w') as f:
+        f.write("""## ORBS phase file
+# Author: Thomas Martin <thomas.martin.1@ulaval.ca>
+# Filter name : {}
+# Wavenumber in cm-1 | Phase in radians
+
+""".format(project.options["filter_name"]))
+
+        for iline in range(cm1_axis_base.shape[0]):
+            f.write('{} {}\n'.format(
+                cm1_axis_base[iline],
+                final_phase[iline]))
+    
+
+if __name__ == "__main__":
+    """Main entrance of the script.
+    
+    Parse arguments and launch the process.
+    """
+    parser = ArgumentParser(
+        version=('ORBS-version: {}, ORB-version: {}'.format(
+            orbs.version.__version__, orb.core.__version__)),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        description="Create a phase file from a binned phase cube")
+
+    parser.add_argument('instrument_mode',
+                        action='store',
+                        choices=['sitelle', 'spiomm'])
+
+    parser.add_argument('option_file_path',
+                        action='store',
+                        help='Path to the option file')
+
+    
+    parser.add_argument('output_file_path',
+                        action='store',
+                        help='Path to the output file')
+
+    args = parser.parse_args()
+
+    main(args)

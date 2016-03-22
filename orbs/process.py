@@ -2167,6 +2167,11 @@ class Interferogram(HDFCube):
         """
         return self._data_path_hdr + "binned_phase_cube.fits"
 
+    def _get_binned_calibration_laser_map_path(self):
+        """Return path to the binned calibration laser map
+        """
+        return self._data_path_hdr + "binned_calibration_laser_map.fits"
+
     def _get_phase_map_path(self, order, res=False):
         """Return path to phase map
 
@@ -3244,9 +3249,9 @@ class Interferogram(HDFCube):
             cube_bin = self
             self._silent_load = True
 
-        self.write_fits('cube_bin.fits', cube_bin, overwrite=True)
-        self.write_fits('calibration_laser_map.fits',
-                        calibration_laser_map, overwrite=True)
+        ## self.write_fits('cube_bin.fits', cube_bin, overwrite=True)
+        ## self.write_fits('calibration_laser_map.fits',
+        ##                 calibration_laser_map, overwrite=True)
         ## calibration_laser_map = self.read_fits('calibration_laser_map.fits')
         ## cube_bin = self.read_fits('cube_bin.fits')
         
@@ -3290,6 +3295,20 @@ class Interferogram(HDFCube):
         # write binned phase cube
         self.write_fits(self._get_binned_phase_cube_path(), phase_cube,
                         overwrite=self.overwrite)
+        
+        if self.indexer is not None:
+            self.indexer['binned_phase_cube'] = (
+                self._get_binned_phase_cube_path())
+
+        # write binned calib map
+        self.write_fits(self._get_binned_calibration_laser_map_path(),
+                        calibration_laser_map,
+                        overwrite=self.overwrite)
+        
+        if self.indexer is not None:
+            self.indexer['binned_calibration_laser_map'] = (
+                self._get_binned_calibration_laser_map_path())
+
         
         # write phase maps
         for iorder in range(fit_order+1):

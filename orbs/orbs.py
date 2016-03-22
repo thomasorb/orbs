@@ -413,6 +413,9 @@ class Orbs(Tools):
           reduction road map. Target may be 'object', 'flat',
           'standard', 'laser', 'raw' or 'sources'.
 
+        :param cams: Camera number. Can be 'single1', 'single2' or
+          'full' for both cameras.
+
         :param config_file_name: (Optional) Name of the config file to
           use. Must be located in orbs/data/.
 
