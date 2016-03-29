@@ -5438,7 +5438,7 @@ class Spectrum(HDFCube):
             
             """
             ZP_LENGTH = orb.utils.fft.next_power_of_two(
-                spectrum_col.shape[1] * 5)
+                spectrum_col.shape[1] * 10)
 
             # converting to flux (ADU/s)
             spectrum_col /= exposure_time * spectrum_col.shape[1]
