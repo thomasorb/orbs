@@ -39,23 +39,37 @@ from orb.core import OptionFile, ProgressBar
 from orbs.orbs import Orbs
 import os
 import numpy as np
-
+import pylab as pl
+import scipy.interpolate
+    
 def main(args):
 
     if args.instrument_mode == 'sitelle':
         config_file_name = 'config.sitelle.orb'
     if args.instrument_mode == 'spiomm':
         config_file_name = 'config.spiomm.orb'
+
+    if args.camera == 1:
+        cams = 'single1'
+        cam = 'cam1'
         
-    project = Orbs(args.option_file_path, 'object', 'full', silent=True, fast_init=True,
+    elif args.camera == 2:
+        cams = 'single2'
+        cam = 'cam2'
+    else:
+        cams = 'full'
+        cam = 'merged'
+        
+    project = Orbs(args.option_file_path, 'object', cams, silent=True, fast_init=True,
                    config_file_name=config_file_name)
 
-    phase_cube = orb.utils.io.read_fits(project.indexer.get_path('merged.binned_phase_cube'))
+    
+    phase_cube = orb.utils.io.read_fits(project.indexer.get_path('{}.binned_phase_cube'.format(cam)))
     step = project.options['step']
     order = project.options['order']
     nm_laser = project.config["CALIB_NM_LASER"]
 
-    calib_map = orb.utils.io.read_fits(project.indexer.get_path('merged.binned_calibration_laser_map'))
+    calib_map = orb.utils.io.read_fits(project.indexer.get_path('{}.binned_calibration_laser_map'.format(cam)))
 
     filter_file_path = project._get_filter_file_path(
         project.options["filter_name"])
@@ -69,6 +83,8 @@ def main(args):
     
     CROP_COEFF = 0.5 # proportion of the phase map to keep when
                      # cropping
+
+    FILTER_EDGE_COEFF = -0.05
     
     xmin,xmax,ymin,ymax = orb.utils.image.get_box_coords(
         phase_cube.shape[0]/2,
@@ -77,13 +93,27 @@ def main(args):
         0, phase_cube.shape[0],
         0, phase_cube.shape[1])
 
+    final_phase_cube = np.empty((xmax-xmin, ymax-ymin,
+                                 phase_cube.shape[2]), dtype=float)
+    final_phase_cube.fill(np.nan)
+
     cm1_axis_base = orb.utils.spectrum.create_cm1_axis(
         phase_cube.shape[2], step, order, corr=base_calib/nm_laser)
 
+    # get filter range + weights
+    w, filter_range = orb.utils.filters.compute_weights(
+        base_calib, nm_laser, phase_cube.shape[2],
+        step, order, FILTER_EDGE_COEFF, filter_min_cm1, filter_max_cm1)
+    
+    filter_range = [
+        np.min(np.arange(w.shape[0])[w > 1e-35]),
+        np.max(np.arange(w.shape[0])[w > 1e-35])]
+    
+    
 
+    # compute phase mean
     final_phase = np.zeros(phase_cube.shape[2], dtype=float)
-
-    counts = 0
+    
     progress = ProgressBar(xmax-xmin)
     for ii in range(xmin, xmax):
         progress.update(ii-xmin, info='Creating mean phase vector')
@@ -97,19 +127,52 @@ def main(args):
                 phase_cube[ii,ij,:],
                 cm1_axis_base,
                 3, old_axis=cm1_axis)
+            
+            iphase[:min(filter_range)] = np.nan
+            iphase[max(filter_range):] = np.nan
 
-            final_phase += iphase
-            counts += 1
+            final_phase_cube[ii-xmin, ij-ymin, :] = iphase - np.nanmean(iphase)
+        
     progress.end()
-    final_phase /= counts
 
-    w, filter_range = orb.utils.filters.compute_weights(
-        base_calib, nm_laser, phase_cube.shape[2],
-        step, order, 0.05, filter_min_cm1, filter_max_cm1)
-    final_phase -= orb.utils.vector.polyfit1d(final_phase, 1,w=w)
-    final_phase[:min(filter_range)] = 0.
-    final_phase[max(filter_range):] = 0.
+    # compute final phase vector
+    final_phase = np.nanmedian(np.nanmedian(final_phase_cube, axis=0), axis=0)
+    final_phase -= np.nanmean(final_phase)
+   
+    final_phase[np.isnan(final_phase)] = 0.
 
+    final_phase_cube -= final_phase
+    mean_map =  np.nanmean(final_phase_cube, axis=2)
+    final_phase_cube = (final_phase_cube.T - mean_map.T).T
+
+    # error computation
+    final_phase_err = np.sqrt(np.nanmedian(np.nanmedian(final_phase_cube**2., axis=0),axis=0))
+    final_phase_err[:min(filter_range)] = np.nan
+    final_phase_err[max(filter_range):] = np.nan
+    
+    
+    # spline smoothing
+    weights = final_phase_err / np.nanmean(final_phase_err)
+    weights = 1. / weights
+    weights[np.isnan(weights)] = 0.
+    
+    final_phasef = scipy.interpolate.UnivariateSpline(
+        np.arange(final_phase.shape[0]), final_phase, w=weights, ext=3)
+
+    final_phase_old = np.copy(final_phase)
+    final_phase = final_phasef(np.arange(final_phase.shape[0]))
+
+    # remove order 1 polynomial
+    order1_poly = orb.utils.vector.polyfit1d(final_phase, 1,w=w)
+    final_phase -= order1_poly
+    final_phase_old -= order1_poly
+
+    cm1_axis_base = cm1_axis_base[min(filter_range):max(filter_range)]
+    final_phase = final_phase[min(filter_range):max(filter_range)]
+    final_phase_err = final_phase_err[min(filter_range):max(filter_range)]
+    final_phase_old = final_phase_old[min(filter_range):max(filter_range)]
+    
+    
     with open(args.output_file_path, 'w') as f:
         f.write("""## ORBS phase file
 # Author: Thomas Martin <thomas.martin.1@ulaval.ca>
@@ -122,6 +185,21 @@ def main(args):
             f.write('{} {}\n'.format(
                 cm1_axis_base[iline],
                 final_phase[iline]))
+
+    if args.plot:
+        pl.plot(orb.utils.spectrum.cm12nm(cm1_axis_base),
+                final_phase_old,
+                lw=3., color='red', label='non-smoothed phase')
+        pl.errorbar(
+            orb.utils.spectrum.cm12nm(cm1_axis_base),
+            final_phase,
+            yerr=final_phase_err,
+            linewidth=3., elinewidth=1., color='0.', ecolor='0.5',
+            label='smoothed_phase')
+        pl.legend()
+        pl.grid()
+        pl.show()
+
     
 
 if __name__ == "__main__":
@@ -137,16 +215,32 @@ if __name__ == "__main__":
 
     parser.add_argument('instrument_mode',
                         action='store',
-                        choices=['sitelle', 'spiomm'])
+                        choices=['sitelle', 'spiomm'],
+                        help='Instrument mode')
 
     parser.add_argument('option_file_path',
                         action='store',
                         help='Path to the option file')
 
-    
     parser.add_argument('output_file_path',
                         action='store',
                         help='Path to the output file')
+
+    parser.add_argument('--cam',
+                        dest='camera',
+                        type=int,
+                        action='store',
+                        default=0,
+                        choices=[0,1,2],
+                        help='Camera number (default 0)')
+
+    parser.add_argument('--plot',
+                        dest='plot',
+                        action='store_true',
+                        default=False,
+                        help='Plot final phase vector')
+
+    
 
     args = parser.parse_args()
 

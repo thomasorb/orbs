@@ -1495,6 +1495,7 @@ class Orbs(Tools):
         elif self.roadmap.cams == 'single2': cam = 2
         elif self.roadmap.cams == 'full':
             if self.target == 'laser': cam = 1
+            elif self.target == 'flat': cam = 1
             else: cam = 0
         
         if (self.target == 'object' or self.target == 'nostar'
@@ -2419,10 +2420,10 @@ class Orbs(Tools):
         else: fringes = None
 
         # wavenumber option
-        wavenumber = False
-        if not phase_cube:
-            if 'wavenumber' in self.options:
-                wavenumber = self.options['wavenumber']
+        wavenumber = True # output always in cm-1 (calibration step
+                          # transform the spectrum in nm if needed)
+        if phase_cube:
+           wavenumber = False # phase cube computed in nm
 
         ## Compute spectrum
         cube.compute_spectrum(
@@ -2766,7 +2767,7 @@ class Orbs(Tools):
         
         self._print_msg('Calibration laser map used: {}'.format(
             calibration_laser_map_path))
-        
+
         # Get flux calibration vector
         (flux_calibration_axis,
          flux_calibration_vector) = (None, None)

@@ -2167,6 +2167,11 @@ class Interferogram(HDFCube):
         """
         return self._data_path_hdr + "binned_phase_cube.fits"
 
+    def _get_binned_interferogram_cube_path(self):
+        """Return path to the binned interferogram cube.
+        """
+        return self._data_path_hdr + "binned_interferogram_cube.fits"
+
     def _get_binned_calibration_laser_map_path(self):
         """Return path to the binned calibration laser map
         """
@@ -3124,12 +3129,12 @@ class Interferogram(HDFCube):
                         if len(coeffs[1][0]) == 1:
                             ## if ij > 170:
                             ##     import pylab as pl
-                            ##     #pl.plot(iphase - ihigh_phase)
-                            ##     pl.plot(iphase)
+                            ##     pl.plot(iphase - ihigh_phase)
+                            ##     #pl.plot(iphase)
                             ##     pl.plot(weights)
                             ##     pl.plot(np.polynomial.polynomial.polyval(
                             ##         np.arange(iphase.shape[0]), coeffs[0]))
-                            ##     #pl.plot(ihigh_phase)
+                            ##     pl.plot(ihigh_phase)
                             ##     pl.axvline(x=np.min(filter_range))
                             ##     pl.axvline(x=np.max(filter_range))
                             ##     pl.show()
@@ -3249,11 +3254,26 @@ class Interferogram(HDFCube):
             cube_bin = self
             self._silent_load = True
 
-        ## self.write_fits('cube_bin.fits', cube_bin, overwrite=True)
-        ## self.write_fits('calibration_laser_map.fits',
-        ##                 calibration_laser_map, overwrite=True)
-        ## calibration_laser_map = self.read_fits('calibration_laser_map.fits')
-        ## cube_bin = self.read_fits('cube_bin.fits')
+        # write binned interferogram cube
+        self.write_fits(self._get_binned_interferogram_cube_path(),
+                        cube_bin, overwrite=True)
+        
+        if self.indexer is not None:
+            self.indexer['binned_interferogram_cube'] = (
+                self._get_binned_interferogram_cube_path())
+
+        # write binned calib map
+        self.write_fits(self._get_binned_calibration_laser_map_path(),
+                        calibration_laser_map,
+                        overwrite=self.overwrite)
+        
+        if self.indexer is not None:
+            self.indexer['binned_calibration_laser_map'] = (
+                self._get_binned_calibration_laser_map_path())
+
+        
+        ## calibration_laser_map = self.read_fits(self._get_binned_calibration_laser_map_path())
+        ## cube_bin = self.read_fits(self._get_binned_interferogram_cube_path())
         
         # compute orders > 0
         phase_cube = np.empty_like(cube_bin)
@@ -3299,16 +3319,6 @@ class Interferogram(HDFCube):
         if self.indexer is not None:
             self.indexer['binned_phase_cube'] = (
                 self._get_binned_phase_cube_path())
-
-        # write binned calib map
-        self.write_fits(self._get_binned_calibration_laser_map_path(),
-                        calibration_laser_map,
-                        overwrite=self.overwrite)
-        
-        if self.indexer is not None:
-            self.indexer['binned_calibration_laser_map'] = (
-                self._get_binned_calibration_laser_map_path())
-
         
         # write phase maps
         for iorder in range(fit_order+1):
@@ -5416,17 +5426,20 @@ class Spectrum(HDFCube):
 
         """
         
-        def _correct_spectrum_column(spectrum_col, filter_function,
-                                     filter_min, filter_max,
-                                     flux_calibration_function,
-                                     exposure_time,
-                                     calibration_laser_col, nm_laser,
-                                     step, order, wavenumber,
-                                     spectral_calibration,
-                                     base_axis_correction_coeff):
+        def _calibrate_spectrum_column(spectrum_col, filter_function,
+                                       filter_min, filter_max,
+                                       flux_calibration_function,
+                                       exposure_time,
+                                       calibration_laser_col, nm_laser,
+                                       step, order, wavenumber,
+                                       spectral_calibration,
+                                       base_axis_correction_coeff):
             """
             
             """
+            ZP_LENGTH = orb.utils.fft.next_power_of_two(
+                spectrum_col.shape[1] * 5)
+
             # converting to flux (ADU/s)
             spectrum_col /= exposure_time * spectrum_col.shape[1]
 
@@ -5434,7 +5447,6 @@ class Spectrum(HDFCube):
             axis_step = orb.cutils.get_nm_axis_step(
                 spectrum_col.shape[1], step, order)
             spectrum_col /= axis_step * 10.
-
 
             if wavenumber:
                 axis_base = orb.utils.spectrum.create_cm1_axis(
@@ -5447,54 +5459,80 @@ class Spectrum(HDFCube):
 
             for icol in range(spectrum_col.shape[0]):
 
+                # pure fft interpolation of the input spectrum
+                # (i.e. perfect interpolation as long as the imaginary
+                # part is given)
+                if spectral_calibration or not wavenumber:
+                    #spectrum_col[np.isnan(spectrum_col)] = 0.
+                    interf_complex = np.fft.ifft(spectrum_col[icol,:])
+                    zp_interf = np.zeros(ZP_LENGTH, dtype=complex)
+                    center = interf_complex.shape[0]/2
+                    zp_interf[:center] = interf_complex[:center]
+                    zp_interf[
+                        -center-int(interf_complex.shape[0]&1):] = interf_complex[
+                        -center-int(interf_complex.shape[0]&1):]
+                    interf_complex = np.copy(zp_interf)
+                    spectrum_highres = np.fft.fft(interf_complex).real
+                else:
+                    spectrum_highres = np.copy(spectrum_col[icol,:])
+
                 ok_computer = True
                 corr = calibration_laser_col[icol]/nm_laser
                 if np.isnan(corr):
                     ok_computer = False
 
+                # remember : output from 'compute spectrum' step is
+                # always in cm-1
                 if wavenumber and ok_computer:
                     axis_corr = orb.utils.spectrum.create_cm1_axis(
-                        spectrum_col.shape[1], step, order, corr=corr).astype(float)
+                        spectrum_highres.shape[0],
+                        step, order, corr=corr).astype(float)
                 else:
-                    axis_corr = orb.utils.spectrum.create_nm_axis(
-                        spectrum_col.shape[1], step, order, corr=corr).astype(float)
+                    axis_corr = orb.utils.spectrum.create_nm_axis_ireg(
+                        spectrum_highres.shape[0],
+                        step, order, corr=corr).astype(float)
 
                 # filter function and flux calibration function are
                 # projected
                 if filter_function is not None:
                     filter_corr = filter_function(axis_corr)
-                    filter_corr /= np.nanmax(filter_corr) # filter is normalized
-                    spectrum_col[icol,:] /= filter_corr
-                    
-                if flux_calibration_function is not None:
-                    flux_corr = flux_calibration_function(axis_corr)
-                    spectrum_col[icol,:] *= flux_corr
-
-                # replacing nans by zeros before interpolation
-                nans = np.nonzero(np.isnan(spectrum_col[icol,:]))
-                spectrum_col[icol, nans] = 0.
-                
-                # spectral calibration
-                if spectral_calibration:
-                    spectrum_col[icol,:] = (
-                        orb.utils.vector.interpolate_axis(
-                            spectrum_col[icol,:], axis_base, 1,
-                            old_axis=axis_corr))
-                    
-                if filter_function is not None:
-                    if spectral_calibration:
+                    # filter correction is made only between filter
+                    # edges to conserve the filter shape
+                    if wavenumber:
                         filter_min_pix, filter_max_pix = orb.cutils.fast_w2pix(
                             np.array([filter_min, filter_max], dtype=float),
                             axis_corr[0], axis_corr[1]-axis_corr[0])
                     else:
-                        filter_min_pix, filter_max_pix = orb.cutils.fast_w2pix(
-                            np.array([filter_min, filter_max], dtype=float),
-                            axis_base[0], axis_base[1]-axis_base[0])
+                        filter_min_pix, filter_max_pix = orb.utils.spectrum.nm2pix(
+                            axis_corr, np.array([filter_min, filter_max], dtype=float))
+                                               
+                    # filter is normalized to the max between edges
+                    filter_corr[
+                        filter_min_pix:filter_max_pix] /= np.nanmax(filter_corr[
+                        filter_min_pix:filter_max_pix])
+                    spectrum_highres[
+                        filter_min_pix:filter_max_pix] /= filter_corr[
+                        filter_min_pix:filter_max_pix]
                     
-                    spectrum_col[icol, :filter_min_pix] = np.nan
-                    spectrum_col[icol, filter_max_pix:] = np.nan
+                if flux_calibration_function is not None:
+                    flux_corr = flux_calibration_function(axis_corr)
+                    spectrum_highres *= flux_corr
 
-            return spectrum_col
+                # replacing nans by zeros before interpolation
+                nans = np.nonzero(np.isnan(spectrum_highres))
+                spectrum_highres[nans] = 0.
+                
+                # spectrum projection onto its output axis (if output
+                # in nm or calibrated)
+                if spectral_calibration or not wavenumber:
+                    spectrum_col[icol,:] = (
+                        orb.utils.vector.interpolate_axis(
+                            spectrum_highres, axis_base, 1,
+                            old_axis=axis_corr))
+                else:
+                    spectrum_col[icol,:] = spectrum_highres
+
+            return spectrum_col.real
 
         
         def get_mean_scale_map(ref_scale_map, spectrum_scale_map):
@@ -5517,19 +5555,20 @@ class Spectrum(HDFCube):
                         / spectrum_scale_map_box, sigma=2.5)))
         
         # Get filter parameters
+        FILTER_STEP_NB = 10000
         filter_vector, filter_min_pix, filter_max_pix = (
             orb.utils.filters.get_filter_function(
                 filter_file_path, step, order,
-                self.dimz, wavenumber=wavenumber))
+                FILTER_STEP_NB, wavenumber=wavenumber))
         if filter_min_pix < 0: filter_min_pix = 0
-        if filter_max_pix > self.dimz: filter_max_pix = self.dimz - 1
+        if filter_max_pix > FILTER_STEP_NB: filter_max_pix = FILTER_STEP_NB - 1
 
         if not wavenumber:
             filter_axis = orb.utils.spectrum.create_nm_axis(
-                self.dimz, step, order)
+                FILTER_STEP_NB, step, order)
         else:
             filter_axis = orb.utils.spectrum.create_cm1_axis(
-                self.dimz, step, order)
+                FILTER_STEP_NB, step, order)
 
         filter_function = interpolate.UnivariateSpline(
             filter_axis, filter_vector, s=0, k=1)
@@ -5556,7 +5595,7 @@ class Spectrum(HDFCube):
                 flux_calibration_vector = flux_calibration_vector[::-1]
                 
             flux_calibration_function = interpolate.UnivariateSpline(
-                flux_calibration_axis, flux_calibration_vector, s=0, k=3)
+                flux_calibration_axis, flux_calibration_vector, s=0, k=1)
 
             
             # adjust flux calibration vector with flux calibration coeff
@@ -5606,8 +5645,11 @@ class Spectrum(HDFCube):
         # get correction coeff at the center of the field (required to
         # project the spectral cube at the center of the field instead
         # of projecting it on the interferometer axis)
-        base_axis_correction_coeff = calibration_laser_map[
-            int(self.dimx/2), int(self.dimy/2)] / nm_laser
+        if spectral_calibration:
+            base_axis_correction_coeff = calibration_laser_map[
+                int(self.dimx/2), int(self.dimy/2)] / nm_laser
+        else:
+            base_axis_correction_coeff = 1.
         
             
         # set filter function to None if no filter correction
@@ -5658,7 +5700,7 @@ class Spectrum(HDFCube):
              y_min, y_max) = self.get_quadrant_dims(iquad)
             iquad_data = self.get_data(x_min, x_max, 
                                        y_min, y_max, 
-                                       0, self.dimz).real
+                                       0, self.dimz)
             iquad_calibration_laser_map = calibration_laser_map[
                 x_min:x_max, y_min:y_max]
             job_server, ncpus = self._init_pp_server()
@@ -5675,7 +5717,7 @@ class Spectrum(HDFCube):
 
                 # correct spectrum columns
                 jobs = [(ijob, job_server.submit(
-                    _correct_spectrum_column, 
+                    _calibrate_spectrum_column, 
                     args=(
                         iquad_data[ii+ijob,:,:], 
                         filter_function,
@@ -5686,9 +5728,10 @@ class Spectrum(HDFCube):
                         nm_laser, step, order, wavenumber,
                         spectral_calibration,
                         base_axis_correction_coeff),
-                    modules=("numpy as np",
+                    modules=("import numpy as np",
                              "import orb.utils.spectrum",
-                             "import orb.utils.vector"))) 
+                             "import orb.utils.vector",
+                             "import orb.utils.fft"))) 
                         for ijob in range(ncpus)]
 
                 for ijob, job in jobs:
@@ -5702,18 +5745,20 @@ class Spectrum(HDFCube):
             self._print_msg('Writing quad {}/{} to disk'.format(
                 iquad+1, self.QUAD_NB))
             write_start_time = time.time()
-            out_cube.write_quad(iquad, data=iquad_data)
+            out_cube.write_quad(iquad, data=iquad_data.real)
             self._print_msg('Quad {}/{} written in {:.2f} s'.format(
                 iquad+1, self.QUAD_NB, time.time() - write_start_time))
             
 
         ### update header
         if wavenumber:
-            axis = orb.utils.spectrum.create_nm_axis(self.dimz, step, order,
-                                                     corr=base_axis_correction_coeff)
+            axis = orb.utils.spectrum.create_nm_axis(
+                self.dimz, step, order,
+                corr=base_axis_correction_coeff)
         else:
-            axis = orb.utils.spectrum.create_cm1_axis(self.dimz, step, order,
-                                                      corr=base_axis_correction_coeff)
+            axis = orb.utils.spectrum.create_cm1_axis(
+                self.dimz, step, order,
+                corr=base_axis_correction_coeff)
 
         # update standard header
         if standard_header is not None:
