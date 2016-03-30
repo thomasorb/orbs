@@ -42,7 +42,6 @@ import numpy as np
 import xml.etree.ElementTree
     
 import astropy
-
 import pp
 import bottleneck as bn
 
@@ -2732,6 +2731,12 @@ class Orbs(Tools):
         perf = Performance(spectrum, "Spectrum calibration", camera_number,
                            config_file_name=self.config_file_name)
 
+        ################
+        ## del self.options['standard_image_path_1.hdf5']
+        ## del self.options['standard_path']
+        ## target_ra = None
+        ################
+
         # Get WCS
         if (target_ra is None or target_dec is None
             or target_x is None or target_y is None):
@@ -2781,7 +2786,7 @@ class Orbs(Tools):
                 std_path, std_name, self._get_filter_file_path(self.options["filter_name"]))
         else:
             self._print_warning("Standard related options were not given or the name of the filter is unknown. Flux calibration vector cannot be computed")
-            
+
         # Get flux calibraton coeff
         flux_calibration_coeff = None
         if ('standard_image_path_1.hdf5' in self.options
@@ -2940,6 +2945,10 @@ class Orbs(Tools):
         :param filter_correction: (Optional) If True, spectral cube
           will be corrected for filter (default True).
 
+
+        .. warning:: by definition no spectral calibration is
+          made. The real axis of eaxh spectrum is given in the output
+          file.
         """
 
         # Force some options for standard star
@@ -2947,10 +2956,8 @@ class Orbs(Tools):
             optimize_phase = True
             filter_correction = False
             apodization_function = '2.0'
-            spectral_calibration = True
         else:
             apodization_function = self.options['apodization_function']
-            spectral_calibration = self.options['spectral_calibration']
     
         # get source list
         source_list = self._get_source_list()
@@ -3014,7 +3021,6 @@ class Orbs(Tools):
             phase_file_path=self._get_phase_file_path(
                 self.options["filter_name"]),
             optimize_phase=optimize_phase,
-            spectral_calibration=spectral_calibration,
             filter_correction=filter_correction,
             cube_A_is_balanced = self._is_balanced(1),
             phase_correction=phase_correction,
@@ -3092,7 +3098,7 @@ class Orbs(Tools):
         
         spectrum_header.extend(
             self._get_basic_spectrum_cube_header(
-                axis, wavenumber= wavenumber),
+                axis, wavenumber=wavenumber),
             strip=True, update=False, end=True)
         
         spectrum_header.set('FILETYPE', 'Calibrated Spectrum Cube')
@@ -3146,20 +3152,26 @@ class Orbs(Tools):
           reliable external phase can be provided (e.g. Standard
           stars).
         """
-        std_spectrum = self.read_fits(self.indexer.get_path(
-            'extracted_source_spectra', file_group=camera_number))
-
-        nm_axis = orb.utils.spectrum.create_nm_axis(
-            std_spectrum.shape[0], self.options['step'], self.options['order'])
+        std_spectrum, hdr = self.read_fits(self.indexer.get_path(
+            'extracted_source_spectra', file_group=camera_number),
+                                           return_header=True)
+        corr = hdr['AXCORR0']
+        axis = orb.utils.spectrum.create_cm1_axis(
+            std_spectrum.shape[0], self.options['step'], self.options['order'],
+            corr=corr)
         
         std_header = (self._get_project_fits_header()
                       + self._get_basic_header('Standard Spectrum')
                       + self._get_fft_params_header(apodization_function)
-                      + self._get_basic_spectrum_cube_header(nm_axis))
+                      + self._get_basic_spectrum_cube_header(
+                          axis, wavenumber=True))
+
+        hdr.extend(std_header, strip=False, update=True, end=True)
+
         std_spectrum_path = self._get_standard_spectrum_path(camera_number)
         
         self.write_fits(std_spectrum_path, std_spectrum,
-                        fits_header=std_header,
+                        fits_header=hdr,
                         overwrite=True)
         
     def export_source_spectra(self, camera_number):
@@ -3168,8 +3180,9 @@ class Orbs(Tools):
         :param camera_number: Camera number (must be 1, 2 or 0 for
           merged data).
         """
-        source_spectra = self.read_fits(self.indexer.get_path(
-            'extracted_source_spectra', file_group=camera_number))
+        source_spectra, hdr = self.read_fits(self.indexer.get_path(
+            'extracted_source_spectra', file_group=camera_number),
+                                             return_header=True)
         if len(source_spectra.shape) == 1:
             step_nb = source_spectra.shape[0]
         else:
@@ -3182,12 +3195,14 @@ class Orbs(Tools):
                          + self._get_fft_params_header(self.options[
                              'apodization_function'])
                          + self._get_basic_spectrum_cube_header(nm_axis))
+
+        hdr.extend(source_header, strip=False, update=True, end=True)
         
         source_spectra_path = self._get_extracted_source_spectra_path(
             camera_number)
         
         self.write_fits(source_spectra_path, source_spectra,
-                        fits_header=source_header,
+                        fits_header=hdr,
                         overwrite=True)
     
         

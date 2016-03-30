@@ -5317,8 +5317,8 @@ class Spectrum(HDFCube):
                 + self._project_header
                 + self._calibration_laser_header
                 + self._get_basic_frame_header(self.dimx, self.dimy)
-                + self._get_basic_spectrum_cube_header(axis,
-                                                       wavenumber=wavenumber)
+                + self._get_basic_spectrum_cube_header(
+                    axis, wavenumber=wavenumber)
                 + self._get_fft_params_header(apodization_function))
 
     def _update_hdr_wcs(self, hdr, wcs_hdr):
@@ -5505,14 +5505,10 @@ class Spectrum(HDFCube):
                     else:
                         filter_min_pix, filter_max_pix = orb.utils.spectrum.nm2pix(
                             axis_corr, np.array([filter_min, filter_max], dtype=float))
-                                               
-                    # filter is normalized to the max between edges
-                    filter_corr[
-                        filter_min_pix:filter_max_pix] /= np.nanmax(filter_corr[
-                        filter_min_pix:filter_max_pix])
-                    spectrum_highres[
-                        filter_min_pix:filter_max_pix] /= filter_corr[
-                        filter_min_pix:filter_max_pix]
+                    # filter_min_pix and max_pix are not used anymore
+                    # because filter function is prepared before. Can
+                    # be reused to put nans.
+                    spectrum_highres /= filter_corr
                     
                 if flux_calibration_function is not None:
                     flux_corr = flux_calibration_function(axis_corr)
@@ -5553,13 +5549,40 @@ class Spectrum(HDFCube):
                     orb.utils.stats.robust_std(orb.utils.stats.sigmacut(
                         ref_scale_map_box
                         / spectrum_scale_map_box, sigma=2.5)))
+
+        if filter_correction:
+            self._print_error("Filter correction is not stable please don't use it")
+
+        # get calibration laser map
+        calibration_laser_map = self.read_fits(calibration_laser_map_path)
+        if (calibration_laser_map.shape[0] != self.dimx):
+            calibration_laser_map = orb.utils.image.interpolate_map(
+                calibration_laser_map,
+                self.dimx, self.dimy)
+
+        # get correction coeff at the center of the field (required to
+        # project the spectral cube at the center of the field instead
+        # of projecting it on the interferometer axis)
+        if spectral_calibration:
+            base_axis_correction_coeff = calibration_laser_map[
+                int(self.dimx/2), int(self.dimy/2)] / nm_laser
+        else:
+            base_axis_correction_coeff = 1.
+        
         
         # Get filter parameters
-        FILTER_STEP_NB = 10000
+        FILTER_STEP_NB = 4000
+        FILTER_RANGE_THRESHOLD = 0.97
         filter_vector, filter_min_pix, filter_max_pix = (
             orb.utils.filters.get_filter_function(
                 filter_file_path, step, order,
-                FILTER_STEP_NB, wavenumber=wavenumber))
+                FILTER_STEP_NB, wavenumber=wavenumber,
+                corr=base_axis_correction_coeff))
+        filter_min_pix = np.nanmin(np.arange(FILTER_STEP_NB)[
+            filter_vector >  FILTER_RANGE_THRESHOLD * np.nanmax(filter_vector)])
+        filter_max_pix = np.nanmax(np.arange(FILTER_STEP_NB)[
+            filter_vector >  FILTER_RANGE_THRESHOLD * np.nanmax(filter_vector)])
+        
         if filter_min_pix < 0: filter_min_pix = 0
         if filter_max_pix > FILTER_STEP_NB: filter_max_pix = FILTER_STEP_NB - 1
 
@@ -5570,12 +5593,28 @@ class Spectrum(HDFCube):
             filter_axis = orb.utils.spectrum.create_cm1_axis(
                 FILTER_STEP_NB, step, order)
 
+        # prepare filter vector (smooth edges)
+        filter_vector[:filter_min_pix] = 1.
+        filter_vector[filter_max_pix:] = 1.
+        filter_vector[
+            filter_min_pix:filter_max_pix] /= np.nanmean(filter_vector[
+            filter_min_pix:filter_max_pix])
+        smooth_coeff = np.zeros_like(filter_vector)
+        smooth_coeff[int(filter_min_pix)] = 1.
+        smooth_coeff[int(filter_max_pix)] = 1.
+        smooth_coeff = orb.utils.vector.smooth(
+            smooth_coeff, deg=0.1*FILTER_STEP_NB, kind='cos_conv')
+        smooth_coeff /= np.nanmax(smooth_coeff)
+        filter_vector_smooth = orb.utils.vector.smooth(
+            filter_vector, deg=0.1*FILTER_STEP_NB, kind='gaussian')
+        
+        filter_vector = ((1. - smooth_coeff) * filter_vector
+                         + smooth_coeff * filter_vector_smooth)
         filter_function = interpolate.UnivariateSpline(
             filter_axis, filter_vector, s=0, k=1)
         filter_min = filter_axis[filter_min_pix]
         filter_max = filter_axis[filter_max_pix]
 
-        
         # Get modulation efficiency
         modulation_efficiency = orb.utils.filters.get_modulation_efficiency(
             filter_file_path)
@@ -5587,8 +5626,7 @@ class Spectrum(HDFCube):
         if flux_calibration_vector[0] is not None:
             (flux_calibration_axis,
              flux_calibration_vector) = flux_calibration_vector
-           
-            
+                       
             if not wavenumber:
                 flux_calibration_axis = orb.utils.spectrum.cm12nm(
                     flux_calibration_axis)[::-1]
@@ -5596,8 +5634,7 @@ class Spectrum(HDFCube):
                 
             flux_calibration_function = interpolate.UnivariateSpline(
                 flux_calibration_axis, flux_calibration_vector, s=0, k=1)
-
-            
+    
             # adjust flux calibration vector with flux calibration coeff
             if flux_calibration_coeff is not None:
                 mean_flux_calib_vector = orb.utils.photometry.compute_mean_star_flux(
@@ -5626,32 +5663,13 @@ class Spectrum(HDFCube):
         else:
             flux_calibration_function = None
 
-        
-        
         # Get FFT parameters
         header = self.get_cube_header()
         if 'APODIZ' in header:
             apodization_function = header['APODIZ']
         else:
             apodization_function = 'None'
-        
-        # get calibration laser map
-        calibration_laser_map = self.read_fits(calibration_laser_map_path)
-        if (calibration_laser_map.shape[0] != self.dimx):
-            calibration_laser_map = orb.utils.image.interpolate_map(
-                calibration_laser_map,
-                self.dimx, self.dimy)
-
-        # get correction coeff at the center of the field (required to
-        # project the spectral cube at the center of the field instead
-        # of projecting it on the interferometer axis)
-        if spectral_calibration:
-            base_axis_correction_coeff = calibration_laser_map[
-                int(self.dimx/2), int(self.dimy/2)] / nm_laser
-        else:
-            base_axis_correction_coeff = 1.
-        
-            
+                            
         # set filter function to None if no filter correction
         if not filter_correction:
             filter_function = None
@@ -5773,7 +5791,7 @@ class Spectrum(HDFCube):
 
         hdr.append(('AXISCORR',
                     base_axis_correction_coeff,
-                    'Wave axis correction coeff'))
+                    'Spectral axis correction coeff'))
         
         new_hdr = pyfits.PrimaryHDU(
             np.empty((self.dimx, self.dimy),
@@ -6019,7 +6037,9 @@ class Spectrum(HDFCube):
         self._print_msg('Standard spectrum path: %s'%std_spectrum_path)
         
         # Get real spectrum
-        re_spectrum, hdr = self.read_fits(std_spectrum_path, return_header=True)
+        re_spectrum_data, hdr = self.read_fits(std_spectrum_path, return_header=True)
+        re_spectrum = re_spectrum_data[:,0]
+        
         if len(re_spectrum.shape) > 1:
             self._print_error(
                 'Bad standard shape. Standard spectrum must be a 1D vector !')
@@ -6028,11 +6048,12 @@ class Spectrum(HDFCube):
         std_step = hdr['STEP']
         std_order = hdr['ORDER']
         std_exp_time = hdr['EXPTIME']
+        std_corr = hdr['AXCORR0']
         std_step_nb = re_spectrum.shape[0]
         std_nm_axis = orb.utils.spectrum.create_nm_axis_ireg(
-            std_step_nb, std_step, std_order)
+            std_step_nb, std_step, std_order, corr=std_corr)
         std_cm1_axis = orb.utils.spectrum.create_cm1_axis(
-            std_step_nb, std_step, std_order)
+            std_step_nb, std_step, std_order, corr=std_corr)
         
         # Real spectrum is converted to ADU/s
         # We must divide by the total exposition time
@@ -6049,6 +6070,7 @@ class Spectrum(HDFCube):
          filter_min_pix, filter_max_pix) = (
             orb.utils.filters.get_filter_function(
                 filter_file_path, std_step, std_order, re_spectrum.shape[0],
+                corr=std_corr,
                 wavenumber=True))
 
         re_spectrum[:filter_min_pix] = np.nan
@@ -6058,10 +6080,15 @@ class Spectrum(HDFCube):
         std = Standard(std_name, config_file_name=self.config_file_name)
         th_spectrum_axis, th_spectrum = std.get_spectrum(
             std_step, std_order,
-            re_spectrum.shape[0], wavenumber=True)
+            re_spectrum.shape[0], wavenumber=True,
+            corr=std_corr)
 
         th_spectrum[np.nonzero(np.isnan(re_spectrum))] = np.nan
-        
+
+        # fit model * polynomial to adjust model and spectrum
+        flux_calibf = orb.utils.photometry.fit_std_spectrum(
+            re_spectrum, th_spectrum)
+
         ## import pylab as pl
         ## pl.axvline(filter_min_pix)
         ## pl.axvline(filter_max_pix)
@@ -6070,9 +6097,10 @@ class Spectrum(HDFCube):
         ## pl.plot(filter_function/np.nanmax(filter_function))
         ## pl.show()
 
-        # fit model * polynomial to adjust model and spectrum
-        flux_calibf = orb.utils.photometry.fit_std_spectrum(
-            re_spectrum, th_spectrum)
+        ## import pylab as pl
+        ## pl.plot(std_cm1_axis, re_spectrum * flux_calibf)
+        ## pl.plot(std_cm1_axis, th_spectrum)
+        ## pl.show()
 
         self._print_msg('Mean theoretical flux of the star: %e ergs/cm^2/A/s'%orb.utils.stats.robust_mean(th_spectrum))
         self._print_msg('Mean flux of the star in the cube: %e ADU/A/s'%orb.utils.stats.robust_mean(re_spectrum))
@@ -6264,7 +6292,6 @@ class SourceExtractor(InterferogramMerger):
                                phase_correction=True,
                                optimize_phase=False,
                                wavenumber=True,
-                               spectral_calibration=True,
                                filter_correction=True,
                                cube_A_is_balanced=True,
                                zpd_shift=None,
@@ -6282,17 +6309,19 @@ class SourceExtractor(InterferogramMerger):
 
         if phase_map_paths is None and phase_order is None and phase_correction:
             self._print_error('If phase correction is required and phase_map_paths is not given, phase must be computed for each source independantly and phase_order must be set.')
+
+        if filter_file_path is None:
+            self._print_error('No filter file path given')
+
         
         if len(source_interf.shape) == 1:
             source_interf = np.array([source_interf])
-    
-        # spectral calibration
-        if spectral_calibration:
-            calibration_laser_map = self.read_fits(
-                calibration_laser_map_path)
-        else:
-            self._print_warning('No spectral calibration')
 
+
+        # get calibration laser map
+        calibration_laser_map = self.read_fits(
+            calibration_laser_map_path)
+        
         # wavenumber
         if wavenumber:
             self._print_msg('Wavenumber (cm-1) output')
@@ -6302,23 +6331,12 @@ class SourceExtractor(InterferogramMerger):
         
         source_list = np.array(source_list)
 
-        spectra = np.empty_like(source_interf, dtype=float)
+        # create spectra array (spec_nb, spec_size, 2) : spectra are in [:,0]
+        # and spectral axes are in [:,1]
+        spectra = np.empty((source_interf.shape[0],
+                            source_interf.shape[1], 2), dtype=float)
         spectra.fill(np.nan)
         step_nb = source_interf.shape[1]
-
-        # load filter function
-        if filter_file_path is not None:
-            (filter_function,
-             filter_min_pix, filter_max_pix) = (
-                orb.utils.filters.get_filter_function(
-                    filter_file_path, step, order,
-                    step_nb, wavenumber=wavenumber))
-        else:
-            self._print_error('No filter file path given')
-
-        filter_params = orb.utils.filters.read_filter_file(filter_file_path)
-        filter_max_cm1 = orb.utils.spectrum.nm2cm1(filter_params[2])
-        filter_min_cm1 = orb.utils.spectrum.nm2cm1(filter_params[3])
 
         # get zpd shift
         if zpd_shift is None:
@@ -6345,57 +6363,23 @@ class SourceExtractor(InterferogramMerger):
                 phase_file_path, return_spline=True)
         else:
             high_phase = None
-
-
-        # check polarity due to phase correction
-        ## if phase_correction:
-        ##     xc = int(self.cube_A.dimx/2)
-        ##     yc = int(self.cube_A.dimy/2)
-        ##     xmin, xmax, ymin, ymax = orb.utils.image.get_box_coords(
-        ##         xc, yc, int(0.02*self.cube_A.shape[0]),
-        ##         0, self.cube_A.dimx, 0, self.cube_A.dimy)
-
-        ##     zmedian = bn.nanmedian(bn.nanmedian(
-        ##         self.cube_A[xmin:xmax, ymin:ymax, :], axis=0), axis=0)
-        ##     zmedian = source_interf[0,:]
-
-        ##     phase_map_0 = self.read_fits(phase_map_0_path)
-        ##     ext_phase = orb.utils.fft.create_phase_vector(
-        ##         np.nanmean(phase_map_0[xmin:xmax, ymin:ymax]),
-        ##         phase_coeffs, step_nb)
-        ##     ## TODO: replace zeros by nans in the interferogram
-        ##     medspec = orb.utils.fft.transform_interferogram(
-        ##         zmedian, nm_laser, nm_laser, step, order,
-        ##         '2.0', zpd_shift, phase_correction=True,
-        ##         ext_phase=ext_phase, wavenumber=wavenumber,
-        ##         return_complex=True, balanced=cube_A_is_balanced)
-
-        ##     ## import pylab as pl
-        ##     ## pl.plot(medspec.real)
-        ##     ## pl.plot(medspec.imag, '--')
-        ##     ## pl.show()
-        ##     ## quit()
-        ##     if np.nanmean(medspec.real) < 0.:
-        ##         self._print_warning("Negative spectrum polarity, phase map is added pi")
-        ##         phase_map_0 += math.pi
-        ## else:
-        ##     self._print_warning('No phase correction')
             
         self._print_msg("Apodization function: %s"%apodization_function)
         self._print_msg("Folding order: %f"%order)
         self._print_msg("Step size: %f"%step)
         self._print_msg("ZPD shift: %f"%zpd_shift)
 
+        
+        hdr = self._get_extracted_source_spectra_header(
+            apodization_function)
+
         for isource in range(source_interf.shape[0]):
             x = source_list[isource,0]
             y = source_list[isource,1]
             interf = source_interf[isource, :]
             
-            if spectral_calibration:
-                nm_laser_obs = calibration_laser_map[int(x), int(y)]
-            else:
-                nm_laser_obs = nm_laser
-
+            nm_laser_obs = calibration_laser_map[int(x), int(y)]
+            
             if phase_correction:                
                 coeffs_list = list()
                 if phase_maps is not None:
@@ -6431,9 +6415,25 @@ class SourceExtractor(InterferogramMerger):
                 apodization_function, zpd_shift,
                 phase_correction=phase_correction,
                 ext_phase=ext_phase,
-                wavenumber=wavenumber)
-               
+                wavenumber=wavenumber,
+                wave_calibration=False)
+
+            if wavenumber:
+                spec_axis = orb.utils.spectrum.create_cm1_axis(
+                    spec.shape[0], step, order, corr=nm_laser_obs/nm_laser)
+            else:
+                spec_axis = orb.utils.spectrum.create_nm_axis(
+                    spec.shape[0], step, order, corr=nm_laser_obs/nm_laser)
+
             if filter_correction:
+                # load filter function
+                (filter_function,
+                 filter_min_pix, filter_max_pix) = (
+                    orb.utils.filters.get_filter_function(
+                        filter_file_path, step, order,
+                         step_nb, wavenumber=wavenumber,
+                        corr=nm_laser_obs/nm_laser))    
+       
                 spec /= filter_function
                 spec[:filter_min_pix] = np.nan
                 spec[filter_max_pix:] = np.nan
@@ -6444,15 +6444,26 @@ class SourceExtractor(InterferogramMerger):
                     self._print_warning('Negative polarity of the spectrum')
                     spec = -spec
 
-            spectra[isource, :] = spec
-            
+            spectra[isource, :, 0] = spec
+            spectra[isource, :, 1] = spec_axis
+
+            hdr.append(('AXCORR{}'.format(isource),
+                        nm_laser_obs/nm_laser,
+                        'Spectral axis correction coeff for source {}'.format(isource)))
+
+        if wavenumber:
+            wave_type = 'WAVENUMBER'
+        else:
+            wave_type = 'WAVELENGTH'
+        hdr.append(('WAVTYPE', '{}'.format(wave_type),
+                    'Spectral axis type: wavenumber or wavelength'))
+        
         self.write_fits(
             self._get_extracted_source_spectra_path(),
             spectra,
-            fits_header=self._get_extracted_source_spectra_header(
-                apodization_function),
+            fits_header=hdr,
             overwrite=self.overwrite)
-
+        
         if self.indexer is not None:
             self.indexer['extracted_source_spectra'] = (
                 self._get_extracted_source_spectra_path())

@@ -59,7 +59,11 @@ def main(args):
     else:
         cams = 'full'
         cam = 'merged'
-        
+
+
+    if args.smooth_coeff < 0. or args.smooth_coeff > 1:
+        raise ValueError('Smooth coeff must be between 0 and 1')
+    
     project = Orbs(args.option_file_path, 'object', cams, silent=True, fast_init=True,
                    config_file_name=config_file_name)
 
@@ -157,7 +161,8 @@ def main(args):
     weights[np.isnan(weights)] = 0.
     
     final_phasef = scipy.interpolate.UnivariateSpline(
-        np.arange(final_phase.shape[0]), final_phase, w=weights, ext=3)
+        np.arange(final_phase.shape[0]), final_phase, w=weights, ext=3,
+        s=len(weights)*args.smooth_coeff)
 
     final_phase_old = np.copy(final_phase)
     final_phase = final_phasef(np.arange(final_phase.shape[0]))
@@ -187,14 +192,16 @@ def main(args):
                 final_phase[iline]))
 
     if args.plot:
-        pl.plot(orb.utils.spectrum.cm12nm(cm1_axis_base),
+        pl.errorbar(orb.utils.spectrum.cm12nm(cm1_axis_base),
                 final_phase_old,
-                lw=3., color='red', label='non-smoothed phase')
-        pl.errorbar(
+                yerr=final_phase_err,
+                linewidth=3., elinewidth=1., ecolor='0.5',
+                lw=3., color='red',
+                label='non-smoothed phase')
+        pl.plot(
             orb.utils.spectrum.cm12nm(cm1_axis_base),
             final_phase,
-            yerr=final_phase_err,
-            linewidth=3., elinewidth=1., color='0.', ecolor='0.5',
+            color='0.', linewidth=3.,
             label='smoothed_phase')
         pl.legend()
         pl.grid()
@@ -233,6 +240,14 @@ if __name__ == "__main__":
                         default=0,
                         choices=[0,1,2],
                         help='Camera number (default 0)')
+
+    parser.add_argument('--smooth',
+                        dest='smooth_coeff',
+                        type=float,
+                        action='store',
+                        default=1.,
+                        help='Smoothing coeff. Must be between 0 and 1 (default 1.).')
+
 
     parser.add_argument('--plot',
                         dest='plot',

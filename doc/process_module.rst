@@ -50,16 +50,6 @@ Spectrum class
    :show-inheritance:
    :special-members:
 
-Phase class
------------
-
-.. autoclass:: process.Phase
-   :members:
-   :private-members:
-   :show-inheritance:
-   :special-members:
-
-
 SourceExtractor class
 ---------------------
 

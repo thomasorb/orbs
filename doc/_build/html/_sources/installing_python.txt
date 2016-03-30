@@ -3,8 +3,35 @@ Installing Python
 
 .. contents::
 
-.. note:: All instruction are given for Ubuntu |Ubuntu|. It might work
-     for any Debian based operating system.
+.. note:: Instructions are generally given for Ubuntu |Ubuntu|. It
+     might work for any Debian based operating system. Most of the
+     installation can be used with pip or setup.py and its the same
+     for Mac |Mac| (see below).
+
+Fast installation sequence for MAC users
+========================================
+
+Most of the installation process can be done with pip::
+
+  sudo easy_install pip
+  sudo pip install pip --upgrade
+  sudo pip install numpy --upgrade
+  sudo pip install scipy --upgrade
+  sudo pip install cython --upgrade
+  sudo pip install astropy --upgrade
+  sudo pip install h5py --upgrade
+  
+For the libraries that are not accessible via pip (e.g. pp) you can
+install them using python. Download the archive, unzip it and, in the
+unzipped folder type::
+
+  sudo python setup.py install
+
+You must also install fftw3 libraries (see `here <https://pypi.python.org/pypi/h5py/2.5.0>`_) and then install the pyfftw wrapper with pip::
+
+  sudo pip install pyfftw --upgrade
+
+
 
 
 Python_
@@ -41,6 +68,7 @@ the **latest version**) :
   * Bottleneck_ (v0.8.0)
   * h5py_ (v2.5.0)
   * Cython_ : Needed to compile Cython_ functions in cutils.pyx
+  * pyFFTW_ (v0.10.1)
 
 The following modules are optional. 
 
@@ -56,26 +84,27 @@ To check if a module is installed just try the following::
 
 To use the Viewers (orb-viewer and orb-viewer3d)
 ------------------------------------------------
+1. Install pygtk
 
-`Ginga <http://ejeschke.github.io/ginga/>`_ must be installed and the GTK backend must be compiled inside matplotlib:
+  sudo pip install pygtk
 
-1 - Install Ginga
+2. Install pycairo
 
-  sudo pip install ginga
+  sudo apt-get install python-cairo
 
-2 - Install development libraries for gtk2
+3. Install development libraries for gtk2
 
   sudo apt-get install python-gtk2-dev
 
-3 - Rebuild matlplotlib
+4. Rebuild matlplotlib
 
   sudo pip install --upgrade matplotlib
 
-4 - Install Vispy (for the 3d viewer)
+5. Install Vispy (for the 3d viewer)
 
   sudo pip install vispy
 
-5 - Install PySide (for the 3d viewer)
+6. Install PySide (for the 3d viewer)
 
   sudo apt-get install python-pyside
 
@@ -202,8 +231,7 @@ sources and jump into the extracted folder before typing::
 Install H5PY (pip cannot be used directly)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-You can find h5py sources `here
-<https://pypi.python.org/pypi/h5py/2.5.0>`_. After extraction, just
+You can find h5py sources `here <https://pypi.python.org/pypi/h5py/2.5.0>`_. After extraction, just
 run the following into the extracted folder::
 
   sudo python setup.py configure --hdf5=/usr/local/lib/hdf5
@@ -211,18 +239,34 @@ run the following into the extracted folder::
   sudo python setup.py install
 
 
-
-
 Cython_
 -------
 
 To install Cython_::
 
-    sudo pip install cython --upgrade
+  sudo pip install cython --upgrade
+
+
+Install PyFFTW
+--------------
+
+FFTW3 library must be installed (see `here
+<https://pypi.python.org/pypi/pyFFTW>`_)::
+
+  sudo apt-get install libfftw3-dev
+
+then the package can be installed via pip::
+
+  sudo pip install pyfftw
 
 
 
 .. |Ubuntu| image:: os_linux.png
+            :height: 40
+   	    :width: 40
+            :scale: 70
+
+.. |Mac| image:: os_apple.png
             :height: 40
    	    :width: 40
             :scale: 70
@@ -237,3 +281,4 @@ To install Cython_::
 .. _Bottleneck: https://pypi.python.org/pypi/Bottleneck
 .. _PIP: https://pypi.python.org/pypi/pip
 .. _h5py: https://pypi.python.org/pypi/h5py/2.5.0
+.. _pyFFTW: https://pypi.python.org/pypi/pyFFTW
