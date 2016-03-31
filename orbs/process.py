@@ -2581,7 +2581,7 @@ class Interferogram(HDFCube):
                          filter_file_path=None,
                          phase_file_path=None,
                          wave_calibration=False,
-                         balanced=True, smoothing_deg=2, fringes=None,
+                         balanced=True, fringes=None,
                          wavenumber=False):
         
         """Compute the spectrum from the corrected interferogram
@@ -2629,15 +2629,7 @@ class Interferogram(HDFCube):
           considered as unbalanced. It is flipped before its
           transformation to get a positive spectrum. Note that a
           merged interferogram is balanced (default True).
-
-        :param smoothing_deg: (Optional) Degree of zeros smoothing. A
-          higher degree means a smoother transition from zeros parts
-          (bad frames) to non-zero parts (good frames) of the
-          interferogram. Good parts on the other side of the ZPD in
-          symmetry with zeros parts are multiplied by 2. The same
-          transition is used to multiply interferogram points by zero
-          and 2 (default 2).
-
+    
         :param fringes: (Optional) If not None, must be an array
           giving for each fringe to remove its frequency and
           intensity. The array must be like [[freq1, amp1], [freq2,
@@ -2703,7 +2695,7 @@ class Interferogram(HDFCube):
                                         bad_frames_vector, phase_map_cols,
                                         return_phase,
                                         balanced, filter_min, filter_max,
-                                        smoothing_deg, fringes, wavenumber,
+                                        fringes, wavenumber,
                                         high_phase):
             """Compute spectrum in one column. Used to parallelize the
             process"""
@@ -2725,7 +2717,7 @@ class Interferogram(HDFCube):
                                 coeffs_list.append(phase_map_col[ij])
                             else:
                                 coeffs_list.append(phase_map_col)
-                        
+
                         ext_phase = np.polynomial.polynomial.polyval(
                             np.arange(dimz), coeffs_list)
                             
@@ -2757,7 +2749,6 @@ class Interferogram(HDFCube):
                             ext_phase=ext_phase,
                             return_phase=return_phase,
                             balanced=balanced,
-                            smoothing_deg=smoothing_deg,
                             wavenumber=wavenumber,
                             return_complex=True,
                             high_order_phase=high_phase))
@@ -2866,6 +2857,7 @@ class Interferogram(HDFCube):
                     coeffs_list_mean.append(np.nanmean(phase_map[xmin:xmax, ymin:ymax]))
                 else:
                     coeffs_list_mean.append(phase_map)
+           
             mean_phase_vector = np.polynomial.polynomial.polyval(
                 np.arange(self.dimz),
                 coeffs_list_mean)
@@ -2894,7 +2886,6 @@ class Interferogram(HDFCube):
         # Print some informations about the spectrum transformation
         
         self._print_msg("Apodization function: %s"%window_type)
-        self._print_msg("Zeros smoothing degree: %d"%smoothing_deg)
         self._print_msg("Folding order: %f"%order)
         self._print_msg("Step size: %f"%step)
         self._print_msg("Bad frames: %s"%str(np.nonzero(bad_frames_vector)[0]))
@@ -2961,7 +2952,7 @@ class Interferogram(HDFCube):
                           get_phase_map_cols(
                               phase_maps, x_min + ii + ijob, y_min, y_max),
                           phase_cube, balanced,
-                          filter_min, filter_max, smoothing_deg,
+                          filter_min, filter_max,
                           fringes, wavenumber, high_phase), 
                     modules=("import numpy as np", "import math",  
                              "from scipy import interpolate", 

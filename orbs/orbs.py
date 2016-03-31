@@ -2296,7 +2296,7 @@ class Orbs(Tools):
                          wave_calibration=False,
                          phase_cube=False,
                          phase_coeffs=None,
-                         smoothing_deg=2, no_star=False):
+                         no_star=False):
 
         """Compute a spectral cube from an interferogram cube.
      
@@ -2318,14 +2318,6 @@ class Orbs(Tools):
           define the phase vector. If none given default path to the
           phase maps of order > 0 are used to create it (Default
           None).   
-
-        :param smoothing_deg: (Optional) Degree of zeros smoothing. A
-          higher degree means a smoother transition from zeros parts
-          (bad frames) to non-zero parts (good frames) of the
-          interferogram. Good parts on the other side of the ZPD in
-          symetry with zeros parts are multiplied by 2. The same
-          transition is used to multiply interferogram points by zero
-          and 2 (default 2).
 
         :param no_star: (Optional) If True, the cube is considered to
           have been computed without the star dependant processes so
@@ -2439,7 +2431,6 @@ class Orbs(Tools):
             phase_file_path=self._get_phase_file_path(
                 self.options["filter_name"]),
             balanced=balanced,
-            smoothing_deg=smoothing_deg,
             fringes=fringes,
             wavenumber=wavenumber,
             zpd_shift=zpd_shift)
@@ -3113,6 +3104,8 @@ class Orbs(Tools):
                 cube.get_zmedian(nozero=True))
             
         spectrum_header.set('ZPDINDEX', zpd_index)
+
+        spectrum_header.set('WAVCALIB', self.options['spectral_calibration'])
 
         # get apodization
         apod = spectrum_header['APODIZ']
