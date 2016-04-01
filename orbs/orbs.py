@@ -402,7 +402,7 @@ class Orbs(Tools):
     """Choosen target to reduce"""
 
     def __init__(self, option_file_path, target, cams,
-                 config_file_name="config.orb",
+                 config_file_name="config.orb", ncpus=None,
                  overwrite=False, silent=False, fast_init=False):
         """Initialize Orbs class.
 
@@ -417,6 +417,10 @@ class Orbs(Tools):
 
         :param config_file_name: (Optional) Name of the config file to
           use. Must be located in orbs/data/.
+    
+        :param ncpus: (Optional) Number of CPUs to use for parallel
+          processing. set to None gives the maximum number available
+          (default None).  
 
         :param overwrite: (Optional) If True, any existing FITS file
           created by Orbs will be overwritten during the reduction
@@ -476,7 +480,9 @@ class Orbs(Tools):
                         # export fits frames as an hdf5 cube
                         if not fast_init:
                             cube = Cube(self.options[option_key],
-                                        silent_init=True, no_sort=False)
+                                        silent_init=True, no_sort=False,
+                                        ncpus=self.ncpus,
+                                        config_file_name=self.config_file_name)
                             
                             export_path = (
                                 self._get_project_dir()
@@ -522,6 +528,11 @@ class Orbs(Tools):
         self.option_file_path = option_file_path
         self.config_file_name = config_file_name
         self._msg_class_hdr = self._get_msg_class_hdr()
+        if ncpus is None:
+            self.ncpus = int(self._get_config_parameter("NCPUS"))
+        else:
+            self.ncpus = int(ncpus)
+
         self.overwrite = overwrite
         self.__version__ = __version__
         self._silent = silent
@@ -716,11 +727,12 @@ class Orbs(Tools):
                 cube1 = Cube(self.options['image_list_path_1'],
                              silent_init=True,
                              config_file_name=self.config_file_name,
-                             no_sort=True)
+                             no_sort=True, ncpus=self.ncpus)
             else:
                 cube1 = HDFCube(self.options['image_list_path_1.hdf5'],
                                 silent_init=True,
-                                config_file_name=self.config_file_name)
+                                config_file_name=self.config_file_name,
+                                ncpus=self.ncpus)
             dimz1 = cube1.dimz
             cam1_image_shape = [cube1.dimx, cube1.dimy]
             
@@ -747,11 +759,12 @@ class Orbs(Tools):
                 cube2 = Cube(self.options['image_list_path_2'],
                              silent_init=True,
                              config_file_name=self.config_file_name,
-                             no_sort=True)
+                             no_sort=True, ncpus=self.ncpus)
             else:
                 cube2 = HDFCube(self.options['image_list_path_2.hdf5'],
                                 silent_init=True,
-                                config_file_name=self.config_file_name)
+                                config_file_name=self.config_file_name,
+                                ncpus=self.ncpus)
             dimz2 = cube2.dimz
             cam2_image_shape = [cube2.dimx, cube2.dimy]
             # Get data binning
@@ -794,7 +807,7 @@ class Orbs(Tools):
             cube1 = Cube(cube_list,
                          silent_init=True,
                          config_file_name=self.config_file_name,
-                         no_sort=True)
+                         no_sort=True, ncpus=self.ncpus)
 
            
             zpd_found = False
@@ -1120,7 +1133,8 @@ class Orbs(Tools):
                     overwrite=self.overwrite,
                     tuning_parameters=self.tuning_parameters,
                     indexer=self.indexer,
-                    config_file_name=self.config_file_name)
+                    config_file_name=self.config_file_name,
+                    ncpus=self.ncpus)
             else:
                 self._print_error("No image list file for camera 1 given, please check option file")
         elif (camera_number == 2):
@@ -1133,7 +1147,8 @@ class Orbs(Tools):
                     overwrite=self.overwrite,
                     tuning_parameters=self.tuning_parameters,
                     indexer=self.indexer,
-                    config_file_name=self.config_file_name)
+                    config_file_name=self.config_file_name,
+                    ncpus=self.ncpus)
             else:
                 self._print_error("No image list file for camera 2 given, please check option file")
         else:
@@ -1233,7 +1248,8 @@ class Orbs(Tools):
                           tuning_parameters=self.tuning_parameters,
                           target_radec=target_radec, target_xy=target_xy,
                           wcs_rotation=wcs_rotation,
-                          config_file_name=self.config_file_name)
+                          config_file_name=self.config_file_name,
+                          ncpus=self.ncpus)
 
 
     def _get_interfero_cube_path(self, camera_number, corrected=False):
@@ -1338,7 +1354,7 @@ class Orbs(Tools):
         :param std_path: Path to the file containing the standard.    
         """
         if 'hdf5' in std_path:
-            cube = HDFCube(std_path)
+            cube = HDFCube(std_path, config_file_name=self.config_file_name, ncpus=self.ncpus)
             hdr = cube.get_frame_header(0)
         else:
             hdr = self.read_fits(std_path, return_hdu_only=True)[0].header
@@ -1393,7 +1409,7 @@ class Orbs(Tools):
           that must be added to the bad frames vector (default None).
         """
         interf_cube = HDFCube(self._get_interfero_cube_path(camera_number),
-                              config_file_name=self.config_file_name)
+                              config_file_name=self.config_file_name, ncpus=self.ncpus)
         bad_frames_vector = np.zeros(interf_cube.dimz)
         
         if camera_number == 0:
@@ -1970,7 +1986,8 @@ class Orbs(Tools):
             overwrite=self.overwrite,
             tuning_parameters=self.tuning_parameters,
             indexer=self.indexer,
-            config_file_name=self.config_file_name)
+            config_file_name=self.config_file_name,
+            ncpus=self.ncpus)
 
         # find alignment coefficients
         if not no_star and alignment_coeffs is None:
@@ -2024,7 +2041,8 @@ class Orbs(Tools):
             overwrite=self.overwrite,
             tuning_parameters=self.tuning_parameters,
             indexer=self.indexer,
-            config_file_name=self.config_file_name)
+            config_file_name=self.config_file_name,
+            ncpus=self.ncpus)
         
         perf = Performance(cube.cube_A, "Alternative merging process", 1,
                            config_file_name=self.config_file_name)
@@ -2084,7 +2102,8 @@ class Orbs(Tools):
             overwrite=self.overwrite,
             tuning_parameters=self.tuning_parameters,
             indexer=self.indexer,
-            config_file_name=self.config_file_name)
+            config_file_name=self.config_file_name,
+            ncpus=self.ncpus)
         
         perf = Performance(cube.cube_A, "Merging process", 1,
                            config_file_name=self.config_file_name)
@@ -2171,7 +2190,8 @@ class Orbs(Tools):
             overwrite=self.overwrite,
             tuning_parameters=self.tuning_parameters,
             indexer=self.indexer,
-            config_file_name=self.config_file_name)
+            config_file_name=self.config_file_name,
+            ncpus=self.ncpus)
         perf = Performance(cube, "Calibration laser map processing",
                            camera_number,
                            config_file_name=self.config_file_name)
@@ -2225,7 +2245,7 @@ class Orbs(Tools):
             overwrite=self.overwrite,
             tuning_parameters=self.tuning_parameters,
             indexer=self.indexer,
-            config_file_name=self.config_file_name)
+            config_file_name=self.config_file_name, ncpus=self.ncpus)
         perf = Performance(cube, "Interferogram correction", camera_number,
                            config_file_name=self.config_file_name)
         
@@ -2373,7 +2393,8 @@ class Orbs(Tools):
             overwrite=self.overwrite,
             tuning_parameters=self.tuning_parameters,
             indexer=self.indexer,
-            config_file_name=self.config_file_name)
+            config_file_name=self.config_file_name,
+            ncpus=self.ncpus)
         
         perf = Performance(cube, "Spectrum computation", camera_number,
                            config_file_name=self.config_file_name)
@@ -2517,7 +2538,8 @@ class Orbs(Tools):
                              project_header = self._get_project_fits_header(
                                  camera_number),
                              data_prefix=self._get_data_prefix(camera_number),
-                             calibration_laser_header=self._get_calibration_laser_fits_header())
+                             calibration_laser_header=self._get_calibration_laser_fits_header(),
+                             ncpus=self.ncpus)
         
         perf = Performance(cube, "Phase map creation", camera_number,
                            config_file_name=self.config_file_name)
@@ -2570,7 +2592,8 @@ class Orbs(Tools):
             project_header = self._get_project_fits_header(
                 camera_number),
             data_prefix=self._get_data_prefix(camera_number),
-            calibration_laser_header=self._get_calibration_laser_fits_header())
+            calibration_laser_header=self._get_calibration_laser_fits_header(),
+            ncpus=self.ncpus)
 
 
         # fit order 1
@@ -2625,7 +2648,8 @@ class Orbs(Tools):
         
 
         # standard image registration to find std star
-        std_cube = HDFCube(std_path)
+        std_cube = HDFCube(std_path, ncpus=self.ncpus,
+                           config_file_name=self.config_file_name)
         std_astrom = self._init_astrometry(std_cube, camera_number)
         std_hdr = std_cube.get_frame_header(0) 
         std_ra, std_dec = self._get_standard_radec(std_name)
@@ -2717,7 +2741,8 @@ class Orbs(Tools):
             overwrite=self.overwrite,
             tuning_parameters=self.tuning_parameters,
             indexer=self.indexer,
-            config_file_name=self.config_file_name)
+            config_file_name=self.config_file_name,
+            ncpus=self.ncpus)
 
         perf = Performance(spectrum, "Spectrum calibration", camera_number,
                            config_file_name=self.config_file_name)
@@ -2889,7 +2914,8 @@ class Orbs(Tools):
             overwrite=self.overwrite,
             tuning_parameters=self.tuning_parameters,
             indexer=self.indexer,
-            config_file_name=self.config_file_name)
+            config_file_name=self.config_file_name,
+            ncpus=self.ncpus)
 
         perf = Performance(sex.cube_B, "Extraction of source interferograms", 0,
                            config_file_name=self.config_file_name)
@@ -2997,7 +3023,8 @@ class Orbs(Tools):
             overwrite=self.overwrite,
             tuning_parameters=self.tuning_parameters,
             indexer=self.indexer,
-            config_file_name=self.config_file_name)
+            config_file_name=self.config_file_name,
+            ncpus=self.ncpus)
 
         sex.compute_source_spectra(
             source_list,
@@ -3066,7 +3093,8 @@ class Orbs(Tools):
         spectrum_cube_path = self.indexer.get_path('calibrated_spectrum_cube',
                                                    camera_number)
         spectrum = HDFCube(spectrum_cube_path,
-                           config_file_name=self.config_file_name)
+                           config_file_name=self.config_file_name,
+                           ncpus=self.ncpus)
         spectrum_header = spectrum.get_cube_header()
 
         if 'wavenumber' in self.options:
@@ -3099,7 +3127,8 @@ class Orbs(Tools):
             zpd_index = self.options['zpd_index']
         else:
             cube = HDFCube(self._get_interfero_cube_path(
-                camera_number, corrected=True))
+                camera_number, corrected=True), ncpus=self.ncpus,
+                           config_file_name=self.config_file_name)
             zpd_index = orb.utils.fft.find_zpd(
                 cube.get_zmedian(nozero=True))
             

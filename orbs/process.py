@@ -181,7 +181,8 @@ class RawData(HDFCube):
         .. seealso:: :py:meth:`orb.utils.image.create_master_frame`
         """
         bias_cube = Cube(bias_list_path,
-                         config_file_name=self.config_file_name)
+                         config_file_name=self.config_file_name,
+                         ncpus=self.ncpus)
         self._print_msg('Creating Master Bias')
         # try to read temperatures in the header of each bias and
         # return the mean
@@ -256,7 +257,8 @@ class RawData(HDFCube):
         .. seealso:: :py:meth:`orb.utils.image.create_master_frame`
         """
         dark_cube = Cube(dark_list_path,
-                         config_file_name=self.config_file_name)
+                         config_file_name=self.config_file_name,
+                         ncpus=self.ncpus)
         self._print_msg('Creating Master Dark')
 
         # try to read temperatures in the header of each dark and
@@ -344,7 +346,8 @@ class RawData(HDFCube):
         .. seealso:: :py:meth:`orb.utils.image.create_master_frame`
         """
         flat_cube = Cube(flat_list_path,
-                         config_file_name=self.config_file_name)
+                         config_file_name=self.config_file_name,
+                         ncpus=self.ncpus)
         self._print_msg('Creating Master Flat')
         
         # resizing if nescessary
@@ -449,7 +452,8 @@ class RawData(HDFCube):
                             readout_noise=readout_noise,
                             dark_current_level=dark_current_level,
                             tuning_parameters=self._tuning_parameters,
-                            config_file_name=self.config_file_name)
+                            config_file_name=self.config_file_name,
+                            ncpus=self.ncpus)
         astrom.load_star_list(star_list_path)
 
         # get alignment vectors
@@ -904,7 +908,8 @@ class RawData(HDFCube):
         if (cr_map_cube_path is None):
                 cr_map_cube_path = self._get_cr_map_cube_path()
         cr_map_cube = HDFCube(cr_map_cube_path,
-                              config_file_name=self.config_file_name)
+                              config_file_name=self.config_file_name,
+                              ncpus=self.ncpus)
         cr_map = cr_map_cube.get_all_data()
         cr_map_vector = np.sum(np.sum(cr_map, axis=0), axis=0)
         median_rc = np.median(cr_map_vector)
@@ -992,7 +997,8 @@ class RawData(HDFCube):
             reject=reject)
         
         bias_cube = Cube(bias_path,
-                         config_file_name=self.config_file_name)
+                         config_file_name=self.config_file_name,
+                         ncpus=self.ncpus)
         
         min_x = int(bias_cube.dimx * BORDER_COEFF)
         max_x = int(bias_cube.dimx * (1. - BORDER_COEFF))
@@ -1006,7 +1012,8 @@ class RawData(HDFCube):
         readout_noise = orb.utils.stats.robust_mean(readout_noise)
         
         dark_cube = Cube(dark_path,
-                         config_file_name=self.config_file_name)
+                         config_file_name=self.config_file_name,
+                         ncpus=self.ncpus)
         dark_cube_dimz = dark_cube.dimz
         
         if not self.is_same_2D_size(dark_cube):
@@ -1679,7 +1686,8 @@ class RawData(HDFCube):
             
         if os.path.exists(cr_map_cube_path):
             cr_map_cube = HDFCube(cr_map_cube_path,
-                                  config_file_name=self.config_file_name)
+                                  config_file_name=self.config_file_name,
+                                  ncpus=self.ncpus)
             self._print_msg("Loaded cosmic ray map: {}".format(cr_map_cube_path))
         else:
             self._print_warning("No cosmic ray map loaded")
@@ -1777,7 +1785,8 @@ class RawData(HDFCube):
         # cause a negative median level for the frames of camera 2)
         self._print_msg('Checking frames level')
         interf_cube = HDFCube(self._get_interfero_cube_path(),
-                              config_file_name=self.config_file_name)
+                              config_file_name=self.config_file_name,
+                              ncpus=self.ncpus)
         zmedian = interf_cube.get_zmedian()
         corr_level = -np.min(zmedian) + 10. # correction level
         header = self._get_interfero_frame_header()
@@ -2406,7 +2415,8 @@ class Interferogram(HDFCube):
                             data_prefix=self._data_prefix,
                             star_list_path=star_list_path,
                             tuning_parameters=self._tuning_parameters,
-                            config_file_name=self.config_file_name)
+                            config_file_name=self.config_file_name,
+                            ncpus=self.ncpus)
 
         astrom.fit_stars_in_cube(local_background=True,
                                  fix_aperture_size=True,
@@ -3444,14 +3454,11 @@ class InterferogramMerger(Tools):
     
     def __init__(self, interf_cube_path_A=None, interf_cube_path_B=None,
                  bin_A=None, bin_B=None, pix_size_A=None, pix_size_B=None,
-                 data_prefix="temp_data_",
                  alignment_coeffs=None, project_header=list(),
-                 config_file_name="config.orb",
                  cube_A_project_header = list(),
                  cube_B_project_header = list(),
                  wcs_header=list(), overwrite=False,
-                 tuning_parameters=dict(),
-                 indexer=None):
+                 indexer=None, **kwargs):
         """
         Initialize InterferogramMerger class
 
@@ -3468,12 +3475,6 @@ class InterferogramMerger(Tools):
         :param pix_size_A: (Optional) Pixel size of the camera A
         
         :param pix_size_A: (Optional) Pixel size of the camera B
-
-        :param data_prefix: (Optional) Header and path of the files
-          created by the class
-
-        :param config_file_name: (Optional) name of the config file to
-          use. Must be located in orbs/data/.
 
         :param project_header: (Optional) header section to be added
           to each output files based on merged data (an empty list by
@@ -3499,41 +3500,32 @@ class InterferogramMerger(Tools):
         :param overwrite: (Optional) If True existing FITS files will
           be overwritten (default False).
 
-        :param tuning_parameters: (Optional) Some parameters of the
-          methods can be tuned externally using this dictionary. The
-          dictionary must contains the full parameter name
-          (class.method.parameter_name) and its value. For example :
-          {'InterferogramMerger.find_alignment.BOX_SIZE': 7}. Note
-          that only some parameters can be tuned. This possibility is
-          implemented into the method itself with the method
-          :py:meth:`orb.core.Tools._get_tuning_parameter`.
-
         :param indexer: (Optional) Must be a :py:class:`orb.core.Indexer`
           instance. If not None created files can be indexed by this
           instance.
+
+        :param kwargs: Kwargs are :meth:`core.Tools` properties.
         """
+        Tools.__init__(self, **kwargs)
+
         self.overwrite = overwrite
         self.indexer = indexer
-        self._data_prefix = data_prefix
-        self.config_file_name = config_file_name
-        self.ncpus = int(self._get_config_parameter("NCPUS"))
         self._project_header = project_header
         self._wcs_header = wcs_header
-        self._msg_class_hdr = self._get_msg_class_hdr()
-        self._data_path_hdr = self._get_data_path_hdr()
-        self._tuning_parameters = tuning_parameters
-
+       
         if alignment_coeffs is not None:
             [self.dx, self.dy, self.dr, self.da, self.db] = alignment_coeffs
 
         if interf_cube_path_A is not None:
             self.cube_A = HDFCube(interf_cube_path_A,
                                   project_header=cube_A_project_header,
-                                  config_file_name=self.config_file_name)
+                                  config_file_name=self.config_file_name,
+                                  ncpus=self.ncpus)
         if interf_cube_path_B is not None:
             self.cube_B = HDFCube(interf_cube_path_B,
                                   project_header=cube_B_project_header,
-                                  config_file_name=self.config_file_name)
+                                  config_file_name=self.config_file_name,
+                                  ncpus=self.ncpus)
 
         self.bin_A = bin_A
         self.bin_B = bin_B
@@ -3781,7 +3773,7 @@ class InterferogramMerger(Tools):
             tuning_parameters=self._tuning_parameters,
             project_header=self._project_header, overwrite=self.overwrite,
             data_prefix=self._data_prefix,
-            config_file_name=self.config_file_name)
+            config_file_name=self.config_file_name, ncpus=self.ncpus)
         
         result = aligner.compute_alignment_parameters(
             star_list_path1=star_list_path_A,
@@ -4423,7 +4415,8 @@ class InterferogramMerger(Tools):
             tuning_parameters=self._tuning_parameters,
             config_file_name=self.config_file_name).fit_stars_in_frame(
             0, precise_guess=True, local_background=local_background,
-            fix_fwhm=fix_fwhm, fix_height=False, save=False)
+            fix_fwhm=fix_fwhm, fix_height=False, save=False,
+            ncpus=self.ncpus)
         mean_params_B = Astrometry(
             frameB, fwhm_arc, fov, profile_name=profile_name,
             star_list_path=star_list_path, readout_noise=readout_noise_2,
@@ -4431,7 +4424,8 @@ class InterferogramMerger(Tools):
             tuning_parameters=self._tuning_parameters,
             config_file_name=self.config_file_name).fit_stars_in_frame(
             0, precise_guess=True, local_background=local_background,
-            fix_fwhm=fix_fwhm, fix_height=False, save=False)
+            fix_fwhm=fix_fwhm, fix_height=False, save=False,
+            ncpus=self.ncpus)
 
         star_list_A = mean_params_A.get_star_list()
         star_list_B = mean_params_A.get_star_list()
@@ -4457,7 +4451,8 @@ class InterferogramMerger(Tools):
                               dark_current_level=dark_current_level_1,
                               tuning_parameters=self._tuning_parameters,
                               check_mask=True,
-                              config_file_name=self.config_file_name)
+                              config_file_name=self.config_file_name,
+                              ncpus=self.ncpus)
         astrom_A.reset_star_list(star_list_A)
 
         astrom_B = Astrometry(self.cube_B, fwhm_arc_B, fov,
@@ -4468,7 +4463,8 @@ class InterferogramMerger(Tools):
                               dark_current_level=dark_current_level_2,
                               tuning_parameters=self._tuning_parameters,
                               check_mask=True,
-                              config_file_name=self.config_file_name)
+                              config_file_name=self.config_file_name,
+                              ncpus=self.ncpus)
         astrom_B.reset_star_list(star_list_B)
 
         # Fit stars and get stars photometry
@@ -4596,7 +4592,8 @@ class InterferogramMerger(Tools):
                                    dark_current_level=dark_current_level_2,
                                    tuning_parameters=self._tuning_parameters,
                                    check_mask=False,
-                                   config_file_name=self.config_file_name)
+                                   config_file_name=self.config_file_name,
+                                   ncpus=self.ncpus)
         astrom_merged.reset_star_list(star_list_B)
         
         astrom_merged.fit_stars_in_cube(
@@ -4914,7 +4911,8 @@ class InterferogramMerger(Tools):
             stray_light_vector = np.zeros_like(flux_vector)
        
         merged_cube = HDFCube(self._get_merged_interfero_cube_path(),
-                              config_file_name=self.config_file_name)
+                              config_file_name=self.config_file_name,
+                              ncpus=self.ncpus)
         energy_map = merged_cube.get_interf_energy_map()
         out_cube.append_energy_map(energy_map)
         deep_frame = (flux_frame - np.nanmean(stray_light_vector))
@@ -5916,7 +5914,8 @@ class Spectrum(HDFCube):
             calibration_laser_map.shape[1]/2] / nm_laser
         
         # Get standard spectrum in erg/cm^2/s/A
-        std = Standard(std_name, config_file_name=self.config_file_name)
+        std = Standard(std_name, config_file_name=self.config_file_name,
+                       ncpus=self.ncpus)
         th_spectrum_axis, th_spectrum = std.get_spectrum(
             step, order, STEP_NB,
             wavenumber=False, corr=corr)
@@ -6068,7 +6067,8 @@ class Spectrum(HDFCube):
         re_spectrum[filter_max_pix:] = np.nan
         
         # Get standard spectrum in erg/cm^2/s/A
-        std = Standard(std_name, config_file_name=self.config_file_name)
+        std = Standard(std_name, config_file_name=self.config_file_name,
+                       ncpus=self.ncpus)
         th_spectrum_axis, th_spectrum = std.get_spectrum(
             std_step, std_order,
             re_spectrum.shape[0], wavenumber=True,
@@ -6186,7 +6186,8 @@ class SourceExtractor(InterferogramMerger):
                             data_prefix=self._data_prefix + 'merged.',
                             tuning_parameters=self._tuning_parameters,
                             check_mask=False,
-                            config_file_name=self.config_file_name)
+                            config_file_name=self.config_file_name,
+                            ncpus=self.ncpus)
         
         source_list = np.array(source_list)
         astrom.reset_star_list(source_list)
@@ -6194,7 +6195,8 @@ class SourceExtractor(InterferogramMerger):
         astrom.fit_results = orb.astrometry.StarsParams(
             source_list.shape[0], self.cube_A.dimz,
             silent=self._silent,
-            config_file_name=self.config_file_name)
+            config_file_name=self.config_file_name,
+            ncpus=self.ncpus)
 
         job_server, ncpus = self._init_pp_server()
 

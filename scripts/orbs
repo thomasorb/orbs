@@ -157,7 +157,7 @@ def init_orbs(args, target, cams, silent=False, fast_init=False):
     # load option file and init Orbs class
     return Orbs(args.option_file_path, target, cams, overwrite=True,
                 config_file_name=get_config_file_name(args), silent=silent,
-                fast_init=fast_init)
+                fast_init=fast_init, ncpus=args.ncpus)
 
 def status(args):
     # log in record file
@@ -402,6 +402,13 @@ def add_all_operations(instrument_parser, epilog, epilog_steps):
         '--noprint', dest='noprint', action='store_true',
         default=False,
         help="The standard output is redirected to the file 'stdout.log'. Helpful for logging error messages.")
+    
+    instrument_parser.add_argument(
+        '--ncpus', dest='ncpus', action='store',
+        default=None,
+        type=int,
+        help="Number of CPUs to use for parallel processing (default set in config file)")
+
 
     subparsers = instrument_parser.add_subparsers(help='operation type', dest='subparser_name')
 
