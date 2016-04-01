@@ -2839,10 +2839,10 @@ class Interferogram(HDFCube):
             self._print_msg("Check spectrum polarity with phase correction")
             
             # get mean interferogram
-            #mean_interf = self.get_zmean(nozero=True)
             xmin, xmax, ymin, ymax = orb.utils.image.get_box_coords(
                 self.dimx/2, self.dimy/2,
-                int(0.02*self.dimx), 0, self.dimx,
+                int(0.02*self.dimx),
+                0, self.dimx,
                 0, self.dimy)
             mean_interf = bn.nanmedian(bn.nanmedian(
                 self.get_data(xmin, xmax, ymin, ymax, 0, self.dimz),
@@ -2864,7 +2864,7 @@ class Interferogram(HDFCube):
 
             # zeros are replaced by NANs
             mean_interf[np.nonzero(mean_interf == 0)] = np.nan
-
+            
             # transform interferogram and check polarity
             mean_spectrum = orb.utils.fft.transform_interferogram(
                 mean_interf, nm_laser, mean_calib, step, order, '2.0', zpd_shift,
