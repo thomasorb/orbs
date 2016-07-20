@@ -201,17 +201,10 @@ class Orbs(Tools):
 
     __version__ = None # imported from __version__ given in the core module
     
-    _APODIZATION_FUNCTIONS = [
-        "barthann","bartlett", "blackman", "blackmanharris",
-        "bohman","hamming","hann","nuttall","parzen",
-        '1.0', '1.1', '1.2', '1.3', '1.4', '1.5',
-        '1.6', '1.7', '1.8', '1.9', '2.0', 'learner95']
-    """Apodization functions that are recognized by
-    :py:class:`scipy.signal` or
-    :py:meth:`orb.utils.norton_beer_window` and that can be used
-    directly by ORBS. Number-like names stands for the FWHM of
-    extended Norton-Beer function (see
-    :py:meth:`orb.utils.norton_beer_window`)"""
+    _APODIZATION_FUNCTIONS = ['learner95']
+    """Apodization functions that recognized by ORBS. Any float > 1 is
+    recognized by :py:meth:`orb.utils.gaussian_window` (see
+    :py:meth:`orb.utils.fft.gaussian_window`)"""
 
     
     project_name = None
@@ -403,7 +396,8 @@ class Orbs(Tools):
 
     def __init__(self, option_file_path, target, cams,
                  config_file_name="config.orb", ncpus=None,
-                 overwrite=False, silent=False, fast_init=False):
+                 overwrite=False, silent=False, fast_init=False,
+                 raw_data_files_check=True):
         """Initialize Orbs class.
 
         :param option_file_path: Path to the option file.
@@ -432,6 +426,11 @@ class Orbs(Tools):
         :param fast_init: (Optional) Fast init. Data files are not
           checked. Gives access to Orbs variables (e.g. object dependant file
           paths). This mode is faster but less safe.
+
+        :param raw_data_files_check: (Optional) If True, correspondance
+          between original data files and built raw data cubes is
+          checked. If False, raw data cubes are considered ok (default
+          True).
         """
         def store_config_parameter(key, cast):
             if cast is not bool:
@@ -479,39 +478,53 @@ class Orbs(Tools):
                              
                         # export fits frames as an hdf5 cube
                         if not fast_init:
-                            cube = Cube(self.options[option_key],
-                                        silent_init=True, no_sort=False,
-                                        ncpus=self.ncpus,
-                                        config_file_name=self.config_file_name)
-                            
+
+                            # check if the hdf5 cube already
+                            # exists. 
                             export_path = (
                                 self._get_project_dir()
                                 + os.path.splitext(
                                     os.path.split(
                                         self.options[option_key])[1])[0]
                                 + '.hdf5')
-
-                            # check if the hdf5 cube already
-                            # exists. If the list of the imported
-                            # files in the hdf5 cube is the same,
-                            # export is not done again.
+                            
                             already_exported = False
+                            check_ok = False
                             if os.path.exists(export_path):
-                                with self.open_hdf5(export_path, 'r') as f:
-                                    if 'image_list' in f:
-                                        new_image_list = f['image_list'][:]
-                                        old_image_list = np.array(cube.image_list)
-                                        if (np.size(new_image_list)
-                                            == np.size(old_image_list)):
-                                            if (np.all(
-                                                new_image_list
-                                                == old_image_list)
-                                                and f.attrs['dimz']
-                                                == len(cube.image_list)):
-                                                already_exported = True
-                                                self._print_msg(
-                                                    'HDF5 cube {} already created'.format(export_path))
-                            if not already_exported:
+                                already_exported = True
+                                if not raw_data_files_check:
+                                    check_ok = True
+                                    self._print_warning(
+                                        'Exported HDF5 cube {} not checked !'.format(export_path))
+                                    
+                                    
+                            if not check_ok or not already_exported:
+                                # If the list of the imported
+                                # files in the hdf5 cube is the same,
+                                # export is not done again.
+                                cube = Cube(self.options[option_key],
+                                            silent_init=True, no_sort=False,
+                                            ncpus=self.ncpus,
+                                            config_file_name=self.config_file_name)
+                                
+                                if already_exported:    
+                                    with self.open_hdf5(export_path, 'r') as f:
+                                        if 'image_list' in f:
+                                            new_image_list = f['image_list'][:]
+                                            old_image_list = np.array(cube.image_list)
+                                            if (np.size(new_image_list)
+                                                == np.size(old_image_list)):
+                                                if (np.all(
+                                                    new_image_list
+                                                    == old_image_list)
+                                                    and f.attrs['dimz']
+                                                    == len(cube.image_list)):
+                                                    check_ok = True
+                                                    self._print_msg(
+                                                        'Exported HDF5 cube {} check: OK'.format(export_path))
+                                
+                                
+                            if not already_exported or not check_ok:
                                 cube.export(export_path, force_hdf5=True,
                                             overwrite=True)
 
@@ -536,7 +549,7 @@ class Orbs(Tools):
         self.overwrite = overwrite
         self.__version__ = __version__
         self._silent = silent
-        
+
         # First, print ORBS version
         self._print_msg("ORBS version: %s"%self.__version__, color=True)
         self._print_msg("ORB version: %s"%orb.version.__version__, color=True)
@@ -2421,11 +2434,14 @@ class Orbs(Tools):
             if 'apodization_function' in self.options:
                 apodization_function = self.options['apodization_function']
             else:
-                apodization_function = '2.0'
+                apodization_function = 2.0
 
         if apodization_function is not None:
             if apodization_function not in self._APODIZATION_FUNCTIONS:
-                self._print_error("Unrecognized apodization function. Please try : " + str(self._APODIZATION_FUNCTIONS))
+                try:
+                    apodization_function = float(apodization_function)
+                except ValueError:
+                    self._print_error("Unrecognized apodization function. Please try a float or " + str(self._APODIZATION_FUNCTIONS))
 
         if "fringes" in self.options:
             fringes=self.options['fringes']
@@ -2652,8 +2668,22 @@ class Orbs(Tools):
                            config_file_name=self.config_file_name)
         std_astrom = self._init_astrometry(std_cube, camera_number)
         std_hdr = std_cube.get_frame_header(0) 
-        std_ra, std_dec = self._get_standard_radec(std_name)
-        self._print_msg('Standard star {} RA/DEC: {} {}'.format(std_name, std_ra, std_dec))
+        std_ra, std_dec, std_pm_ra, std_pm_dec = self._get_standard_radec(
+            std_name, return_pm=True)
+        std_yr_obs = float(std_hdr['DATE-OBS'].split('-')[0])
+        pm_orig_yr = 2000 # radec are considered to be J2000
+        # compute ra/dec with proper motion
+        std_ra, std_dec = orb.utils.astrometry.compute_radec_pm(
+            std_ra, std_dec, std_pm_ra, std_pm_dec,
+            std_yr_obs - pm_orig_yr)
+        std_ra_str = '{:.0f}:{:.0f}:{:.3f}'.format(
+            *orb.utils.astrometry.deg2ra(std_ra))
+        std_dec_str = '{:.0f}:{:.0f}:{:.3f}'.format(
+            *orb.utils.astrometry.deg2dec(std_dec))
+        self._print_msg('Standard star {} RA/DEC: {} ({:.3f}) {} ({:.3f}) (corrected for proper motion)'.format(
+            std_name,
+            std_ra_str, std_ra,
+            std_dec_str, std_dec))
         
         # telescope center position is used to register std frame
         std_astrom.target_ra = std_hdr['RA_DEG']
@@ -2723,6 +2753,7 @@ class Orbs(Tools):
             target_y = self.options["target_y"]
         else: target_y = None
 
+        
         # get filter file
         filter_path = self._get_filter_file_path(self.options["filter_name"])
         if filter_path is None:
@@ -2788,6 +2819,7 @@ class Orbs(Tools):
         
         self._print_msg('Calibration laser map used: {}'.format(
             calibration_laser_map_path))
+
 
         # Get flux calibration vector
         (flux_calibration_axis,
@@ -2972,7 +3004,7 @@ class Orbs(Tools):
         if self.target == 'standard':
             optimize_phase = True
             filter_correction = False
-            apodization_function = '2.0'
+            apodization_function = 2.0
         else:
             apodization_function = self.options['apodization_function']
     
@@ -3147,7 +3179,7 @@ class Orbs(Tools):
 
     def export_standard_spectrum(self, camera_number, phase_correction=True,
                                  aperture_photometry=True,
-                                 apodization_function='2.0',
+                                 apodization_function=2.0,
                                  auto_phase=True):
         """Extract spectrum of the standard stars and write it at the
         root of the reduction folder.
@@ -3163,7 +3195,7 @@ class Orbs(Tools):
           the absolute value of the complex spectrum (default True).
     
         :param apodization_function: (Optional) Apodization function to use for
-          spectrum computation (default '2.0').
+          spectrum computation (default 2.0).
 
         :param aperture_photometry: (Optional) If True, star flux is
           computed by aperture photometry. If False, star flux is

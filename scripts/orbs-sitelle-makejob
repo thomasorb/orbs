@@ -52,7 +52,7 @@ def main(args):
     if not args.nice:
         s = """
 WAVENUMBER 1
-WAVE_CALIB 0
+WAVE_CALIB 1
 APOD 1.0
 """
     else:

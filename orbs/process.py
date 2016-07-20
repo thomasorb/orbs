@@ -16,7 +16,7 @@
 ## ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
 ## or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public
 ## License for more details.
-##
+## 
 ## You should have received a copy of the GNU General Public License
 ## along with ORBS.  If not, see <http://www.gnu.org/licenses/>.
 
@@ -1968,7 +1968,7 @@ class CalibrationLaser(HDFCube):
             dimz = column_data.shape[1]
             BORDER = int(0.3 * dimz) + 1
             max_array_column = np.empty((dimy), dtype=float)
-            fitparams_column = np.empty((dimy, 8), dtype=float)
+            fitparams_column = np.empty((dimy, 10), dtype=float)
                         
             # FFT of the interferogram
             column_spectrum = orb.utils.fft.cube_raw_fft(column_data, apod=None)
@@ -2024,7 +2024,7 @@ class CalibrationLaser(HDFCube):
                             + list(fitp['lines-params-err'][0]))
                     else:
                         fitparams_column.fill(np.nan)
-                        fitparams_column[ij,:4] = fitp['lines-params'][0]
+                        fitparams_column[ij,:5] = fitp['lines-params'][0]
                 else:
                     max_array_column[ij] = np.nan
                     fitparams_column[ij,:].fill(np.nan)
@@ -2047,14 +2047,13 @@ class CalibrationLaser(HDFCube):
         order = float(order)
         step = float(step)
 
-
         # create the fft axis in cm1
         cm1_axis_min = orb.cutils.get_cm1_axis_min(self.dimz, step, order)
         cm1_axis_step = orb.cutils.get_cm1_axis_step(self.dimz, step)
     
         # guess fwhm
         fwhm_guess = orb.utils.spectrum.compute_line_fwhm_pix(
-            self.dimz/2)
+            oversampling_ratio=2.)
         fwhm_guess_cm1 = orb.utils.spectrum.compute_line_fwhm(
             self.dimz/2, step, order, wavenumber=True)
         
@@ -2068,7 +2067,7 @@ class CalibrationLaser(HDFCube):
             self.QUAD_NB,
             reset=True)
 
-        fitparams = np.empty((self.dimx, self.dimy, 8), dtype=float)
+        fitparams = np.empty((self.dimx, self.dimy, 10), dtype=float)
         max_array = np.empty((self.dimx, self.dimy), dtype=float)
         
         for iquad in range(0, self.QUAD_NB):
@@ -2810,8 +2809,6 @@ class Interferogram(HDFCube):
 
         if not wave_calibration:
             self._print_warning('No wavelength/wavenumber calibration')
-      
-        axis_len = self.dimz
         
         #############################
         ## Note: variable names are all "spectrum" related even if it
@@ -2874,6 +2871,10 @@ class Interferogram(HDFCube):
 
             # zeros are replaced by NANs
             mean_interf[np.nonzero(mean_interf == 0)] = np.nan
+            # self.write_fits('mean_interf.fits', mean_interf, overwrite=True)
+            # self.write_fits('mean_phase.fits', mean_phase_vector, overwrite=True)            
+            # print mean_calib
+            # quit()
             
             # transform interferogram and check polarity
             mean_spectrum = orb.utils.fft.transform_interferogram(
@@ -2920,13 +2921,13 @@ class Interferogram(HDFCube):
             filter_max = None
 
         if not wavenumber:
-            axis = orb.utils.spectrum.create_nm_axis(axis_len, step, order)
+            axis = orb.utils.spectrum.create_nm_axis(self.dimz, step, order)
         else:
-            axis = orb.utils.spectrum.create_cm1_axis(axis_len, step, order)
+            axis = orb.utils.spectrum.create_cm1_axis(self.dimz, step, order)
 
         out_cube = OutHDFQuadCube(
             self._get_spectrum_cube_path(phase=phase_cube),
-            (self.dimx, self.dimy, axis_len),
+            (self.dimx, self.dimy, self.dimz),
             self.QUAD_NB,
             overwrite=self.overwrite)
 
@@ -2974,8 +2975,8 @@ class Interferogram(HDFCube):
                 for ijob, job in jobs:
                     # spectrum comes in place of the interferograms
                     # to avoid using too much memory
-                    iquad_data[ii+ijob,:,0:axis_len] = job()
-
+                    iquad_data[ii+ijob,:,:] = job()
+                
                 progress.update(ii, info="Quad %d/%d column : %d"%(
                         iquad+1L, self.QUAD_NB, ii))
             self._close_pp_server(job_server)
@@ -4413,19 +4414,19 @@ class InterferogramMerger(Tools):
             star_list_path=star_list_path, readout_noise=readout_noise_1,
             dark_current_level=dark_current_level_1,
             tuning_parameters=self._tuning_parameters,
-            config_file_name=self.config_file_name).fit_stars_in_frame(
+            config_file_name=self.config_file_name,
+            ncpus=self.ncpus).fit_stars_in_frame(
             0, precise_guess=True, local_background=local_background,
-            fix_fwhm=fix_fwhm, fix_height=False, save=False,
-            ncpus=self.ncpus)
+            fix_fwhm=fix_fwhm, fix_height=False, save=False)
         mean_params_B = Astrometry(
             frameB, fwhm_arc, fov, profile_name=profile_name,
             star_list_path=star_list_path, readout_noise=readout_noise_2,
             dark_current_level=dark_current_level_2,
             tuning_parameters=self._tuning_parameters,
-            config_file_name=self.config_file_name).fit_stars_in_frame(
+            config_file_name=self.config_file_name,
+            ncpus=self.ncpus).fit_stars_in_frame(
             0, precise_guess=True, local_background=local_background,
-            fix_fwhm=fix_fwhm, fix_height=False, save=False,
-            ncpus=self.ncpus)
+            fix_fwhm=fix_fwhm, fix_height=False, save=False)
 
         star_list_A = mean_params_A.get_star_list()
         star_list_B = mean_params_A.get_star_list()
@@ -5422,12 +5423,19 @@ class Spectrum(HDFCube):
                                        calibration_laser_col, nm_laser,
                                        step, order, wavenumber,
                                        spectral_calibration,
-                                       base_axis_correction_coeff):
+                                       base_axis_correction_coeff,
+                                       output_sz_coeff):
             """
             
             """
+            INTERP_POWER = 30 * output_sz_coeff
             ZP_LENGTH = orb.utils.fft.next_power_of_two(
-                spectrum_col.shape[1] * 10)
+                spectrum_col.shape[1] * INTERP_POWER)
+
+            result_col = np.empty((spectrum_col.shape[0],
+                                   spectrum_col.shape[1]
+                                   * output_sz_coeff))
+            result_col.fill(np.nan)
 
             # converting to flux (ADU/s)
             spectrum_col /= exposure_time * spectrum_col.shape[1]
@@ -5439,11 +5447,11 @@ class Spectrum(HDFCube):
 
             if wavenumber:
                 axis_base = orb.utils.spectrum.create_cm1_axis(
-                    spectrum_col.shape[1], step, order,
+                    spectrum_col.shape[1] * output_sz_coeff, step, order,
                     corr=base_axis_correction_coeff).astype(float)
             else:
                 axis_base = orb.utils.spectrum.create_nm_axis(
-                    spectrum_col.shape[1], step, order,
+                    spectrum_col.shape[1] * output_sz_coeff, step, order,
                     corr=base_axis_correction_coeff).astype(float)
 
             for icol in range(spectrum_col.shape[0]):
@@ -5451,7 +5459,7 @@ class Spectrum(HDFCube):
                 # pure fft interpolation of the input spectrum
                 # (i.e. perfect interpolation as long as the imaginary
                 # part is given)
-                if spectral_calibration or not wavenumber:
+                if (spectral_calibration or not wavenumber) or output_sz_coeff != 1:
                     #spectrum_col[np.isnan(spectrum_col)] = 0.
                     interf_complex = np.fft.ifft(spectrum_col[icol,:])
                     zp_interf = np.zeros(ZP_LENGTH, dtype=complex)
@@ -5510,14 +5518,14 @@ class Spectrum(HDFCube):
                 # spectrum projection onto its output axis (if output
                 # in nm or calibrated)
                 if spectral_calibration or not wavenumber:
-                    spectrum_col[icol,:] = (
+                    result_col[icol,:] = (
                         orb.utils.vector.interpolate_axis(
                             spectrum_highres, axis_base, 1,
                             old_axis=axis_corr))
                 else:
-                    spectrum_col[icol,:] = spectrum_highres
+                    result_col[icol,:] = spectrum_highres
 
-            return spectrum_col.real
+            return result_col.real
 
         
         def get_mean_scale_map(ref_scale_map, spectrum_scale_map):
@@ -5538,6 +5546,9 @@ class Spectrum(HDFCube):
                     orb.utils.stats.robust_std(orb.utils.stats.sigmacut(
                         ref_scale_map_box
                         / spectrum_scale_map_box, sigma=2.5)))
+
+
+        OUTPUT_SZ_COEFF = 1
 
         if filter_correction:
             self._print_error("Filter correction is not stable please don't use it")
@@ -5697,17 +5708,23 @@ class Spectrum(HDFCube):
    
         out_cube = OutHDFQuadCube(
             self._get_calibrated_spectrum_cube_path(),
-            (self.dimx, self.dimy, self.dimz),
+            (self.dimx, self.dimy, self.dimz * OUTPUT_SZ_COEFF),
             self.QUAD_NB,
             reset=True)
+
         
         # Init of the multiprocessing server    
         for iquad in range(0, self.QUAD_NB):
             (x_min, x_max, 
              y_min, y_max) = self.get_quadrant_dims(iquad)
-            iquad_data = self.get_data(x_min, x_max, 
-                                       y_min, y_max, 
-                                       0, self.dimz)
+            
+            iquad_data = np.empty((x_max - x_min,
+                                   y_max - y_min,
+                                   self.dimz * OUTPUT_SZ_COEFF),
+                                  dtype=float)
+            iquad_data[:,:,:self.dimz] = self.get_data(x_min, x_max, 
+                                                       y_min, y_max, 
+                                                       0, self.dimz)
             iquad_calibration_laser_map = calibration_laser_map[
                 x_min:x_max, y_min:y_max]
             job_server, ncpus = self._init_pp_server()
@@ -5726,7 +5743,7 @@ class Spectrum(HDFCube):
                 jobs = [(ijob, job_server.submit(
                     _calibrate_spectrum_column, 
                     args=(
-                        iquad_data[ii+ijob,:,:], 
+                        iquad_data[ii+ijob,:,:self.dimz], 
                         filter_function,
                         filter_min, filter_max,
                         flux_calibration_function,
@@ -5734,7 +5751,8 @@ class Spectrum(HDFCube):
                         iquad_calibration_laser_map[ii+ijob,:],
                         nm_laser, step, order, wavenumber,
                         spectral_calibration,
-                        base_axis_correction_coeff),
+                        base_axis_correction_coeff,
+                        OUTPUT_SZ_COEFF),
                     modules=("import numpy as np",
                              "import orb.utils.spectrum",
                              "import orb.utils.vector",
@@ -5897,6 +5915,8 @@ class Spectrum(HDFCube):
         
         BOX_SIZE = int(8 * fwhm_pix) + 1
         STEP_NB = 500
+        ERROR_FLUX_COEFF = 1.5
+        ERROR_STD_DIFF_COEFF = 1.15
         
         self._print_msg('Computing flux calibration coeff', color=True)
         self._print_msg('Standard Name: %s'%std_name) 
@@ -5973,7 +5993,7 @@ class Spectrum(HDFCube):
         # find star around std_x2, std_y2:
         std_x2, std_y2 =_get_std_position(
             master_im2, BOX_SIZE, std_x2, std_y2)
-
+    
         # photometry
         std_flux1, std_flux_err1 = _get_photometry(
             master_im1, std_x1, std_y1, fwhm_pix, std_exp_time)
@@ -5987,6 +6007,16 @@ class Spectrum(HDFCube):
             std_flux1 / std_sim_flux))
         self._print_msg('Ratio of real flux/ simulated flux for camera 2: {}'.format(
             std_flux2 / std_sim_flux))
+
+
+        if (max(std_flux1, std_sim_flux)
+            / min(std_flux1, std_sim_flux) > ERROR_FLUX_COEFF
+            or max(std_flux2, std_sim_flux)
+            / min(std_flux2, std_sim_flux) > ERROR_FLUX_COEFF):
+            self._print_error('Measured flux is too low compared to simulated flux. There must be a problem. Check standard image files.')
+        if (max(std_flux1, std_flux2)
+            / min(std_flux1, std_flux2)) > ERROR_STD_DIFF_COEFF:
+            self._print_error('Difference between measured flux of both standards is too high')
         
         coeff = std_th_flux / (std_flux1 + std_flux2) # erg/cm2/ADU
         
@@ -6642,8 +6672,8 @@ class PhaseMaps(Tools):
         phase_map = self.phase_maps[0]
         
         def unwrap(val, target):
-            while abs(val - target) >= math.pi / 2.:
-                if val  - target >= 0. :
+            while abs(val - target) > math.pi / 2.:
+                if val  - target > 0. :
                     val -= math.pi
                 else:
                     val += math.pi

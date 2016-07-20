@@ -1292,3 +1292,14 @@ Problems
 * Filter correction question has still not been adressed. Spectral
   cube are not filter corrected. Filters curves are not good enough to
   permit a good correction.
+
+v4.1
+====
+
+* Apodization changed for a gaussian apodization (Norton-Beer
+  apodization function are not used anymore).
+
+* Standard star position computation takes into account proper motion.
+
+* --nocheck option added to **orbs** script to avoid checking raw data
+  files when the raw data cubes have already been built.

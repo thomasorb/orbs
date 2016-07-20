@@ -157,7 +157,7 @@ def init_orbs(args, target, cams, silent=False, fast_init=False):
     # load option file and init Orbs class
     return Orbs(args.option_file_path, target, cams, overwrite=True,
                 config_file_name=get_config_file_name(args), silent=silent,
-                fast_init=fast_init, ncpus=args.ncpus)
+                fast_init=fast_init, ncpus=args.ncpus, raw_data_files_check=not args.nocheck)
 
 def status(args):
     # log in record file
@@ -459,7 +459,7 @@ def add_all_operations(instrument_parser, epilog, epilog_steps):
                               dest='apodization_function',
                               action='store',
                               default=None,
-                              help="Apodization function. Can be one of the extended Norton-Beer functions (Naylor & Tahic 2007) : enter one of following coefficients : 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0. The coefficient 1.0 stands for NO apodization (default is 2.0).")
+                              help="Apodization function. Can be a float > 1. The coefficient 1.0 stands for NO apodization (default is 1.0).")
 
     group_special = parser_start.add_argument_group('Special arguments', 'Arguments less often used.')
 
@@ -477,6 +477,13 @@ def add_all_operations(instrument_parser, epilog, epilog_steps):
                                action='store_true',
                                default=False,
                                help='Save the resulting spectral cube in quadrants to avoid the manipulation of a large data set. A quadrant can be seen as an independent cubes of smaller field of view.')
+
+    group_special.add_argument('--nocheck', dest='nocheck',
+                               action='store_true',
+                               default=False,
+                               help='If raw data cubes have already been built original data files are not checked again.')
+
+
 
 
     group_spiomm = parser_start.add_argument_group('SpIOMM specific options', '')

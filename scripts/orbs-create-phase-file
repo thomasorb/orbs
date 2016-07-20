@@ -168,7 +168,7 @@ def main(args):
     final_phase = final_phasef(np.arange(final_phase.shape[0]))
 
     # remove order 1 polynomial
-    order1_poly = orb.utils.vector.polyfit1d(final_phase, 1,w=w)
+    order1_poly = orb.utils.vector.polyfit1d(final_phase, 1, w=w)
     final_phase -= order1_poly
     final_phase_old -= order1_poly
 
@@ -254,8 +254,6 @@ if __name__ == "__main__":
                         action='store_true',
                         default=False,
                         help='Plot final phase vector')
-
-    
 
     args = parser.parse_args()
 
