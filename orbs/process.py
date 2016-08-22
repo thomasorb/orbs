@@ -3031,7 +3031,7 @@ class Interferogram(HDFCube):
           computed from the median interferogram vector (default None).
 
         :param binning: (Optional) Binning factor of the cube to
-          acclerate the phase map computation (default 4).
+          accelerate the phase map computation (default 4).
 
         :param filter_file_path: (Optional) Filter file path (default
           None). Must be set if calibration_laser_map_path is set.
@@ -3060,7 +3060,8 @@ class Interferogram(HDFCube):
             warnings.simplefilter('ignore', RuntimeWarning)
 
             phase_col = np.empty_like(cube_col)
-            fit_coeffs_col = np.empty((cube_col.shape[0], fit_order+1), dtype=float)
+            fit_coeffs_col = np.empty((cube_col.shape[0], fit_order+1),
+                                      dtype=float)
             fit_res_col = np.empty(cube_col.shape[0], dtype=float)
             fit_coeffs_col.fill(np.nan)
             fit_res_col.fill(np.nan)
@@ -3210,17 +3211,7 @@ class Interferogram(HDFCube):
 
         if calibration_laser_map_path is not None and nm_laser is None:
             self._print_error('calibration_laser_map_path and nm_laser must be set together')
-
-        if calibration_laser_map_path is not None:
-            # Loading calibration laser map
-            self._print_msg("loading calibration laser map")
-            calibration_laser_map = self.read_fits(calibration_laser_map_path)
-            if (calibration_laser_map.shape[0] != self.dimx):
-                calibration_laser_map = orb.utils.image.interpolate_map(
-                    calibration_laser_map, self.dimx, self.dimy)
-        else: calibration_laser_map = np.ones((self.dimx, self.dimy), dtype=float)
             
-
         if filter_file_path is not None:
             filter_params = orb.utils.filters.read_filter_file(filter_file_path)
             filter_max_cm1 = orb.utils.spectrum.nm2cm1(filter_params[2])
@@ -3232,51 +3223,19 @@ class Interferogram(HDFCube):
             zpd_shift = orb.utils.fft.find_zpd(
                 median_interf, return_zpd_shift=True)
         
-        # binning interferogram cube
-        if binning > 1:
-            self._print_msg('Binning interferogram cube')
-            image0_bin = orb.utils.image.nanbin_image(
-                self.get_data_frame(0), binning)
-            
-            cube_bin = np.empty((image0_bin.shape[0],
-                                 image0_bin.shape[1],
-                                 self.dimz), dtype=float)
-            cube_bin.fill(np.nan)
-            cube_bin[:,:,0] = image0_bin
-            progress = ProgressBar(self.dimz-1)
-            for ik in range(1, self.dimz):
-                progress.update(ik, info='Binning cube')
-                cube_bin[:,:,ik] = orb.utils.image.nanbin_image(
-                    self.get_data_frame(ik), binning)
-            progress.end()
-          
-            calibration_laser_map = orb.utils.image.nanbin_image(
-                calibration_laser_map, binning)
-        else:
-            cube_bin = self
-            self._silent_load = True
-
-        # write binned interferogram cube
-        self.write_fits(self._get_binned_interferogram_cube_path(),
-                        cube_bin, overwrite=True)
+        # binning interferogram cube and calibration laser map
+        self.create_binned_interferogram_cube(binning)
+        cube_bin = self.read_fits(self._get_binned_interferogram_cube_path())
         
-        if self.indexer is not None:
-            self.indexer['binned_interferogram_cube'] = (
-                self._get_binned_interferogram_cube_path())
-
-        # write binned calib map
-        self.write_fits(self._get_binned_calibration_laser_map_path(),
-                        calibration_laser_map,
-                        overwrite=self.overwrite)
-        
-        if self.indexer is not None:
-            self.indexer['binned_calibration_laser_map'] = (
+        if calibration_laser_map_path is not None:
+            self.create_binned_calibration_laser_map(
+                binning, calibration_laser_map_path)
+            calibration_laser_map = self.read_fits(
                 self._get_binned_calibration_laser_map_path())
-
-        
-        ## calibration_laser_map = self.read_fits(self._get_binned_calibration_laser_map_path())
-        ## cube_bin = self.read_fits(self._get_binned_interferogram_cube_path())
-        
+        else:
+            calibration_laser_map = np.ones((cube_bin.shape[0],
+                                             cube_bin.shape[1]), dtype=float)
+          
         # compute orders > 0
         phase_cube = np.empty_like(cube_bin)
         fit_coeffs_map = np.empty((cube_bin.shape[0],
@@ -3409,8 +3368,237 @@ class Interferogram(HDFCube):
         if self.indexer is not None:
             self.indexer['phase_map_0_residual'] = (
                 self._get_phase_map_path(0, res=True))
+
+    def create_binned_calibration_laser_map(self, binning, calibration_laser_map_path):
+        """Create a binned calibration laser map
+
+        :param binning: Binning
+        :param calibration_laser_map_path: Calibration laser map path
+        """
+        # Loading calibration laser map
+        self._print_msg("loading calibration laser map")
+        calibration_laser_map = self.read_fits(calibration_laser_map_path)
+        if (calibration_laser_map.shape[0] != self.dimx):
+            calibration_laser_map = orb.utils.image.interpolate_map(
+                calibration_laser_map, self.dimx, self.dimy)
             
+        if binning > 1:
+            calibration_laser_map = orb.utils.image.nanbin_image(
+                calibration_laser_map, binning)
+        
+        # write binned calib map
+        self.write_fits(self._get_binned_calibration_laser_map_path(),
+                        calibration_laser_map,
+                        overwrite=self.overwrite)
+        
+        if self.indexer is not None:
+            self.indexer['binned_calibration_laser_map'] = (
+                self._get_binned_calibration_laser_map_path())
+
+    def create_binned_interferogram_cube(self, binning):
+        """Create a binned interferogram cube
+
+        :param binning: Binning
+        """
+        if binning > 1:
+            self._print_msg('Binning interferogram cube')
+            image0_bin = orb.utils.image.nanbin_image(
+                self.get_data_frame(0), binning)
+            
+            cube_bin = np.empty((image0_bin.shape[0],
+                                 image0_bin.shape[1],
+                                 self.dimz), dtype=float)
+            cube_bin.fill(np.nan)
+            cube_bin[:,:,0] = image0_bin
+            progress = ProgressBar(self.dimz-1)
+            for ik in range(1, self.dimz):
+                progress.update(ik, info='Binning cube')
+                cube_bin[:,:,ik] = orb.utils.image.nanbin_image(
+                    self.get_data_frame(ik), binning)
+            progress.end()
+          
+            
+        else:
+            cube_bin = self
+            self._silent_load = True
+
+        # write binned interferogram cube
+        self.write_fits(self._get_binned_interferogram_cube_path(),
+                        cube_bin, overwrite=True)
+        
+        if self.indexer is not None:
+            self.indexer['binned_interferogram_cube'] = (
+                self._get_binned_interferogram_cube_path())
+
+
+
+            
+    def create_phase_maps_from_external_source(self, phase_map_order_0_path,
+                                               step, order, zpd_shift,
+                                               filter_file_path,
+                                               phase_file_path,
+                                               calibration_laser_map_path,
+                                               nm_laser, fit_order=1, binning=4):
+        """Create phase maps directly from the interferogram cube.
+
+        Cube is binned before each phase vector is fitted.
+
+        The order 0 map is then computed by minimizing the imaginary
+        part of the spectrum with the order 1 fixed.
+
+        :param phase_map_order_0_path: Path to the zeroth order phase
+          map.
+
+        :param step: Step size in nm.
+        
+        :param order: Folding order.
+        
+        :param zpd_shift: ZPD shift.
+        
+        :param filter_file_path: Filter file path
+
+        :param phase_file_path: Path to a phase file
+
+        :param calibration_laser_map_path: Path to a
+          calibration laser map
+
+        :param nm_laser: Calibration laser wavelength in nm
     
+        :param binning: (Optional) Binning factor of the cube to
+          accelerate the phase map computation (default 4).
+    
+        """
+        def optimize_phase_in_column(cube_col, step, order, zpd_shift,
+                                     phase_map_order_0, column_nb, calib_col, nm_laser,
+                                     filter_min_cm1, filter_max_cm1, high_phase):
+
+            
+            RANGE_BORDER_COEFF = 0.1
+
+            warnings.simplefilter('ignore', RuntimeWarning)
+            order1_col = np.empty(cube_col.shape[0], dtype=float)
+            res_col = np.empty(cube_col.shape[0], dtype=float)
+            order1_col.fill(np.nan)
+            res_col.fill(np.nan)
+            
+            for ij in range(cube_col.shape[0]):
+                if np.all(cube_col[ij,:] == 0):
+                    cube_col[ij,:].fill(np.nan)
+                guess = list()
+                fixed_params = list()
+                
+                guess.append(phase_map_order_0[column_nb,ij])
+                ## guess.append(
+                ##     orb.utils.spectrum.phase_shift_cm1_axis(
+                ##         cube_col.shape[1], step, order,
+                ##         calib_col[ij], nm_laser))
+                fixed_params.append(1)
+                guess.append(0)
+                fixed_params.append(0)
+                    
+                if not np.all(np.isnan(cube_col[ij,:])):
+                    (weights,
+                     filter_range) = orb.utils.filters.compute_weights(
+                        calib_col[ij], nm_laser, cube_col.shape[1],
+                        step, order, RANGE_BORDER_COEFF,
+                        filter_min_cm1, filter_max_cm1)
+                        
+                    result = orb.utils.fft.optimize_phase(
+                        cube_col[ij,:],
+                        step, order, zpd_shift,
+                        calib_col[ij], nm_laser,
+                        guess=guess, return_coeffs=True,
+                        fixed_params=fixed_params,
+                        weights=weights,
+                        high_order_phase=high_phase)
+                    if result is not None:
+                        
+                        order1_col[ij] = result[0][1]
+                        print result[0]
+                        res_col[ij] = result[1]
+                    
+            return order1_col, res_col
+
+
+        # get phase map order 0
+        phase_map_order_0 = self.read_fits(phase_map_order_0_path)
+        phase_map_order_0 = orb.utils.image.nanbin_image(
+                phase_map_order_0, binning)
+        
+        # get filter parameters
+        filter_params = orb.utils.filters.read_filter_file(filter_file_path)
+        filter_max_cm1 = orb.utils.spectrum.nm2cm1(filter_params[2])
+        filter_min_cm1 = orb.utils.spectrum.nm2cm1(filter_params[3])
+
+        # get high phase vector as spline
+        high_phase = orb.utils.fft.read_phase_file(
+            phase_file_path, return_spline=True)
+
+        
+        # binning interferogram cube and calibration laser map
+        self.create_binned_interferogram_cube(binning)
+        self.create_binned_calibration_laser_map(binning, calibration_laser_map_path)
+        
+        calibration_laser_map = self.read_fits(self._get_binned_calibration_laser_map_path())
+        cube_bin = self.read_fits(self._get_binned_interferogram_cube_path())
+
+
+        # computing order 1 map
+        order1_map = np.empty((cube_bin.shape[0],
+                               cube_bin.shape[1]), dtype=float)
+        order1_res_map = np.empty_like(order1_map)
+        order1_map.fill(np.nan)
+        order1_res_map.fill(np.nan)
+
+        job_server, ncpus = self._init_pp_server()
+        progress = ProgressBar(cube_bin.shape[0])
+        for ii in range(0, cube_bin.shape[0], ncpus):
+            progress.update(ii, info='Computing order 1')
+            
+            # no more jobs than frames to compute
+            if (ii + ncpus >= cube_bin.shape[0]):
+                ncpus = cube_bin.shape[0] - ii
+
+            jobs = [(ijob, job_server.submit(
+                optimize_phase_in_column, 
+                args=(cube_bin[ii+ijob,:,:],
+                      step, order, zpd_shift,
+                      phase_map_order_0, ii+ijob,
+                      calibration_laser_map[ii+ijob,:], nm_laser,
+                      filter_min_cm1, filter_max_cm1,
+                      high_phase),
+                modules=("numpy as np", "import orb.utils.fft",
+                         "import warnings", "import orb.utils.filters"))) 
+                    for ijob in range(ncpus)]
+
+            for ijob, job in jobs:
+                (order1_map[ii+ijob,:],
+                 order1_res_map[ii+ijob,:]) = job()
+
+        progress.end()
+        
+        # write phase map order 1
+        self.write_fits(self._get_phase_map_path(1),
+                        order1_map,
+                        fits_header=self._get_phase_map_header(1),
+                        overwrite=self.overwrite)
+        if self.indexer is not None:
+            self.indexer['phase_map_1'] = (
+                self._get_phase_map_path(1))
+
+        # write residual map
+        self.write_fits(self._get_phase_map_path(1, res=True),
+                        order1_res_map,
+                        fits_header=self._get_phase_map_header(1, res=True),
+                        overwrite=self.overwrite)
+        if self.indexer is not None:
+            self.indexer['phase_map_1_residual'] = (
+                self._get_phase_map_path(1, res=True))
+
+
+
+
+
 ##################################################
 #### CLASS InterferogramMerger ###################
 ##################################################
@@ -6170,7 +6358,6 @@ class SourceExtractor(InterferogramMerger):
         """Extract the interferogram of all sources.
         
         """
-
         def _fit_sources_in_frame(frameA, frameB, source_listA, box_size,
                                   profile_name, scale, fwhm_pix, default_beta,
                                   fit_tol, alignment_coeffs, rc, zoom_factor,
@@ -6318,7 +6505,8 @@ class SourceExtractor(InterferogramMerger):
                                filter_correction=True,
                                cube_A_is_balanced=True,
                                zpd_shift=None,
-                               phase_order=None):
+                               phase_order=None,
+                               return_phase=False):
         
         """Compute source spectra
 
@@ -6432,14 +6620,19 @@ class SourceExtractor(InterferogramMerger):
 
             # replace zeros by nans
             interf[np.nonzero(interf == 0)] = np.nan
-    
+
+            if return_phase:
+                phase_correction = False
+                ext_phase = None
+            
             spec = orb.utils.fft.transform_interferogram(
                 interf, nm_laser, nm_laser_obs, step, order,
                 apodization_function, zpd_shift,
                 phase_correction=phase_correction,
                 ext_phase=ext_phase,
                 wavenumber=wavenumber,
-                wave_calibration=False)
+                wave_calibration=False,
+                return_phase=return_phase)
 
             if wavenumber:
                 spec_axis = orb.utils.spectrum.create_cm1_axis(

@@ -153,11 +153,11 @@ def get_config_file_name(args):
 def get_to(args):
     return Tools(config_file_name=get_config_file_name(args))
 
-def init_orbs(args, target, cams, silent=False, fast_init=False):
+def init_orbs(args, target, cams, silent=False, fast_init=False, no_check=False):
     # load option file and init Orbs class
     return Orbs(args.option_file_path, target, cams, overwrite=True,
                 config_file_name=get_config_file_name(args), silent=silent,
-                fast_init=fast_init, ncpus=args.ncpus, raw_data_files_check=not args.nocheck)
+                fast_init=fast_init, ncpus=args.ncpus, raw_data_files_check=not no_check)
 
 def status(args):
     # log in record file
@@ -166,7 +166,7 @@ def status(args):
         print_error('No reduction process started')
     for record in recfile.records:
         project = init_orbs(args, record['target'], record['cams'], silent=True,
-                            fast_init=True)
+                            fast_init=True, no_check=True)
         rm = RoadMap(record['instrument'], record['target'], record['cams'],
                      project.indexer)
         rm.print_status()
@@ -191,7 +191,7 @@ def clean(args):
     recfile = RecordFile(args.option_file_path)
     for record in recfile.records:
         project = init_orbs(args, record['target'], record['cams'], silent=True,
-                            fast_init=True)
+                            fast_init=True, no_check=True)
         rm = RoadMap(record['instrument'], record['target'], record['cams'],
                      project.indexer)
 
@@ -235,8 +235,8 @@ def start(args, resume=False):
     elif args.single2: cams = 'single2'
 
     # special targets are mutually exclusive
-    if np.sum([args.flat, args.standard, args.stars, args.laser, args.raw, args.sources]) > 1:
-        print_error("only one special target (flat, standard, laser, stars, raw, sources) can be choosen")
+    if np.sum([args.flat, args.standard, args.stars, args.laser, args.raw, args.sources, args.extphase]) > 1:
+        print_error("only one special target (flat, standard, laser, stars, raw, sources, extphase) can be choosen")
         sys.exit(2)
     if args.flat: target = 'flat'
     elif args.standard: target = 'standard'
@@ -247,11 +247,13 @@ def start(args, resume=False):
         target = 'raw'
         args.nophase = True
     elif args.sources: target = 'sources'
+    elif args.extphase: target = 'extphase'
+
 
     # check first if reduction can be resumed
     if not resume and args.start_step == 0:
         project_fast_init = init_orbs(
-            args, target, cams, fast_init=True, silent=True)
+            args, target, cams, fast_init=True, silent=True, no_check=True)
 
         if project_fast_init.roadmap.get_resume_step() > 0:
             project_fast_init.roadmap.print_status()
@@ -322,6 +324,11 @@ def start(args, resume=False):
         to._print_msg(
             "Sources extraction process.")
 
+    if args.sources:
+        to._print_msg(
+            "Reduction with external phase map")
+
+
     if args.flat:
         to._print_msg(
             "Only the phase map will be computed. No spectrum computation !", color=True)
@@ -356,7 +363,7 @@ def start(args, resume=False):
     recfile = RecordFile(args.option_file_path)
     recfile.add_record(args.instrument_mode, target, cams)
     
-    project = init_orbs(args, target, cams)
+    project = init_orbs(args, target, cams, no_check=args.nocheck)
 
     if args.init_angle is not None:
         project.set_init_angle(args.init_angle)
@@ -447,6 +454,11 @@ def add_all_operations(instrument_parser, epilog, epilog_steps):
     group_target.add_argument('--sources', dest='sources', action='store_true',
                               default=False,
                               help='Run a sources extraction process. Make sure SOURCE_LIST_PATH is set to a valid source file (X Y coordinates in pixels, one source by line; index of the first pixel is 0, which is different from ds9 indexing).')
+
+    group_target.add_argument('--extphase', dest='extphase', action='store_true',
+                              default=False,
+                              help='Run a reduction with an external phase map (useful for extended HII region covering the whole FOV). PHASEMAP0 keyword must be present in the option file.')
+
 
     parser_start.add_argument('--step',
                               dest='start_step',

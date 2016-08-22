@@ -141,7 +141,7 @@ class Orbs(Tools):
 
     :STDPATH: Path to the standard spectrum file
 
-    :PHAPATH: Path to the external phase map file
+    :PHASEMAP0: Path to the external phase map file
 
     :STDNAME: Name of the standard used for flux calibration
 
@@ -340,7 +340,7 @@ class Orbs(Tools):
           
         * standard_path: STDPATH
         
-        * phase_map_path: PHAPATH
+        * phase_map_path: PHASEMAP0
         
         * fringes: FRINGES
         
@@ -388,7 +388,7 @@ class Orbs(Tools):
     option_file_path = None
     """Path to the option file"""
 
-    targets = ['object', 'flat', 'standard', 'laser', 'nostar', 'raw', 'sources']
+    targets = ['object', 'flat', 'standard', 'laser', 'nostar', 'raw', 'sources', 'extphase']
     """Possible target types"""
     
     target = None
@@ -404,7 +404,7 @@ class Orbs(Tools):
 
         :param target: Target type to reduce. Used to define the
           reduction road map. Target may be 'object', 'flat',
-          'standard', 'laser', 'raw' or 'sources'.
+          'standard', 'laser', 'raw', 'sources' or 'extphase'.
 
         :param cams: Camera number. Can be 'single1', 'single2' or
           'full' for both cameras.
@@ -662,7 +662,7 @@ class Orbs(Tools):
         store_option_parameter('target_x', 'TARGETX', float)
         store_option_parameter('target_y', 'TARGETY', float)
         store_option_parameter('standard_path', 'STDPATH', str)
-        store_option_parameter('phase_map_path', 'PHAPATH', str)
+        store_option_parameter('phase_map_order_0_path', 'PHASEMAP0', str)
         store_option_parameter('star_list_path_1', 'STARLIST1', str)
         store_option_parameter('star_list_path_2', 'STARLIST2', str)
         store_option_parameter('apodization_function', 'APOD', str)
@@ -887,6 +887,8 @@ class Orbs(Tools):
                             self.compute_phase)
         self.roadmap.attach('compute_phase_maps',
                             self.compute_phase_maps)
+        self.roadmap.attach('compute_phase_maps_from_external_source',
+                            self.compute_phase_maps_from_external_source)
         self.roadmap.attach('compute_spectrum',
                             self.compute_spectrum)
         self.roadmap.attach('calibrate_spectrum',
@@ -894,7 +896,7 @@ class Orbs(Tools):
         self.roadmap.attach('extract_source_interferograms',
                             self.extract_source_interferograms)
         self.roadmap.attach('compute_source_spectra',
-                            self.compute_source_spectra)
+                            self.compute_source_spectra)        
         
         
     def _get_calibration_standard_fits_header(self):
@@ -1341,10 +1343,22 @@ class Orbs(Tools):
 
     def _get_source_list(self):
         """Return the list of sources positions (option file keyword
-        SOURCE_LIST_PATH) or the position of the standard target if
-        the target is set to 'standard'
+        SOURCE_LIST_PATH), the position of the standard target if
+        target is set to 'standard', the list of autodetected stars of
+        target is set to 'extphase'.
         """
-        if not self.target == 'standard':
+
+        if self.target == 'standard':
+            source_list = [[self.options['target_x'], self.options['target_y']]]
+            self._print_msg('Standard target position loaded'.format(len(source_list)))
+            
+        elif self.target == 'extphase':
+            cube = self._init_raw_data_cube(1)
+            star_list_path, mean_fwhm_pix = self.detect_stars(
+            cube, 0, return_fwhm_pix=True)
+            source_list = orb.utils.astrometry.load_star_list(star_list_path)
+            
+        else: # standard target
             source_list = list()
             if not 'source_list_path' in self.options:
                 self._print_error('A list of sources must be given (option file keyword SOURCE_LIST_PATH)')
@@ -1354,10 +1368,7 @@ class Orbs(Tools):
                     source_list.append([float(x),float(y)])
             
             self._print_msg('Loaded {} sources to extract'.format(len(source_list)))
-            
-        else: # standard target
-            source_list = [[self.options['target_x'], self.options['target_y']]]
-            self._print_msg('Standard target position loaded'.format(len(source_list)))
+  
             
         return source_list
         
@@ -2293,7 +2304,7 @@ class Orbs(Tools):
 
 
     def _get_calibration_laser_map(self, camera_number):
-        """Return the calibration laser map.
+        """Return calibration laser map path.
 
         :param camera_number: Camera number (can be 1, 2 or 0)
         """
@@ -2490,20 +2501,19 @@ class Orbs(Tools):
     def compute_phase_maps(self, camera_number, fit=True,
                            no_star=False):
         
-        """Create a phase map.
+        """Create phase maps
 
-        The phase map is a map of the zeroth order coefficient of the
-        polynomial fit to the phase. The dimensions of the phase map
-        are the same as the dimensions of the frames of the phase
-        cube.
+        Phase maps are maps of the coefficients of a polynomial fit to
+        the phase. The dimensions of a phase map are the same as the
+        dimensions of the frames of the phase cube.
         
         :param camera_number: Camera number (must be 1, 2 or 0 for
           merged data).
 
-        :param fit: (Optional) If True the computed phase map is
-          fitted to remove noise. Especially useful if the phase map
-          is created from the astronomical data cube itself and not
-          from a flat cube (default True).
+        :param fit: (Optional) If True computed phase maps are fitted
+          to remove noise. Especially useful if phase maps are created
+          from the astronomical data cube itself and not from a flat
+          cube (default True).
 
         :param no_star: (Optional) If True, the cube is considered to
           have been computed without the star dependant processes so
@@ -2641,6 +2651,130 @@ class Orbs(Tools):
         perf_stats = perf.print_stats()
         del perf
         return perf_stats
+
+
+    def compute_phase_maps_from_external_source(self, camera_number):    
+        """Create phase maps from an external source.
+
+        This function is useful to correct for phase of cubes with a
+        low continuum (e.g. extended sources like Galactic HII region
+        covering al the field of view)
+
+        .. warning:: Must be used only if compute_phase_maps is not
+          working well enough. Flux error and phase correction errors
+          will be much higher with this function.
+
+        * Order 0 phase map must come from another cube.
+
+        * Order 1 coefficient is computed from stars in the cube.
+
+        Phase maps are maps of the coefficients of a polynomial fit to
+        the phase. The dimensions of a phase map are the same as the
+        dimensions of the frames of the phase cube.
+        
+        :param camera_number: Camera number (must be 1, 2 or 0 for
+          merged data).
+        
+        .. seealso:: :meth:`process.Phase.create_phase_maps`
+        
+        """
+        if "step" in self.options:
+            step = self.options["step"]
+        else: 
+            self._print_error("No step size given, check the option file")
+            
+        if "order" in self.options:
+            order = self.options["order"]
+        else: 
+            self._print_error("No folding order given, check the option file")
+
+        if 'zpd_shift' in self.options:
+            zpd_shift = self.options['zpd_shift']
+        else:
+            zpd_shift = None
+
+        filter_path = self._get_filter_file_path(self.options["filter_name"])
+        if filter_path is None:
+            self._print_warning("Unknown filter name.")
+            
+        # get calibration laser map path
+        calibration_laser_map_path = self._get_calibration_laser_map(
+            camera_number)
+
+        interfero_cube_path = self._get_interfero_cube_path(
+                camera_number, corrected=True)
+
+        self.indexer.set_file_group(camera_number)
+        cube = Interferogram(interfero_cube_path, silent_init=True,
+                             config_file_name=self.config_file_name,
+                             overwrite=self.overwrite,
+                             tuning_parameters=self.tuning_parameters,
+                             indexer=self.indexer,
+                             project_header = self._get_project_fits_header(
+                                 camera_number),
+                             data_prefix=self._get_data_prefix(camera_number),
+                             calibration_laser_header=self._get_calibration_laser_fits_header(),
+                             ncpus=self.ncpus)
+        
+        perf = Performance(cube, "Phase map creation", camera_number,
+                           config_file_name=self.config_file_name)
+
+        fit_order = self._get_phase_fit_order()
+
+        cube.create_phase_maps_from_external_source(
+            self.options['phase_map_order_0_path'],
+            self.options['step'], self.options['order'],
+            zpd_shift,
+            self._get_filter_file_path(
+                self.options["filter_name"]),
+            self._get_phase_file_path(
+                self.options["filter_name"]),
+            calibration_laser_map_path,
+            self.config["CALIB_NM_LASER"])
+
+
+        # unwrap and fit phase maps
+        
+        # create phase maps lists
+        phase_map_path_list = [self.options['phase_map_order_0_path'],
+                               cube._get_phase_map_path(1)]
+        residual_map_path_list =  [self.options['phase_map_order_0_path'], # hack
+                                   cube._get_phase_map_path(1, res=True)]
+
+        # init PhaseMaps
+        phasemaps = PhaseMaps(
+            phase_map_path_list,
+            residual_map_path_list,
+            cube.dimx, cube.dimy,
+            config_file_name=self.config_file_name,
+            overwrite=self.overwrite,
+            tuning_parameters=self.tuning_parameters,
+            indexer=self.indexer,
+            project_header = self._get_project_fits_header(
+                camera_number),
+            data_prefix=self._get_data_prefix(camera_number),
+            calibration_laser_header=self._get_calibration_laser_fits_header(),
+            ncpus=self.ncpus)
+
+
+        # fit order 1
+        phasemaps.fit_phase_map(1)
+
+        # write imported order 0 map (hack on PhaseMaps class ;)
+        fitted_map_path = phasemaps._get_phase_map_path(
+            0, phase_map_type='fitted')
+        self.write_fits(fitted_map_path,
+                        self.read_fits(self.options['phase_map_order_0_path']),
+                        fits_header= phasemaps._get_phase_map_header(
+                            0, phase_map_type='fitted'),
+                        overwrite=self.overwrite)
+        self.indexer['phase_map_fitted_0'] = fitted_map_path
+            
+        perf_stats = perf.print_stats()
+        del perf
+        return perf_stats
+
+
 
 
     def _find_standard_star(self, camera_number):
@@ -2933,6 +3067,7 @@ class Orbs(Tools):
 
         # Init SourceExtractor class
         self.indexer.set_file_group('merged')
+        
         sex = SourceExtractor(
             interf_cube_path_1, interf_cube_path_2,
             bin_A=bin_cam_1, bin_B=bin_cam_2,
@@ -2973,6 +3108,7 @@ class Orbs(Tools):
         # get source list
         source_list = self._get_source_list()
         
+        self.indexer.set_file_group('merged')
         sex.extract_source_interferograms(
             source_list, self.config["FIELD_OF_VIEW_1"],
             self.indexer['cam1.alignment_vector'],
@@ -2984,28 +3120,51 @@ class Orbs(Tools):
         
         perf.print_stats()
 
+
+    ## def compute_source_phase(self, camera_number):
+    ##     """Compute source phase.
+
+    ##     :param camera_number: Camera number, can be 0, 1 or 2.        
+    ##     """
+    ##     return self.compute_source_spectra(camera_number, return_phase=True,
+    ##                                        apodization_function=2.0)
+
+
     def compute_source_spectra(self, camera_number,
                                phase_correction=True,
                                filter_correction=True,
-                               optimize_phase=False):
+                               optimize_phase=False,
+                               return_phase=False,
+                               apodization_function=None):
         """Compute source spectra
 
+        :param camera_number: Camera number, can be 0, 1 or 2.
+    
+        :param phase_correction: (Optional) If True, phase correction
+          is done (default True).
         
         :param filter_correction: (Optional) If True, spectral cube
           will be corrected for filter (default True).
 
+        :param optimize_phase: (Optional) If True phase is computed
+          for each source independantly (default False).
 
+        :param return_phase: (Optional) Instead of returning spectra,
+          phase is returned (default False).
+
+        :param apodization_function: (Optional) Apodization function
+          (default None).
+        
         .. warning:: by definition no spectral calibration is
-          made. The real axis of eaxh spectrum is given in the output
+          made. The real axis of each spectrum is given in the output
           file.
         """
-
         # Force some options for standard star
         if self.target == 'standard':
             optimize_phase = True
             filter_correction = False
             apodization_function = 2.0
-        else:
+        elif apodization_function is None:
             apodization_function = self.options['apodization_function']
     
         # get source list
@@ -3075,7 +3234,8 @@ class Orbs(Tools):
             cube_A_is_balanced = self._is_balanced(1),
             phase_correction=phase_correction,
             zpd_shift=zpd_shift,
-            phase_order=self._get_phase_fit_order())
+            phase_order=self._get_phase_fit_order(),
+            return_phase=return_phase)
 
 
     def export_calibration_laser_map(self, camera_number):
@@ -3173,9 +3333,14 @@ class Orbs(Tools):
         spectrum_path = self._get_calibrated_spectrum_cube_path(
             camera_number, apod, wavenumber=wavenumber,
             spectral_calibration=self.options['spectral_calibration'])
+
+        # get calibration laser map
+        calibration_laser_map_path = self._get_calibration_laser_map(
+            camera_number)
         
         spectrum.export(spectrum_path, header=spectrum_header,
-                        overwrite=self.overwrite, force_hdf5=True)
+                        overwrite=self.overwrite, force_hdf5=True,
+                        calibration_laser_map_path=calibration_laser_map_path)
 
     def export_standard_spectrum(self, camera_number, phase_correction=True,
                                  aperture_photometry=True,

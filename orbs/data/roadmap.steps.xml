@@ -45,6 +45,10 @@
     <outfile name='phase_map_0'></outfile>
   </step>
 
+  <step name="compute_phase_maps_from_external_source">
+    <outfile name='phase_map_0'></outfile>
+  </step>
+
   <step name="compute_spectrum">
     <outfile name='spectrum_cube'></outfile>
   </step>
@@ -58,6 +62,10 @@
   </step>
 
   <step name="compute_source_spectra">
+    <outfile name='extracted_source_spectra'></outfile>
+  </step>
+
+  <step name="compute_source_phase">
     <outfile name='extracted_source_spectra'></outfile>
   </step>
 
