@@ -1538,7 +1538,7 @@ class Orbs(Tools):
             else: cam = 0
         
         if (self.target == 'object' or self.target == 'nostar'
-            or self.target == 'raw'):
+            or self.target == 'raw' or self.target == 'extphase'):
             self.export_calibrated_spectrum_cube(cam)
         if self.target == 'flat': self.export_flat_phase_map(cam)
         if self.target == 'laser': self.export_calibration_laser_map(cam)
@@ -2571,7 +2571,7 @@ class Orbs(Tools):
                            config_file_name=self.config_file_name)
 
         if self.config["INSTRUMENT_NAME"] == 'SITELLE':
-            binning = 6
+            binning = 20
             div_nb = 1
             if calibration_laser_map_path is None:
                 self._print_error('Calibration laser map path must be set fot a SITELLE phase map fit')
@@ -2676,8 +2676,14 @@ class Orbs(Tools):
           merged data).
         
         .. seealso:: :meth:`process.Phase.create_phase_maps`
-        
+
+        .. warning:: This function cannot be used with SpIOMM
         """
+        BINNING = 10
+        
+        if self.config['INSTRUMENT_NAME'] == 'SpIOMM':
+            self._print_error('This function cannot be used with SpIOMM')
+        
         if "step" in self.options:
             step = self.options["step"]
         else: 
@@ -2705,16 +2711,17 @@ class Orbs(Tools):
                 camera_number, corrected=True)
 
         self.indexer.set_file_group(camera_number)
-        cube = Interferogram(interfero_cube_path, silent_init=True,
-                             config_file_name=self.config_file_name,
-                             overwrite=self.overwrite,
-                             tuning_parameters=self.tuning_parameters,
-                             indexer=self.indexer,
-                             project_header = self._get_project_fits_header(
-                                 camera_number),
+        cube = Interferogram(
+            interfero_cube_path, silent_init=True,
+            config_file_name=self.config_file_name,
+            overwrite=self.overwrite,
+            tuning_parameters=self.tuning_parameters,
+            indexer=self.indexer,
+            project_header = self._get_project_fits_header(
+                camera_number),
                              data_prefix=self._get_data_prefix(camera_number),
-                             calibration_laser_header=self._get_calibration_laser_fits_header(),
-                             ncpus=self.ncpus)
+            calibration_laser_header=self._get_calibration_laser_fits_header(),
+            ncpus=self.ncpus)
         
         perf = Performance(cube, "Phase map creation", camera_number,
                            config_file_name=self.config_file_name)
@@ -2730,18 +2737,20 @@ class Orbs(Tools):
             self._get_phase_file_path(
                 self.options["filter_name"]),
             calibration_laser_map_path,
-            self.config["CALIB_NM_LASER"])
+            self.config["CALIB_NM_LASER"],
+            binning=BINNING)
 
 
         # unwrap and fit phase maps
         
         # create phase maps lists
-        phase_map_path_list = [self.options['phase_map_order_0_path'],
+        phase_map_path_list = [cube._get_phase_map_path(0),
                                cube._get_phase_map_path(1)]
-        residual_map_path_list =  [self.options['phase_map_order_0_path'], # hack
-                                   cube._get_phase_map_path(1, res=True)]
+        residual_map_path_list =  [self.options['phase_map_order_0_path'],#Hack
+                                   self.options['phase_map_order_0_path']]#Hack
 
-        # init PhaseMaps
+        # init PhaseMaps (only used to get the right path to write
+        # phase maps)
         phasemaps = PhaseMaps(
             phase_map_path_list,
             residual_map_path_list,
@@ -2757,19 +2766,30 @@ class Orbs(Tools):
             ncpus=self.ncpus)
 
 
-        # fit order 1
-        phasemaps.fit_phase_map(1)
-
-        # write imported order 0 map (hack on PhaseMaps class ;)
+        # unbin phase maps
+        pm0_unbin = orb.cutils.unbin_image(
+            self.read_fits(phase_map_path_list[0]), cube.dimx, cube.dimy)
+        pm1_unbin = orb.cutils.unbin_image(
+            self.read_fits(phase_map_path_list[1]), cube.dimx, cube.dimy)
+           
+        # write unbinned phase maps (hack on PhaseMaps class ;)
         fitted_map_path = phasemaps._get_phase_map_path(
             0, phase_map_type='fitted')
-        self.write_fits(fitted_map_path,
-                        self.read_fits(self.options['phase_map_order_0_path']),
+        self.write_fits(fitted_map_path, pm0_unbin,
                         fits_header= phasemaps._get_phase_map_header(
                             0, phase_map_type='fitted'),
                         overwrite=self.overwrite)
         self.indexer['phase_map_fitted_0'] = fitted_map_path
-            
+                
+
+        fitted_map_path = phasemaps._get_phase_map_path(
+            1, phase_map_type='fitted')
+        self.write_fits(fitted_map_path, pm1_unbin,
+                        fits_header= phasemaps._get_phase_map_header(
+                            1, phase_map_type='fitted'),
+                        overwrite=self.overwrite)
+        self.indexer['phase_map_fitted_1'] = fitted_map_path
+
         perf_stats = perf.print_stats()
         del perf
         return perf_stats
