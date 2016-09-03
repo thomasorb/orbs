@@ -663,6 +663,7 @@ class Orbs(Tools):
         store_option_parameter('target_y', 'TARGETY', float)
         store_option_parameter('standard_path', 'STDPATH', str)
         store_option_parameter('phase_map_order_0_path', 'PHASEMAP0', str)
+        store_option_parameter('phase_map_order_1_path', 'PHASEMAP1', str)
         store_option_parameter('star_list_path_1', 'STARLIST1', str)
         store_option_parameter('star_list_path_2', 'STARLIST2', str)
         store_option_parameter('apodization_function', 'APOD', str)
@@ -1071,14 +1072,16 @@ class Orbs(Tools):
         return ('.' + os.sep + self.options['object_name']
                 + '_' +  self.options['filter_name'] + '.' + cam + '.')
 
-    def _get_flat_phase_map_path(self, camera_number):
+    def _get_flat_phase_map_path(self, camera_number, order):
         """Return path to the order 0 phase map from a flat cube.
         
         :param camera_number: Camera number (must be 1, 2 or 0 for
           merged data).
+
+        :param order: Phase map order
         """
         return (self._get_root_data_path_hdr(camera_number)
-                + 'flat_phase_map.fits')
+                + 'flat_phase_map.order{}.fits'.format(order))
 
     def _get_calibration_laser_map_path(self, camera_number):
         """Return path to the calibration laser map from a flat cube.
@@ -2571,7 +2574,7 @@ class Orbs(Tools):
                            config_file_name=self.config_file_name)
 
         if self.config["INSTRUMENT_NAME"] == 'SITELLE':
-            binning = 20
+            binning = 6
             div_nb = 1
             if calibration_laser_map_path is None:
                 self._print_error('Calibration laser map path must be set fot a SITELLE phase map fit')
@@ -2620,7 +2623,6 @@ class Orbs(Tools):
             data_prefix=self._get_data_prefix(camera_number),
             calibration_laser_header=self._get_calibration_laser_fits_header(),
             ncpus=self.ncpus)
-
 
         # fit order 1
         if fit_order > 0:
@@ -2679,7 +2681,7 @@ class Orbs(Tools):
 
         .. warning:: This function cannot be used with SpIOMM
         """
-        BINNING = 10
+        BINNING = 20
         
         if self.config['INSTRUMENT_NAME'] == 'SpIOMM':
             self._print_error('This function cannot be used with SpIOMM')
@@ -2730,6 +2732,7 @@ class Orbs(Tools):
 
         cube.create_phase_maps_from_external_source(
             self.options['phase_map_order_0_path'],
+            self.options['phase_map_order_1_path'],
             self.options['step'], self.options['order'],
             zpd_shift,
             self._get_filter_file_path(
@@ -2739,7 +2742,6 @@ class Orbs(Tools):
             calibration_laser_map_path,
             self.config["CALIB_NM_LASER"],
             binning=BINNING)
-
 
         # unwrap and fit phase maps
         
@@ -2765,7 +2767,6 @@ class Orbs(Tools):
             calibration_laser_header=self._get_calibration_laser_fits_header(),
             ncpus=self.ncpus)
 
-
         # unbin phase maps
         pm0_unbin = orb.cutils.unbin_image(
             self.read_fits(phase_map_path_list[0]), cube.dimx, cube.dimy)
@@ -2781,7 +2782,6 @@ class Orbs(Tools):
                         overwrite=self.overwrite)
         self.indexer['phase_map_fitted_0'] = fitted_map_path
                 
-
         fitted_map_path = phasemaps._get_phase_map_path(
             1, phase_map_type='fitted')
         self.write_fits(fitted_map_path, pm1_unbin,
@@ -2978,7 +2978,7 @@ class Orbs(Tools):
         # Get flux calibration vector
         (flux_calibration_axis,
          flux_calibration_vector) = (None, None)
-        
+
         if ('standard_path' in self.options
             and filter_path is not None):
             std_path = self.options['standard_path']
@@ -3284,13 +3284,37 @@ class Orbs(Tools):
         :param camera_number: Camera number (must be 1, 2 or 0 for
           merged data).
         """
-        self._print_msg('Writing flat phase map to disk', color=True)
-        phase_map_path = self.indexer.get_path('phase_map_0', camera_number)
+        self._print_msg('Writing flat phase maps to disk', color=True)
+        phase_map_path = self.indexer.get_path(
+            'phase_map_unwraped_0', camera_number)
         phase_map_data, phase_map_hdr = self.read_fits(phase_map_path,
                                                        return_header=True)
-        self.write_fits(self._get_flat_phase_map_path(camera_number),
+        self.write_fits(self._get_flat_phase_map_path(camera_number, 0),
                         phase_map_data, fits_header=phase_map_hdr,
                         overwrite=self.overwrite)
+
+        # exported order 1 map is multiplied by the number of steps to
+        # make it more "portable"
+        phase_map_path = self.indexer.get_path(
+            'phase_map_unbinned_1', camera_number)
+        phase_map_data, phase_map_hdr = self.read_fits(
+            phase_map_path, return_header=True)
+        step_nb = self._init_raw_data_cube(camera_number).dimz
+        phase_map_data *= step_nb
+        self.write_fits(self._get_flat_phase_map_path(camera_number, 1),
+                        phase_map_data, fits_header=phase_map_hdr,
+                        overwrite=self.overwrite)
+
+        
+        self._print_msg('Writing flat calibration map to disk', color=True)
+        calib_map_path = self.indexer.get_path(
+            'phase_calibration_laser_map', camera_number)
+        calib_map_data, calib_map_hdr = self.read_fits(calib_map_path,
+                                                       return_header=True)
+        self.write_fits(self._get_calibration_laser_map_path(camera_number),
+                        calib_map_data, fits_header=calib_map_hdr,
+                        overwrite=self.overwrite)
+        
         
 
     def export_calibrated_spectrum_cube(self, camera_number):

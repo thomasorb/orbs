@@ -31,9 +31,15 @@ from argparse import ArgumentParser
 import orb.core, orbs.version
 from orb.core import Tools
 import os
-
+import numpy as np
 
 def main(args):
+
+    def filter_path(path):
+        path_ = path.strip().split()
+        path_index = np.argmax(['.fits' in ipath_ for ipath_ in path_] > 0)
+        return path.strip().split()[0]
+    
     def make_files_list(list_file_path):
         files_list = list()
         with open(list_file_path, 'r') as f:
@@ -46,7 +52,8 @@ def main(args):
     to = Tools(no_log=True, config_file_name='config.sitelle.orb')
 
     olist = make_files_list(args.object_path)
-    first_file = to.read_fits(olist[0], return_hdu_only=True)
+    first_file = to.read_fits(
+        filter_path(olist[0]), return_hdu_only=True)
     hdr = first_file[0].header
 
     if not args.nice:
@@ -76,9 +83,34 @@ APOD 1.0
 
         f.write(s)
 
+        if args.source_list_path is not None:
+            if os.path.exists(args.source_list_path):
+                f.write('SOURCE_LIST_PATH {}\n'.format(
+                    args.source_list_path))
+            else:
+                raise Exception('Source list file {} does not exist'.format(
+                    args.source_list_path))
+            
+        if args.standard_spectrum_path is not None:
+            if os.path.exists(args.standard_spectrum_path):
+                f.write('STDPATH {}\n'.format(
+                    args.standard_spectrum_path))
+            else:
+                raise Exception('Standard spectrum file {} does not exist'.format(
+                    args.standard_spectrum_path))
+
+        if args.phase_map_path is not None:
+            if os.path.exists(args.phase_map_path):
+                f.write('PHASEMAP0 {}\n'.format(
+                    args.phase_map_path))
+            else:
+                raise Exception('Phase map 0 file {} does not exist'.format(
+                    args.phase_map_path))
+
         if not args.laser:
             object_list = list()
             for oline in olist:
+                oline = filter_path(oline)
                 fits_file = to.read_fits(oline, return_hdu_only=True)
                 istep = fits_file[0].header['SITSTEP']
                 iodom = os.path.split(oline)[1][:-6]
@@ -115,33 +147,19 @@ APOD 1.0
                 
         else:
             for oline in olist:
-                f.write('COMPARISON {}\n'.format(oline))
+                f.write('COMPARISON {}\n'.format(filter_path(oline)))
 
         if args.flat_list_path is not None:
            with open(args.flat_list_path, 'r') as flist:
                for fline in flist:
+                   fline = filter_path(fline)
                    f.write('FLAT {}\n'.format(fline.strip()))
 
         if args.standard_image_list_path is not None:
            with open(args.standard_image_list_path, 'r') as flist:
                for fline in flist:
+                   fline = filter_path(fline)
                    f.write('STDIM {}\n'.format(fline.strip()))
-
-        if args.source_list_path is not None:
-            if os.path.exists(args.source_list_path):
-                f.write('SOURCE_LIST_PATH {}\n'.format(
-                    args.source_list_path))
-            else:
-                raise Exception('Source list file {} does not exist'.format(
-                    args.source_list_path))
-            
-        if args.standard_spectrum_path is not None:
-            if os.path.exists(args.standard_spectrum_path):
-                f.write('STDPATH {}\n'.format(
-                    args.standard_spectrum_path))
-            else:
-                raise Exception('Standard spectrum file {} does not exist'.format(
-                    args.standard_spectrum_path))
         
                    
 
@@ -188,6 +206,10 @@ if __name__ == "__main__":
     parser.add_argument('-ss', dest='standard_spectrum_path',
                         default=None,
                         help='Path to the standard spectrum')
+
+    parser.add_argument('-pm0', dest='phase_map_path',
+                        default=None,
+                        help='Path to the order 0 phase map')
     
     parser.add_argument('--source', dest='source_list_path',
                         default=None,

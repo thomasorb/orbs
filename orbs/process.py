@@ -1857,7 +1857,7 @@ class RawData(HDFCube):
         del out_cube    
 
 ##################################################
-#### CLASS Laser #################################
+#### CLASS CalibrationLaser ######################
 ##################################################
 
 class CalibrationLaser(HDFCube):
@@ -3370,7 +3370,8 @@ class Interferogram(HDFCube):
             self.indexer['phase_map_0_residual'] = (
                 self._get_phase_map_path(0, res=True))
 
-    def create_binned_calibration_laser_map(self, binning, calibration_laser_map_path):
+    def create_binned_calibration_laser_map(self, binning,
+                                            calibration_laser_map_path):
         """Create a binned calibration laser map
 
         :param binning: Binning
@@ -3379,6 +3380,7 @@ class Interferogram(HDFCube):
         # Loading calibration laser map
         self._print_msg("loading calibration laser map")
         calibration_laser_map = self.read_fits(calibration_laser_map_path)
+
         if (calibration_laser_map.shape[0] != self.dimx):
             calibration_laser_map = orb.utils.image.interpolate_map(
                 calibration_laser_map, self.dimx, self.dimy)
@@ -3435,6 +3437,7 @@ class Interferogram(HDFCube):
 
             
     def create_phase_maps_from_external_source(self, phase_map_order_0_path,
+                                               phase_map_order_1_path,
                                                step, order, zpd_shift,
                                                filter_file_path,
                                                phase_file_path,
@@ -3474,6 +3477,12 @@ class Interferogram(HDFCube):
         phase_map_order_0 = self.read_fits(phase_map_order_0_path)
         phase_map_order_0 = orb.utils.image.nanbin_image(
                 phase_map_order_0, binning)
+
+        # get phase map order 1
+        phase_map_order_1 = self.read_fits(phase_map_order_1_path)
+        phase_map_order_1 = orb.utils.image.nanbin_image(
+                phase_map_order_1, binning)
+        
         
         # get filter parameters
         filter_params = orb.utils.filters.read_filter_file(filter_file_path)
@@ -3494,30 +3503,16 @@ class Interferogram(HDFCube):
         cube_bin = self.read_fits(
             self._get_binned_interferogram_cube_path())
 
-        # get transformation coefficients from calib map to order 0
-        # phase map
-        (fitted_phase_map, error_map,
-         fit_error, new_calibration_laser_map, p) = (
-            orb.utils.image.fit_sitelle_phase_map(
-                phase_map_order_0,
-                np.ones_like(phase_map_order_0),
-                calibration_laser_map,
-                nm_laser,
-                pixel_size=(float(
-                    self._get_config_parameter('PIX_SIZE_CAM1'))
-                            * binning),
-                binning=1, return_coeffs=True))
-
         # 3D optimization
-        a0_fit, a1_fit, order1_fit = orb.utils.fft.optimize_phase3d(
-             cube_bin, step, order, zpd_shift,
-             calibration_laser_map, nm_laser,
-             high_phase, p_init=p)
-
-        order0_map = orb.utils.fft.calib_map2phase_map0(
-            [a0_fit, a1_fit], calibration_laser_map, nm_laser)
+        params_fit = orb.utils.fft.optimize_phase3d(
+            cube_bin, step, order, zpd_shift,
+            calibration_laser_map, nm_laser,
+            high_phase,
+            pm0=np.copy(phase_map_order_0),
+            pm1=np.copy(phase_map_order_1))
         
-        order1_map = np.ones_like(order0_map) * order1_fit
+        order0_map = params_fit[0] + phase_map_order_0
+        order1_map = params_fit[1] + phase_map_order_1 / self.dimz
         
         # write phase map order 0
         self.write_fits(self._get_phase_map_path(0),
@@ -5602,14 +5597,14 @@ class Spectrum(HDFCube):
                 else:
                     spectrum_highres = np.copy(spectrum_col[icol,:])
 
-                ok_computer = True
                 corr = calibration_laser_col[icol]/nm_laser
                 if np.isnan(corr):
-                    ok_computer = False
+                    result_col[icol,:] = np.nan
+                    continue
 
                 # remember : output from 'compute spectrum' step is
                 # always in cm-1
-                if wavenumber and ok_computer:
+                if wavenumber:
                     axis_corr = orb.utils.spectrum.create_cm1_axis(
                         spectrum_highres.shape[0],
                         step, order, corr=corr).astype(float)
@@ -5643,7 +5638,7 @@ class Spectrum(HDFCube):
                 # replacing nans by zeros before interpolation
                 nans = np.nonzero(np.isnan(spectrum_highres))
                 spectrum_highres[nans] = 0.
-                
+
                 # spectrum projection onto its output axis (if output
                 # in nm or calibrated)
                 if spectral_calibration or not wavenumber:
@@ -5651,6 +5646,7 @@ class Spectrum(HDFCube):
                         orb.utils.vector.interpolate_axis(
                             spectrum_highres, axis_base, 1,
                             old_axis=axis_corr))
+                    
                 else:
                     result_col[icol,:] = spectrum_highres
 
@@ -6720,8 +6716,10 @@ class PhaseMaps(Tools):
                 pm_type = "_fitted"
             elif phase_map_type == 'error':
                 pm_type = "_fitted_error"
+            elif phase_map_type == 'unbinned':
+                pm_type = "_unbinned"
             elif phase_map_type != 'residual':
-                self._print_error("Phase_map_type must be set to 'unwraped', 'fitted', 'error', 'residual' or None")
+                self._print_error("Phase_map_type must be set to 'unwraped', 'fitted', 'error', 'residual', 'unbinned' or None")
         else:
             pm_type = ""
             
@@ -6739,7 +6737,7 @@ class PhaseMaps(Tools):
           to the phase.
 
         :param phase_map_type: (Optional) Type of phase map. Must be
-          None, 'unwraped', 'fitted', 'error' or 'residual'
+          None, 'unwraped', 'fitted', 'error', 'unbinned' or 'residual'
 
         .. note:: unwraped, fitted and error are incompatible. If more
           than one of those options are set to True the priority order
@@ -6758,8 +6756,11 @@ class PhaseMaps(Tools):
             elif phase_map_type == 'residual':
                 header = self._get_basic_header(
                     'Residual map on phase fit')
+            elif phase_map_type == 'unbinned':
+                header = self._get_basic_header(
+                    'Unbinned phase map order %d'%order)    
             else:
-                self._print_error("Phase_map_type must be set to 'unwraped', 'fitted', 'error', 'residual' or None")
+                self._print_error("Phase_map_type must be set to 'unwraped', 'fitted', 'error', 'residual', 'unbinned' or None")
         else:
             header = self._get_basic_header('Phase map order %d'%order)
        
@@ -6874,8 +6875,8 @@ class PhaseMaps(Tools):
             self._print_warning('This function is better used for phase maps of order > 0')
         if order not in range(len(self.phase_maps)):
             self._print_error('Order {} does not exist'.format(order))
-        phase_map = self.phase_maps[order]
-        res_map = self.residual_maps[1]
+        phase_map = np.copy(self.phase_maps[order])
+        res_map = np.copy(self.residual_maps[1])
         
         (fitted_phase_map,
          error_map) = orb.utils.image.fit_highorder_phase_map(
@@ -6886,6 +6887,9 @@ class PhaseMaps(Tools):
             order, phase_map_type='error')
         fitted_map_path = self._get_phase_map_path(
             order, phase_map_type='fitted')
+        unbinned_map_path = self._get_phase_map_path(
+            order, phase_map_type='unbinned')
+
         self.write_fits(
             error_map_path,
             orb.cutils.unbin_image(error_map,
@@ -6908,6 +6912,19 @@ class PhaseMaps(Tools):
             overwrite=self.overwrite)
         if self.indexer is not None:
             self.indexer['phase_map_fitted_{}'.format(order)] = fitted_map_path
+
+        self.write_fits(
+            unbinned_map_path,
+            orb.cutils.unbin_image(np.copy(self.phase_maps[order]),
+                                   self.dimx_unbinned,
+                                   self.dimy_unbinned), 
+            fits_header= self._get_phase_map_header(
+                order, phase_map_type='unbinned'),
+            overwrite=self.overwrite)
+        if self.indexer is not None:
+            self.indexer['phase_map_unbinned_{}'.format(order)] = unbinned_map_path
+
+            
        
 
     def reduce_phase_map(self, order):
@@ -6921,8 +6938,8 @@ class PhaseMaps(Tools):
             self._print_warning('This function is better used for phase maps of order > 0')
         if order not in range(len(self.phase_maps)):
             self._print_error('Order {} does not exist'.format(order))
-        phase_map = self.phase_maps[order]
-        res_map = self.residual_maps[1]
+        phase_map = np.copy(self.phase_maps[order])
+        res_map = np.copy(self.residual_maps[1])
 
         # reduction
         phase_coeff = orb.utils.fft.compute_phase_coeffs_vector(
@@ -6978,6 +6995,7 @@ class PhaseMaps(Tools):
         :param calibration_laser_nm: (Optional) Wavelength of the
           calibration laser (in nm). Only useful if the phase model is
           'sitelle' (default None).
+          
         """
 
         FIT_DEG = 1 # Degree of the polynomial used for the fit
@@ -6989,7 +7007,7 @@ class PhaseMaps(Tools):
                       # border to fit the phase map (cannot be more
                       # than 0.5)
 
-        phase_map = self.phase_map_order_0_unwraped
+        phase_map = np.copy(self.phase_map_order_0_unwraped)
         # border points are removed
         mask = np.ones_like(phase_map, dtype=bool)
         border = (self.dimx + self.dimy)/2. * BORDER 
@@ -7011,32 +7029,32 @@ class PhaseMaps(Tools):
                 calibration_laser_map, self.dimx_unbinned, self.dimy_unbinned)
         calibration_laser_map = orb.utils.image.nanbin_image(
             calibration_laser_map, self.binning)
-
+        
         if phase_model == 'spiomm':
             fitted_phase_map, error_map, fit_error = orb.utils.image.fit_map(
                 phase_map, err_map, FIT_DEG)
             new_calibration_laser_map = calibration_laser_map
-            
+
         elif phase_model == 'sitelle':
             (fitted_phase_map, error_map,
-             fit_error, new_calibration_laser_map) = (
+             fit_error, new_calibration_laser_map, trans_coeffs) = (
                 orb.utils.image.fit_sitelle_phase_map(
-                    phase_map, err_map, calibration_laser_map,
+                    np.copy(phase_map), np.copy(err_map),
+                    np.copy(calibration_laser_map),
                     calibration_laser_nm,
                     pixel_size=(
                         float(self._get_config_parameter('PIX_SIZE_CAM1'))
                         * self.binning),
-                    binning=1))
-            
+                    binning=1, return_coeffs=True))
+
         self._print_msg(
             "Normalized root-mean-square deviation on the fit: %f%%"%(
                 fit_error*100.))
 
-        
         ## compute max flux error due to order 0 error. An error of
         ## pi/2 is equivalent to 100% loss of flux. Note that noise
-        ## and model error are considered at the same time so that
-        ## this estimation is very conservative.
+        ## plus model errors are considered at the same
+        ## time. Therefore this estimation is very conservative.
         res_std = orb.utils.stats.robust_std(
             orb.utils.stats.sigmacut(
                 error_map, sigma=3)) # in radians
