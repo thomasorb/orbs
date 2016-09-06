@@ -6041,7 +6041,7 @@ class Spectrum(HDFCube):
         BOX_SIZE = int(8 * fwhm_pix) + 1
         STEP_NB = 500
         ERROR_FLUX_COEFF = 1.5
-        ERROR_STD_DIFF_COEFF = 1.15
+        ERROR_STD_DIFF_COEFF = 1.25
         
         self._print_msg('Computing flux calibration coeff', color=True)
         self._print_msg('Standard Name: %s'%std_name) 
