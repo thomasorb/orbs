@@ -30,7 +30,7 @@ __docformat__ = 'reStructuredText'
 import version
 __version__ = version.__version__
 
-from orb.core import Tools, Cube, ProgressBar, Standard
+from orb.core import Tools, Cube, ProgressBar, Standard, PhaseFile, FilterFile
 from orb.core import HDFCube, OutHDFCube, OutHDFQuadCube
 import orb.utils.fft
 import orb.utils.filters
@@ -2587,8 +2587,7 @@ class Interferogram(HDFCube):
                          phase_correction=True,
                          bad_frames_vector=None, window_type=None,
                          phase_cube=False, phase_map_paths=None,
-                         filter_file_path=None,
-                         phase_file_path=None,
+                         filter_name=None,
                          wave_calibration=False,
                          balanced=True, fringes=None,
                          wavenumber=False):
@@ -2628,12 +2627,8 @@ class Interferogram(HDFCube):
           dimensions as the frames of the interferogram cube (default
           None).
 
-        :param filter_file_path: (Optional) Path to the filter
-          file. If given the filter edges are used to give a weight to
-          the phase points. See
-          :meth:`process.Spectrum.correct_filter` for more information
-          about the filter file.
-
+        :param filter_name: (Optional) Name of the filter used.
+        
         :param balanced: (Optional) If False, the interferogram is
           considered as unbalanced. It is flipped before its
           transformation to get a positive spectrum. Note that a
@@ -2652,9 +2647,6 @@ class Interferogram(HDFCube):
           symetric which is not the case if the spectrum is projected
           onto a, more convenient, regular wavelength axis) (default
           False).
-
-        :param phase_file_path: (Optional) Path to a phase file
-          (default None).
 
         :param wave_calibration: (Optional) If True wavelength
           calibration is done (default False).
@@ -2704,8 +2696,7 @@ class Interferogram(HDFCube):
                                         bad_frames_vector, phase_map_cols,
                                         return_phase,
                                         balanced, filter_min, filter_max,
-                                        fringes, wavenumber,
-                                        high_phase):
+                                        fringes, wavenumber, phf):
             """Compute spectrum in one column. Used to parallelize the
             process"""
             dimz = data.shape[1]
@@ -2747,7 +2738,7 @@ class Interferogram(HDFCube):
                     # zeros are replaced by NaNs
                     interf[np.nonzero(interf == 0)] = np.nan
                             
-                    # Spectrum computation
+                    # Spectrum computation                    
                     spectrum_column[ij,:] = (
                         orb.utils.fft.transform_interferogram(
                             interf, nm_laser, calibration_laser_map_column[ij],
@@ -2760,7 +2751,7 @@ class Interferogram(HDFCube):
                             balanced=balanced,
                             wavenumber=wavenumber,
                             return_complex=True,
-                            high_order_phase=high_phase))
+                            high_order_phase=phf))
 
                     if not phase_correction:
                         spectrum_column[ij,:] = np.abs(spectrum_column[ij,:])
@@ -2788,13 +2779,14 @@ class Interferogram(HDFCube):
         else: 
             self._print_msg("Computing phase", color=True)
 
-        high_phase = None
+        phf = None
         if phase_correction:
             # get high order phase
-            if phase_file_path is not None:
-                self._print_msg('Phase file: {}'.format(phase_file_path))
-                high_phase = orb.utils.fft.read_phase_file(
-                    phase_file_path, return_spline=True)
+            if filter_name is not None:
+                phf = PhaseFile(filter_name,
+                                config_file_name=self.config_file_name,
+                                ncpus=self.ncpus)
+                self._print_msg('Phase file: {}'.format(phf.improved_path))
         else:
             self._print_warning('No phase correction')
                 
@@ -2871,18 +2863,18 @@ class Interferogram(HDFCube):
 
             # zeros are replaced by NANs
             mean_interf[np.nonzero(mean_interf == 0)] = np.nan
-            # self.write_fits('mean_interf.fits', mean_interf, overwrite=True)
-            # self.write_fits('mean_phase.fits', mean_phase_vector, overwrite=True)            
-            # print mean_calib
-            # quit()
             
             # transform interferogram and check polarity
+            if phf is not None:
+                mean_high_phase = phf.get_improved_phase(mean_calib)
+            else:
+                mean_high_phase = None
             mean_spectrum = orb.utils.fft.transform_interferogram(
                 mean_interf, nm_laser, mean_calib, step, order, '2.0', zpd_shift,
                 phase_correction=phase_correction, wave_calibration=wave_calibration,
                 ext_phase=mean_phase_vector,
                 return_phase=False, balanced=balanced, wavenumber=wavenumber,
-                return_complex=True, high_order_phase=high_phase)
+                return_complex=True, high_order_phase=mean_high_phase)
 
             if np.nanmean(mean_spectrum.real) < 0:
                 self._print_msg("Negative polarity : 0th order phase map has been corrected (add PI)")
@@ -2912,10 +2904,12 @@ class Interferogram(HDFCube):
         
         # get filter min and filter max edges for weights definition
         # in case no external phase is provided
-        if phase_correction and filter_file_path is not None:
+        if phase_correction and filter_name is not None:
+            fif = FilterFile(filter_name,
+                             config_file_name=self.config_file_name,
+                             ncpus=self.ncpus)
             (filter_nm, filter_trans,
-             filter_min, filter_max) = orb.utils.filters.read_filter_file(
-                filter_file_path)
+             filter_min, filter_max) = fif.read_filter_file()
         else:
             filter_min = None
             filter_max = None
@@ -2964,7 +2958,7 @@ class Interferogram(HDFCube):
                               phase_maps, x_min + ii + ijob, y_min, y_max),
                           phase_cube, balanced,
                           filter_min, filter_max,
-                          fringes, wavenumber, high_phase), 
+                          fringes, wavenumber, phf), 
                     modules=("import numpy as np", "import math",  
                              "from scipy import interpolate", 
                              "from scipy import fftpack, signal", 
@@ -3012,9 +3006,7 @@ class Interferogram(HDFCube):
 
 
     def create_phase_maps(self, step, order, zpd_shift=None, binning=4,
-                          filter_file_path=None,
-                          phase_file_path=None,
-                          calibration_laser_map_path=None,
+                          filter_name=None, calibration_laser_map_path=None,
                           nm_laser=None, fit_order=1):
         """Create phase maps directly from the interferogram cube.
 
@@ -3033,15 +3025,11 @@ class Interferogram(HDFCube):
         :param binning: (Optional) Binning factor of the cube to
           accelerate the phase map computation (default 4).
 
-        :param filter_file_path: (Optional) Filter file path (default
-          None). Must be set if calibration_laser_map_path is set.
-
-        :param phase_file_path: (Optional) Path to a phase file
-          (default None).
+        :param filter_name: (Optional) Filter name (default None).
 
         :param calibration_laser_map_path: (Optional) Path to a
           calibration laser map (default None). Must be set if
-          filter_file_path is set.
+          filter_name is set.
 
         :param nm_laser: (Optional) Calibration laser wavelength in nm
           (default None) Must be set if calibration_laser_map_path is
@@ -3053,7 +3041,7 @@ class Interferogram(HDFCube):
 
         def fit_phase_in_column(cube_col, step, order, zpd_shift,
                                 calib_col, filter_min_cm1, filter_max_cm1,
-                                nm_laser, fit_order, high_phase):
+                                nm_laser, fit_order, phf):
         
             RANGE_BORDER_COEFF = 0.1
             
@@ -3072,7 +3060,6 @@ class Interferogram(HDFCube):
                 # zeros are replaced by nans
                 interf[np.nonzero(interf == 0)] = np.nan
 
-                
                 # compute phase
                 ifft = orb.utils.fft.transform_interferogram(
                     interf, 1., 1., step, order, '2.0',
@@ -3104,16 +3091,25 @@ class Interferogram(HDFCube):
                     if (not np.any(np.isnan(weights))
                         and not np.any(np.isnan(iphase))):
                         try:
-                            if high_phase is not None:
+                            if phf is not None:
+                                high_phase = phf.get_improved_phase(
+                                    calib_col[ij])
                                 # high order phase interpolation to real axis
                                 cm1_axis = orb.utils.spectrum.create_cm1_axis(
                                     iphase.shape[0], step, order,
-                                    corr=calib_col[ij]/nm_laser).astype(np.float64)
+                                    corr=calib_col[ij]/nm_laser).astype(
+                                    np.float64)
                                 ihigh_phase = high_phase(cm1_axis)
                                 # high order phase is subtracted
                                 phase_to_fit = iphase - ihigh_phase
                             else:
                                 phase_to_fit = iphase
+
+                            ## import pylab as pl
+                            ## pl.plot(ihigh_phase)
+                            ## pl.plot(iphase)
+                            ## pl.plot(phase_to_fit, ':')
+                            ## pl.show()
                                 
                             # polynomial fit
                             coeffs = np.polynomial.polynomial.polyfit(
@@ -3148,7 +3144,7 @@ class Interferogram(HDFCube):
         
         def optimize_phase_in_column(cube_col, step, order, zpd_shift,
                                      phase_maps, column_nb, calib_col, nm_laser,
-                                     filter_min_cm1, filter_max_cm1, high_phase):
+                                     filter_min_cm1, filter_max_cm1, phf):
 
             
             RANGE_BORDER_COEFF = 0.1
@@ -3180,7 +3176,7 @@ class Interferogram(HDFCube):
                         calib_col[ij], nm_laser, cube_col.shape[1],
                         step, order, RANGE_BORDER_COEFF,
                         filter_min_cm1, filter_max_cm1)
-                        
+                    
                     result = orb.utils.fft.optimize_phase(
                         cube_col[ij,:],
                         step, order, zpd_shift,
@@ -3188,7 +3184,7 @@ class Interferogram(HDFCube):
                         guess=guess, return_coeffs=True,
                         fixed_params=fixed_params,
                         weights=weights,
-                        high_order_phase=high_phase)
+                        high_order_phase=phf)
                     if result is not None:
                         order0_col[ij] = result[0][0]
                         res_col[ij] = result[1]
@@ -3198,22 +3194,26 @@ class Interferogram(HDFCube):
         self._print_msg('Computing phase maps up to order {}'.format(fit_order))
 
         # get high order phase
-        if phase_file_path is not None:
-            self._print_msg('Phase file: {}'.format(phase_file_path))
-            high_phase = orb.utils.fft.read_phase_file(
-                phase_file_path, return_spline=True)
+        if filter_name is not None:
+            phf = PhaseFile(filter_name,
+                            config_file_name=self.config_file_name,
+                            ncpus=self.ncpus)
+            self._print_msg('Phase file: {}'.format(phf.improved_path))
         else:
-            high_phase = None
+            phf = None
 
-        if ((filter_file_path is not None and calibration_laser_map_path is None)
-            or (filter_file_path is None and calibration_laser_map_path is not None)):
-            self._print_error('filter_file_path and calibration_laser_map_path must be set together or both must be set to None')
+        if ((filter_name is not None and calibration_laser_map_path is None)
+            or (filter_name is None and calibration_laser_map_path is not None)):
+            self._print_error('filter_name and calibration_laser_map_path must be set together or both must be set to None')
 
         if calibration_laser_map_path is not None and nm_laser is None:
             self._print_error('calibration_laser_map_path and nm_laser must be set together')
             
-        if filter_file_path is not None:
-            filter_params = orb.utils.filters.read_filter_file(filter_file_path)
+        if filter_name is not None:
+            filter_params = FilterFile(
+                filter_name,
+                config_file_name=self.config_file_name,
+                ncpus=self.ncpus).read_filter_file()
             filter_max_cm1 = orb.utils.spectrum.nm2cm1(filter_params[2])
             filter_min_cm1 = orb.utils.spectrum.nm2cm1(filter_params[3])
         else: filter_max_cm1 = None ; filter_min_cm1 = None
@@ -3224,7 +3224,7 @@ class Interferogram(HDFCube):
                 median_interf, return_zpd_shift=True)
         
         # binning interferogram cube and calibration laser map
-        self.create_binned_interferogram_cube(binning)
+        #self.create_binned_interferogram_cube(binning)
         cube_bin = self.read_fits(self._get_binned_interferogram_cube_path())
         
         if calibration_laser_map_path is not None:
@@ -3261,7 +3261,7 @@ class Interferogram(HDFCube):
                       step, order, zpd_shift,
                       calibration_laser_map[ii+ijob,:],
                       filter_min_cm1, filter_max_cm1, nm_laser,
-                      fit_order, high_phase),
+                      fit_order, phf),
                 modules=("numpy as np", "import orb.utils.fft",
                          "import warnings", "import orb.cutils",
                          "import orb.utils.filters", "import scipy.interpolate"))) 
@@ -3341,7 +3341,7 @@ class Interferogram(HDFCube):
                       phase_maps[1:], ii+ijob,
                       calibration_laser_map[ii+ijob,:], nm_laser,
                       filter_min_cm1, filter_max_cm1,
-                      high_phase),
+                      phf),
                 modules=("numpy as np", "import orb.utils.fft",
                          "import warnings", "import orb.utils.filters"))) 
                     for ijob in range(ncpus)]
@@ -3439,8 +3439,7 @@ class Interferogram(HDFCube):
     def create_phase_maps_from_external_source(self, phase_map_order_0_path,
                                                phase_map_order_1_path,
                                                step, order, zpd_shift,
-                                               filter_file_path,
-                                               phase_file_path,
+                                               filter_name,
                                                calibration_laser_map_path,
                                                nm_laser, fit_order=1, binning=4):
         """Create phase maps directly from the interferogram cube.
@@ -3459,9 +3458,7 @@ class Interferogram(HDFCube):
         
         :param zpd_shift: ZPD shift.
         
-        :param filter_file_path: Filter file path
-
-        :param phase_file_path: Path to a phase file
+        :param filter_name: Filter name
 
         :param calibration_laser_map_path: Path to a
           calibration laser map
@@ -3483,16 +3480,19 @@ class Interferogram(HDFCube):
         phase_map_order_1 = orb.utils.image.nanbin_image(
                 phase_map_order_1, binning)
         
-        
         # get filter parameters
-        filter_params = orb.utils.filters.read_filter_file(filter_file_path)
+        filter_params = FilterFile(
+            filter_name,
+            config_file_name=self.config_file_name,
+            ncpus=self.ncpus).read_filter_file()
         filter_max_cm1 = orb.utils.spectrum.nm2cm1(filter_params[2])
         filter_min_cm1 = orb.utils.spectrum.nm2cm1(filter_params[3])
 
-        # get high phase vector as spline
-        high_phase = orb.utils.fft.read_phase_file(
-            phase_file_path, return_spline=True)
-
+        # get high phase 
+        phf = PhaseFile(filter_name,
+                        config_file_name=self.config_file_name,
+                        ncpus=self.ncpus)
+        
         # binning interferogram cube and calibration laser map
         self.create_binned_interferogram_cube(binning)
         self.create_binned_calibration_laser_map(
@@ -3507,7 +3507,7 @@ class Interferogram(HDFCube):
         params_fit = orb.utils.fft.optimize_phase3d(
             cube_bin, step, order, zpd_shift,
             calibration_laser_map, nm_laser,
-            high_phase,
+            phf,
             pm0=np.copy(phase_map_order_0),
             pm1=np.copy(phase_map_order_1))
         
@@ -5457,7 +5457,7 @@ class Spectrum(HDFCube):
             del hdr['LATPOLE']
         return hdr
         
-    def calibrate(self, filter_file_path, step, order,
+    def calibrate(self, filter_name, step, order,
                   calibration_laser_map_path, nm_laser,
                   exposure_time,
                   correct_wcs=None,
@@ -5469,9 +5469,8 @@ class Spectrum(HDFCube):
         """Calibrate spectrum cube: correct for filter transmission
         function, correct WCS parameters and flux calibration.
 
-        :param filter_file_path: The path to the file containing the
-           filter transmission function (If None, no filter correction
-           will be made).
+        :param filter_name: Name of the filter (If None, no filter
+           correction will be made).
 
         :param step: Step size of the interferogram in nm.
         
@@ -5699,9 +5698,8 @@ class Spectrum(HDFCube):
         FILTER_STEP_NB = 4000
         FILTER_RANGE_THRESHOLD = 0.97
         filter_vector, filter_min_pix, filter_max_pix = (
-            orb.utils.filters.get_filter_function(
-                filter_file_path, step, order,
-                FILTER_STEP_NB, wavenumber=wavenumber,
+            FilterFile(filter_name).get_filter_function(
+                step, order, FILTER_STEP_NB, wavenumber=wavenumber,
                 corr=base_axis_correction_coeff))
         filter_min_pix = np.nanmin(np.arange(FILTER_STEP_NB)[
             filter_vector >  FILTER_RANGE_THRESHOLD * np.nanmax(filter_vector)])
@@ -5741,8 +5739,8 @@ class Spectrum(HDFCube):
         filter_max = filter_axis[filter_max_pix]
 
         # Get modulation efficiency
-        modulation_efficiency = orb.utils.filters.get_modulation_efficiency(
-            filter_file_path)
+        modulation_efficiency = FilterFile(
+            filter_name).get_modulation_efficiency()
 
         self._print_msg('Modulation efficiency: {}'.format(
             modulation_efficiency))
@@ -5970,7 +5968,7 @@ class Spectrum(HDFCube):
                                    std_name,
                                    std_pos_1, std_pos_2,
                                    fwhm_pix,
-                                   step, order, filter_file_path,
+                                   step, order, filter_name,
                                    optics_file_path,
                                    calibration_laser_map_path,
                                    nm_laser):
@@ -5993,7 +5991,7 @@ class Spectrum(HDFCube):
 
         :param order: Order of the spectrum to calibrate
 
-        :param filter_file_path: Path to the filter file. If given the
+        :param filter_name: Name fo the filter. If given the
           filter edges can be used to give a weight to the phase
           points. See :meth:`process.Spectrum.correct_filter` for more
           information about the filter file.
@@ -6068,8 +6066,8 @@ class Spectrum(HDFCube):
         # get filter function
         (filter_function,
          filter_min_pix, filter_max_pix) = (
-            orb.utils.filters.get_filter_function(
-                filter_file_path, step, order, STEP_NB,
+            FilterFile(filter_name).get_filter_function(
+                step, order, STEP_NB,
                 wavenumber=False, corr=corr))
 
         # convert it to erg/cm2/s by summing all the photons
@@ -6083,7 +6081,7 @@ class Spectrum(HDFCube):
 
         # compute simulated flux
         std_sim_flux = std.compute_star_flux_in_frame(
-            step, order, filter_file_path,
+            step, order, filter_name,
             optics_file_path, 1, corr=corr)
 
         self._print_msg('Simulated star flux in one camera: {} ADU/s'.format(
@@ -6151,7 +6149,7 @@ class Spectrum(HDFCube):
         
 
     def get_flux_calibration_vector(self, std_spectrum_path, std_name,
-                                    filter_file_path):
+                                    filter_name):
         """
         Return a flux calibration vector in [erg/cm^2]/ADU on the range
         corresponding to the observation parameters of the spectrum to
@@ -6164,7 +6162,7 @@ class Spectrum(HDFCube):
 
         :param std_name: Name of the standard
 
-        :param filter_file_path: Path to the filter file. If given the
+        :param filter_name: Name fo the filter. If given the
           filter edges can be used to give a weight to the phase
           points. See :meth:`process.Spectrum.correct_filter` for more
           information about the filter file.
@@ -6213,10 +6211,9 @@ class Spectrum(HDFCube):
         # Remove portions outside the filter
         (filter_function,
          filter_min_pix, filter_max_pix) = (
-            orb.utils.filters.get_filter_function(
-                filter_file_path, std_step, std_order, re_spectrum.shape[0],
-                corr=std_corr,
-                wavenumber=True))
+            FilterFile(filter_name).get_filter_function(
+                std_step, std_order, re_spectrum.shape[0],
+                corr=std_corr, wavenumber=True))
 
         re_spectrum[:filter_min_pix] = np.nan
         re_spectrum[filter_max_pix:] = np.nan
@@ -6432,10 +6429,9 @@ class SourceExtractor(InterferogramMerger):
 
     def compute_source_spectra(self, source_list, source_interf_path,
                                step, order, apodization_function,
-                               filter_file_path, phase_map_paths,
+                               filter_name, phase_map_paths,
                                nm_laser,
                                calibration_laser_map_path,
-                               phase_file_path=None,
                                phase_correction=True,
                                optimize_phase=False,
                                wavenumber=True,
@@ -6458,8 +6454,8 @@ class SourceExtractor(InterferogramMerger):
         if phase_map_paths is None and phase_order is None and phase_correction:
             self._print_error('If phase correction is required and phase_map_paths is not given, phase must be computed for each source independantly and phase_order must be set.')
 
-        if filter_file_path is None:
-            self._print_error('No filter file path given')
+        if filter_name is None:
+            self._print_error('No filter name given')
 
         
         if len(source_interf.shape) == 1:
@@ -6505,12 +6501,9 @@ class SourceExtractor(InterferogramMerger):
             phase_maps = None
         
         # get high order phase
-        if phase_file_path is not None:
-            self._print_msg('Phase file: {}'.format(phase_file_path))
-            high_phase = orb.utils.fft.read_phase_file(
-                phase_file_path, return_spline=True)
-        else:
-            high_phase = None
+        if filter_name is not None:
+            phf = PhaseFile(filter_name)
+            self._print_msg('Phase file: {}'.format(phf.improved_path))
             
         self._print_msg("Apodization function: %s"%apodization_function)
         self._print_msg("Folding order: %f"%order)
@@ -6547,7 +6540,7 @@ class SourceExtractor(InterferogramMerger):
                     ext_phase = orb.utils.fft.optimize_phase(
                         interf, step, order, zpd_shift,
                         nm_laser_obs, nm_laser, guess=guess,
-                        high_order_phase=high_phase)
+                        high_order_phase=phf)
                 else:
                     ext_phase = np.polynomial.polynomial.polyval(
                         np.arange(step_nb), coeffs_list)
@@ -6582,9 +6575,9 @@ class SourceExtractor(InterferogramMerger):
                 # load filter function
                 (filter_function,
                  filter_min_pix, filter_max_pix) = (
-                    orb.utils.filters.get_filter_function(
-                        filter_file_path, step, order,
-                         step_nb, wavenumber=wavenumber,
+                    FilterFile(filter_name).get_filter_function(
+                        step, order, step_nb,
+                        wavenumber=wavenumber,
                         corr=nm_laser_obs/nm_laser))    
        
                 spec /= filter_function
@@ -6629,7 +6622,6 @@ class SourceExtractor(InterferogramMerger):
 #### CLASS PhaseMaps ############################
 #################################################
 class PhaseMaps(Tools):
-
 
     phase_maps = None
 

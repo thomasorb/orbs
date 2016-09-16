@@ -1,0 +1,257 @@
+#!/usr/bin/python
+# *-* coding: utf-8 *-*
+# Author: Thomas Martin <thomas.martin.1@ulaval.ca>
+# File: orbs-create-filter-file
+
+## Copyright (c) 2010-2015 Thomas Martin <thomas.martin.1@ulaval.ca>
+##
+## This file is part of ORBS
+##
+## ORBS is free software: you can redistribute it and/or modify it
+## under the terms of the GNU General Public License as published by
+## the Free Software Foundation, either version 3 of the License, or
+## (at your option) any later version.
+##
+## ORBS is distributed in the hope that it will be useful, but WITHOUT
+## ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+## or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public
+## License for more details.
+##
+## You should have received a copy of the GNU General Public License
+## along with ORBS.  If not, see <http://www.gnu.org/licenses/>.
+
+####################################################
+############ ORBS CREATE FILTER FILE ################
+####################################################
+
+## Create a filter file from the binned phase cube created when
+## computing phase maps
+
+import argparse
+from argparse import ArgumentParser
+import orb.core, orbs.version
+import orb.utils.io
+import orb.utils.spectrum
+import orb.utils.vector
+import orb.utils.image
+import orb.utils.filters
+from orb.core import OptionFile, ProgressBar
+from orbs.orbs import Orbs, JobFile
+import os
+import numpy as np
+import pylab as pl
+import scipy.interpolate
+
+
+def check_option_file(path):
+    """Check the option file type.
+
+    If the option file is a job file for SITELLE, parse the file
+    and create an option file readable by ORBS.
+
+    :param to: an orb.Tools instance
+    :param path: path of the option file to check
+    :param is_laser: If True, the target is a laser cube.
+    :param fast_init: If True init is fast ans some checking is not done
+    """
+    jobfile = JobFile(path, fast_init=True)
+    if jobfile.is_jobfile:
+        return jobfile.convert2opt()
+    else:
+        return path, dict(), 'option_file'
+
+    
+def main(args):
+
+    CROP_COEFF = 0.2
+    FILTER_EDGE_COEFF = 0.05
+    
+    if args.instrument_mode == 'sitelle':
+        config_file_name = 'config.sitelle.orb'
+    if args.instrument_mode == 'spiomm':
+        config_file_name = 'config.spiomm.orb'
+
+    if args.camera == 1:
+        cams = 'single1'
+        cam = 'cam1'
+        
+    elif args.camera == 2:
+        cams = 'single2'
+        cam = 'cam2'
+    else:
+        cams = 'full'
+        cam = 'merged'
+
+    option_file_path = check_option_file(args.option_file_path)
+    project = Orbs(option_file_path[0], 'object', cams,
+                   silent=True, fast_init=False,
+                   config_file_name=config_file_name,
+                   raw_data_files_check=False)
+
+    
+    interf_cube = orb.utils.io.read_fits(project.indexer.get_path(
+        '{}.binned_interferogram_cube'.format(cam), err=True))
+    dimx, dimy, dimz = interf_cube.shape
+    step = project.options['step']
+    order = project.options['order']
+    nm_laser = project.config["CALIB_NM_LASER"]
+    zpd_shift = project.options['zpd_shift']
+
+
+    calib_map = orb.utils.io.read_fits(project.indexer.get_path(
+        '{}.binned_calibration_laser_map'.format(cam), err=True))
+
+    pm0 = orb.utils.io.read_fits(project.indexer.get_path(
+        '{}.phase_map_0'.format(cam), err=True))
+    pm1 = orb.utils.io.read_fits(project.indexer.get_path(
+        '{}.phase_map_1'.format(cam), err=True))
+
+    phase_file_path = project._get_phase_file_path(
+        project.options["filter_name"])
+    high_phase = orb.utils.fft.read_phase_file(
+        phase_file_path,
+        return_spline=True)
+        
+    filter_file_path = project._get_filter_file_path(
+        project.options["filter_name"])
+
+    filter_trans = orb.utils.filters.read_filter_file(
+        filter_file_path, return_spline=True)
+
+
+    base_calib = calib_map[calib_map.shape[0]/2,
+                           calib_map.shape[1]/2]
+
+    cm1_axis_base = orb.utils.spectrum.create_cm1_axis(
+        dimz, step, order, corr=base_calib/nm_laser)
+
+    # compute filter's real bandpass
+    nm_axis_base_hr = orb.utils.spectrum.create_nm_axis_ireg(
+        dimz*100, step, order, corr=base_calib/nm_laser).astype(float)
+    filter_nm_hr = filter_trans(nm_axis_base_hr)
+    
+    filter_nm_min = nm_axis_base_hr[np.argmin(np.gradient(filter_nm_hr))]
+    filter_nm_max = nm_axis_base_hr[np.argmax(np.gradient(filter_nm_hr))]
+
+    filter_cm1_min = orb.utils.spectrum.nm2cm1(filter_nm_max)
+    filter_cm1_max = orb.utils.spectrum.nm2cm1(filter_nm_min)
+
+    filter_start = np.empty((dimx, dimy), dtype=float)
+    filter_stop = np.empty((dimx, dimy), dtype=float)
+    filter_start.fill(np.nan)
+    filter_stop.fill(np.nan)
+
+    
+    xmin,xmax,ymin,ymax = orb.utils.image.get_box_coords(
+        dimx*0.5,
+        dimy*0.5,
+        int(CROP_COEFF*dimx),
+        0, dimx,
+        0, dimy)
+    #xmin = 0 ; xmax = dimx ; ymin = 0 ; ymax = dimy
+
+    progress = ProgressBar(xmax-xmin)
+    for ii in range(xmin, xmax):
+        progress.update(ii-xmin, info='Creating filter maps')
+        for ij in range(ymin, ymax):
+            cm1_axis = orb.utils.spectrum.create_cm1_axis(
+                dimz, step, order,
+                corr=calib_map[ii,ij]/nm_laser)
+            cm12pixf = scipy.interpolate.UnivariateSpline(
+                cm1_axis, np.arange(dimz),
+                k=1, s=0, ext=0)
+            filter_pix_min = int(cm12pixf(filter_cm1_min))
+            filter_pix_max = int(cm12pixf(filter_cm1_max))
+
+            
+            w = np.zeros(dimz, dtype=float)
+            dx = FILTER_EDGE_COEFF * dimz
+
+            w[filter_pix_min+dx:filter_pix_max-dx+1] = 1.
+
+            iphase = pm0[ii,ij] + np.arange(dimz) * pm1[ii,ij]
+
+            iinterf = interf_cube[ii,ij,:]
+            ispec = orb.utils.fft.transform_interferogram(
+                iinterf, base_calib, calib_map[ii,ij],
+                step, order, '2.0', zpd_shift, phase_correction=True,
+                ext_phase=iphase,
+                return_complex=True, wavenumber=True,
+                wave_calibration=False, high_order_phase=high_phase)
+            ispec = np.abs(ispec)
+            ispec = ispec.real
+            if np.nanmedian(ispec) < 0.:
+                ispec = -ispec
+            ispec[:filter_pix_min - dx] = 0.
+            ispec[filter_pix_max + dx+1:] = 0.
+            
+            # compute cumulative sum to get a nice straight function
+            # to fit
+            ispec_cumsum = np.cumsum(ispec)
+            icoeff = np.polynomial.polynomial.polyfit(
+                np.arange(dimz), ispec_cumsum, 5, w=w)
+            ispec_cumsum_fit = np.polynomial.polynomial.polyval(
+                np.arange(dimz), icoeff)
+
+ 
+            # filter starts at zero and stops at max cumulative level
+            fitf = scipy.interpolate.UnivariateSpline(
+                ispec_cumsum_fit, np.arange(dimz), #cm1_axis,
+                k=1, s=0, ext=0)
+            ifilter_start = fitf(0.)
+            ifilter_stop = fitf(np.nanmax(ispec_cumsum))
+            filter_start[ii,ij] = ifilter_start
+            filter_stop[ii,ij] = ifilter_stop
+            pl.plot(ispec/np.nanmax(ispec))
+            pl.plot(ispec_cumsum / np.nanmax(ispec_cumsum))
+            pl.plot(ispec_cumsum_fit / np.nanmax(ispec_cumsum))
+            pl.axvline(ifilter_start)
+            pl.axvline(ifilter_stop)
+            pl.show()
+            
+
+        
+        
+    progress.end()
+
+    orb.utils.io.write_fits('start.fits', filter_start, overwrite=True)
+    orb.utils.io.write_fits('stop.fits', filter_stop, overwrite=True)
+   
+
+
+if __name__ == "__main__":
+    """Main entrance of the script.
+    
+    Parse arguments and launch the process.
+    """
+    parser = ArgumentParser(
+        version=('ORBS-version: {}, ORB-version: {}'.format(
+            orbs.version.__version__, orb.core.__version__)),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        description="Create a filter file from a reduced phase cube")
+
+    parser.add_argument('instrument_mode',
+                        action='store',
+                        choices=['sitelle', 'spiomm'],
+                        help='Instrument mode')
+
+    parser.add_argument('option_file_path',
+                        action='store',
+                        help='Path to the option file')
+
+    parser.add_argument('output_file_path',
+                        action='store',
+                        help='Path to the output file')
+    
+    parser.add_argument('--cam',
+                        dest='camera',
+                        type=int,
+                        action='store',
+                        default=0,
+                        choices=[0,1,2],
+                        help='Camera number (default 0)')
+
+
+    args = parser.parse_args()
+
+    main(args)

@@ -35,14 +35,61 @@ import orb.utils.spectrum
 import orb.utils.vector
 import orb.utils.image
 import orb.utils.filters
+from orb.core import Tools, PhaseFile
 from orb.core import OptionFile, ProgressBar
-from orbs.orbs import Orbs
+from orbs.orbs import Orbs, JobFile
 import os
 import numpy as np
 import pylab as pl
 import scipy.interpolate
+
+
+def check_option_file(path):
+    """Check the option file type.
+
+    If the option file is a job file for SITELLE, parse the file
+    and create an option file readable by ORBS.
+
+    :param to: an orb.Tools instance
+    :param path: path of the option file to check
+    :param is_laser: If True, the target is a laser cube.
+    :param fast_init: If True init is fast ans some checking is not done
+    """
+    jobfile = JobFile(path, fast_init=True)
+    if jobfile.is_jobfile:
+        return jobfile.convert2opt()
+    else:
+        return path, dict(), 'option_file'
+
+
+def unwrap_phase_cube(final_phase_cube):
+
+    for ik in range(final_phase_cube.shape[2]):
+        frame = final_phase_cube[:,:,ik]
+        frame = np.mod(frame, np.pi) # all values are modulo PI
+
+        # unwrap frame around median
+        _med = np.nanmedian(frame)
+        if ik > 0:
+            last_med = np.nanmedian(final_phase_cube[:,:,ik-1])
+            if abs(_med - last_med) > np.pi/2:
+                if _med - last_med > 0:
+                    frame -= np.pi ; _med -= np.pi
+                else:
+                    frame += np.pi ; _med += np.pi
+
+        frame[np.nonzero(_med - frame >= np.pi/4)] += np.pi
+        frame[np.nonzero(frame - _med >= np.pi/4)] -= np.pi
+
+        final_phase_cube[:,:,ik] = np.copy(frame)
+    return final_phase_cube
+
     
 def main(args):
+
+    if not (0 < args.x < 1): raise Exception('x must be between 0 and 1')
+    if not (0 < args.y < 1): raise Exception('y must be between 0 and 1')
+    if not (0 < args.s <= 1): raise Exception('s must be between 0 and 1')
 
     if args.instrument_mode == 'sitelle':
         config_file_name = 'config.sitelle.orb'
@@ -61,150 +108,187 @@ def main(args):
         cam = 'merged'
 
 
-    if args.smooth_coeff < 0. or args.smooth_coeff > 1:
-        raise ValueError('Smooth coeff must be between 0 and 1')
-    
-    project = Orbs(args.option_file_path, 'object', cams, silent=True, fast_init=True,
+    option_file_path = check_option_file(args.option_file_path)
+    project = Orbs(option_file_path[0], 'object', cams,
+                   silent=True, fast_init=True,
                    config_file_name=config_file_name)
 
-    
-    phase_cube = orb.utils.io.read_fits(project.indexer.get_path('{}.binned_phase_cube'.format(cam)))
+    interf_cube = orb.utils.io.read_fits(project.indexer.get_path(
+        '{}.binned_interferogram_cube'.format(cam), err=True))
     step = project.options['step']
     order = project.options['order']
     nm_laser = project.config["CALIB_NM_LASER"]
 
-    calib_map = orb.utils.io.read_fits(project.indexer.get_path('{}.binned_calibration_laser_map'.format(cam)))
+    calib_map = orb.utils.io.read_fits(project.indexer.get_path(
+        '{}.binned_calibration_laser_map'.format(cam), err=True))
 
     filter_file_path = project._get_filter_file_path(
         project.options["filter_name"])
 
-    filter_min, filter_max = orb.utils.filters.get_filter_bandpass(filter_file_path)
-    filter_min_cm1, filter_max_cm1 = orb.utils.spectrum.nm2cm1([filter_max, filter_min])
+    filter_min, filter_max = orb.utils.filters.get_filter_bandpass(
+        filter_file_path)
+    filter_min_cm1, filter_max_cm1 = orb.utils.spectrum.nm2cm1(
+        [filter_max, filter_min])
     
-
     base_calib = calib_map[calib_map.shape[0]/2,
                            calib_map.shape[1]/2]
     
-    CROP_COEFF = 0.5 # proportion of the phase map to keep when
-                     # cropping
+    CROP_COEFF = args.s # proportion of the phase map to keep when
+                        # cropping
 
-    FILTER_EDGE_COEFF = -0.05
-    
-    xmin,xmax,ymin,ymax = orb.utils.image.get_box_coords(
-        phase_cube.shape[0]/2,
-        phase_cube.shape[1]/2,
-        int(CROP_COEFF*phase_cube.shape[0]),
-        0, phase_cube.shape[0],
-        0, phase_cube.shape[1])
+    FILTER_EDGE_COEFF = -0.2
+
+    dimx, dimy, dimz = interf_cube.shape
+
+    if CROP_COEFF < 1:
+        xmin,xmax,ymin,ymax = orb.utils.image.get_box_coords(
+            dimx*args.x,
+            dimy*args.y,
+            int(CROP_COEFF*dimx),
+            0, dimx,
+            0, dimy)
+    else:
+        xmin = 0 ; xmax = dimx ; ymin = 0 ; ymax = dimy
 
     final_phase_cube = np.empty((xmax-xmin, ymax-ymin,
-                                 phase_cube.shape[2]), dtype=float)
+                                 dimz), dtype=float)
     final_phase_cube.fill(np.nan)
 
     cm1_axis_base = orb.utils.spectrum.create_cm1_axis(
-        phase_cube.shape[2], step, order, corr=base_calib/nm_laser)
+        dimz, step, order, corr=base_calib/nm_laser)
 
-    # get filter range + weights
-    w, filter_range = orb.utils.filters.compute_weights(
-        base_calib, nm_laser, phase_cube.shape[2],
-        step, order, FILTER_EDGE_COEFF, filter_min_cm1, filter_max_cm1)
+    # compute phase cube
     
-    filter_range = [
-        np.min(np.arange(w.shape[0])[w > 1e-35]),
-        np.max(np.arange(w.shape[0])[w > 1e-35])]
-    
-    
-
-    # compute phase mean
-    final_phase = np.zeros(phase_cube.shape[2], dtype=float)
-    
-    progress = ProgressBar(xmax-xmin)
-    for ii in range(xmin, xmax):
-        progress.update(ii-xmin, info='Creating mean phase vector')
-        for ij in range(ymin, ymax):
-            cm1_axis = orb.utils.spectrum.create_cm1_axis(
-                phase_cube.shape[2], step, order,
-                corr=calib_map[ii,ij]/nm_laser)
-    
+    ## final_phase = np.zeros(dimz, dtype=float)    
+    ## progress = ProgressBar(xmax-xmin)
+    ## spectrum = np.zeros(dimz, dtype=float)
+    ## for ii in range(xmin, xmax):
+    ##     progress.update(ii-xmin, info='Creating phase cube')
+    ##     for ij in range(ymin, ymax):
+    ##         cm1_axis = orb.utils.spectrum.create_cm1_axis(
+    ##             dimz, step, order,
+    ##             corr=calib_map[ii,ij]/nm_laser)
             
-            iphase = orb.utils.vector.interpolate_axis(
-                phase_cube[ii,ij,:],
-                cm1_axis_base,
-                3, old_axis=cm1_axis)
+    ##         ifft = orb.utils.fft.transform_interferogram(
+    ##             interf_cube[ii,ij,:], 1, 1,
+    ##             step, order, '2.0', 0, phase_correction=False,
+    ##             return_complex=True, wavenumber=True,
+    ##             wave_calibration=False)            
             
-            iphase[:min(filter_range)] = np.nan
-            iphase[max(filter_range):] = np.nan
+    ##         # phase is not calibrated because order > 0 are all
+    ##         # *cos(theta): i.e. they fall in the same channel in
+    ##         # non-calibrated phase cube
+    ##         iphase = np.unwrap(np.angle(ifft))
 
-            final_phase_cube[ii-xmin, ij-ymin, :] = iphase - np.nanmean(iphase)
+    ##         w, irange = orb.utils.filters.compute_weights(
+    ##             calib_map[ii,ij], nm_laser, dimz,
+    ##             step, order, 0.15, filter_min_cm1, filter_max_cm1)
+
+    ##         iphase[:irange[0]] = np.nan
+    ##         iphase[irange[1]:] = np.nan
+
+    ##         final_phase_cube[ii-xmin, ij-ymin, :] = iphase
+
+    ##         ispec = np.abs(ifft)
+    ##         ispec = orb.utils.vector.interpolate_axis(
+    ##             ispec, cm1_axis_base, 1, old_axis=cm1_axis)
+    ##         spectrum += ispec            
         
-    progress.end()
+    ## progress.end()
 
-    # compute final phase vector
-    final_phase = np.nanmedian(np.nanmedian(final_phase_cube, axis=0), axis=0)
-    final_phase -= np.nanmean(final_phase)
-   
-    final_phase[np.isnan(final_phase)] = 0.
-
-    final_phase_cube -= final_phase
-    mean_map =  np.nanmean(final_phase_cube, axis=2)
-    final_phase_cube = (final_phase_cube.T - mean_map.T).T
-
-    # error computation
-    final_phase_err = np.sqrt(np.nanmedian(np.nanmedian(final_phase_cube**2., axis=0),axis=0))
-    final_phase_err[:min(filter_range)] = np.nan
-    final_phase_err[max(filter_range):] = np.nan
+    ## # unwrap phase cube
     
-    
-    # spline smoothing
-    weights = final_phase_err / np.nanmean(final_phase_err)
-    weights = 1. / weights
-    weights[np.isnan(weights)] = 0.
-    
-    final_phasef = scipy.interpolate.UnivariateSpline(
-        np.arange(final_phase.shape[0]), final_phase, w=weights, ext=3,
-        s=len(weights)*args.smooth_coeff)
+    ## final_phase = np.empty(dimz, dtype=float)
+    ## final_phase_err_max = np.empty_like(final_phase)
+    ## final_phase_err_min = np.empty_like(final_phase)
+    ## final_phase_err = np.empty_like(final_phase)
 
-    final_phase_old = np.copy(final_phase)
-    final_phase = final_phasef(np.arange(final_phase.shape[0]))
+    ## final_phase_cube = unwrap_phase_cube(final_phase_cube)
+    ## dx = 2
+    ## median_frame = np.nanmedian(final_phase_cube[
+    ##     :,:,dimz/2-dx:dimz/2+dx+1], axis=2)
+    ## final_phase_cube = (final_phase_cube.T - median_frame.T).T
+    ## final_phase_cube = unwrap_phase_cube(final_phase_cube)
+    ## dx = 10
+    ## median_frame = np.nanmedian(final_phase_cube[
+    ##     :,:,dimz/2-dx:dimz/2+dx+1], axis=2)
+    ## final_phase_cube = (final_phase_cube.T - median_frame.T).T
 
-    # remove order 1 polynomial
-    order1_poly = orb.utils.vector.polyfit1d(final_phase, 1, w=w)
-    final_phase -= order1_poly
-    final_phase_old -= order1_poly
+    ## orb.utils.io.write_fits(
+    ##     'final_phase_cube.fits', final_phase_cube, overwrite=True)
+    ## orb.utils.io.write_fits(
+    ##     'spectrum.fits', spectrum, overwrite=True)
+    final_phase_cube = orb.utils.io.read_fits('final_phase_cube.fits')
+    spectrum = orb.utils.io.read_fits('spectrum.fits')
 
-    cm1_axis_base = cm1_axis_base[min(filter_range):max(filter_range)]
-    final_phase = final_phase[min(filter_range):max(filter_range)]
-    final_phase_err = final_phase_err[min(filter_range):max(filter_range)]
-    final_phase_old = final_phase_old[min(filter_range):max(filter_range)]
-    
-    
-    with open(args.output_file_path, 'w') as f:
-        f.write("""## ORBS phase file
-# Author: Thomas Martin <thomas.martin.1@ulaval.ca>
-# Filter name : {}
-# Wavenumber in cm-1 | Phase in radians
 
-""".format(project.options["filter_name"]))
+    # sum over incident angles
 
-        for iline in range(cm1_axis_base.shape[0]):
-            f.write('{} {}\n'.format(
-                cm1_axis_base[iline],
-                final_phase[iline]))
+    max_angle = np.percentile(calib_map, 99.99)
+    min_angle = np.percentile(calib_map, 0.01)
+    angles = np.linspace(min_angle, max_angle, 300)
+    phases = list()
+    phases_err_min = list()
+    phases_err_max = list()
 
+    for iang in range(1, len(angles)):
+        ipix = np.nonzero(
+            (calib_map > angles[iang-1])
+            * (calib_map <= angles[iang]))
+        ixx = ipix[0]
+        iyy = ipix[1]
+        iphases = np.empty((len(ixx), dimz), dtype=float)
+        for i in range(len(ixx)):
+            ii = ixx[i] ; ij = iyy[i]
+            iphases[i,:] = final_phase_cube[ii,ij]
+            iphases[i,:] -= np.nanmedian(iphases[i,:])
+        
+        phases.append(np.nanmedian(iphases, axis=0))
+        ierr_min = np.abs(np.nanpercentile(iphases, 16, axis=0) - phases[-1])
+        ierr_max = np.abs(np.nanpercentile(iphases, 84, axis=0) - phases[-1])
+        phases_err_min.append(ierr_min)
+        phases_err_max.append(ierr_max)
+
+        ## pl.plot(phases[-1])
+        ## pl.plot(phases[-1] - ierr_min)
+        ## pl.plot(phases[-1] + ierr_max)
+        ## pl.show()
+        ierr = np.nanmax((ierr_min, ierr_max), axis=0)
+        print "median error at angle {:.2f}: {:.2f} [{:.2f}%] [over {} phase vectors]".format(angles[iang], np.nanmedian(ierr), np.nanmedian(ierr) / np.pi * 100., len(ixx))
+
+    # write output
+    phf = PhaseFile(project.options["filter_name"])
+    phf.write_improved_phase_file(
+        step, order, angles, phases, phases_err_min, phases_err_max)
+        
     if args.plot:
-        pl.errorbar(orb.utils.spectrum.cm12nm(cm1_axis_base),
-                final_phase_old,
-                yerr=final_phase_err,
-                linewidth=3., elinewidth=1., ecolor='0.5',
-                lw=3., color='red',
-                label='non-smoothed phase')
-        pl.plot(
-            orb.utils.spectrum.cm12nm(cm1_axis_base),
-            final_phase,
-            color='0.', linewidth=3.,
-            label='smoothed_phase')
-        pl.legend()
-        pl.grid()
+        
+        
+        cm1_axis_base_spectrum = np.copy(cm1_axis_base)
+        ax = pl.subplot(211)
+        ax2 = pl.subplot(212)
+        axis = orb.utils.spectrum.cm12nm(cm1_axis_base)
+        axis_spectrum = orb.utils.spectrum.cm12nm(cm1_axis_base_spectrum)
+        ax2.plot(axis_spectrum, spectrum / np.nanmax(spectrum), label='Spectrum', c='0.5')
+        ax2.set_ylabel('Spectrum normalized amplitude')
+        ax2.legend()
+        ax2.set_xlabel('Wavelength (nm)')
+        ax2.set_xlim([np.nanmin(axis_spectrum), np.nanmax(axis_spectrum)])
+
+
+        iang = len(angles)/2
+        iphase = phases[iang] + 0.2
+        ax.fill_between(axis,
+                        iphase - phases_err_min[iang],
+                        iphase + phases_err_max[iang],
+                        facecolor='0.5',linewidth=0., alpha=0.5)
+        ax.plot(axis, iphase, c='red', linewidth=3.,
+                label='Median Phase')
+        ax.set_ylabel('Phase (radians)')
+        ax.legend()
+        ax.grid()
+        ax.set_xlim([np.nanmin(axis_spectrum), np.nanmax(axis_spectrum)])
+        pl.tight_layout()
         pl.show()
 
     
@@ -218,7 +302,7 @@ if __name__ == "__main__":
         version=('ORBS-version: {}, ORB-version: {}'.format(
             orbs.version.__version__, orb.core.__version__)),
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        description="Create a phase file from a binned phase cube")
+        description="Create a phase file from a reduced phase cube")
 
     parser.add_argument('instrument_mode',
                         action='store',
@@ -229,10 +313,6 @@ if __name__ == "__main__":
                         action='store',
                         help='Path to the option file')
 
-    parser.add_argument('output_file_path',
-                        action='store',
-                        help='Path to the output file')
-
     parser.add_argument('--cam',
                         dest='camera',
                         type=int,
@@ -241,19 +321,32 @@ if __name__ == "__main__":
                         choices=[0,1,2],
                         help='Camera number (default 0)')
 
-    parser.add_argument('--smooth',
-                        dest='smooth_coeff',
-                        type=float,
-                        action='store',
-                        default=1.,
-                        help='Smoothing coeff. Must be between 0 and 1 (default 1.).')
-
-
     parser.add_argument('--plot',
                         dest='plot',
                         action='store_true',
                         default=False,
                         help='Plot final phase vector')
+
+    parser.add_argument('-x',
+                        dest='x',
+                        type=float,
+                        default=0.5,
+                        help='Relative X position of the center of the extracted portion of the phase cube used to create the mean phase vector (must be between 0 and 1, default 0.5)')
+
+    parser.add_argument('-y',
+                        dest='y',
+                        type=float,
+                        default=0.5,
+                        help='Relative Y position of the center of the extracted portion of the phase cube used to create the mean phase vector (must be between 0 and 1, default 0.5)')
+
+    parser.add_argument('-s',
+                        dest='s',
+                        type=float,
+                        default=1.,
+                        help='Relative size the extracted portion of the phase cube used to create the mean phase vector (must be between 0 and 1, default 0.8)')
+
+
+
 
     args = parser.parse_args()
 

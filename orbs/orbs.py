@@ -47,6 +47,7 @@ import bottleneck as bn
 
 
 from orb.core import Tools, Cube, Indexer, OptionFile, HDFCube
+from orb.core import FilterFile, PhaseFile
 from process import RawData, InterferogramMerger, Interferogram
 from process import Spectrum, CalibrationLaser
 from process import SourceExtractor, PhaseMaps, CosmicRayDetector
@@ -502,16 +503,18 @@ class Orbs(Tools):
                                 # If the list of the imported
                                 # files in the hdf5 cube is the same,
                                 # export is not done again.
-                                cube = Cube(self.options[option_key],
-                                            silent_init=True, no_sort=False,
-                                            ncpus=self.ncpus,
-                                            config_file_name=self.config_file_name)
+                                cube = Cube(
+                                    self.options[option_key],
+                                    silent_init=True, no_sort=False,
+                                    ncpus=self.ncpus,
+                                    config_file_name=self.config_file_name)
                                 
                                 if already_exported:    
                                     with self.open_hdf5(export_path, 'r') as f:
                                         if 'image_list' in f:
                                             new_image_list = f['image_list'][:]
-                                            old_image_list = np.array(cube.image_list)
+                                            old_image_list = np.array(
+                                                cube.image_list)
                                             if (np.size(new_image_list)
                                                 == np.size(old_image_list)):
                                                 if (np.all(
@@ -526,7 +529,8 @@ class Orbs(Tools):
                                 
                             if not already_exported or not check_ok:
                                 cube.export(export_path, force_hdf5=True,
-                                            overwrite=True)
+                                            overwrite=True,
+                                            mask=self.image_mask)
 
 
                             self.options[option_key + '.hdf5'] = export_path
@@ -650,6 +654,17 @@ class Orbs(Tools):
         store_option_parameter('step', 'SPESTEP', float)
         store_option_parameter('step_number', 'SPESTNB', int)
         store_option_parameter('order', 'SPEORDR', float)
+        
+        # check step and order
+        if 'filter_name' in self.options:
+            _step, _order = FilterFile(
+                self.options['filter_name']).get_observation_params()
+            if int(self.options['order']) != int(_order):
+                self._print_warning('Bad order. Option file tells {} while filter file tells {}. Order parameter replaced by {}'.format(int(self.options['order']), _order, _order))
+                self.options['order'] = _order
+            if abs(self.options['step'] - float(_step))/float(_step) > 0.1:
+                self._print_error('There is more than 10% difference between the step size in the option file ({}) and the step size recorded in the filter file ({})'.format(self.options['step'], _step))
+                
         store_option_parameter('exp_time', 'SPEEXPT', float)
         store_option_parameter('dark_time', 'SPEDART', float)
         store_option_parameter('obs_date', 'OBSDATE', str)
@@ -674,6 +689,13 @@ class Orbs(Tools):
         store_option_parameter('no_sky', 'NOSKY', bool)
         store_option_parameter('prebinning', 'PREBINNING', int)
         store_option_parameter('source_list_path', 'SOURCE_LIST_PATH', str)
+        
+        # get image mask
+        store_option_parameter('image_mask_path', 'MASKPATH', str)
+        if 'image_mask_path' in self.options:
+            self.image_mask = self.read_fits(
+                self.options['image_mask_path'])
+        else: self.image_mask = None
         
         fringes = self.optionfile.get_fringes()
         if fringes is not None:
@@ -1334,11 +1356,8 @@ class Orbs(Tools):
 
     def _get_phase_fit_order(self):
         """Return phase fit order from the filter file"""
-        filter_path = self._get_filter_file_path(self.options["filter_name"])
-        if filter_path is None:
-            self._print_error("Unknown filter name.")
-            
-        fit_order = orb.utils.filters.get_phase_fit_order(filter_path)
+        fit_order = FilterFile(
+            self.options["filter_name"]).get_phase_fit_order()
         if fit_order is not None:
             return fit_order
         else:
@@ -1578,7 +1597,7 @@ class Orbs(Tools):
           will be given in pixels instead of arcseconds (default
           False).
 
-        :param all_sources: (Optional) If True, all point sources ar
+        :param all_sources: (Optional) If True, all point sources are
           detected regardless of their FWHM (galaxies, HII regions,
           filamentary knots and stars might be detected).
         
@@ -2477,10 +2496,7 @@ class Orbs(Tools):
             window_type=apodization_function,
             phase_cube=phase_cube,
             phase_map_paths=phase_map_paths,
-            filter_file_path=self._get_filter_file_path(
-                self.options["filter_name"]),
-            phase_file_path=self._get_phase_file_path(
-                self.options["filter_name"]),
+            filter_name=self.options["filter_name"],
             balanced=balanced,
             fringes=fringes,
             wavenumber=wavenumber,
@@ -2541,10 +2557,6 @@ class Orbs(Tools):
             zpd_shift = self.options['zpd_shift']
         else:
             zpd_shift = None
-
-        filter_path = self._get_filter_file_path(self.options["filter_name"])
-        if filter_path is None:
-            self._print_warning("Unknown filter name.")
             
         # get calibration laser map path
         calibration_laser_map_path = self._get_calibration_laser_map(
@@ -2559,16 +2571,17 @@ class Orbs(Tools):
                 camera_number, corrected=False)        
             
         self.indexer.set_file_group(camera_number)
-        cube = Interferogram(interfero_cube_path, silent_init=True,
-                             config_file_name=self.config_file_name,
-                             overwrite=self.overwrite,
-                             tuning_parameters=self.tuning_parameters,
-                             indexer=self.indexer,
-                             project_header = self._get_project_fits_header(
-                                 camera_number),
-                             data_prefix=self._get_data_prefix(camera_number),
-                             calibration_laser_header=self._get_calibration_laser_fits_header(),
-                             ncpus=self.ncpus)
+        cube = Interferogram(
+            interfero_cube_path, silent_init=True,
+            config_file_name=self.config_file_name,
+            overwrite=self.overwrite,
+            tuning_parameters=self.tuning_parameters,
+            indexer=self.indexer,
+            project_header = self._get_project_fits_header(
+                camera_number),
+            data_prefix=self._get_data_prefix(camera_number),
+            calibration_laser_header=self._get_calibration_laser_fits_header(),
+            ncpus=self.ncpus)
         
         perf = Performance(cube, "Phase map creation", camera_number,
                            config_file_name=self.config_file_name)
@@ -2587,10 +2600,7 @@ class Orbs(Tools):
         cube.create_phase_maps(
             self.options['step'], self.options['order'],
             zpd_shift=zpd_shift, binning=binning,
-            filter_file_path=self._get_filter_file_path(
-                self.options["filter_name"]),
-            phase_file_path=self._get_phase_file_path(
-                self.options["filter_name"]),
+            filter_name=self.options["filter_name"],
             calibration_laser_map_path=calibration_laser_map_path,
             nm_laser=self.config["CALIB_NM_LASER"],
             fit_order=fit_order)
@@ -2700,10 +2710,6 @@ class Orbs(Tools):
             zpd_shift = self.options['zpd_shift']
         else:
             zpd_shift = None
-
-        filter_path = self._get_filter_file_path(self.options["filter_name"])
-        if filter_path is None:
-            self._print_warning("Unknown filter name.")
             
         # get calibration laser map path
         calibration_laser_map_path = self._get_calibration_laser_map(
@@ -2734,11 +2740,7 @@ class Orbs(Tools):
             self.options['phase_map_order_0_path'],
             self.options['phase_map_order_1_path'],
             self.options['step'], self.options['order'],
-            zpd_shift,
-            self._get_filter_file_path(
-                self.options["filter_name"]),
-            self._get_phase_file_path(
-                self.options["filter_name"]),
+            zpd_shift, self.options["filter_name"],
             calibration_laser_map_path,
             self.config["CALIB_NM_LASER"],
             binning=BINNING)
@@ -2794,9 +2796,6 @@ class Orbs(Tools):
         del perf
         return perf_stats
 
-
-
-
     def _find_standard_star(self, camera_number):
         """Register cube to find standard star position
 
@@ -2804,19 +2803,15 @@ class Orbs(Tools):
         
         :return: star position as a tuple (x,y)
         """
-
-        filter_path = self._get_filter_file_path(self.options["filter_name"])
         std_path = self.options['standard_image_path_{}.hdf5'.format(camera_number)]
         std_name = self._get_standard_name(std_path)
-        if (std_path is None
-            or filter_path is None):
+        if std_path is None:
             
-            self._print_warning("Standard related options were not given or the name of the filter is unknown.")
+            self._print_warning("Standard related options were not given")
             return None, None, None
             
         self._print_msg('Registering standard image cube to find standard star position')
         
-
         # standard image registration to find std star
         std_cube = HDFCube(std_path, ncpus=self.ncpus,
                            config_file_name=self.config_file_name)
@@ -2909,10 +2904,6 @@ class Orbs(Tools):
 
         
         # get filter file
-        filter_path = self._get_filter_file_path(self.options["filter_name"])
-        if filter_path is None:
-            self._print_error('Filter file path must be given')
-    
         spectrum_cube_path = self.indexer.get_path(
             'spectrum_cube', camera_number)
 
@@ -2979,20 +2970,18 @@ class Orbs(Tools):
         (flux_calibration_axis,
          flux_calibration_vector) = (None, None)
 
-        if ('standard_path' in self.options
-            and filter_path is not None):
+        if 'standard_path' in self.options:
             std_path = self.options['standard_path']
             std_name = self._get_standard_name(std_path)
             (flux_calibration_axis,
              flux_calibration_vector) = spectrum.get_flux_calibration_vector(
-                std_path, std_name, self._get_filter_file_path(self.options["filter_name"]))
+                std_path, std_name, self.options["filter_name"])
         else:
             self._print_warning("Standard related options were not given or the name of the filter is unknown. Flux calibration vector cannot be computed")
 
         # Get flux calibraton coeff
         flux_calibration_coeff = None
-        if ('standard_image_path_1.hdf5' in self.options
-            and filter_path is not None):
+        if 'standard_image_path_1.hdf5' in self.options:
             
             std_path = self.options['standard_image_path_1.hdf5']
             std_name = self._get_standard_name(std_path)
@@ -3011,8 +3000,7 @@ class Orbs(Tools):
                     fwhm_pix1,
                     self.options['step'],
                     self.options['order'],
-                    self._get_filter_file_path(self.options["filter_name"]),
-                    self._get_optics_file_path(self.options["filter_name"]),
+                    self.options["filter_name"],
                     calibration_laser_map_path, 
                     self.config['CALIB_NM_LASER'])
     
@@ -3026,7 +3014,8 @@ class Orbs(Tools):
         
         # Calibration
         spectrum.calibrate(
-            filter_path, step, order,
+            self.options["filter_name"],
+            step, order,
             calibration_laser_map_path,
             self.config['CALIB_NM_LASER'],
             self.options['exp_time'],
@@ -3190,11 +3179,6 @@ class Orbs(Tools):
         # get source list
         source_list = self._get_source_list()
         
-        # get filter path
-        filter_path = self._get_filter_file_path(self.options["filter_name"])
-        if filter_path is None:
-            self._print_error("Unknown filter {}".format(filter_path))
-
         # print sources
         for i in range(len(source_list)):
             self._print_msg('source {}: {} {}'.format(
@@ -3244,11 +3228,10 @@ class Orbs(Tools):
             self.options['step'],
             self.options['order'],
             apodization_function,
-            filter_path, phase_map_paths,
+            self.options["filter_name"], phase_map_paths,
             self.config['CALIB_NM_LASER'],
             calibration_laser_map_path,
-            phase_file_path=self._get_phase_file_path(
-                self.options["filter_name"]),
+            filter_name=self.options["filter_name"],
             optimize_phase=optimize_phase,
             filter_correction=filter_correction,
             cube_A_is_balanced = self._is_balanced(1),

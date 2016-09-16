@@ -35,8 +35,8 @@ import orb.utils.image
 ###########################################
     
 def main(args):
-    if args.mode == 'sitelle': config_file_name='config.sitelle.orb'
-    elif args.mode == 'spiomm': config_file_name='config.spiomm.orb'
+    if args.instrument_mode == 'sitelle': config_file_name='config.sitelle.orb'
+    elif args.instrument_mode == 'spiomm': config_file_name='config.spiomm.orb'
     
     to = Tools(config_file_name=config_file_name, no_log=True)
     calib_map = to.read_fits(args.calibration_laser_map_path)
@@ -57,12 +57,14 @@ if __name__ == "__main__":
         orb.core.__version__)),
                             description=
                             "Fit a calibration laser map.")
+
+    parser.add_argument('instrument_mode',
+                        action='store',
+                        choices=['sitelle', 'spiomm'],
+                        help='Instrument mode')
+
     
     parser.add_argument(dest='calibration_laser_map_path', help='Path to the calibration laser map (FITS file)')
-
-    parser.add_argument('--mode', dest="mode", default='spiomm',
-                        choices=['sitelle', 'spiomm'],
-                        help="Instrument mode (can be 'sitelle' or 'spiomm')")
                             
     args = parser.parse_args()
 
