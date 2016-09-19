@@ -3003,6 +3003,7 @@ class Orbs(Tools):
                     self.options['step'],
                     self.options['order'],
                     self.options["filter_name"],
+                    self._get_optics_file_path(self.options["filter_name"]),
                     calibration_laser_map_path, 
                     self.config['CALIB_NM_LASER'])
     

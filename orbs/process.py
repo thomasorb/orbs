@@ -6069,8 +6069,7 @@ class Spectrum(HDFCube):
 
         # compute simulated flux
         std_sim_flux = std.compute_star_flux_in_frame(
-            step, order, filter_name,
-            optics_file_path, 1, corr=corr)
+            step, order, filter_name, 1, corr=corr)
 
         self._print_msg('Simulated star flux in one camera: {} ADU/s'.format(
             std_sim_flux))
