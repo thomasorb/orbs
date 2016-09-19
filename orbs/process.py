@@ -7043,11 +7043,14 @@ class PhaseMaps(Tools):
         ## compute max flux error due to order 0 error. An error of
         ## pi/2 is equivalent to 100% loss of flux. Note that noise
         ## plus model errors are considered at the same
-        ## time. Therefore this estimation is very conservative.
+        ## time. Therefore this estimation is very conservative.  The
+        ## flux error estimation varies with the
+        ## cos(order0_error). The flux error percentage is thus 100 *
+        ## (1 - cos(error_in_radians))
         res_std = orb.utils.stats.robust_std(
             orb.utils.stats.sigmacut(
                 error_map, sigma=3)) # in radians
-        max_flux_error = res_std / (math.pi / 2.) 
+        max_flux_error = 1 - np.cos(res_std)
         self._print_msg(
             "Phase Map order 0 residual std: {}, Max flux error (conservative estimate): {}%".format(res_std, max_flux_error*100.))
 
