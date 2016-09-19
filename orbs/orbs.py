@@ -2612,17 +2612,17 @@ class Orbs(Tools):
         for order in range(fit_order + 1):
             phase_map_path_list.append(
                 cube._get_phase_map_path(order))
-        residual_map_path_list = list()
-        residual_map_path_list.append(
-            cube._get_phase_map_path(0, res=True))
+        err_map_path_list = list()
+        err_map_path_list.append(
+            cube._get_phase_map_path(0, err=True))
         if fit_order >= 1:
-            residual_map_path_list.append(
-                cube._get_phase_map_path(1, res=True))
+            err_map_path_list.append(
+                cube._get_phase_map_path(1, err=True))
 
         # init PhaseMaps
         phasemaps = PhaseMaps(
             phase_map_path_list,
-            residual_map_path_list,
+            err_map_path_list,
             cube.dimx, cube.dimy,
             config_file_name=self.config_file_name,
             overwrite=self.overwrite,
@@ -2636,11 +2636,13 @@ class Orbs(Tools):
 
         # fit order 1
         if fit_order > 0:
-            phasemaps.fit_phase_map(1)
-        
+            phasemaps.fit_phase_map(1, calibration_laser_map_path,
+                                    self.config["CALIB_NM_LASER"])
+    
         # fit higher order but the last one 
         for order in range(2, fit_order):
-            phasemaps.fit_phase_map(order)
+            phasemaps.fit_phase_map(order, calibration_laser_map_path,
+                                    self.config["CALIB_NM_LASER"])
 
         # reduce last order if > 1
         if fit_order > 1:
@@ -2750,14 +2752,14 @@ class Orbs(Tools):
         # create phase maps lists
         phase_map_path_list = [cube._get_phase_map_path(0),
                                cube._get_phase_map_path(1)]
-        residual_map_path_list =  [self.options['phase_map_order_0_path'],#Hack
-                                   self.options['phase_map_order_0_path']]#Hack
+        err_map_path_list =  [self.options['phase_map_order_0_path'],#Hack
+                              self.options['phase_map_order_0_path']]#Hack
 
         # init PhaseMaps (only used to get the right path to write
         # phase maps)
         phasemaps = PhaseMaps(
             phase_map_path_list,
-            residual_map_path_list,
+            err_map_path_list,
             cube.dimx, cube.dimy,
             config_file_name=self.config_file_name,
             overwrite=self.overwrite,

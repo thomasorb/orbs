@@ -2185,29 +2185,29 @@ class Interferogram(HDFCube):
         """
         return self._data_path_hdr + "binned_calibration_laser_map.fits"
 
-    def _get_phase_map_path(self, order, res=False):
+    def _get_phase_map_path(self, order, err=False):
         """Return path to phase map
 
         :param order: Order of the phase map.
         
-        :param res: (Optional) If True, map is a residual map (default
+        :param err: (Optional) If True, map is an error map (default
           False).
         """
-        if res: map_type = '.residual'
+        if err: map_type = '.err'
         else: map_type = ''
         return self._data_path_hdr + "phase_map_order_{}{}.fits".format(
             int(order), map_type)
 
-    def _get_phase_map_header(self, order, res=False):
+    def _get_phase_map_header(self, order, err=False):
         """Return phase map header
     
         :param order: Order of the phase map.
         
-        :param res: (Optional) If True, map is a residual map (default
+        :param err: (Optional) If True, map is an error map (default
           False).
 
         """
-        if res: map_type = '(residual)'
+        if err: map_type = '(err)'
         else: map_type = ''
         return (self._get_basic_header('Phase map order {} {}'.format(
             int(order), map_type))
@@ -3050,9 +3050,9 @@ class Interferogram(HDFCube):
             phase_col = np.empty_like(cube_col)
             fit_coeffs_col = np.empty((cube_col.shape[0], fit_order+1),
                                       dtype=float)
-            fit_res_col = np.empty(cube_col.shape[0], dtype=float)
+            fit_err_col = np.empty(cube_col.shape[0], dtype=float)
             fit_coeffs_col.fill(np.nan)
-            fit_res_col.fill(np.nan)
+            fit_err_col.fill(np.nan)
             
             for ij in range(cube_col.shape[0]):
 
@@ -3105,42 +3105,27 @@ class Interferogram(HDFCube):
                             else:
                                 phase_to_fit = iphase
 
-                            ## import pylab as pl
-                            ## pl.plot(ihigh_phase)
-                            ## pl.plot(iphase)
-                            ## pl.plot(phase_to_fit, ':')
-                            ## pl.show()
                                 
                             # polynomial fit
-                            coeffs = np.polynomial.polynomial.polyfit(
-                                np.arange(iphase.shape[0]),
-                                phase_to_fit, 
-                                fit_order, w=weights,
-                                full=True)
+                            def model(x, *p):
+                                return np.polynomial.polynomial.polyval(x, p)
+
+                            x= np.arange(iphase.shape[0])
+                            pfit, pcov = optimize.curve_fit(
+                                model, x, iphase, [0., 0.], 1/weights)
+                            perr = np.sqrt(np.diag(pcov))
                         
                         except Exception, e:
                             print 'Exception occured during phase fit: ', e
-                            coeffs = None
+                            pfit = None
                     else:
-                        coeffs = None
+                        pfit = None
 
-                    if coeffs is not None:
-                        if len(coeffs[1][0]) == 1:
-                            ## if ij > 170:
-                            ##     import pylab as pl
-                            ##     pl.plot(iphase - ihigh_phase)
-                            ##     #pl.plot(iphase)
-                            ##     pl.plot(weights)
-                            ##     pl.plot(np.polynomial.polynomial.polyval(
-                            ##         np.arange(iphase.shape[0]), coeffs[0]))
-                            ##     pl.plot(ihigh_phase)
-                            ##     pl.axvline(x=np.min(filter_range))
-                            ##     pl.axvline(x=np.max(filter_range))
-                            ##     pl.show()
-                            fit_coeffs_col[ij,:] = np.array(coeffs[0])
-                            fit_res_col[ij] = coeffs[1][0]
+                    if pfit is not None:
+                        fit_coeffs_col[ij,:] = np.array(pfit)
+                        fit_err_col[ij] = perr[1]
                     
-            return fit_coeffs_col, fit_res_col, phase_col
+            return fit_coeffs_col, fit_err_col, phase_col
         
         def optimize_phase_in_column(cube_col, step, order, zpd_shift,
                                      phase_maps, column_nb, calib_col, nm_laser,
@@ -3151,9 +3136,9 @@ class Interferogram(HDFCube):
 
             warnings.simplefilter('ignore', RuntimeWarning)
             order0_col = np.empty(cube_col.shape[0], dtype=float)
-            res_col = np.empty(cube_col.shape[0], dtype=float)
+            err_col = np.empty(cube_col.shape[0], dtype=float)
             order0_col.fill(np.nan)
-            res_col.fill(np.nan)
+            err_col.fill(np.nan)
             
             for ij in range(cube_col.shape[0]):
                 if np.all(cube_col[ij,:] == 0):
@@ -3187,9 +3172,9 @@ class Interferogram(HDFCube):
                         high_order_phase=phf)
                     if result is not None:
                         order0_col[ij] = result[0][0]
-                        res_col[ij] = result[1]
+                        err_col[ij] = result[1]
                     
-            return order0_col, res_col
+            return order0_col, err_col
 
         self._print_msg('Computing phase maps up to order {}'.format(fit_order))
 
@@ -3224,7 +3209,7 @@ class Interferogram(HDFCube):
                 median_interf, return_zpd_shift=True)
         
         # binning interferogram cube and calibration laser map
-        #self.create_binned_interferogram_cube(binning)
+        self.create_binned_interferogram_cube(binning)
         cube_bin = self.read_fits(self._get_binned_interferogram_cube_path())
         
         if calibration_laser_map_path is not None:
@@ -3242,10 +3227,10 @@ class Interferogram(HDFCube):
         fit_coeffs_map = np.empty((cube_bin.shape[0],
                                cube_bin.shape[1],
                                fit_order+1), dtype=float)
-        fit_res_map = np.empty((cube_bin.shape[0],
+        fit_err_map = np.empty((cube_bin.shape[0],
                                 cube_bin.shape[1]), dtype=float)
         fit_coeffs_map.fill(np.nan)
-        fit_res_map.fill(np.nan)
+        fit_err_map.fill(np.nan)
 
         job_server, ncpus = self._init_pp_server()
         progress = ProgressBar(cube_bin.shape[0])
@@ -3264,12 +3249,13 @@ class Interferogram(HDFCube):
                       fit_order, phf),
                 modules=("numpy as np", "import orb.utils.fft",
                          "import warnings", "import orb.cutils",
-                         "import orb.utils.filters", "import scipy.interpolate"))) 
+                         "import orb.utils.filters", "import scipy.interpolate",
+                         "from scipy import optimize"))) 
                     for ijob in range(ncpus)]
 
             for ijob, job in jobs:
                 (fit_coeffs_map[ii+ijob,:,:],
-                 fit_res_map[ii+ijob,:],
+                 fit_err_map[ii+ijob,:],
                  phase_cube[ii+ijob,:,:]) = job()
 
         progress.end()
@@ -3292,23 +3278,25 @@ class Interferogram(HDFCube):
                 self.indexer['phase_map_{}'.format(iorder)] = (
                     self._get_phase_map_path(iorder))
 
-        # write residual map
-        self.write_fits(self._get_phase_map_path(1, res=True),
-                        fit_res_map,
-                        fits_header=self._get_phase_map_header(1, res=True),
+        # write error map
+        self.write_fits(self._get_phase_map_path(1, err=True),
+                        fit_err_map,
+                        fits_header=self._get_phase_map_header(1, err=True),
                         overwrite=self.overwrite)
         if self.indexer is not None:
-            self.indexer['phase_map_1_residual'] = (
-                self._get_phase_map_path(1, res=True))
+            self.indexer['phase_map_1_err'] = (
+                self._get_phase_map_path(1, err=True))
 
         # fit order 1 map
         phase_maps = [self.read_fits(self._get_phase_map_path(iorder))
                       for iorder in range(fit_order+1)]
 
         if fit_order > 0:
-            phase_maps[1], _res = orb.utils.image.fit_highorder_phase_map(
-                phase_maps[1], self.read_fits(
-                    self._get_phase_map_path(1, res=True)))
+            phase_maps[1], _err = orb.utils.image.fit_highorder_phase_map(
+                phase_maps[1],
+                self.read_fits(
+                    self._get_phase_map_path(1, err=True)),
+                calibration_laser_map, nm_laser)
             
         # compute average orders > 2:
         if fit_order > 1:
@@ -3316,14 +3304,14 @@ class Interferogram(HDFCube):
                 self._print_msg('computing mean phase coeffs of orders > 2')
                 phase_maps[2:] = orb.utils.fft.compute_phase_coeffs_vector(
                     phase_maps[2:],
-                    res_map=self.read_fits(self._get_phase_map_path(1, res=True)))
+                    err_map=self.read_fits(self._get_phase_map_path(1, err=True)))
         
         # computing order 0 map
         order0_map = np.empty((cube_bin.shape[0],
                                cube_bin.shape[1]), dtype=float)
-        order0_res_map = np.empty_like(order0_map)
+        order0_err_map = np.empty_like(order0_map)
         order0_map.fill(np.nan)
-        order0_res_map.fill(np.nan)
+        order0_err_map.fill(np.nan)
 
         job_server, ncpus = self._init_pp_server()
         progress = ProgressBar(cube_bin.shape[0])
@@ -3348,7 +3336,7 @@ class Interferogram(HDFCube):
 
             for ijob, job in jobs:
                 (order0_map[ii+ijob,:],
-                 order0_res_map[ii+ijob,:]) = job()
+                 order0_err_map[ii+ijob,:]) = job()
 
         progress.end()
         
@@ -3362,13 +3350,13 @@ class Interferogram(HDFCube):
                 self._get_phase_map_path(0))
 
         # write residual map
-        self.write_fits(self._get_phase_map_path(0, res=True),
-                        order0_res_map,
-                        fits_header=self._get_phase_map_header(0, res=True),
+        self.write_fits(self._get_phase_map_path(0, err=True),
+                        order0_err_map,
+                        fits_header=self._get_phase_map_header(0, err=True),
                         overwrite=self.overwrite)
         if self.indexer is not None:
-            self.indexer['phase_map_0_residual'] = (
-                self._get_phase_map_path(0, res=True))
+            self.indexer['phase_map_0_err'] = (
+                self._get_phase_map_path(0, err=True))
 
     def create_binned_calibration_laser_map(self, binning,
                                             calibration_laser_map_path):
@@ -6853,13 +6841,15 @@ class PhaseMaps(Tools):
         if self.indexer is not None:
             self.indexer['phase_map_unwraped_0'] = phase_map_path
 
-    def fit_phase_map(self, order, nmodes=10):
+    def fit_phase_map(self, order, calibration_laser_map_path, nm_laser):
         """Robust fit using Zernike modes fit of phase maps of order > 0
 
         :param order: Order of the phase map to fit.
 
-        :param nmodes: (Optional) Number of Zernike modes (default 10).
+        :param calibration_laser_map_path: Path to the calibration laser map.
 
+        :param nm_laser: Calibration laser wavelength in nm
+        
         .. seealso:: :py:meth:`orb.utils.image.fit_highorder_phase_map`
     
         """
@@ -6869,10 +6859,19 @@ class PhaseMaps(Tools):
             self._print_error('Order {} does not exist'.format(order))
         phase_map = np.copy(self.phase_maps[order])
         res_map = np.copy(self.residual_maps[1])
+
+        # load calibration laser map
+        calibration_laser_map = self.read_fits(calibration_laser_map_path)
+        if (calibration_laser_map.shape[0] != self.dimx_unbinned):
+            calibration_laser_map = orb.utils.image.interpolate_map(
+                calibration_laser_map, self.dimx_unbinned, self.dimy_unbinned)
+        calibration_laser_map = orb.utils.image.nanbin_image(
+            calibration_laser_map, self.binning)
+
         
         (fitted_phase_map,
          error_map) = orb.utils.image.fit_highorder_phase_map(
-            phase_map, res_map, nmodes=nmodes)
+            phase_map, res_map, calibration_laser_map, nm_laser)
 
         ## save fitted phase map and error map
         error_map_path = self._get_phase_map_path(
@@ -6917,8 +6916,6 @@ class PhaseMaps(Tools):
             self.indexer['phase_map_unbinned_{}'.format(order)] = unbinned_map_path
 
             
-       
-
     def reduce_phase_map(self, order):
         """Reduce a phase map to only one number.
 
