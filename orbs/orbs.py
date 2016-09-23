@@ -656,7 +656,7 @@ class Orbs(Tools):
         store_option_parameter('order', 'SPEORDR', float)
         
         # check step and order
-        if 'filter_name' in self.options:
+        if 'filter_name' in self.options and target != 'laser':
             _step, _order = FilterFile(
                 self.options['filter_name']).get_observation_params()
             if int(self.options['order']) != int(_order):

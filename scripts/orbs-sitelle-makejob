@@ -107,46 +107,67 @@ APOD 1.0
                 raise Exception('Phase map 0 file {} does not exist'.format(
                     args.phase_map_path))
 
-        if not args.laser:
-            object_list = list()
-            for oline in olist:
-                oline = filter_path(oline)
-                fits_file = to.read_fits(oline, return_hdu_only=True)
+        # get root path
+        root_path_found = False
+        index = 0
+        while not root_path_found:
+            root_path = olist[0][:index]
+            for _oline in olist:
+                if root_path not in _oline:
+                    root_path_found = True
+                    root_path = root_path[:-1]
+                index += 1
+                
+        object_list = list()        
+        for oline in olist:
+            oline = filter_path(oline)
+            fits_file = to.read_fits(oline, return_hdu_only=True)
+            if 'SITSTEP' in fits_file[0].header and False:
                 istep = fits_file[0].header['SITSTEP']
-                iodom = os.path.split(oline)[1][:-6]
-                if args.object_name is not None:
-                    try:
-                        fits_obj_name = fits_file[0].header['OBJECT']
-                        if fits_obj_name.strip() == args.object_name.strip():
-                            object_list.append((oline, istep, iodom))
-                    except Exception, e:
-                        print 'Error opening FITS file: {}'.format(e)
-        
-                else:
-                    object_list.append((oline, istep, iodom))
+            else: # get step from odometer
+                try: istep = int(oline[len(root_path):-6])
+                except ValueError:
+                    raise Exception('badly formatted list of files')
+                
+                
+            try: iodom =  int(oline[len(root_path):-6])
+            except ValueError: raise Exception(
+                'Badly formatted odometer : {}'.format(oline))
+            
+            if args.object_name is not None:
+                try:
+                    fits_obj_name = fits_file[0].header['OBJECT']
+                    if fits_obj_name.strip() == args.object_name.strip():
+                        object_list.append((oline, istep, iodom))
+                except Exception, e:
+                    print 'Error opening FITS file: {}'.format(e)
 
-            # remove doubles and keep only the latest file            
-            min_step = min([istep for oline, istep, iodom in object_list])
-            max_step = max([istep for oline, istep, iodom in object_list])
-            step_nb = max_step - min_step + 1
+            else:
+                object_list.append((oline, istep, iodom))
 
-            final_list = list()
-            for index in range(step_nb):
-                istep = index + min_step
-                files = [ifile for ifile in object_list if ifile[1] == istep]
-                if len(files) == 1:
-                    final_list.append(files[0])
-                else:
-                    files = sorted(files, key=lambda ifile: ifile[2])
-                    print 'step {} has been taken {} times: {} is the latest one'.format(istep, len(files), files[-1][0])
-                    final_list.append(files[-1])
+        # remove doubles and keep only the latest file            
+        min_step = min([istep for oline, istep, iodom in object_list])
+        max_step = max([istep for oline, istep, iodom in object_list])
+        step_nb = max_step - min_step + 1
 
-            # write object files
+        final_list = list()
+        for index in range(step_nb):
+            istep = index + min_step
+            files = [ifile for ifile in object_list if ifile[1] == istep]
+            if len(files) == 1:
+                final_list.append(files[0])
+            else:
+                files = sorted(files, key=lambda ifile: ifile[2])
+                print 'step {} has been taken {} times: {} is the latest one'.format(istep, len(files), files[-1][0])
+                final_list.append(files[-1])
+
+        # write object files
+        if not args.laser:
             for oline, istep, iodom in final_list:
                 f.write('OBS {}\n'.format(oline))
                 
         else:
-            for oline in olist:
+            for oline, istep, iodom in final_list:
                 f.write('COMPARISON {}\n'.format(filter_path(oline)))
 
         if args.flat_list_path is not None:
