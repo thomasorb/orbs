@@ -1971,7 +1971,8 @@ class CalibrationLaser(HDFCube):
             fitparams_column = np.empty((dimy, 10), dtype=float)
                         
             # FFT of the interferogram
-            column_spectrum = orb.utils.fft.cube_raw_fft(column_data, apod=None)
+            column_spectrum = orb.utils.fft.cube_raw_fft(
+                column_data, apod='2.0')
                 
             for ij in range(column_data.shape[0]):
                 spectrum_vector = column_spectrum[ij,:]
@@ -1998,12 +1999,13 @@ class CalibrationLaser(HDFCube):
                             fwhm_guess=fwhm_guess,
                             poly_order=0,
                             signal_range=[range_min, range_max],
-                            cont_guess=[0.])
+                            cont_guess=[0.], no_error=True)
                         
                         ## fitp = {'lines-params':[[0,1,max_index,1]],
                         ##         'lines-params-err':[[0,0,0,0]]}
                     # or sinc2 fit (slow)
                     else:
+                        raise Exception("Very bad, please don't use it")
                         fitp = orb.fit.fit_lines_in_vector(
                             spectrum_vector, [max_index], fmodel='sinc2',
                             fwhm_guess=fwhm_guess,

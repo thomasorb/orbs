@@ -439,106 +439,121 @@ class Orbs(Tools):
             else:
                 self.config[key] = bool(int(self._get_config_parameter(key)))
 
-        def store_option_parameter(option_key, key, cast, folder=False,
-                                   camera_index=None, optional=True):
+        def export_images(value, fast_init, option_key,
+                          mask_key, camera_index):
+            if os.path.isdir(value):
+                self.options[option_key] = (
+                    self._create_list_from_dir(
+                        value, list_file_path,
+                        image_mode=image_mode,
+                        chip_index=chip_index,
+                        prebinning=prebinning,
+                        check=not fast_init))
+            else:
+                self.options[option_key] = value
+
+            # export fits frames as an hdf5 cube
+            if not fast_init:
+
+                # check if the hdf5 cube already
+                # exists. 
+                export_path = (
+                    self._get_project_dir()
+                    + os.path.splitext(
+                        os.path.split(
+                            self.options[option_key])[1])[0]
+                    + '.hdf5')
+
+                already_exported = False
+                check_ok = False
+                if os.path.exists(export_path):
+                    already_exported = True
+                    if not raw_data_files_check:
+                        check_ok = True
+                        self._print_warning(
+                            'Exported HDF5 cube {} not checked !'.format(export_path))
+
+
+                if not check_ok or not already_exported:
+                    # If the list of the imported
+                    # files in the hdf5 cube is the same,
+                    # export is not done again.
+                    cube = Cube(
+                        self.options[option_key],
+                        silent_init=True, no_sort=False,
+                        ncpus=self.ncpus,
+                        config_file_name=self.config_file_name)
+
+                    if already_exported:
+                        check_ok = check_exported_cube(export_path, cube)
+                        
+                if not check_ok or not already_exported:
+                    # create mask
+                    mask_key += '_{}'.format(camera_index)
+                    if mask_key in self.options:
+                        self._print_warning('Mask applied: {}'.format(self.options[mask_key]))
+                        image_mask = self.read_fits(
+                            self.options[mask_key])
+                    else: image_mask = None
+                        
+                    cube.export(export_path, force_hdf5=True,
+                                overwrite=True,
+                                mask=image_mask)
+
+
+                self.options[option_key + '.hdf5'] = export_path
+
+
+        def check_exported_cube(export_path, cube):
+            with self.open_hdf5(export_path, 'r') as f:
+                if 'image_list' in f:
+                    new_image_list = f['image_list'][:]
+                    old_image_list = np.array(
+                        cube.image_list)
+                    if (np.size(new_image_list) == np.size(old_image_list)):
+                        if (np.all(new_image_list == old_image_list)
+                            and f.attrs['dimz'] == len(cube.image_list)):
+                            self._print_msg('Exported HDF5 cube {} check: OK'.format(export_path))
+                            return True
+            return False
+                         
+
+        def store_folder_parameter(option_key, key, camera_index,
+                                   mask_key=None):
+            value = self.optionfile.get(key, str)
+            if value is None : return
+            list_file_path =os.path.join(
+                self._get_project_dir(), key + ".list")
+
+            if self.config["INSTRUMENT_NAME"] == 'SITELLE':
+                image_mode = 'sitelle'
+                chip_index = camera_index
+            elif self.config["INSTRUMENT_NAME"] == 'SpIOMM':
+                image_mode = 'spiomm'
+                chip_index = None
+            else:
+                image_mode = None
+                chip_index = None
+
+            if 'prebinning' in self.options:
+                prebinning = self.options['prebinning']
+            else:
+                prebinning = None
+
+            # check if path is a directory or a file list
+            if os.path.exists(value):
+                export_images(value, fast_init,
+                              option_key, mask_key,
+                              camera_index)
+
+            else: self._print_error(
+                'Given path does not exist {}'.format(value))            
+
+        def store_option_parameter(option_key, key, cast, optional=True):
             value = self.optionfile.get(key, cast)
             if value is not None:
-                if not folder:
-                    self.options[option_key] = value
-                else:
-                    list_file_path =os.path.join(
-                        self._get_project_dir(), key + ".list")
-                    
-                    if self.config["INSTRUMENT_NAME"] == 'SITELLE':
-                        image_mode = 'sitelle'
-                        chip_index = camera_index
-                    elif self.config["INSTRUMENT_NAME"] == 'SpIOMM':
-                        image_mode = 'spiomm'
-                        chip_index = None
-                    else:
-                        image_mode = None
-                        chip_index = None
-
-                    if 'prebinning' in self.options:
-                        prebinning = self.options['prebinning']
-                    else:
-                        prebinning = None
-
-                    # check if path is a directory or a file list
-                    if os.path.exists(value):
-                        if os.path.isdir(value):
-                            self.options[option_key] = (
-                                self._create_list_from_dir(
-                                    value, list_file_path,
-                                    image_mode=image_mode,
-                                    chip_index=chip_index,
-                                    prebinning=prebinning,
-                                    check=not fast_init))
-                        else:
-                            self.options[option_key] = value
-                             
-                        # export fits frames as an hdf5 cube
-                        if not fast_init:
-
-                            # check if the hdf5 cube already
-                            # exists. 
-                            export_path = (
-                                self._get_project_dir()
-                                + os.path.splitext(
-                                    os.path.split(
-                                        self.options[option_key])[1])[0]
-                                + '.hdf5')
-                            
-                            already_exported = False
-                            check_ok = False
-                            if os.path.exists(export_path):
-                                already_exported = True
-                                if not raw_data_files_check:
-                                    check_ok = True
-                                    self._print_warning(
-                                        'Exported HDF5 cube {} not checked !'.format(export_path))
-                                    
-                                    
-                            if not check_ok or not already_exported:
-                                # If the list of the imported
-                                # files in the hdf5 cube is the same,
-                                # export is not done again.
-                                cube = Cube(
-                                    self.options[option_key],
-                                    silent_init=True, no_sort=False,
-                                    ncpus=self.ncpus,
-                                    config_file_name=self.config_file_name)
-                                
-                                if already_exported:    
-                                    with self.open_hdf5(export_path, 'r') as f:
-                                        if 'image_list' in f:
-                                            new_image_list = f['image_list'][:]
-                                            old_image_list = np.array(
-                                                cube.image_list)
-                                            if (np.size(new_image_list)
-                                                == np.size(old_image_list)):
-                                                if (np.all(
-                                                    new_image_list
-                                                    == old_image_list)
-                                                    and f.attrs['dimz']
-                                                    == len(cube.image_list)):
-                                                    check_ok = True
-                                                    self._print_msg(
-                                                        'Exported HDF5 cube {} check: OK'.format(export_path))
-                                
-                                
-                            if not already_exported or not check_ok:
-                                cube.export(export_path, force_hdf5=True,
-                                            overwrite=True,
-                                            mask=self.image_mask)
-
-
-                            self.options[option_key + '.hdf5'] = export_path
-                             
-                             
-                    else: self._print_error(
-                        'Given path does not exist {}'.format(value))
-
+                self.options[option_key] = value
+                
             elif not optional:
                 self._print_error('option {} must be set'.format(key))
 
@@ -691,11 +706,11 @@ class Orbs(Tools):
         store_option_parameter('source_list_path', 'SOURCE_LIST_PATH', str)
         
         # get image mask
-        store_option_parameter('image_mask_path', 'MASKPATH', str)
-        if 'image_mask_path' in self.options:
-            self.image_mask = self.read_fits(
-                self.options['image_mask_path'])
-        else: self.image_mask = None
+        store_option_parameter('object_mask_path_1', 'OBJMASK1', str)
+        store_option_parameter('object_mask_path_1', 'OBJMASK2', str)
+        store_option_parameter('std_mask_path_1', 'STDMASK1', str)
+        store_option_parameter('std_mask_path_1', 'STDMASK2', str)
+        
         
         fringes = self.optionfile.get_fringes()
         if fringes is not None:
@@ -739,23 +754,27 @@ class Orbs(Tools):
         
         # get folders paths
         self._print_msg('Reading data folders')
-        store_option_parameter('image_list_path_1', 'DIRCAM1', str, True, 1)
-        store_option_parameter('image_list_path_2', 'DIRCAM2', str, True, 2)
-        store_option_parameter('bias_path_1', 'DIRBIA1', str, True, 1)
-        store_option_parameter('bias_path_2', 'DIRBIA2', str, True, 2)
-        store_option_parameter('dark_path_1', 'DIRDRK1', str, True, 1)
-        store_option_parameter('dark_path_2', 'DIRDRK2', str, True, 2)
+        store_folder_parameter('image_list_path_1', 'DIRCAM1', 1,
+                               mask_key='object_mask_path')
+        store_folder_parameter('image_list_path_2', 'DIRCAM2', 2,
+                               mask_key='object_mask_path')
+        store_folder_parameter('bias_path_1', 'DIRBIA1', 1)
+        store_folder_parameter('bias_path_2', 'DIRBIA2', 2)
+        store_folder_parameter('dark_path_1', 'DIRDRK1', 1)
+        store_folder_parameter('dark_path_2', 'DIRDRK2', 2)
         if (('dark_path_2' in self.options or 'dark_path_1' in self.options)
             and 'dark_time' not in self.options):
             self._print_error('Dark integration time must be set (SPEDART) if the path to a dark calibration files folder is given')
             
-        store_option_parameter('flat_path_1', 'DIRFLT1', str, True, 1)
-        store_option_parameter('flat_path_2', 'DIRFLT2', str, True, 2)
-        store_option_parameter('calib_path_1', 'DIRCAL1', str, True, 1)
-        store_option_parameter('calib_path_2', 'DIRCAL2', str, True, 2)
-        store_option_parameter('flat_spectrum_path', 'DIRFLTS', str, True)
-        store_option_parameter('standard_image_path_1', 'DIRSTD1', str, True, 1)
-        store_option_parameter('standard_image_path_2', 'DIRSTD2', str, True, 2)
+        store_folder_parameter('flat_path_1', 'DIRFLT1', 1)
+        store_folder_parameter('flat_path_2', 'DIRFLT2', 2)
+        store_folder_parameter('calib_path_1', 'DIRCAL1', 1)
+        store_folder_parameter('calib_path_2', 'DIRCAL2', 2)
+        #ostore_folder_parameter('flat_spectrum_path', 'DIRFLTS', None)
+        store_folder_parameter('standard_image_path_1', 'DIRSTD1', 1,
+                               mask_key='std_mask_path')
+        store_folder_parameter('standard_image_path_2', 'DIRSTD2', 2,
+                               mask_key='std_mask_path')
         
 
         if 'image_list_path_1' in self.options:

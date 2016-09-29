@@ -111,26 +111,26 @@ APOD 1.0
         root_path_found = False
         index = 0
         while not root_path_found:
-            root_path = olist[0][:index]
+            root_path = os.path.split(olist[0])[1][:index]
             for _oline in olist:
                 if root_path not in _oline:
                     root_path_found = True
                     root_path = root_path[:-1]
                 index += 1
-                
+        
         object_list = list()        
         for oline in olist:
             oline = filter_path(oline)
             fits_file = to.read_fits(oline, return_hdu_only=True)
-            if 'SITSTEP' in fits_file[0].header and False:
+            if 'SITSTEP' in fits_file[0].header:
                 istep = fits_file[0].header['SITSTEP']
             else: # get step from odometer
-                try: istep = int(oline[len(root_path):-6])
+                try: istep = int(os.path.split(oline)[1][len(root_path):-6])
                 except ValueError:
                     raise Exception('badly formatted list of files')
                 
                 
-            try: iodom =  int(oline[len(root_path):-6])
+            try: iodom =  int(os.path.split(oline)[1][len(root_path):-6])
             except ValueError: raise Exception(
                 'Badly formatted odometer : {}'.format(oline))
             
