@@ -3104,19 +3104,20 @@ class Interferogram(HDFCube):
                                 ihigh_phase = high_phase(cm1_axis)
                                 # high order phase is subtracted
                                 phase_to_fit = iphase - ihigh_phase
+                                    
                             else:
                                 phase_to_fit = iphase
 
-                                
                             # polynomial fit
                             def model(x, *p):
                                 return np.polynomial.polynomial.polyval(x, p)
 
                             x= np.arange(iphase.shape[0])
                             pfit, pcov = optimize.curve_fit(
-                                model, x, iphase, [0., 0.], 1/weights)
+                                model, x, phase_to_fit, [0., 0.], 1/weights)
                             perr = np.sqrt(np.diag(pcov))
-                        
+
+                            
                         except Exception, e:
                             print 'Exception occured during phase fit: ', e
                             pfit = None
