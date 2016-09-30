@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<steps>
+  <step name='compute_interferogram' cam='1'>
+    <arg value='1' type='int'></arg>
+  </step>
+
+  <step name='compute_phase_maps' cam='1'>
+    <arg value='1' type='int'></arg>
+    <kwarg name='no_star' value='True' type='bool'></kwarg>
+  </step>
+</steps>
+
