@@ -47,7 +47,7 @@ import bottleneck as bn
 
 
 from orb.core import Tools, Cube, Indexer, OptionFile, HDFCube
-from orb.core import FilterFile, PhaseFile
+from orb.core import FilterFile, PhaseFile, ProgressBar
 from process import RawData, InterferogramMerger, Interferogram
 from process import Spectrum, CalibrationLaser
 from process import SourceExtractor, PhaseMaps, CosmicRayDetector
@@ -495,6 +495,7 @@ class Orbs(Tools):
                             self._print_warning('Mask applied: {}'.format(self.options[mask_key]))
                             image_mask = self.read_fits(
                                 self.options[mask_key])
+                        else: image_mask = None
                     else: image_mask = None
                         
                     cube.export(export_path, force_hdf5=True,
@@ -3897,7 +3898,7 @@ class JobFile(OptionFile):
     _fast_init = False
 
     # convertion dict between sitelle's file header keywords and
-    # optionf ile keywords
+    # optionf file keywords
     convert_key = {
         'SITSTEPS':'SPESTNB',
         'OBJNAME':'OBJECT',
@@ -3931,6 +3932,7 @@ class JobFile(OptionFile):
                             protected_keys=protected_keys,
                             **kwargs)
 
+                
         if is_laser:
             self._is_laser = True
 
@@ -3942,14 +3944,23 @@ class JobFile(OptionFile):
                 self._is_jobfile = True
 
         if self._is_jobfile:
+            # try to import orbdb
+            try:
+                from orbdb.core import OrbDB
+                self.db = OrbDB('sitelle', **kwargs)
+            except ImportError, e:
+                self._print_warning('Orbdb import error: {}'.format(e))
+                self.db = None
+
             ## get first object file
             if 'OBS' in self.options:
-                hdu = self.read_fits(self.options['OBS'],
+                hdu = self.read_fits(self.check_file_path(
+                    self.options['OBS']),
                                      return_hdu_only=True)
                 self._first_hdr = hdu[0].header
             elif 'COMPARISON' in self.options:
-                hdu = self.read_fits(self.options['COMPARISON'],
-                                   return_hdu_only=True)
+                hdu = self.read_fits(self.check_file_path(self.options['COMPARISON']),
+                                     return_hdu_only=True)
                 self._first_hdr = hdu[0].header
             else:
                 self._print_error('Keywords OBS or COMPARISON must be at least in the job file.')
@@ -3958,6 +3969,40 @@ class JobFile(OptionFile):
             if self._first_hdr['CCDBIN1'] != self._first_hdr['CCDBIN2']:
                 self.print_error(
                     'CCD Binning appears to be different for both axes')
+
+
+    def check_file_path(self, file_path):
+        """Check if the file exists. If it does not exists look in the
+        database to find it's right path (orbdb must be installed and
+        the database must be up-to-date)
+
+        :param file_path: File path
+        """
+        # if the file path does not exist, try to find it with orbdb
+        if os.path.exists(file_path): return file_path
+        elif self.db is not None:
+            odom = os.path.splitext(os.path.split(file_path)[1])[0]
+    
+            self.db.cur.execute("SELECT fitsfilepath from files WHERE fitsfilepath LIKE '%{}%'".format(
+                odom))
+            rows_list = list()
+            for row in self.db.cur.fetchall():
+                row = [str(irow) for irow in row]
+                rows_list.append(row)
+                
+            if len(rows_list) == 0:
+                self._print_warning('File does not exist and was not found in the database')
+                return file_path
+            
+            if len(rows_list) > 1:
+                self._print_warning('Multiple files in the database found matching {}'.format(odom))
+                
+            return rows_list[0][0]
+        
+        else:
+            self._print_warning('File not found and database OrbDB could not be imported')
+            return file_path
+            
 
     ## generate list of files
     def _generate_file_list(self, key, ftype,
@@ -3994,8 +4039,11 @@ class JobFile(OptionFile):
             flist.write('# {} {}\n'.format('sitelle', chip_index))
             if prebin is not None:
                 flist.write('# prebinning {}\n'.format(int(prebin)))
-            for i in l: flist.write('{}\n'.format(i))
-        # TODO: check files
+            progress = ProgressBar(len(l))
+            for i in range(len(l)):
+                progress.update(i, info='adding file: {}'.format(l[i]))
+                flist.write('{}\n'.format(self.check_file_path(l[i])))
+            progress.end()
         return fpath
 
     def is_jobfile(self):
