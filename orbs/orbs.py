@@ -489,11 +489,12 @@ class Orbs(Tools):
                         
                 if not check_ok or not already_exported:
                     # create mask
-                    mask_key += '_{}'.format(camera_index)
-                    if mask_key in self.options:
-                        self._print_warning('Mask applied: {}'.format(self.options[mask_key]))
-                        image_mask = self.read_fits(
-                            self.options[mask_key])
+                    if mask_key is not None:
+                        mask_key += '_{}'.format(camera_index)
+                        if mask_key in self.options:
+                            self._print_warning('Mask applied: {}'.format(self.options[mask_key]))
+                            image_mask = self.read_fits(
+                                self.options[mask_key])
                     else: image_mask = None
                         
                     cube.export(export_path, force_hdf5=True,
