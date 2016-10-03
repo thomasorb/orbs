@@ -1577,7 +1577,6 @@ class Orbs(Tools):
         elif self.roadmap.cams == 'single2': cam = 2
         elif self.roadmap.cams == 'full':
             if self.target == 'laser': cam = 1
-            elif self.target == 'flat': cam = 1
             else: cam = 0
         
         if (self.target == 'object' or self.target == 'nostar'
@@ -3306,7 +3305,7 @@ class Orbs(Tools):
             'phase_map_unbinned_1', camera_number)
         phase_map_data, phase_map_hdr = self.read_fits(
             phase_map_path, return_header=True)
-        step_nb = self._init_raw_data_cube(camera_number).dimz
+        step_nb = self._init_raw_data_cube(1).dimz
         phase_map_data *= step_nb
         self.write_fits(self._get_flat_phase_map_path(camera_number, 1),
                         phase_map_data, fits_header=phase_map_hdr,
