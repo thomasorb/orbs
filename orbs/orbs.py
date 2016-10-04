@@ -709,9 +709,9 @@ class Orbs(Tools):
         
         # get image mask
         store_option_parameter('object_mask_path_1', 'OBJMASK1', str)
-        store_option_parameter('object_mask_path_1', 'OBJMASK2', str)
+        store_option_parameter('object_mask_path_2', 'OBJMASK2', str)
         store_option_parameter('std_mask_path_1', 'STDMASK1', str)
-        store_option_parameter('std_mask_path_1', 'STDMASK2', str)
+        store_option_parameter('std_mask_path_2', 'STDMASK2', str)
         
         
         fringes = self.optionfile.get_fringes()

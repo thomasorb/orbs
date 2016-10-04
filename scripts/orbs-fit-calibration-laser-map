@@ -40,15 +40,19 @@ def main(args):
     
     to = Tools(config_file_name=config_file_name, no_log=True)
     calib_map = to.read_fits(args.calibration_laser_map_path)
-    params, calib_map_fit = orb.utils.image.fit_calibration_laser_map(
+    params, calib_map_fit, pure_fit = orb.utils.image.fit_calibration_laser_map(
         calib_map, float(to._get_config_parameter('CALIB_NM_LASER')),
-        binning=2)
+        binning=2, return_pure_fit=True)
     to.write_fits(
         os.path.splitext(args.calibration_laser_map_path)[0] + '.fit.fits',
         calib_map_fit, overwrite=True)
     to.write_fits(
         os.path.splitext(args.calibration_laser_map_path)[0] + '.fit.err.fits',
         calib_map - calib_map_fit, overwrite=True)
+    to.write_fits(
+        os.path.splitext(args.calibration_laser_map_path)[0] + '.fit.model.fits',
+        pure_fit, overwrite=True)
+
     
 
 if __name__ == "__main__":
