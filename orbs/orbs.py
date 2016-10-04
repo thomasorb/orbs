@@ -4167,7 +4167,7 @@ class JobFile(OptionFile):
 
         # get standard image list parames
         if 'STDIM' in self.options:
-            std_path = self.options['STDIM']
+            std_path = self.check_file_path(self.options['STDIM'])
             if os.path.exists(std_path):
                 std_hdr = self.read_fits(std_path, return_hdu_only=True)[0].header
                 if 'OBJECT' in std_hdr:
