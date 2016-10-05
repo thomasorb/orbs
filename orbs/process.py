@@ -1963,6 +1963,8 @@ class CalibrationLaser(HDFCube):
                                 cm1_axis_step,
                                 get_calibration_laser_spectrum, fast,
                                 fwhm_guess, fwhm_guess_cm1):
+
+
             """Return the fitted central position of the emission line"""
             dimy = column_data.shape[0]
             dimz = column_data.shape[1]
@@ -1971,11 +1973,13 @@ class CalibrationLaser(HDFCube):
             fitparams_column = np.empty((dimy, 10), dtype=float)
                         
             # FFT of the interferogram
-            column_spectrum = orb.utils.fft.cube_raw_fft(
-                column_data, apod='2.0')
                 
             for ij in range(column_data.shape[0]):
-                spectrum_vector = column_spectrum[ij,:]
+                zpv = orb.utils.fft.transform_interferogram(
+                    column_data[ij,:], 1, 1, step, order,
+                    '2.0', 0, phase_correction=False,
+                    wavenumber=True, return_zp_vector=True)
+                spectrum_vector = np.abs(np.fft.fft(zpv)[:zpv.shape[0]/2])
                 if (int(order) & 1):
                     spectrum_vector = spectrum_vector[::-1]
                     
@@ -2000,7 +2004,7 @@ class CalibrationLaser(HDFCube):
                             poly_order=0,
                             signal_range=[range_min, range_max],
                             cont_guess=[0.], no_error=True)
-                        
+
                         ## fitp = {'lines-params':[[0,1,max_index,1]],
                         ##         'lines-params-err':[[0,0,0,0]]}
                     # or sinc2 fit (slow)
@@ -2011,7 +2015,7 @@ class CalibrationLaser(HDFCube):
                             fwhm_guess=fwhm_guess,
                             poly_order=0,
                             signal_range=[range_min, range_max],
-                            cont_guess=[0.])
+                            cont_guess=[0.], no_error=True)
                 else:
                     fitp = []
                     
@@ -2062,7 +2066,7 @@ class CalibrationLaser(HDFCube):
         self._print_msg('FWHM guess: {} pixels, {} cm-1'.format(
             fwhm_guess,
             fwhm_guess_cm1))
-        
+
         out_cube = OutHDFQuadCube(
             self._get_calibration_laser_spectrum_cube_path(),
             (self.dimx, self.dimy, self.dimz),
@@ -2072,7 +2076,7 @@ class CalibrationLaser(HDFCube):
         fitparams = np.empty((self.dimx, self.dimy, 10), dtype=float)
         max_array = np.empty((self.dimx, self.dimy), dtype=float)
         
-        for iquad in range(0, self.QUAD_NB):
+        for iquad in range(self.QUAD_NB):
             x_min, x_max, y_min, y_max = self.get_quadrant_dims(iquad)
             iquad_data = self.get_data(x_min, x_max, 
                                        y_min, y_max, 

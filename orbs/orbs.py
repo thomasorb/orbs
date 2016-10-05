@@ -700,6 +700,8 @@ class Orbs(Tools):
         store_option_parameter('star_list_path_2', 'STARLIST2', str)
         store_option_parameter('apodization_function', 'APOD', str)
         store_option_parameter('calibration_laser_map_path', 'CALIBMAP', str)
+        store_option_parameter('calibration_laser_wavefront_path', 'CALIBWF', str)
+        
         store_option_parameter('try_catalogue', 'TRYCAT', bool)
         store_option_parameter('wavenumber', 'WAVENUMBER', bool)
         store_option_parameter('spectral_calibration', 'WAVE_CALIB', bool)
