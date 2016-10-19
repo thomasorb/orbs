@@ -1971,10 +1971,16 @@ class CalibrationLaser(HDFCube):
             BORDER = int(0.3 * dimz) + 1
             max_array_column = np.empty((dimy), dtype=float)
             fitparams_column = np.empty((dimy, 10), dtype=float)
+            max_array_column.fill(np.nan)
+            fitparams_column.fill(np.nan)
+            
                         
             # FFT of the interferogram
                 
             for ij in range(column_data.shape[0]):
+                if np.all(np.isnan(column_data[ij,:])): continue
+                column_data[ij,np.isnan(column_data[ij,:])] = 0.
+                    
                 zpv = orb.utils.fft.transform_interferogram(
                     column_data[ij,:], 1, 1, step, order,
                     '2.0', 0, phase_correction=False,
@@ -2035,13 +2041,12 @@ class CalibrationLaser(HDFCube):
                     max_array_column[ij] = np.nan
                     fitparams_column[ij,:].fill(np.nan)
 
-            # check if fit range is large enough
-            fwhm_median = np.median(fitparams_column[:,3])
-            if fwhm_median is not np.nan:
-                if (range_max - range_min) < 5. * fwhm_median:
-                    import warnings
-                    warnings.warn('fit range is not large enough: median fwhm ({}) > 5xrange ({})'.format(
-                        fwhm_median, range_max - range_min))
+                # check if fit range is large enough
+                fwhm_median = np.median(fitparams_column[:,3])
+                if fwhm_median is not np.nan:
+                    if (range_max - range_min) < 5. * fwhm_median:
+                        import warnings
+                        warnings.warn('fit range is not large enough: median fwhm ({}) > 5xrange ({})'.format(fwhm_median, range_max - range_min))
                     
             if not get_calibration_laser_spectrum:
                 return max_array_column, fitparams_column
@@ -2074,7 +2079,9 @@ class CalibrationLaser(HDFCube):
             reset=True)
 
         fitparams = np.empty((self.dimx, self.dimy, 10), dtype=float)
+        fitparams.fill(np.nan)
         max_array = np.empty((self.dimx, self.dimy), dtype=float)
+        max_array.fill(np.nan)
         
         for iquad in range(self.QUAD_NB):
             x_min, x_max, y_min, y_max = self.get_quadrant_dims(iquad)
@@ -2137,13 +2144,13 @@ class CalibrationLaser(HDFCube):
                         overwrite=self.overwrite)
 
         # Correct non-fitted values by interpolation
-        max_array = orb.utils.image.correct_map2d(max_array, bad_value=np.nan)
-        max_array = orb.utils.image.correct_map2d(max_array, bad_value=0.)
+        ## max_array = orb.utils.image.correct_map2d(max_array, bad_value=np.nan)
+        ## max_array = orb.utils.image.correct_map2d(max_array, bad_value=0.)
 
-        # Re-Write calibration laser map to disk
-        self.write_fits(self._get_calibration_laser_map_path(), max_array,
-                        fits_header=self._get_calibration_laser_map_header(),
-                        overwrite=self.overwrite)
+        ## # Re-Write calibration laser map to disk
+        ## self.write_fits(self._get_calibration_laser_map_path(), max_array,
+        ##                 fits_header=self._get_calibration_laser_map_header(),
+        ##                 overwrite=self.overwrite)
 
         # write fit params
         self.write_fits(
@@ -3922,6 +3929,41 @@ class InterferogramMerger(Tools):
         return [[self.dx, self.dy, self.dr, self.da, self.db], self.rc, 
                 self.zoom_factor]
 
+    def find_laser_alignment(self, init_dx, init_dy, init_angle):
+        """Brute force algorithm used to find laser frames alignment"""
+
+        ### laser frame alignment is not precise enough to be used.
+        self._print_warning('No brute force search: init alignment parameters unchanged')
+        self.dx, self.dy, self.dr = init_dx, init_dy, init_angle
+        self.da = 0.
+        self.db = 0.
+        return [[self.dx, self.dy, self.dr, self.da, self.db], self.rc, 
+                self.zoom_factor]
+
+        ### old alignment function
+        CROP_COEFF = 0.5
+        
+        self._print_msg("Computing alignment parameters for laser frames")
+        self._print_msg("Rotation center: %s"%str(self.rc))
+        self._print_msg("Zoom factor: %f"%self.zoom_factor)
+
+        cx = int(self.cube_A.dimx / 2)
+        cy = int(self.cube_A.dimy / 2)
+        dx = int(self.cube_A.dimx * CROP_COEFF / 2.)
+        dy = int(self.cube_A.dimy * CROP_COEFF / 2.)
+        frameA = self.cube_A[cx-dx:cx+dx+1,cy-dy:cy+dy+1,0]
+        frameB = self.cube_B[cx-dx:cx+dx+1,cy-dy:cy+dy+1,0]
+        deep_A = self.cube_A.get_mean_image()[cx-dx:cx+dx+1,cy-dy:cy+dy+1]
+        deep_B = self.cube_B.get_mean_image()[cx-dx:cx+dx+1,cy-dy:cy+dy+1]
+        frameA /= deep_A
+        frameB /= deep_B
+
+        self.dx, self.dy, self.dr = orb.utils.image.bf_laser_aligner(
+            frameA, frameB, init_dx, init_dy, init_angle, self.zoom_factor)
+        self.da = 0.
+        self.db = 0.
+        return [[self.dx, self.dy, self.dr, self.da, self.db], self.rc, 
+                self.zoom_factor]
 
     def transform(self, interp_order=1):
         """Transform cube B given a set of alignment coefficients.
@@ -6968,7 +7010,8 @@ class PhaseMaps(Tools):
     def fit_phase_map_0(self, 
                         phase_model='spiomm',
                         calibration_laser_map_path=None,
-                        calibration_laser_nm=None):
+                        calibration_laser_nm=None,
+                        wavefront_map_path=None):
         """Fit the order 0 phase map.
 
         Help remove most of the noise. This process is useful if the
@@ -6990,8 +7033,14 @@ class PhaseMaps(Tools):
         :param calibration_laser_nm: (Optional) Wavelength of the
           calibration laser (in nm). Only useful if the phase model is
           'sitelle' (default None).
-          
-        """
+    
+        :param wavefront_map_path: (Optional) Only used with
+          SITELLE. Residual between the modeled calibration laser map
+          and the real laser map. This residual can generally be
+          fitted with Zernike polynomials. If given, the wavefront is
+          considered stable and is removed before the model is fitted
+          (default None).
+         """
 
         FIT_DEG = 1 # Degree of the polynomial used for the fit
         
@@ -7024,6 +7073,15 @@ class PhaseMaps(Tools):
                 calibration_laser_map, self.dimx_unbinned, self.dimy_unbinned)
         calibration_laser_map = orb.utils.image.nanbin_image(
             calibration_laser_map, self.binning)
+
+        # load wavefront map
+        wavefront_map = self.read_fits(wavefront_map_path)
+        if (wavefront_map.shape[0] != self.dimx_unbinned):
+            wavefront_map = orb.utils.image.interpolate_map(
+                wavefront_map, self.dimx_unbinned, self.dimy_unbinned)
+        wavefront_map = orb.utils.image.nanbin_image(
+            wavefront_map, self.binning)
+
         
         if phase_model == 'spiomm':
             fitted_phase_map, error_map, fit_error = orb.utils.image.fit_map(
@@ -7040,7 +7098,8 @@ class PhaseMaps(Tools):
                     pixel_size=(
                         float(self._get_config_parameter('PIX_SIZE_CAM1'))
                         * self.binning),
-                    binning=1, return_coeffs=True))
+                    binning=1, return_coeffs=True,
+                    wavefront_map=wavefront_map))
 
         self._print_msg(
             "Normalized root-mean-square deviation on the fit: %f%%"%(

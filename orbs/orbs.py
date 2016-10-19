@@ -354,6 +354,8 @@ class Orbs(Tools):
         * apodization_function: APOD
         
         * calibration_laser_map_path: CALIBMAP
+
+        * wavefront_map_path: WFMAP
           
         * try_catalogue: TRYCAT
           
@@ -700,7 +702,7 @@ class Orbs(Tools):
         store_option_parameter('star_list_path_2', 'STARLIST2', str)
         store_option_parameter('apodization_function', 'APOD', str)
         store_option_parameter('calibration_laser_map_path', 'CALIBMAP', str)
-        store_option_parameter('calibration_laser_wavefront_path', 'CALIBWF', str)
+        store_option_parameter('wavefront_map_path', 'WFMAP', str)
         
         store_option_parameter('try_catalogue', 'TRYCAT', bool)
         store_option_parameter('wavenumber', 'WAVENUMBER', bool)
@@ -780,6 +782,17 @@ class Orbs(Tools):
         store_folder_parameter('standard_image_path_2', 'DIRSTD2', 2,
                                mask_key='std_mask_path')
         
+        if target == 'laser':
+            self.options['image_list_path_1'] = self.options['calib_path_1']
+            self.options['image_list_path_2'] = self.options['calib_path_2']
+            if 'calib_path_1.hdf5' in self.options:
+                self.options['image_list_path_1.hdf5'] = self.options[
+                    'calib_path_1.hdf5']
+            if 'calib_path_2.hdf5' in self.options:
+                self.options['image_list_path_2.hdf5'] = self.options[
+                    'calib_path_2.hdf5']
+
+
 
         if 'image_list_path_1' in self.options:
             if fast_init:
@@ -843,7 +856,7 @@ class Orbs(Tools):
                     self.options['bin_cam_2'] = (
                         self.options['bin_cam_2']
                         * self.options['prebinning'])
-            
+                    
         # Check step number, number of raw images
         if (('image_list_path_1' in self.options)
             and ('image_list_path_2' in self.options)):
@@ -858,10 +871,7 @@ class Orbs(Tools):
 
         # get ZPD shift in SITELLE's case
         if self.config["INSTRUMENT_NAME"] == 'SITELLE' and not fast_init:
-            if target == 'laser':
-                cube_list = self.options['calib_path_1']
-            else:
-                cube_list = self.options['image_list_path_1']
+            cube_list = self.options['image_list_path_1']
                 
             cube1 = Cube(cube_list,
                          silent_init=True,
@@ -1577,9 +1587,7 @@ class Orbs(Tools):
         # Once the whole process has been done, final data can be exported
         if self.roadmap.cams == 'single1': cam = 1
         elif self.roadmap.cams == 'single2': cam = 2
-        elif self.roadmap.cams == 'full':
-            if self.target == 'laser': cam = 1
-            else: cam = 0
+        elif self.roadmap.cams == 'full': cam = 0
         
         if (self.target == 'object' or self.target == 'nostar'
             or self.target == 'raw' or self.target == 'extphase'):
@@ -1952,7 +1960,7 @@ class Orbs(Tools):
         del cube, perf
         return perf_stats
 
-    def transform_cube_B(self, interp_order=1, no_star=False):
+    def transform_cube_B(self, interp_order=1, no_star=False, laser=False):
         """Calculate the alignment parameters of the camera 2
         relatively to the first one. Transform the images of the
         camera 2 using linear interpolation by default.
@@ -1963,11 +1971,17 @@ class Orbs(Tools):
           transformation is made using the default alignment
           parameters (recorded in the configuration file :
           'data/config.orb') (default False).
+
+        :param laser: (Optional) If the cube is a laser source, the
+          frames can be aligned with a brute force algorithm (default
+          False).
                          
         .. seealso:: :py:meth:`process.InterferogramMerger.transform`
         """
+        if laser: no_star = True
+
         # compute alignment parameters
-        cube = self.compute_alignment_parameters(no_star=no_star)
+        cube = self.compute_alignment_parameters(no_star=no_star, laser=laser)
 
         perf = Performance(cube.cube_B, "Cube B transformation", 2,
                            config_file_name=self.config_file_name)
@@ -1980,7 +1994,7 @@ class Orbs(Tools):
         return perf_stats
 
     def compute_alignment_parameters(self, no_star=False, raw=False,
-                                     return_star_list=False):
+                                     return_star_list=False, laser=False):
         """Compute alignement parameters between cubes and return a
         :py:class:`process.InterferogramMerger instance`.
 
@@ -1992,9 +2006,15 @@ class Orbs(Tools):
         :param return_star_list: (Optional) If True, the star list
           used is returned with the cube. This option is incompatible
           with no_star option (default False).
+    
+        :param laser: (Optional) If the cube is a laser source, the
+          frames can be aligned with a brute force algorithm (default
+          False).
 
         .. seealso:: :py:meth:`process.InterferogramMerger.find_alignment`
         """
+        if laser: no_star = True
+
         if no_star and return_star_list:
             self._print_error('return_star_list is incompatible with no_star')
         
@@ -2032,8 +2052,13 @@ class Orbs(Tools):
         else:
             star_list_path_1 = None
             mean_fwhm_1_arc = None
-            alignment_coeffs = [init_dx, init_dy,
-                                self.config["INIT_ANGLE"], 0., 0.]
+                
+            if not laser:
+                alignment_coeffs = [init_dx, init_dy,
+                                    self.config["INIT_ANGLE"], 0., 0.]
+            else:
+                alignment_coeffs = None
+            
 
         # Init InterferogramMerger class
         self.indexer.set_file_group('merged')
@@ -2058,12 +2083,17 @@ class Orbs(Tools):
             ncpus=self.ncpus)
 
         # find alignment coefficients
-        if not no_star and alignment_coeffs is None:
-            cube.find_alignment(
-                star_list_path_1,
-                self.config["INIT_ANGLE"], init_dx, init_dy,
-                mean_fwhm_1_arc, self.config["FIELD_OF_VIEW_1"],
-                combine_first_frames=raw)
+        
+        if alignment_coeffs is None:
+            if not laser:
+                cube.find_alignment(
+                    star_list_path_1,
+                    self.config["INIT_ANGLE"], init_dx, init_dy,
+                    mean_fwhm_1_arc, self.config["FIELD_OF_VIEW_1"],
+                    combine_first_frames=raw)
+            else:
+                cube.find_laser_alignment(
+                    init_dx, init_dy, self.config["INIT_ANGLE"])
         else:
             self._print_msg("Alignment parameters: {} {} {} {} {}".format(
                 cube.dx, cube.dy, cube.dr, cube.da, cube.db))
@@ -2228,8 +2258,11 @@ class Orbs(Tools):
                 calib_path = self.options["calib_path_2.hdf5"]
             else: 
                 self._print_error("No path to the calibration laser files list given, check the option file")
+        elif camera_number == 0:
+            calib_path = self._get_interfero_cube_path(
+                camera_number, corrected=True)
         else:
-            self._print_error("Camera number must be either 1 or 2")
+            self._print_error("Camera number must be either 1, 2 or 0")
 
         if self.target == 'laser':
             ## order = self.options['order']
@@ -2583,6 +2616,15 @@ class Orbs(Tools):
         # get calibration laser map path
         calibration_laser_map_path = self._get_calibration_laser_map(
             camera_number)
+
+        # get wavefront map path
+        if 'wavefront_map_path' in self.options:
+            wavefront_map_path = self.options['wavefront_map_path']
+            self._print_msg('Wavefront map used: {}'.format(wavefront_map_path))
+        else:
+            self._print_warning('No path to a wavefront map given')
+            wavefront_map_path = None
+        
                 
         # get base phase maps
         if not no_star:
@@ -2678,11 +2720,11 @@ class Orbs(Tools):
                 phase_model = 'sitelle'
             else:
                 phase_model = 'spiomm'
-            
             phasemaps.fit_phase_map_0(
                 phase_model=phase_model,
                 calibration_laser_map_path=calibration_laser_map_path,
-                calibration_laser_nm=self.config["CALIB_NM_LASER"])
+                calibration_laser_nm=self.config["CALIB_NM_LASER"],
+                wavefront_map_path=wavefront_map_path)
             
         perf_stats = perf.print_stats()
         del perf
@@ -3032,10 +3074,10 @@ class Orbs(Tools):
         else:
             self._print_warning("Standard related options were not given or the name of the filter is unknown. Flux calibration coeff cannot be computed")
 
-        # Get wavelentgh calibration from phase cube (remains to be
-        # tested)
-        ## calibration_laser_map_path = self.indexer.get_path(
-        ##     'phase_calibration_laser_map', camera_number)
+        # Get wavelentgh calibration from phase cube
+        self._print_warning('Calibration laser map taken from phase map fit (internal calibration laser map)')
+        calibration_laser_map_path = self.indexer.get_path(
+            'phase_calibration_laser_map', camera_number)
         
         # Calibration
         spectrum.calibrate(
@@ -3256,7 +3298,6 @@ class Orbs(Tools):
             self.options["filter_name"], phase_map_paths,
             self.config['CALIB_NM_LASER'],
             calibration_laser_map_path,
-            filter_name=self.options["filter_name"],
             optimize_phase=optimize_phase,
             filter_correction=filter_correction,
             cube_A_is_balanced = self._is_balanced(1),

@@ -9,7 +9,7 @@
   </step>
 
   <step name='transform_cube_B' cam='0'>
-    <kwarg name='no_star' value='True' type='bool'></kwarg>
+    <kwarg name='laser' value='True' type='bool'></kwarg>
   </step>
 
   <step name='merge_interferograms_alt' cam='0'>
