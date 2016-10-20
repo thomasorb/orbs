@@ -2888,7 +2888,7 @@ class Interferogram(HDFCube):
                 ext_phase=mean_phase_vector,
                 return_phase=False, balanced=balanced, wavenumber=wavenumber,
                 return_complex=True, high_order_phase=mean_high_phase)
-
+            
             if np.nanmean(mean_spectrum.real) < 0:
                 self._print_msg("Negative polarity : 0th order phase map has been corrected (add PI)")
                 phase_maps[0] += math.pi
@@ -3125,8 +3125,13 @@ class Interferogram(HDFCube):
 
                             x= np.arange(iphase.shape[0])
                             pfit, pcov = optimize.curve_fit(
-                                model, x, phase_to_fit, [0., 0.], 1/weights)
+                                model, x, phase_to_fit, [0., 0.], 1./weights)
                             perr = np.sqrt(np.diag(pcov))
+                            ## import pylab as pl
+                            ## pl.plot(interf)
+                            ## pl.plot(iphase)
+                            ## #pl.plot(phase_to_fit, '--')
+                            ## pl.show()
 
                             
                         except Exception, e:
@@ -3224,7 +3229,11 @@ class Interferogram(HDFCube):
         
         # binning interferogram cube and calibration laser map
         self.create_binned_interferogram_cube(binning)
-        cube_bin = self.read_fits(self._get_binned_interferogram_cube_path())
+
+        # interferogram cube is cut to conserve only the symmetical part
+        zpd_index = int(int(self.dimz/2) - zpd_shift)
+        cube_bin = self.read_fits(self._get_binned_interferogram_cube_path())[:,:,:2 * zpd_index]
+        zpd_shift = 0 
         
         if calibration_laser_map_path is not None:
             self.create_binned_calibration_laser_map(
@@ -3281,6 +3290,9 @@ class Interferogram(HDFCube):
         if self.indexer is not None:
             self.indexer['binned_phase_cube'] = (
                 self._get_binned_phase_cube_path())
+
+        # correct phase map order 1 (to be written later)
+        order1_map_corr = fit_coeffs_map[:,:,1] * cube_bin.shape[2] / self.dimz
         
         # write phase maps
         for iorder in range(fit_order+1):
@@ -3371,6 +3383,17 @@ class Interferogram(HDFCube):
         if self.indexer is not None:
             self.indexer['phase_map_0_err'] = (
                 self._get_phase_map_path(0, err=True))
+
+        # write phase map order 1 (corrected version, first one saved
+        # was not corrected)
+        self.write_fits(self._get_phase_map_path(1),
+                        order1_map_corr,
+                        fits_header=self._get_phase_map_header(1),
+                        overwrite=self.overwrite)
+        if self.indexer is not None:
+            self.indexer['phase_map_1'] = (
+                self._get_phase_map_path(1))
+
 
     def create_binned_calibration_laser_map(self, binning,
                                             calibration_laser_map_path):
@@ -7075,12 +7098,14 @@ class PhaseMaps(Tools):
             calibration_laser_map, self.binning)
 
         # load wavefront map
-        wavefront_map = self.read_fits(wavefront_map_path)
-        if (wavefront_map.shape[0] != self.dimx_unbinned):
-            wavefront_map = orb.utils.image.interpolate_map(
-                wavefront_map, self.dimx_unbinned, self.dimy_unbinned)
-        wavefront_map = orb.utils.image.nanbin_image(
-            wavefront_map, self.binning)
+        if wavefront_map_path is not None:
+            wavefront_map = self.read_fits(wavefront_map_path)
+            if (wavefront_map.shape[0] != self.dimx_unbinned):
+                wavefront_map = orb.utils.image.interpolate_map(
+                    wavefront_map, self.dimx_unbinned, self.dimy_unbinned)
+            wavefront_map = orb.utils.image.nanbin_image(
+                wavefront_map, self.binning)
+        else: wavefront_map = None
 
         
         if phase_model == 'spiomm':
