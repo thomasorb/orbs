@@ -3074,10 +3074,10 @@ class Orbs(Tools):
         else:
             self._print_warning("Standard related options were not given or the name of the filter is unknown. Flux calibration coeff cannot be computed")
 
-        # Get wavelentgh calibration from phase cube
-        self._print_warning('Calibration laser map taken from phase map fit (internal calibration laser map)')
-        calibration_laser_map_path = self.indexer.get_path(
-            'phase_calibration_laser_map', camera_number)
+        # Get wavelentgh calibration from phase cube (unsure)
+        ## self._print_warning('Calibration laser map taken from phase map fit (internal calibration laser map)')
+        ## calibration_laser_map_path = self.indexer.get_path(
+        ##     'phase_calibration_laser_map', camera_number)
         
         # Calibration
         spectrum.calibrate(
