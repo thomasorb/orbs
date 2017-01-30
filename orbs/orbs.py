@@ -743,6 +743,16 @@ class Orbs(Tools):
                key_type = type(self.config[key])
                self.config[key] = self.optionfile.get(key, key_type)
                self._print_warning("Configuration option %s changed to %s"%(key, self.config[key]))
+
+        # Calibration laser wavelength is changed if the calibration
+        # laser map gives a new calibration laser wavelentgh
+        if target != 'laser':
+            calib_hdu = self.read_fits(
+                self.options['calibration_laser_map_path'],
+                return_hdu_only=True)
+            if 'CALIBNM' in calib_hdu[0].header:
+                self.config['CALIB_NM_LASER'] = calib_hdu[0].header['CALIBNM']
+                self._print_warning('Calibration laser wavelength (CALIB_NM_LASER) read from calibration laser map header: {}'.format(self.config['CALIB_NM_LASER']))
                
         # Get tuning parameters
         self.tuning_parameters = self.optionfile.get_tuning_parameters()
@@ -1311,7 +1321,11 @@ class Orbs(Tools):
         else:
             fov = self.config["FIELD_OF_VIEW_1"]
             wcs_rotation = self.config["WCS_ROTATION"]
-            
+
+
+        # load SIP file in ORB's data/ folder
+        sip = self.load_sip(self._get_sip_file_path(camera_number))
+        
         return Astrometry(cube, self.config["INIT_FWHM"],
                           fov,
                           profile_name=self.config["PSF_PROFILE"],
@@ -1322,7 +1336,7 @@ class Orbs(Tools):
                           target_radec=target_radec, target_xy=target_xy,
                           wcs_rotation=wcs_rotation,
                           config_file_name=self.config_file_name,
-                          ncpus=self.ncpus)
+                          ncpus=self.ncpus, sip=sip)
 
 
     def _get_interfero_cube_path(self, camera_number, corrected=False):
@@ -1601,7 +1615,7 @@ class Orbs(Tools):
 
     def detect_stars(self, cube, camera_number, 
                      saturation_threshold=None, return_fwhm_pix=False,
-                     all_sources=False):
+                     all_sources=False, realign=False):
         """Detect stars in a cube and save the star list in a file.
 
         This method is a simple wrapper around
@@ -1630,6 +1644,10 @@ class Orbs(Tools):
         :param all_sources: (Optional) If True, all point sources are
           detected regardless of their FWHM (galaxies, HII regions,
           filamentary knots and stars might be detected).
+
+        :param realign: (Optional) Realign frames with a
+          cross-correlation algorithm (default False). Much better if
+          used on a small number of frames.
         
         :return: Path to a star list, mean FWHM of stars in arcseconds.
 
@@ -1678,7 +1696,8 @@ class Orbs(Tools):
                 star_list_path, mean_fwhm = astrom.detect_stars(
                     min_star_number=self.config['DETECT_STAR_NB'],
                     saturation_threshold=saturation_threshold,
-                    try_catalogue=self.options['try_catalogue'])
+                    try_catalogue=self.options['try_catalogue'],
+                    realign=realign)
             else:
                 star_list_path, mean_fwhm = astrom.detect_all_sources()
                     
@@ -1826,7 +1845,8 @@ class Orbs(Tools):
             bad_frames_vector = []
 
         star_list_path, mean_fwhm_pix = self.detect_stars(
-            cube, camera_number, return_fwhm_pix=True, all_sources=True)
+            cube, camera_number, return_fwhm_pix=True, all_sources=True,
+            realign=False)
 
         perf = Performance(cube, "Cosmic ray map computation", camera_number,
                            config_file_name=self.config_file_name)
@@ -2907,7 +2927,7 @@ class Orbs(Tools):
         std_astrom.target_y = std_cube.dimy / 2.
         try:
             # register std frame
-            std_correct_wcs = std_astrom.register(full_deep_frame=True)
+            std_correct_wcs = std_astrom.register(full_deep_frame=True, realign=True)
             # get std_x and std_y
             std_x, std_y = std_correct_wcs.wcs_world2pix(std_ra, std_dec, 0)
 
@@ -3013,7 +3033,10 @@ class Orbs(Tools):
             astrom.set_deep_frame(deep_frame_path)
 
             try:
-                correct_wcs = astrom.register(full_deep_frame=True)
+                correct_wcs = astrom.register(
+                    full_deep_frame=True,
+                    compute_distortion=True)
+                
             except Exception, e:
                 exc_info = sys.exc_info()
                 self._print_warning('Error during WCS computation, check WCS parameters in the option file: {}'.format(e))
@@ -3078,7 +3101,8 @@ class Orbs(Tools):
         ## self._print_warning('Calibration laser map taken from phase map fit (internal calibration laser map)')
         ## calibration_laser_map_path = self.indexer.get_path(
         ##     'phase_calibration_laser_map', camera_number)
-        
+
+            
         # Calibration
         spectrum.calibrate(
             self.options["filter_name"],
@@ -3420,6 +3444,9 @@ class Orbs(Tools):
         spectrum_header.set('ZPDINDEX', zpd_index)
 
         spectrum_header.set('WAVCALIB', self.options['spectral_calibration'])
+
+        # set calib laser nm
+        spectrum_header.set('CALIBNM', self.config['CALIB_NM_LASER'])
 
         # get apodization
         apod = spectrum_header['APODIZ']

@@ -3233,7 +3233,8 @@ class Interferogram(HDFCube):
         # interferogram cube is cut to conserve only the symmetical part
         zpd_index = int(int(self.dimz/2) - zpd_shift)
         cube_bin = self.read_fits(self._get_binned_interferogram_cube_path())[:,:,:2 * zpd_index]
-        zpd_shift = 0 
+        # zpd shift used for phase computation must be modified when the number of frames is odd
+        zpd_shift = - int(self.dimz&1)
         
         if calibration_laser_map_path is not None:
             self.create_binned_calibration_laser_map(
@@ -3928,7 +3929,7 @@ class InterferogramMerger(Tools):
         result = aligner.compute_alignment_parameters(
             star_list_path1=star_list_path_A,
             fwhm_arc=fwhm_arc_A,
-            correct_distorsion=False)
+            correct_distortion=False)
 
         [self.dx, self.dy, self.dr, self.da, self.db] = result['coeffs']
         self.rc = result['rc']
@@ -4916,7 +4917,7 @@ class InterferogramMerger(Tools):
         bad_frames_vector[
             np.nonzero(transmission_vector <= BAD_FRAME_COEFF)] = 1
         if np.any(bad_frames_vector):
-            self._print_msg("Detected bad frames : %s"%str(
+            self._print_msg("Detected bad transmission frames: %s"%str(
                 np.nonzero(bad_frames_vector)[0]))
         self.write_fits(
             self._get_bad_frames_vector_path(), 
@@ -5988,7 +5989,8 @@ class Spectrum(HDFCube):
                      dtype=float).transpose()).header
         new_hdr.extend(hdr, strip=True, update=True, end=True)
         if correct_wcs is not None:
-            hdr = self._update_hdr_wcs(new_hdr, correct_wcs.to_header())
+            hdr = self._update_hdr_wcs(
+                new_hdr, correct_wcs.to_header(relax=True))
         else:
             hdr = new_hdr
 
@@ -6164,10 +6166,18 @@ class Spectrum(HDFCube):
             master_im1 = np.copy(cube1[:,:,0])
             master_im2 = np.copy(cube2[:,:,0])
         else:
+            #self._print_error('standard images must be realigned first (to be implemented)')
+            cube1_r = orb.utils.astrometry.realign_images(cube1[:,:,:])
+            cube2_r = orb.utils.astrometry.realign_images(cube2[:,:,:])
+            
             master_im1 = orb.utils.image.pp_create_master_frame(
-                cube1[:,:,:])
+                cube1_r[:,:,:])
             master_im2 = orb.utils.image.pp_create_master_frame(
-                cube2[:,:,:])
+                cube2_r[:,:,:])
+
+            self.write_fits('master1.fits', master_im1, overwrite=True)
+            self.write_fits('master2.fits', master_im2, overwrite=True)
+            
 
         # find star around std_x1, std_y1:
         std_x1, std_y1 =_get_std_position(
