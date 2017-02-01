@@ -6333,10 +6333,20 @@ class SourceExtractor(InterferogramMerger):
         """Return path to extracted source interferograms"""
         return self._data_path_hdr + "extracted_source_interferograms.fits"
 
+    def _get_extracted_source_fwhm_path(self):
+        """Return path to extracted source fwhm follow-up"""
+        return self._data_path_hdr + "extracted_source_fwhm.fits"
+
     def _get_extracted_source_interferograms_header(self):
         """Return header of extracted source interferograms data file"""
         return (self._get_basic_header('Extracted source interferograms')
                 + self._project_header)
+
+    def _get_extracted_source_fwhm_header(self):
+        """Return header of extracted source fwhm data file"""
+        return (self._get_basic_header('Extracted source fwhm')
+                + self._project_header)
+
 
     def _get_extracted_source_spectra_path(self):
         """Return path to extracted source spectra"""
@@ -6348,38 +6358,59 @@ class SourceExtractor(InterferogramMerger):
                 + self._project_header
                 + self._get_fft_params_header(apodization_function))
 
-    def extract_source_interferograms(self, source_list, fov,
+    def extract_source_interferograms(self, source_list,
+                                      star_list_path, fov,
                                       alignment_vector_1_path,
                                       alignment_vector_2_path,
                                       modulation_ratio_path,
                                       transmission_vector_path,
                                       ext_illumination_vector_path,
                                       fwhm_arc,
+                                      deep_frame=None,
                                       profile_name='gaussian',
                                       moffat_beta=3.5):
 
         """Extract the interferogram of all sources.
-        
+
+        :param deep_frame: if a deep frame is given the fwhm of the
+          sources is fitted as a first guess.
         """
         def _fit_sources_in_frame(frameA, frameB, source_listA, box_size,
-                                  profile_name, scale, fwhm_pix, default_beta,
+                                  profile_name, scale, mean_fwhm_pix, fwhm_ratio,
+                                  default_beta,
                                   fit_tol, alignment_coeffs, rc, zoom_factor,
-                                  modulation_ratio, dxA, dyA):
+                                  modulation_ratio, dxA, dyA, star_list):
         
             source_listA[:,0] += dxA
             source_listA[:,1] += dyA
             source_listB = orb.utils.astrometry.transform_star_position_A_to_B(
                 source_listA, alignment_coeffs, rc, zoom_factor)    
 
+            # detect fwhm in frame
+            istar_list = np.copy(star_list)
+            istar_list[:,0] += dxA
+            istar_list[:,1] += dyA
+            
+            imean_fwhm_pix, _ = orb.utils.astrometry.detect_fwhm_in_frame(
+                frameA, istar_list, mean_fwhm_pix)
+            if imean_fwhm_pix is not None:
+                imean_fwhm_pix = imean_fwhm_pix[0]
+            else:
+                imean_fwhm_pix = mean_fwhm_pix
+                        
+            ifwhm_pix = np.sqrt(imean_fwhm_pix**2. + fwhm_ratio)
+
+            # extract aperture photometry
             fit_resA = orb.utils.astrometry.multi_aperture_photometry(
-                frameA, source_listA, fwhm_pix, silent=True)
+                frameA, source_listA, ifwhm_pix, silent=True)
             fit_resB = orb.utils.astrometry.multi_aperture_photometry(
-                frameB, source_listB, fwhm_pix, silent=True)
+                frameB, source_listB, ifwhm_pix, silent=True)
             photomA = [fit['aperture_flux'] for fit in fit_resA]
             photomB = [fit['aperture_flux'] for fit in fit_resB]
                 
             return (photomA - modulation_ratio * photomB,
-                    photomA + modulation_ratio * photomB)
+                    photomA + modulation_ratio * photomB,
+                    ifwhm_pix)
         
         
         MERGE_BOX_SZ_COEFF = 7        
@@ -6399,6 +6430,25 @@ class SourceExtractor(InterferogramMerger):
             transmission_vector_path)
         ext_illumination_vector = self.read_fits(
             ext_illumination_vector_path)
+
+
+        if deep_frame is not None:
+            astrom_deep = Astrometry(deep_frame, fwhm_arc_B, fov,
+                                     profile_name=profile_name,
+                                     moffat_beta=moffat_beta,
+                                     data_prefix=self._data_prefix + 'merged.',
+                                     tuning_parameters=self._tuning_parameters,
+                                     check_mask=False,
+                                     config_file_name=self.config_file_name,
+                                     ncpus=self.ncpus)
+            source_list = np.array(source_list)
+            astrom_deep.reset_star_list(source_list)
+
+            fit_res_deep = astrom_deep.fit_stars_in_frame(0, multi_fit=False)
+            deep_fwhm_pix = fit_res_deep[:,'fwhm_pix']
+        else: deep_fwhm_pix = None
+            
+
         
         astrom = Astrometry(self.cube_B, fwhm_arc_B, fov,
                             profile_name=profile_name,
@@ -6408,7 +6458,16 @@ class SourceExtractor(InterferogramMerger):
                             check_mask=False,
                             config_file_name=self.config_file_name,
                             ncpus=self.ncpus)
+
+        if deep_fwhm_pix is None:
+            fwhm_ratio = 1
+        else:
+            fwhm_ratio = deep_fwhm_pix**2. - astrom.fwhm_pix**2.
         
+        # load star list
+        star_list = astrom.load_star_list(star_list_path)
+
+        # load source list
         source_list = np.array(source_list)
         astrom.reset_star_list(source_list)
 
@@ -6425,7 +6484,9 @@ class SourceExtractor(InterferogramMerger):
         
         photom = np.empty((source_list.shape[0],
                            self.cube_A.dimz), dtype=float)
-        
+        fwhmm = np.empty((source_list.shape[0],
+                          self.cube_A.dimz), dtype=float)
+
         # transm is not used at the moment ...
         transm = np.empty((source_list.shape[0],
                            self.cube_A.dimz), dtype=float)
@@ -6454,12 +6515,14 @@ class SourceExtractor(InterferogramMerger):
                       astrom.profile_name,
                       astrom.scale,
                       astrom.fwhm_pix,
+                      fwhm_ratio,
                       astrom.default_beta,
                       astrom.fit_tol,
                       alignment_coeffs, self.rc, self.zoom_factor,
                       modulation_ratio,
                       alignment_vector_1[ik+ijob,0],
-                      alignment_vector_1[ik+ijob,1]),
+                      alignment_vector_1[ik+ijob,1],
+                      star_list),
                 modules=("from orb.utils.astrometry import fit_star, sky_background_level, aperture_photometry, get_profile",
                          "from orb.astrometry import StarsParams",
                          "import orb.astrometry",
@@ -6474,7 +6537,7 @@ class SourceExtractor(InterferogramMerger):
                     for ijob in range(ncpus)]
             
             for ijob, job in jobs:
-                photom[:,ik+ijob], transm[:,ik+ijob] = job()
+                photom[:,ik+ijob], transm[:,ik+ijob], fwhmm[:,ik+ijob] = job()
             
         self._close_pp_server(job_server)
         progress.end()
@@ -6492,6 +6555,13 @@ class SourceExtractor(InterferogramMerger):
         if self.indexer is not None:
             self.indexer['extracted_source_interferograms'] = (
                 self._get_extracted_source_interferograms_path())
+
+        self.write_fits(
+            self._get_extracted_source_fwhm_path(),
+            fwhmm,
+            fits_header=self._get_extracted_source_fwhm_header(),
+            overwrite=self.overwrite)
+
 
         return photom
 
