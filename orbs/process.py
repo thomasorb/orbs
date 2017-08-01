@@ -6201,15 +6201,20 @@ class Spectrum(HDFCube):
             std_flux2 / std_sim_flux))
 
 
-        if (max(std_flux1, std_sim_flux)
-            / min(std_flux1, std_sim_flux) > ERROR_FLUX_COEFF
-            or max(std_flux2, std_sim_flux)
-            / min(std_flux2, std_sim_flux) > ERROR_FLUX_COEFF):
+        ## These tests do not make sense anymore as the stds are taken at ZPD starting Nov 2016
+        ## if (max(std_flux1, std_sim_flux)
+        ##     / min(std_flux1, std_sim_flux) > ERROR_FLUX_COEFF
+        ##     or max(std_flux2, std_sim_flux)
+        ##     / min(std_flux2, std_sim_flux) > ERROR_FLUX_COEFF):
+        ##     self._print_error('Measured flux is too low compared to simulated flux. There must be a problem. Check standard image files.')
+        ## if (max(std_flux1, std_flux2)
+        ##     / min(std_flux1, std_flux2)) > ERROR_STD_DIFF_COEFF:
+        ##     self._print_error('Difference between measured flux of both standards is too high')
+        ## New test compares sum of fluxes in both cameras to twice the simulated flux in one camera without modulation
+        flux_ratio = 2*std_sim_flux/(std_flux1+std_flux2)
+        if (flux_ratio > ERROR_FLUX_COEFF):
             self._print_error('Measured flux is too low compared to simulated flux. There must be a problem. Check standard image files.')
-        if (max(std_flux1, std_flux2)
-            / min(std_flux1, std_flux2)) > ERROR_STD_DIFF_COEFF:
-            self._print_error('Difference between measured flux of both standards is too high')
-        
+ 
         coeff = std_th_flux / (std_flux1 + std_flux2) # erg/cm2/ADU
         
         self._print_msg('Flux calibration coeff: {} ergs/cm2/ADU'.format(coeff))

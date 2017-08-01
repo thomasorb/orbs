@@ -87,6 +87,9 @@ def unwrap_phase_cube(final_phase_cube):
     
 def main(args):
 
+    import pydevd
+    pydevd.settrace('localhost', port=8888, stdoutToServer=True, stderrToServer=True)
+
     if not (0 < args.x < 1): raise Exception('x must be between 0 and 1')
     if not (0 < args.y < 1): raise Exception('y must be between 0 and 1')
     if not (0 < args.s <= 1): raise Exception('s must be between 0 and 1')
@@ -136,7 +139,7 @@ def main(args):
     CROP_COEFF = args.s # proportion of the phase map to keep when
                         # cropping
 
-    FILTER_EDGE_COEFF = -0.2
+    # FILTER_EDGE_COEFF = -0.2
 
     dimx, dimy, dimz = interf_cube.shape
 
@@ -159,65 +162,66 @@ def main(args):
 
     # compute phase cube
     
-    ## final_phase = np.zeros(dimz, dtype=float)    
-    ## progress = ProgressBar(xmax-xmin)
-    ## spectrum = np.zeros(dimz, dtype=float)
-    ## for ii in range(xmin, xmax):
-    ##     progress.update(ii-xmin, info='Creating phase cube')
-    ##     for ij in range(ymin, ymax):
-    ##         cm1_axis = orb.utils.spectrum.create_cm1_axis(
-    ##             dimz, step, order,
-    ##             corr=calib_map[ii,ij]/nm_laser)
+    final_phase = np.zeros(dimz, dtype=float)    
+    progress = ProgressBar(xmax-xmin)
+    spectrum = np.zeros(dimz, dtype=float)
+    for ii in range(xmin, xmax):
+        progress.update(ii-xmin, info='Creating phase cube')
+        for ij in range(ymin, ymax):
+            cm1_axis = orb.utils.spectrum.create_cm1_axis(
+                dimz, step, order,
+                corr=calib_map[ii,ij]/nm_laser)
             
-    ##         ifft = orb.utils.fft.transform_interferogram(
-    ##             interf_cube[ii,ij,:], 1, 1,
-    ##             step, order, '2.0', 0, phase_correction=False,
-    ##             return_complex=True, wavenumber=True,
-    ##             wave_calibration=False)            
+            ifft = orb.utils.fft.transform_interferogram(
+                interf_cube[ii,ij,:], 1, 1,
+                step, order, '2.0', 0, phase_correction=False,
+                return_complex=True, wavenumber=True,
+                wave_calibration=False)            
             
-    ##         # phase is not calibrated because order > 0 are all
-    ##         # *cos(theta): i.e. they fall in the same channel in
-    ##         # non-calibrated phase cube
-    ##         iphase = np.unwrap(np.angle(ifft))
+            # phase is not calibrated because order > 0 are all
+            # *cos(theta): i.e. they fall in the same channel in
+            # non-calibrated phase cube
+            iphase = np.unwrap(np.angle(ifft))
 
-    ##         w, irange = orb.utils.filters.compute_weights(
-    ##             calib_map[ii,ij], nm_laser, dimz,
-    ##             step, order, 0.15, filter_min_cm1, filter_max_cm1)
+            w, irange = orb.utils.filters.compute_weights(
+                calib_map[ii,ij], nm_laser, dimz,
+                step, order, 0.15, filter_min_cm1, filter_max_cm1)
 
-    ##         iphase[:irange[0]] = np.nan
-    ##         iphase[irange[1]:] = np.nan
+            iphase[:irange[0]] = np.nan
+            iphase[irange[1]:] = np.nan
 
-    ##         final_phase_cube[ii-xmin, ij-ymin, :] = iphase
+            final_phase_cube[ii-xmin, ij-ymin, :] = iphase
 
-    ##         ispec = np.abs(ifft)
-    ##         ispec = orb.utils.vector.interpolate_axis(
-    ##             ispec, cm1_axis_base, 1, old_axis=cm1_axis)
-    ##         spectrum += ispec            
+            ispec = np.abs(ifft)
+            if not np.all(np.isnan(ispec)):
+                ispec = orb.utils.vector.interpolate_axis(
+                    ispec, cm1_axis_base, 1, old_axis=cm1_axis)
+                spectrum += ispec
         
-    ## progress.end()
+    progress.end()
 
-    ## # unwrap phase cube
+    # unwrap phase cube
     
-    ## final_phase = np.empty(dimz, dtype=float)
-    ## final_phase_err_max = np.empty_like(final_phase)
-    ## final_phase_err_min = np.empty_like(final_phase)
-    ## final_phase_err = np.empty_like(final_phase)
+    final_phase = np.empty(dimz, dtype=float)
+    final_phase_err_max = np.empty_like(final_phase)
+    final_phase_err_min = np.empty_like(final_phase)
+    final_phase_err = np.empty_like(final_phase)
 
-    ## final_phase_cube = unwrap_phase_cube(final_phase_cube)
-    ## dx = 2
-    ## median_frame = np.nanmedian(final_phase_cube[
-    ##     :,:,dimz/2-dx:dimz/2+dx+1], axis=2)
-    ## final_phase_cube = (final_phase_cube.T - median_frame.T).T
-    ## final_phase_cube = unwrap_phase_cube(final_phase_cube)
-    ## dx = 10
-    ## median_frame = np.nanmedian(final_phase_cube[
-    ##     :,:,dimz/2-dx:dimz/2+dx+1], axis=2)
-    ## final_phase_cube = (final_phase_cube.T - median_frame.T).T
+    final_phase_cube = unwrap_phase_cube(final_phase_cube)
+    dx = 2
+    median_frame = np.nanmedian(final_phase_cube[
+        :,:,dimz/2-dx:dimz/2+dx+1], axis=2)
+    final_phase_cube = (final_phase_cube.T - median_frame.T).T
+    final_phase_cube = unwrap_phase_cube(final_phase_cube)
+    dx = 10
+    median_frame = np.nanmedian(final_phase_cube[
+        :,:,dimz/2-dx:dimz/2+dx+1], axis=2)
+    final_phase_cube = (final_phase_cube.T - median_frame.T).T
 
-    ## orb.utils.io.write_fits(
-    ##     'final_phase_cube.fits', final_phase_cube, overwrite=True)
-    ## orb.utils.io.write_fits(
-    ##     'spectrum.fits', spectrum, overwrite=True)
+    orb.utils.io.write_fits(
+        'final_phase_cube.fits', final_phase_cube, overwrite=True)
+    orb.utils.io.write_fits(
+        'spectrum.fits', spectrum, overwrite=True)
     final_phase_cube = orb.utils.io.read_fits('final_phase_cube.fits')
     spectrum = orb.utils.io.read_fits('spectrum.fits')
 
@@ -233,8 +237,8 @@ def main(args):
 
     for iang in range(1, len(angles)):
         ipix = np.nonzero(
-            (calib_map > angles[iang-1])
-            * (calib_map <= angles[iang]))
+            (calib_map[xmin:xmax,ymin:ymax] > angles[iang-1])
+            * (calib_map[xmin:xmax,ymin:ymax] <= angles[iang]))
         ixx = ipix[0]
         iyy = ipix[1]
         iphases = np.empty((len(ixx), dimz), dtype=float)
@@ -277,10 +281,25 @@ def main(args):
 
 
         iang = len(angles)/2
+        cm1_axis_phase = orb.utils.spectrum.create_cm1_axis(
+            dimz, step, order,
+            corr=angles[iang] / nm_laser)
+
+
+        print angles[iang],base_calib
         iphase = phases[iang] + 0.2
+        iphase = orb.utils.vector.interpolate_axis(
+            iphase, cm1_axis_base, 1, old_axis=cm1_axis_phase)
+        phase_err_min = phases_err_min[iang]
+        phase_err_max = phases_err_max[iang]
+        phase_err_min = orb.utils.vector.interpolate_axis(
+            phase_err_min,cm1_axis_base,1,old_axis=cm1_axis_phase)
+        phase_err_max = orb.utils.vector.interpolate_axis(
+            phase_err_max,cm1_axis_base,1,old_axis=cm1_axis_phase)
+
         ax.fill_between(axis,
-                        iphase - phases_err_min[iang],
-                        iphase + phases_err_max[iang],
+                        iphase - phase_err_min,
+                        iphase + phase_err_max,
                         facecolor='0.5',linewidth=0., alpha=0.5)
         ax.plot(axis, iphase, c='red', linewidth=3.,
                 label='Median Phase')
