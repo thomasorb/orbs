@@ -63,6 +63,37 @@ def check_option_file(path):
 
 
 def unwrap_phase_cube(final_phase_cube):
+    # another hack pending a good solution...
+
+    sh = final_phase_cube.shape
+
+    for i in range(sh[1]):
+        for j in range(sh[2]):
+            los=final_phase_cube[:,i,j]
+            nonans = ~np.isnan(los)
+            los[nonans] = np.unwrap(los[nonans])
+            final_phase_cube[:,i,j] = los
+    # Compute median phase over wavenumbers
+    med_phase = np.nanmedian(final_phase_cube,axis=0)
+    # Unwrap in y direction (axis=1)
+    for i in range(sh[2]):
+        oldcol = med_phase[:,i]
+        col = np.empty_like(oldcol)
+        col.fill(np.nan)
+        nonans = ~np.isnan(oldcol)
+        col[nonans] = np.unwrap(oldcol[nonans])
+        final_phase_cube[:,:,i] += (col-oldcol)[None,:]
+    # Last unwrap along x direction (axis=2)
+    med_phase_line = np.nanmedian(final_phase_cube,axis=(0,1))
+    umed_phase_line = np.empty_like(med_phase_line)
+    umed_phase_line.fill(np.nan)
+    nonans = ~np.isnan(med_phase_line)
+    umed_phase_line[nonans] = np.unwrap(med_phase_line[nonans])
+    final_phase_cube += (umed_phase_line-med_phase_line)[None,None,:]
+    final_phase_cube -= np.nanmedian(final_phase_cube)
+    return(final_phase_cube)
+
+def old_unwrap_phase_cube(final_phase_cube):
 
     for ik in range(final_phase_cube.shape[2]):
         frame = final_phase_cube[:,:,ik]
@@ -208,15 +239,16 @@ def main(args):
     final_phase_err = np.empty_like(final_phase)
 
     final_phase_cube = unwrap_phase_cube(final_phase_cube)
-    dx = 2
-    median_frame = np.nanmedian(final_phase_cube[
-        :,:,dimz/2-dx:dimz/2+dx+1], axis=2)
+    median_frame = np.nanmedian(final_phase_cube,axis=2)
+    # dx = 2
+    # median_frame = np.nanmedian(final_phase_cube[
+    #     :,:,dimz/2-dx:dimz/2+dx+1], axis=2)
     final_phase_cube = (final_phase_cube.T - median_frame.T).T
     final_phase_cube = unwrap_phase_cube(final_phase_cube)
-    dx = 10
-    median_frame = np.nanmedian(final_phase_cube[
-        :,:,dimz/2-dx:dimz/2+dx+1], axis=2)
-    final_phase_cube = (final_phase_cube.T - median_frame.T).T
+    # dx = 10
+    # median_frame = np.nanmedian(final_phase_cube[
+    #     :,:,dimz/2-dx:dimz/2+dx+1], axis=2)
+    # final_phase_cube = (final_phase_cube.T - median_frame.T).T
 
     orb.utils.io.write_fits(
         'final_phase_cube.fits', final_phase_cube, overwrite=True)
@@ -230,7 +262,7 @@ def main(args):
 
     max_angle = np.percentile(calib_map, 99.99)
     min_angle = np.percentile(calib_map, 0.01)
-    angles = np.linspace(min_angle, max_angle, 300)
+    angles = np.linspace(min_angle, max_angle, 50)
     phases = list()
     phases_err_min = list()
     phases_err_max = list()

@@ -3080,7 +3080,7 @@ class Interferogram(HDFCube):
                     return_complex=True,
                     phase_correction=False)
                     
-                if ifft is not None:
+                if (ifft is not None) and (not np.all(np.isnan(ifft))):
                 
                     iphase = np.unwrap(np.angle(ifft))
                     if int(order) & 1: iphase = iphase[::-1]
@@ -3127,13 +3127,7 @@ class Interferogram(HDFCube):
                             pfit, pcov = optimize.curve_fit(
                                 model, x, phase_to_fit, [0., 0.], 1./weights)
                             perr = np.sqrt(np.diag(pcov))
-                            ## import pylab as pl
-                            ## pl.plot(interf)
-                            ## pl.plot(iphase)
-                            ## #pl.plot(phase_to_fit, '--')
-                            ## pl.show()
 
-                            
                         except Exception, e:
                             print 'Exception occured during phase fit: ', e
                             pfit = None
@@ -3255,6 +3249,13 @@ class Interferogram(HDFCube):
                                 cube_bin.shape[1]), dtype=float)
         fit_coeffs_map.fill(np.nan)
         fit_err_map.fill(np.nan)
+
+        # for ii in range(cube_bin.shape[0]):
+        #     (fit_coeffs_map[ii,:,:],fit_err_map[ii,:],phase_cube[ii,:,:]) = \
+        #         fit_phase_in_column(cube_bin[ii,:,:], step, order, zpd_shift,
+        #                             calibration_laser_map[ii,:], filter_min_cm1,
+        #                             filter_max_cm1, nm_laser, fit_order, phf)
+        #
 
         job_server, ncpus = self._init_pp_server()
         progress = ProgressBar(cube_bin.shape[0])
