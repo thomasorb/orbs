@@ -23,10 +23,6 @@
     <kwarg name='add_frameB'></kwarg>
   </step>
 
-  <step name='compute_phase' cam='0'>
-    <arg value='0' type='int'></arg>
-  </step>
-
   <step name='compute_phase_maps' cam='0'>
     <arg value='0' type='int'></arg>
   </step>

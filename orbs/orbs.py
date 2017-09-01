@@ -1616,7 +1616,7 @@ class Orbs(Tools):
 
     def detect_stars(self, cube, camera_number, 
                      saturation_threshold=None, return_fwhm_pix=False,
-                     all_sources=False, realign=False):
+                     all_sources=False, realign=False, deep_frame=None):
         """Detect stars in a cube and save the star list in a file.
 
         This method is a simple wrapper around
@@ -1649,6 +1649,9 @@ class Orbs(Tools):
         :param realign: (Optional) Realign frames with a
           cross-correlation algorithm (default False). Much better if
           used on a small number of frames.
+
+        :param deep_frame: (Optional) If a deep frame is passed it is
+          used directly instead of creating a new one.
         
         :return: Path to a star list, mean FWHM of stars in arcseconds.
 
@@ -1693,6 +1696,7 @@ class Orbs(Tools):
                 
             self._print_msg('Autodetecting stars', color=True)
             astrom = self._init_astrometry(cube, camera_number)
+            astrom.deep_frame = deep_frame
             if not all_sources:
                 star_list_path, mean_fwhm = astrom.detect_stars(
                     min_star_number=self.config['DETECT_STAR_NB'],
@@ -3188,14 +3192,16 @@ class Orbs(Tools):
         perf = Performance(sex.cube_B, "Extraction of source interferograms", 0,
                            config_file_name=self.config_file_name)
 
+        # detect stars in cube 1
+        cube1 = self._init_raw_data_cube(1)
+        deep_frame = self.read_fits(self.indexer['cam1.deep_frame'])
+        star_list_path_1, mean_fwhm_1_arc = self.detect_stars(
+                cube1, 0, saturation_threshold=self.config[
+                'SATURATION_THRESHOLD'], deep_frame=deep_frame)
+        del cube1
+
         # find alignment coefficients
         if alignment_coeffs is None:
-            # detect stars in cube 1
-            cube1 = self._init_raw_data_cube(1)
-            star_list_path_1, mean_fwhm_1_arc = self.detect_stars(
-                cube1, 0, saturation_threshold=self.config[
-                    'SATURATION_THRESHOLD'])
-            del cube1
             sex.find_alignment(
                 star_list_path_1,
                 self.config["INIT_ANGLE"], init_dx, init_dy,
@@ -3211,13 +3217,15 @@ class Orbs(Tools):
         
         self.indexer.set_file_group('merged')
         sex.extract_source_interferograms(
-            source_list, self.config["FIELD_OF_VIEW_1"],
+            source_list,
+            star_list_path_1,
+            self.config["FIELD_OF_VIEW_1"],
             self.indexer['cam1.alignment_vector'],
             self.indexer['cam2.alignment_vector'],
             self.indexer['merged.modulation_ratio'],
             self.indexer['merged.transmission_vector'],
             self.indexer['merged.ext_illumination_vector'],
-            mean_fwhm_1_arc)
+            mean_fwhm_1_arc, deep_frame=deep_frame)
         
         perf.print_stats()
 
