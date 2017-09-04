@@ -248,6 +248,7 @@ def start(args, resume=False):
         args.nophase = True
     elif args.sources: target = 'sources'
     elif args.extphase: target = 'extphase'
+    elif args.nophase: target = 'nophase'
 
 
     # check first if reduction can be resumed
@@ -547,8 +548,12 @@ def add_all_operations(instrument_parser, epilog, epilog_steps):
 ##################### MAIN #############################################
 ########################################################################
 
-
 if __name__ == "__main__":
+
+
+    # import pydevd
+    # pydevd.settrace('localhost', port=8888, stdoutToServer=True, stderrToServer=True)
+
     """Main entrance of the script.
     
     Parse arguments and launch the reduction process.
