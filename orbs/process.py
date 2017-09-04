@@ -3084,7 +3084,7 @@ class Interferogram(HDFCube):
                     return_complex=True,
                     phase_correction=False)
                     
-                if ifft is not None:
+                if (ifft is not None) and (not np.all(np.isnan(ifft))):
                 
                     iphase = np.unwrap(np.angle(ifft))
                     if int(order) & 1: iphase = iphase[::-1]
@@ -3131,13 +3131,7 @@ class Interferogram(HDFCube):
                             pfit, pcov = optimize.curve_fit(
                                 model, x, phase_to_fit, [0., 0.], 1./weights)
                             perr = np.sqrt(np.diag(pcov))
-                            ## import pylab as pl
-                            ## pl.plot(interf)
-                            ## pl.plot(iphase)
-                            ## #pl.plot(phase_to_fit, '--')
-                            ## pl.show()
 
-                            
                         except Exception, e:
                             print 'Exception occured during phase fit: ', e
                             pfit = None
@@ -3259,6 +3253,13 @@ class Interferogram(HDFCube):
                                 cube_bin.shape[1]), dtype=float)
         fit_coeffs_map.fill(np.nan)
         fit_err_map.fill(np.nan)
+
+        # for ii in range(cube_bin.shape[0]):
+        #     (fit_coeffs_map[ii,:,:],fit_err_map[ii,:],phase_cube[ii,:,:]) = \
+        #         fit_phase_in_column(cube_bin[ii,:,:], step, order, zpd_shift,
+        #                             calibration_laser_map[ii,:], filter_min_cm1,
+        #                             filter_max_cm1, nm_laser, fit_order, phf)
+        #
 
         job_server, ncpus = self._init_pp_server()
         progress = ProgressBar(cube_bin.shape[0])
@@ -6216,15 +6217,11 @@ class Spectrum(HDFCube):
             std_flux2 / std_sim_flux))
 
 
-        if (max(std_flux1, std_sim_flux)
-            / min(std_flux1, std_sim_flux) > ERROR_FLUX_COEFF
-            or max(std_flux2, std_sim_flux)
-            / min(std_flux2, std_sim_flux) > ERROR_FLUX_COEFF):
-            raise StandardError('Measured flux is too low compared to simulated flux. There must be a problem. Check standard image files.')
-        if (max(std_flux1, std_flux2)
-            / min(std_flux1, std_flux2)) > ERROR_STD_DIFF_COEFF:
-            raise StandardError('Difference between measured flux of both standards is too high')
-        
+        ## New test compares sum of fluxes in both cameras to twice the simulated flux in one camera without modulation
+        flux_ratio = 2*std_sim_flux/(std_flux1+std_flux2)
+        if (flux_ratio > ERROR_FLUX_COEFF):
+            self._print_error('Measured flux is too low compared to simulated flux. There must be a problem. Check standard image files.')
+ 
         coeff = std_th_flux / (std_flux1 + std_flux2) # erg/cm2/ADU
         
         logging.info('Flux calibration coeff: {} ergs/cm2/ADU'.format(coeff))

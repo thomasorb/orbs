@@ -393,7 +393,7 @@ class Orbs(Tools):
     option_file_path = None
     """Path to the option file"""
 
-    targets = ['object', 'flat', 'standard', 'laser', 'nostar', 'raw', 'sources', 'extphase']
+    targets = ['object', 'flat', 'standard', 'laser', 'nostar', 'raw', 'sources', 'extphase', 'nophase']
     """Possible target types"""
     
     target = None
@@ -1558,7 +1558,8 @@ class Orbs(Tools):
         elif self.roadmap.cams == 'full': cam = 0
         
         if (self.target == 'object' or self.target == 'nostar'
-            or self.target == 'raw' or self.target == 'extphase'):
+            or self.target == 'raw' or self.target == 'extphase'
+            or self.target == 'nophase' ):
             self.export_calibrated_spectrum_cube(cam)
         if self.target == 'flat': self.export_flat_phase_map(cam)
         if self.target == 'laser': self.export_calibration_laser_map(cam)
