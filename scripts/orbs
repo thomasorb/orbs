@@ -42,9 +42,12 @@ orbs_path = os.path.normpath(('%s'%os.sep).join(str(script_path[0]).split(os.sep
 sys.path.append(orbs_path)
 
 import orb
-from orb.core import Tools, OptionFile, Logger
+from orb.core import Tools, OptionFile
 import orbs
 from orbs.orbs import Orbs, RoadMap, JobFile
+
+import logging
+import warnings
 
 ##############################################################
 ##### CLASS RECORDFILE #######################################
@@ -138,26 +141,21 @@ def check_option_file(to, path, is_laser, fast_init):
     :param fast_init: If True init is fast ans some checking is not done
     """
     jobfile = JobFile(path, is_laser=is_laser, fast_init=fast_init)
-    if jobfile.is_jobfile:
+    if jobfile.is_jobfile():
         return jobfile.convert2opt()
     else:
         return path, dict(), 'option_file'
 
-def get_config_file_name(args):    
-    if args.instrument_mode == 'sitelle':
-        return 'config.sitelle.orb'
-        
-    elif args.instrument_mode == 'spiomm':
-        return 'config.spiomm.orb'
-
 def get_to(args):
-    return Tools(config_file_name=get_config_file_name(args))
+    to = Tools(instrument=args.instrument_mode)
+    return to
 
 def init_orbs(args, target, cams, silent=False, fast_init=False, no_check=False):
     # load option file and init Orbs class
     return Orbs(args.option_file_path, target, cams, overwrite=True,
-                config_file_name=get_config_file_name(args), silent=silent,
-                fast_init=fast_init, ncpus=args.ncpus, raw_data_files_check=not no_check)
+                instrument=args.instrument_mode, silent=silent,
+                fast_init=fast_init, ncpus=args.ncpus, raw_data_files_check=not no_check,
+                logfile_path=get_logfile_name(args))
 
 def status(args):
     # log in record file
@@ -219,9 +217,6 @@ def start(args, resume=False):
 
     to = get_to(args)
 
-    logfile_name = get_logfile_name(args)
-    Logger(logfile_name, noprint=args.noprint)
-    
     #################
     # Check options #
     #################
@@ -273,86 +268,86 @@ def start(args, resume=False):
     ########################
     
     # header of the log
-    to._print_msg("", color=True)
-    to._print_msg("#"*45, color=True)
-    to._print_msg("## ORBS reduction process ", color=True)
-    to._print_msg("#"*45, color=True)
-    to._print_msg("", color=True)
+    logging.info("")
+    logging.info("#"*45)
+    logging.info("## ORBS reduction process ")
+    logging.info("#"*45)
+    logging.info("")
 
-    to._print_msg("Passed arguments : ", color=True)
+    logging.info("Passed arguments : ")
     
     for arg in args.__dict__:
-        to._print_msg('{}: {}'.format(arg, args.__dict__[arg]))
+        logging.info('{}: {}'.format(arg, args.__dict__[arg]))
 
     if args.single1:
-        to._print_msg(
-            "Camera 1 reduction in single mode", color=True)
+        logging.info(
+            "Camera 1 reduction in single mode")
 
     if args.single2:
-        to._print_msg(
-            "Camera 2 reduction in single mode", color=True)
+        logging.info(
+            "Camera 2 reduction in single mode")
 
     if args.nophase is not False:
-        to._print_msg(
-            "No phase correction will be done", color=True)
+        logging.info(
+            "No phase correction will be done")
 
     if args.stars:
-        to._print_msg(
-            "Computing only stars spectrum", color=True)
+        logging.info(
+            "Computing only stars spectrum")
 
     if args.nostar:
-        to._print_warning(
+        warnings.warn(
             "Star-dependant processes will be skipped")
 
     if args.nofilter:
-        to._print_warning(
+        warnings.warn(
             "No filter correction during calibration")
 
     if args.nowcs:
-        to._print_warning(
+        warnings.warn(
             "No WCS calibration")
 
     if args.alt_merge:
-        to._print_warning(
+        warnings.warn(
             "Alternative merging process")
 
     if args.raw:
-        to._print_warning(
+        warnings.warn(
             "Raw (faster) reduction process: no cosmic rays removal and no phase correction.")
 
     if args.sources:
-        to._print_msg(
+        logging.info(
             "Sources extraction process.")
 
     if args.sources:
-        to._print_msg(
+        logging.info(
             "Reduction with external phase map")
 
 
     if args.flat:
-        to._print_msg(
-            "Only the phase map will be computed. No spectrum computation !", color=True)
+        logging.info(
+            "Only the phase map will be computed. No spectrum computation !")
 
     if args.standard:
-        to._print_msg(
-            "Standard cube: The spectrum of the standard star will be returned", color=True)
+        logging.info(
+            "Standard cube: The spectrum of the standard star will be returned")
 
     if args.quadrants:
-        to._print_msg(
-            "Resulting spectrum will be splitted in quadrants", color=True)
+        logging.info(
+            "Resulting spectrum will be splitted in quadrants")
 
     if args.apodization_function is not None:
-        to._print_msg(
-            "Apodization function: %s"%args.apodization_function, color=True)
+        logging.info(
+            "Apodization function: %s"%args.apodization_function)
     else:
-        to._print_msg(
-            "No apodization will be done to the computed spectrum", color=True)
+        logging.info(
+            "No apodization will be done to the computed spectrum")
 
     if args.init_angle is not None: 
-        to._print_msg("Initial angle: %f"%args.init_angle, color=True)
+        logging.info("Initial angle: %f"%args.init_angle)
 
     if args.start_step != 0: 
-        to._print_msg("Starting step: %d"%args.start_step, color=True)
+        logging.info("Starting step: %d"%args.start_step)
 
   
     ###################################
@@ -373,7 +368,7 @@ def start(args, resume=False):
         args.start_step = project.roadmap.get_resume_step()
 
     # start reduction
-    to._print_msg("Reduction process started at : " + time.ctime(start_time), color=True)
+    logging.info("Reduction process started at : " + time.ctime(start_time))
     try:
         project.start_reduction(
             apodization_function=args.apodization_function,
@@ -394,8 +389,8 @@ def start(args, resume=False):
         sys.exit(2)
         
     end_time = time.time()
-    to._print_msg("Reduction process finished at : " + time.ctime(end_time), color=True)
-    to._print_msg("Total time : " + str((end_time - start_time) / 3600.) + " hours", color=True)         
+    logging.info("Reduction process finished at : " + time.ctime(end_time))
+    logging.info("Total time : " + str((end_time - start_time) / 3600.) + " hours")         
 
 
 
@@ -659,7 +654,7 @@ if __name__ == "__main__":
     ###################
     
     if args.subparser_name == 'start':
-        print_msg("Start %s"%args.option_file_path.strip(), color=True)
+        print_msg("Start %s"%args.option_file_path.strip())
         # record last command
         recfile = RecordFile(args.option_file_path)
         recfile.last_command = sys.argv[1:]
@@ -669,15 +664,15 @@ if __name__ == "__main__":
         start(args)
         
     if args.subparser_name == 'status':
-        print_msg("Status %s"%args.option_file_path.strip(), color=True)
+        print_msg("Status %s"%args.option_file_path.strip())
         status(args)
         
     if args.subparser_name == 'resume':
-        print_msg("Resume %s"%args.option_file_path.strip(), color=True)
+        print_msg("Resume %s"%args.option_file_path.strip())
         resume(args, parser)
 
     if args.subparser_name == 'clean':
-        print_msg("Clean %s"%args.option_file_path.strip(), color=True)
+        print_msg("Clean %s"%args.option_file_path.strip())
         clean(args)
 
         

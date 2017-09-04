@@ -35,6 +35,7 @@
     <arg value='0' type='int'></arg>
     <kwarg name='phase_correction'></kwarg>
     <kwarg name='filter_correction'></kwarg>
+    <kwarg name='apodization_function'></kwarg>
   </step>
 </steps>
 
