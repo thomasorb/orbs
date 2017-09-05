@@ -215,7 +215,7 @@ class RawData(HDFCube):
             warnings.warn("Bad bias cube dimensions : resizing data")
             bias_frames = bias_cube.get_resized_data(self.dimx, self.dimy)
 
-        if not self.BIG_DATA:
+        if not self.config.BIG_DATA:
             master_bias = orb.utils.image.create_master_frame(
                 bias_frames, combine=combine, reject=reject)
         else:
@@ -306,7 +306,7 @@ class RawData(HDFCube):
             
 
         # Create master dark
-        if not self.BIG_DATA:
+        if not self.config.BIG_DATA:
             master_dark = orb.utils.image.create_master_frame(
                 dark_frames, combine=combine, reject=reject)
         else:
@@ -366,7 +366,7 @@ class RawData(HDFCube):
                 flat_frames[:,:,i] / bn.nanmedian(flat_frames[:,:,i]))
 
         # create master flat
-        if not self.BIG_DATA:
+        if not self.config.BIG_DATA:
             master_flat = orb.utils.image.create_master_frame(
                 flat_frames, combine=combine, reject=reject)
         else:
@@ -695,7 +695,8 @@ class RawData(HDFCube):
                 jobs = [(ijob, job_server.submit(
                     filter_frame, 
                     args=(iquad_data[:,:,iframe+ijob],),
-                    modules=("import numpy as np",
+                    modules=("import logging",
+                             "import numpy as np",
                              "import orb.utils.image")))
                         for ijob in range(ncpus)]
 
@@ -722,7 +723,8 @@ class RawData(HDFCube):
                 jobs = [(ijob, job_server.submit(
                     predetect_crs_in_column, 
                     args=(iquad_data[ii+ijob,:,:], z_coeff),
-                    modules=("import numpy as np",
+                    modules=("import logging",
+                             "import numpy as np",
                              "import orb.utils.vector",
                              "import orb.utils.stats")))
                         for ijob in range(ncpus)]
@@ -769,7 +771,8 @@ class RawData(HDFCube):
                     args=(iquad_data[:,:,z_min_list[ijob]:z_max_list[ijob]],
                           iquad_pre_cr_map[:,:,iframe+ijob],
                           iframe+ijob-z_min_list[ijob]),
-                    modules=("import numpy as np",
+                    modules=("import logging",
+                             "import numpy as np",
                              "import orb.utils.image",
                              "import orb.utils.stats")))
                         for ijob in range(ncpus)]
@@ -857,7 +860,7 @@ class RawData(HDFCube):
         ##         args=(frames[:,:,ijob], 
         ##               cr_map_frames[:,:,ijob],
         ##               star_list, stars_fwhm_pix),
-        ##         modules=("import numpy as np",
+        ##         modules=("import logging", "import numpy as np",
         ##                  "import math",
         ##                  "import orb.utils",
         ##                  "import orb.astrometry")))
@@ -1737,7 +1740,8 @@ class RawData(HDFCube):
                       bias_calibration_params,
                       master_bias_level,
                       master_dark_level),
-                modules=("numpy as np", 
+                modules=("import logging",
+                         "numpy as np", 
                          "from scipy import optimize",
                          "import orb.utils.stats",
                          "import orb.utils.image")))
@@ -1757,6 +1761,7 @@ class RawData(HDFCube):
                       cr_maps[:,:,ijob], 
                       bad_frames_vector, order, zeros),
                 modules=(
+                    "import logging",
                     "numpy as np",
                     "import orb.utils.image",
                     "import orb.cutils",
@@ -2103,7 +2108,8 @@ class CalibrationLaser(HDFCube):
                           step, order, cm1_axis_min, cm1_axis_step,
                           get_calibration_laser_spectrum, fast,
                           fwhm_guess, fwhm_guess_cm1),
-                    modules=("numpy as np",
+                    modules=("import logging",
+                             "numpy as np",
                              "math",
                              "import orb.utils.fft",
                              "import orb.fit"))) 
@@ -2408,7 +2414,8 @@ class Interferogram(HDFCube):
             jobs = [(ijob, job_server.submit(
                 _sigmean,
                 args=(self.get_data_frame(ik+ijob),),
-                modules=('import orb.utils.stats',)))
+                modules=("import logging",
+                         'import orb.utils.stats',)))
                     for ijob in range(ncpus)]
 
             for ijob, job in jobs:
@@ -2571,7 +2578,8 @@ class Interferogram(HDFCube):
                 args=(np.array(self.get_data_frame(ik+ijob)),
                       transmission_vector[ik+ijob],
                       stray_light_vector[ik+ijob]),
-                modules=('import numpy as np',)))
+                modules=("import logging",
+                         'import numpy as np',)))
                     for ijob in range(ncpus)]
 
             for ijob, job in jobs:
@@ -2971,7 +2979,8 @@ class Interferogram(HDFCube):
                           phase_cube, balanced,
                           filter_min, filter_max,
                           fringes, wavenumber, phf), 
-                    modules=("import numpy as np", "import math",  
+                    modules=("import logging",
+                             "import numpy as np", "import math",  
                              "from scipy import interpolate", 
                              "from scipy import fftpack, signal", 
                              "import orb.utils.filters",
@@ -3276,7 +3285,8 @@ class Interferogram(HDFCube):
                       calibration_laser_map[ii+ijob,:],
                       filter_min_cm1, filter_max_cm1, nm_laser,
                       fit_order, phf),
-                modules=("import numpy as np", "import orb.utils.fft",
+                modules=("import logging",
+                         "import numpy as np", "import orb.utils.fft",
                          "import warnings", "import orb.cutils",
                          "import orb.utils.filters", "import scipy.interpolate",
                          "from scipy import optimize"))) 
@@ -3369,7 +3379,8 @@ class Interferogram(HDFCube):
                       calibration_laser_map[ii+ijob,:], nm_laser,
                       filter_min_cm1, filter_max_cm1,
                       phf),
-                modules=("numpy as np", "import orb.utils.fft",
+                modules=("import logging",
+                         "numpy as np", "import orb.utils.fft",
                          "import warnings", "import orb.utils.filters"))) 
                     for ijob in range(ncpus)]
 
@@ -4061,7 +4072,8 @@ class InterferogramMerger(Tools):
                       self.rc, self.zoom_factor,
                       interp_order,
                       framesB_init_mask[:,:,ijob]),
-                modules=("numpy as np", 
+                modules=("import logging",
+                         "numpy as np", 
                          "from scipy import ndimage",
                          "import orb.cutils"))) 
                     for ijob in range(ncpus)]
@@ -4270,7 +4282,8 @@ class InterferogramMerger(Tools):
                       modulation_ratio,
                       add_frameB,
                       transmission_scale),
-                modules=("numpy as np",)))
+                modules=("import logging",
+                         "numpy as np",)))
                     for ijob in range(ncpus)]
                 
             for ijob, job in jobs:
@@ -4517,7 +4530,8 @@ class InterferogramMerger(Tools):
                 jobs = [(ijob, job_server.submit(
                     get_sky_level, 
                     args=(cube.get_data_frame(ik+ijob)[xmin:xmax,ymin:ymax],),
-                    modules=("import numpy as np",
+                    modules=("import logging",
+                             "import numpy as np",
                              'import orb.utils.astrometry')))
                         for ijob in range(ncpus)]
 
@@ -5047,7 +5061,8 @@ class InterferogramMerger(Tools):
                       add_frameB,
                       framesA_mask[:,:,ijob],
                       framesB_mask[:,:,ijob]),
-                modules=("numpy as np",)))
+                modules=("import logging",
+                         "numpy as np",)))
                     for ijob in range(ncpus)]
                 
             for ijob, job in jobs:
@@ -5321,7 +5336,8 @@ class CosmicRayDetector(InterferogramMerger):
                        self.dy - alignment_vector_1[ik+ijob, 1],
                        self.dr, self.da, self.db],
                       self.rc, self.zoom_factor, 1),
-                modules=("import numpy as np", 
+                modules=("import logging",
+                         "import numpy as np", 
                          "from scipy import ndimage",
                          "import orb.cutils"))) 
                     for ijob in range(ncpus)]
@@ -5351,7 +5367,8 @@ class CosmicRayDetector(InterferogramMerger):
                       star_list, fwhm_pix,
                       alignment_vector_1[ik+ijob, 0],
                       alignment_vector_1[ik+ijob, 1]),
-                modules=("import numpy as np", 
+                modules=("import logging",
+                         "import numpy as np", 
                          "import orb.cutils",
                          "import orb.utils.image",
                          "import orb.utils.stats",
@@ -5952,7 +5969,8 @@ class Spectrum(HDFCube):
                         spectral_calibration,
                         base_axis_correction_coeff,
                         OUTPUT_SZ_COEFF),
-                    modules=("import numpy as np",
+                    modules=("import logging",
+                             "import numpy as np",
                              "import orb.utils.spectrum",
                              "import orb.utils.vector",
                              "import orb.utils.fft",
@@ -6220,7 +6238,7 @@ class Spectrum(HDFCube):
         ## New test compares sum of fluxes in both cameras to twice the simulated flux in one camera without modulation
         flux_ratio = 2*std_sim_flux/(std_flux1+std_flux2)
         if (flux_ratio > ERROR_FLUX_COEFF):
-            self._print_error('Measured flux is too low compared to simulated flux. There must be a problem. Check standard image files.')
+            raise StandardError('Measured flux is too low compared to simulated flux. There must be a problem. Check standard image files.')
  
         coeff = std_th_flux / (std_flux1 + std_flux2) # erg/cm2/ADU
         
@@ -6499,7 +6517,8 @@ class SourceExtractor(InterferogramMerger):
                       alignment_vector_1[ik+ijob,0],
                       alignment_vector_1[ik+ijob,1],
                       star_list),
-                modules=("from orb.utils.astrometry import fit_star, sky_background_level, aperture_photometry, get_profile",
+                modules=("import logging",
+                         "from orb.utils.astrometry import fit_star, sky_background_level, aperture_photometry, get_profile",
                          "from orb.astrometry import StarsParams",
                          "import orb.astrometry",
                          "import orb.utils.image",

@@ -42,7 +42,7 @@ orbs_path = os.path.normpath(('%s'%os.sep).join(str(script_path[0]).split(os.sep
 sys.path.append(orbs_path)
 
 import orb
-from orb.core import Tools, OptionFile
+from orb.core import Tools, OptionFile, Logger
 import orbs
 from orbs.orbs import Orbs, RoadMap, JobFile
 
@@ -113,22 +113,6 @@ class RecordFile(object):
 ##### MAIN FUNCTIONS #########################################
 ##############################################################
         
-def print_msg(msg, color=False):
-    if color:
-        color = '\033[94m'
-        end = '\033[0m'
-    else:
-        color = ''
-        end = ''
-    print color + msg + end
-
-def print_error(msg):
-    print '\033[91m' + msg + '\033[0m'
-    sys.exit(2)
-
-def print_warning(msg):
-    print '\033[93m' + msg + '\033[0m'       
-
 def check_option_file(to, path, is_laser, fast_init):
     """Check the option file type.
 
@@ -161,7 +145,7 @@ def status(args):
     # log in record file
     recfile = RecordFile(args.option_file_path)
     if len(recfile.records) < 1:
-        print_error('No reduction process started')
+        raise StandardError('No reduction process started')
     for record in recfile.records:
         project = init_orbs(args, record['target'], record['cams'], silent=True,
                             fast_init=True, no_check=True)
@@ -172,7 +156,7 @@ def status(args):
 def resume(args, parser):
     recfile = RecordFile(args.option_file_path)
     if len(recfile.records) < 1:
-        print_error('No reduction process to resume')
+        raise StandardError('No reduction process to resume')
     args = parser.parse_args(recfile.last_command)
     start(args, resume=True)
 
@@ -180,10 +164,10 @@ def clean(args):
     def remove(path):
         if os.path.exists(path):
             if os.path.isdir(path):
-                print_msg('removing directory {}'.format(path))
+                logging.info('removing directory {}'.format(path))
                 shutil.rmtree(path)
             else:
-                print_msg('removing file {}'.format(path))
+                logging.info('removing file {}'.format(path))
                 os.remove(path)
     
     recfile = RecordFile(args.option_file_path)
@@ -198,7 +182,7 @@ def clean(args):
         remove(project.indexer._get_index_path())
         remove(recfile.file_path)
 
-    print_msg('Working directory clean')
+    logging.info('Working directory clean')
 
 
 def get_logfile_name(args):
@@ -223,7 +207,7 @@ def start(args, resume=False):
 
     # single camera mode are mutually exclusive
     if args.single1 and args.single2:
-        print_error("options -1 and -2 are not compatible. You must choose the camera you want to reduce in single mode")
+        raise StandardError("options -1 and -2 are not compatible. You must choose the camera you want to reduce in single mode")
         sys.exit(2)
 
     if args.single1: cams = 'single1'
@@ -231,7 +215,7 @@ def start(args, resume=False):
 
     # special targets are mutually exclusive
     if np.sum([args.flat, args.standard, args.stars, args.laser, args.raw, args.sources, args.extphase]) > 1:
-        print_error("only one special target (flat, standard, laser, stars, raw, sources, extphase) can be choosen")
+        raise StandardError("only one special target (flat, standard, laser, stars, raw, sources, extphase) can be choosen")
         sys.exit(2)
     if args.flat: target = 'flat'
     elif args.standard: target = 'standard'
@@ -253,7 +237,7 @@ def start(args, resume=False):
 
         if project_fast_init.roadmap.get_resume_step() > 0:
             project_fast_init.roadmap.print_status()
-            print_warning('Part of the process has already been done. Do you want to resume it instead of starting it again from the beginning [y/n] ?')
+            print 'Part of the process has already been done. Do you want to resume it instead of starting it again from the beginning [y/n] ?'
 
             answer_ok = False
             while not answer_ok:
@@ -261,7 +245,7 @@ def start(args, resume=False):
                 if s in ['y', 'n']:
                     answer_ok = True
                     if s == 'y': resume = True
-                else: print_msg("Please answer 'y' or 'n'")
+                else: print "Please answer 'y' or 'n'"
         
 
     ########################
@@ -419,6 +403,7 @@ def add_all_operations(instrument_parser, epilog, epilog_steps):
 
 
     group_target = parser_start.add_argument_group('Particular targets', '')
+
     group_target.add_argument('--flat', dest='flat',
                               action='store_true',
                               default=False,
@@ -455,6 +440,11 @@ def add_all_operations(instrument_parser, epilog, epilog_steps):
                               default=False,
                               help='Run a reduction with an external phase map (useful for extended HII region covering the whole FOV). PHASEMAP0 keyword must be present in the option file.')
 
+
+    parser_start.add_argument(
+        '--debug', dest='debug', action='store_true',
+        default=False,
+        help="Turn on debug mode (logging messages displayed on screen are more informative)")
 
     parser_start.add_argument('--step',
                               dest='start_step',
@@ -544,7 +534,6 @@ def add_all_operations(instrument_parser, epilog, epilog_steps):
 ########################################################################
 
 if __name__ == "__main__":
-
 
     # import pydevd
     # pydevd.settrace('localhost', port=8888, stdoutToServer=True, stderrToServer=True)
@@ -648,8 +637,13 @@ if __name__ == "__main__":
     args.option_file_path, out_params, file_type = check_option_file(
         get_to(args), args.option_file_path, is_laser=is_laser, fast_init=fast_init)
 
+    # start and config logging
+    logger = Logger(debug = args.debug)
+    logger.start_file_logging(logfile_path=args.option_file_path + '.log')
+
+
     if file_type == 'sitelle_job_file' and args.instrument_mode != 'sitelle':
-        print_error("Input file is a SITELLE job file but mode is not set to 'sitelle'. Please restart with option --mode sitelle or change the input file")
+        raise StandardError("Input file is a SITELLE job file but mode is not set to 'sitelle'. Please restart with option --mode sitelle or change the input file")
 
     if 'calibration_laser_map_path' in out_params:
         args.calibration_laser_map_path = out_params['calibration_laser_map_path']
@@ -659,7 +653,7 @@ if __name__ == "__main__":
     ###################
     
     if args.subparser_name == 'start':
-        print_msg("Start %s"%args.option_file_path.strip())
+        logging.info("Start %s"%args.option_file_path.strip())
         # record last command
         recfile = RecordFile(args.option_file_path)
         recfile.last_command = sys.argv[1:]
@@ -669,15 +663,15 @@ if __name__ == "__main__":
         start(args)
         
     if args.subparser_name == 'status':
-        print_msg("Status %s"%args.option_file_path.strip())
+        logging.info("Status %s"%args.option_file_path.strip())
         status(args)
         
     if args.subparser_name == 'resume':
-        print_msg("Resume %s"%args.option_file_path.strip())
+        logging.info("Resume %s"%args.option_file_path.strip())
         resume(args, parser)
 
     if args.subparser_name == 'clean':
-        print_msg("Clean %s"%args.option_file_path.strip())
+        logging.info("Clean %s"%args.option_file_path.strip())
         clean(args)
 
         

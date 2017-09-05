@@ -48,7 +48,7 @@ import pp
 import bottleneck as bn
 
 
-from orb.core import Tools, Cube, Indexer, OptionFile, HDFCube
+from orb.core import Tools, Cube, Indexer, OptionFile, HDFCube, TextColor
 from orb.core import FilterFile, PhaseFile, ProgressBar
 from process import RawData, InterferogramMerger, Interferogram
 from process import Spectrum, CalibrationLaser
@@ -557,26 +557,27 @@ class Orbs(Tools):
             elif not optional:
                 raise StandardError('option {} must be set'.format(key))
 
+            
         self.option_file_path = option_file_path
         Tools.__init__(self, instrument=instrument, ncpus=ncpus, silent=silent)
-        self.start_file_logging(logfile_path)
-        
-        # First, print ORBS version
-        logging.info("ORBS version: %s"%self.__version__)
-        logging.info("ORB version: %s"%orb.version.__version__)
 
-        # Print modules versions
-        logging.info("Numpy version: %s"%np.__version__)
-        logging.info("Scipy version: %s"%scipy.__version__)
-        logging.info("Astropy version: %s"%astropy.__version__)
-        logging.info("Parallel Python version: %s"%pp.version)
-        logging.info("Bottleneck version: %s"%bn.__version__)
-        
-        # Print the entire config file for log
-        with self.open_file(self._get_config_file_path(), 'r') as conf_file:
-            logging.info("Configuration file content:")
-            for line in conf_file:
-                logging.info(line[:-1])
+        if not silent:
+            # First, print ORBS version
+            logging.info("ORBS version: %s"%self.__version__)
+            logging.info("ORB version: %s"%orb.version.__version__)
+
+            # Print modules versions
+            logging.info("Numpy version: %s"%np.__version__)
+            logging.info("Scipy version: %s"%scipy.__version__)
+            logging.info("Astropy version: %s"%astropy.__version__)
+            logging.info("Parallel Python version: %s"%pp.version)
+            logging.info("Bottleneck version: %s"%bn.__version__)
+
+            # Print the entire config file for log
+            with self.open_file(self._get_config_file_path(), 'r') as conf_file:
+                logging.info("Configuration file content:")
+                for line in conf_file:
+                    logging.info(line[:-1])
 
         
         # defining DARK_ACTIVATION_ENERGY
@@ -603,9 +604,10 @@ class Orbs(Tools):
 
         # Print first the entire option file for logging
         op_file = open(option_file_path)
-        logging.info("Option file content :")
-        for line in op_file:
-            logging.info(line[:-1])
+        if not silent:
+            logging.info("Option file content :")
+            for line in op_file:
+                logging.info(line[:-1])
 
         # record some default options
         self.options["try_catalogue"] = False
@@ -700,8 +702,9 @@ class Orbs(Tools):
         for key in self.config.iterkeys():
            if self.optionfile[key] is not None:
                key_type = type(self.config[key])
-               self.config[key] = self.optionfile.get(key, key_type)
-               warnings.warn("Configuration option %s changed to %s"%(key, self.config[key]))
+               self.config.reset(key, self.optionfile.get(key, key_type))
+               if not silent:
+                   warnings.warn("Configuration option %s changed to %s"%(key, self.config[key]))
 
         # Calibration laser wavelength is changed if the calibration
         # laser map gives a new calibration laser wavelentgh
@@ -711,13 +714,15 @@ class Orbs(Tools):
                 return_hdu_only=True)
             if 'CALIBNM' in calib_hdu[0].header:
                 self.config['CALIB_NM_LASER'] = calib_hdu[0].header['CALIBNM']
-                warnings.warn('Calibration laser wavelength (CALIB_NM_LASER) read from calibration laser map header: {}'.format(self.config['CALIB_NM_LASER']))
+                if not silent:
+                    warnings.warn('Calibration laser wavelength (CALIB_NM_LASER) read from calibration laser map header: {}'.format(self.config['CALIB_NM_LASER']))
                
         # Get tuning parameters
         self.tuning_parameters = self.optionfile.get_tuning_parameters()
         for itune in self.tuning_parameters:
-            warnings.warn("Tuning parameter %s changed to %s"%(
-                itune, self.tuning_parameters[itune]))
+            if not silent:
+                warnings.warn("Tuning parameter %s changed to %s"%(
+                    itune, self.tuning_parameters[itune]))
 
         if (("object_name" not in self.options)
             or ("filter_name" not in self.options)):
@@ -728,7 +733,8 @@ class Orbs(Tools):
 
         
         # get folders paths
-        logging.info('Reading data folders')
+        if not silent:
+            logging.info('Reading data folders')
         store_folder_parameter('image_list_path_1', 'DIRCAM1', 1,
                                mask_key='object_mask_path')
         store_folder_parameter('image_list_path_2', 'DIRCAM2', 2,
@@ -782,8 +788,10 @@ class Orbs(Tools):
                                    self.config['CAM1_DETECTOR_SIZE_Y']]
             bin_cam_1 = orb.utils.image.compute_binning(
                 cam1_image_shape, cam1_detector_shape)
-            logging.info('Computed binning of camera 1: {}x{}'.format(
-                *bin_cam_1))
+            if not silent:
+                logging.info('Computed binning of camera 1: {}x{}'.format(
+                    *bin_cam_1))
+                
             if bin_cam_1[0] != bin_cam_1[1]:
                 raise StandardError('Images with different binning along X and Y axis are not handled by ORBS')
             self.options['bin_cam_1'] = bin_cam_1[0]
@@ -813,8 +821,9 @@ class Orbs(Tools):
                                    self.config['CAM2_DETECTOR_SIZE_Y']]
             bin_cam_2 = orb.utils.image.compute_binning(
                 cam2_image_shape, cam2_detector_shape)
-            logging.info('Computed binning of camera 2: {}x{}'.format(
-                *bin_cam_2))
+            if not silent:
+                logging.info('Computed binning of camera 2: {}x{}'.format(
+                    *bin_cam_2))
             if bin_cam_2[0] != bin_cam_2[1]:
                 raise StandardError('Images with different binning along X and Y axis are not handled by ORBS')
             self.options['bin_cam_2'] = bin_cam_2[0]
@@ -834,7 +843,8 @@ class Orbs(Tools):
                 raise StandardError('The number of images of CAM1 and CAM2 are not the same (%d != %d)'%(dimz1, dimz2))
                 
             if self.options['step_number'] < dimz1:
-                warnings.warn('Step number option changed to {} because the number of steps ({}) of a full cube must be greater or equal to the number of images given for CAM1 and CAM2 ({})'.format(
+                if not silent:
+                    warnings.warn('Step number option changed to {} because the number of steps ({}) of a full cube must be greater or equal to the number of images given for CAM1 and CAM2 ({})'.format(
                     dimz1, self.options['step_number'], dimz1))
                 self.options['step_number'] = dimz1
 
@@ -857,7 +867,8 @@ class Orbs(Tools):
                         zpd_found = True
                         break
                 if not zpd_found:
-                    warnings.warn('zpd index could not be found, forced to 25% of the interferogram size')
+                    if not silent:
+                        warnings.warn('zpd index could not be found, forced to 25% of the interferogram size')
                     zpd_index = int(cube1.dimz * 0.25)
             else:
                 for ik in range(cube1.dimz):
@@ -871,8 +882,9 @@ class Orbs(Tools):
             zpd_shift = int(int(cube1.dimz/2.) - zpd_index)
             self.options['zpd_index'] = zpd_index
             self.options['zpd_shift'] = zpd_shift
-            logging.info('ZPD index: {}, ZPD shift:{}'.format(
-                self.options['zpd_index'], self.options['zpd_shift']))
+            if not silent:
+                logging.info('ZPD index: {}, ZPD shift:{}'.format(
+                    self.options['zpd_index'], self.options['zpd_shift']))
             
         # Init Indexer
         self.indexer = Indexer(data_prefix=self.options['object_name']
@@ -3701,9 +3713,6 @@ class RoadMap(Tools):
         'bool':_str2bool}
     """Dictionary of the defined arguments types"""
     
-    color_OKGREEN = '\033[92m'
-    color_END = '\033[0m'
-    color_KORED = '\033[91m'
 
     def __init__(self, instrument, target, cams, indexer, **kwargs):
         """Init class.
@@ -3835,12 +3844,12 @@ class RoadMap(Tools):
         for step in self.road:
             if step['status'] :
                 status = 'done'
-                color = self.color_OKGREEN
+                color = TextColor.OKGREEN
             else:
                 status = 'not done'
-                color = self.color_KORED
+                color = TextColor.KORED
             
-            print color + '  {} - {} {}: {}'.format(index, step['name'], step['cam'], status) + self.color_END
+            print color + '  {} - {} {}: {}'.format(index, step['name'], step['cam'], status) + TextColor.END
             index += 1
 
     def get_steps_str(self, indent=0):
