@@ -2,3 +2,10 @@
 *.py~
 *.pyx~
 *~
+*.so
+*.o
+dist/
+build/
+orbs.egg-info/
+.eggs/
+.idea/
