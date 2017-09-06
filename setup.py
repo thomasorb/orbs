@@ -25,7 +25,7 @@ setup(
     author_email='thomas.martin.1@ulaval.ca',
     maintainer='Thomas Martin',
     maintainer_email='thomas.martin.1@ulaval.ca',
-    description='Analysis engine for SITELLE spectral cubes',
+    description="Data reduction software for SITELLE's data",
     long_description=long_description,
     packages=packages,
     package_dir={"": "."},

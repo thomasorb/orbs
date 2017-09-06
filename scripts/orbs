@@ -638,7 +638,11 @@ if __name__ == "__main__":
         get_to(args), args.option_file_path, is_laser=is_laser, fast_init=fast_init)
 
     # start and config logging
-    logger = Logger(debug = args.debug)
+    try:
+        logger = Logger(debug = args.debug)
+    except AttributeError:
+        logger = Logger(debug=False)
+        
     logger.start_file_logging(logfile_path=args.option_file_path + '.log')
 
 
