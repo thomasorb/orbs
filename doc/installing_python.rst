@@ -1,1 +1,0 @@
-/home/thomas/Astro/Python/ORB/Orb/doc/installing_python.rst
