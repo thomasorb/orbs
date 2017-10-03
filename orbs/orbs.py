@@ -401,7 +401,7 @@ class Orbs(Tools):
 
     def __init__(self, option_file_path, target, cams,
                  instrument=None, ncpus=None,
-                 overwrite=False, silent=False, fast_init=False,
+                 overwrite=True, silent=False, fast_init=False,
                  raw_data_files_check=True, logfile_path=None):
         """Initialize Orbs class.
 
@@ -423,7 +423,7 @@ class Orbs(Tools):
 
         :param overwrite: (Optional) If True, any existing FITS file
           created by Orbs will be overwritten during the reduction
-          process (default False).
+          process (default True).
 
         :param silent: (Optional) If True no messages nor warnings are
           displayed by Orbs (useful for silent init).
@@ -561,6 +561,11 @@ class Orbs(Tools):
         self.option_file_path = option_file_path
         Tools.__init__(self, instrument=instrument, ncpus=ncpus, silent=silent)
 
+        if overwrite in [True, False]:
+            self.overwrite = bool(overwrite)
+        else:
+            raise ValueError('overwrite must be True or False')
+        
         if not silent:
             # First, print ORBS version
             logging.info("ORBS version: %s"%self.__version__)

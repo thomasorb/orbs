@@ -25,7 +25,7 @@ import gtk
 from argparse import ArgumentParser
 import argparse
 
-from orb.core import Tools, HDFCube
+from orb.core import Tools, HDFCube, Logger
 import orb
 
 import orb.utils.image
@@ -35,10 +35,8 @@ import orb.utils.image
 ###########################################
     
 def main(args):
-    if args.instrument_mode == 'sitelle': config_file_name='config.sitelle.orb'
-    elif args.instrument_mode == 'spiomm': config_file_name='config.spiomm.orb'
-    
-    to = Tools(config_file_name=config_file_name, no_log=True)
+    Logger().start_logging()
+    to = Tools(instrument=args.instrument_mode)
     calib_map = to.read_fits(args.calibration_laser_map_path)
     params, calib_map_fit, model_fit = orb.utils.image.fit_calibration_laser_map(
         calib_map, float(to._get_config_parameter('CALIB_NM_LASER')),
