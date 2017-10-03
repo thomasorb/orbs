@@ -557,7 +557,6 @@ class Orbs(Tools):
             elif not optional:
                 raise StandardError('option {} must be set'.format(key))
 
-            
         self.option_file_path = option_file_path
         Tools.__init__(self, instrument=instrument, ncpus=ncpus, silent=silent)
 
@@ -2446,7 +2445,6 @@ class Orbs(Tools):
         .. seealso:: :meth:`orb.utils.transform_interferogram`
         """
         if phase_cube: phase_correction = False
-        
         # get calibration laser map path
         calibration_laser_map_path = self._get_calibration_laser_map(
             camera_number)
@@ -2480,7 +2478,7 @@ class Orbs(Tools):
         # init cube
         self.options["camera_number"] = camera_number
         self.indexer.set_file_group(camera_number)
-        
+
         cube = Interferogram(
             cube_path, 
             data_prefix=self._get_data_prefix(camera_number),
