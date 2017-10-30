@@ -6636,7 +6636,9 @@ class SourceExtractor(InterferogramMerger):
         
         # get high order phase
         if filter_name is not None:
-            phf = PhaseFile(filter_name)
+            phf = PhaseFile(filter_name,
+                            instrument=self.instrument,
+                            ncpus=self.ncpus)
             logging.info('Phase file: {}'.format(phf.improved_path))
             
         logging.info("Apodization function: %s"%apodization_function)
