@@ -48,7 +48,7 @@ import pp
 import bottleneck as bn
 
 
-from orb.core import Tools, Cube, Indexer, OptionFile, HDFCube, TextColor
+from orb.core import Tools, FDCube, Indexer, OptionFile, HDFCube, TextColor, Header
 from orb.core import FilterFile, PhaseFile, ProgressBar
 from process import RawData, InterferogramMerger, Interferogram
 from process import Spectrum, CalibrationLaser
@@ -476,7 +476,7 @@ class Orbs(Tools):
                     # If the list of the imported
                     # files in the hdf5 cube is the same,
                     # export is not done again.
-                    cube = Cube(
+                    cube = FDCube(
                         self.options[option_key],
                         silent_init=True, no_sort=False,
                         ncpus=self.ncpus,
@@ -775,10 +775,10 @@ class Orbs(Tools):
 
         if 'image_list_path_1' in self.options:
             if fast_init:
-                cube1 = Cube(self.options['image_list_path_1'],
-                             silent_init=True,
-                             instrument=self.instrument,
-                             no_sort=True, ncpus=self.ncpus)
+                cube1 = FDCube(self.options['image_list_path_1'],
+                               silent_init=True,
+                               instrument=self.instrument,
+                               no_sort=True, ncpus=self.ncpus)
             else:
                 cube1 = HDFCube(self.options['image_list_path_1.hdf5'],
                                 silent_init=True,
@@ -809,10 +809,10 @@ class Orbs(Tools):
                     
         if 'image_list_path_2' in self.options:
             if fast_init:
-                cube2 = Cube(self.options['image_list_path_2'],
-                             silent_init=True,
-                             instrument=self.instrument,
-                             no_sort=True, ncpus=self.ncpus)
+                cube2 = FDCube(self.options['image_list_path_2'],
+                               silent_init=True,
+                               instrument=self.instrument,
+                               no_sort=True, ncpus=self.ncpus)
             else:
                 cube2 = HDFCube(self.options['image_list_path_2.hdf5'],
                                 silent_init=True,
@@ -856,10 +856,10 @@ class Orbs(Tools):
         if self.config["INSTRUMENT_NAME"] == 'SITELLE' and not fast_init:
             cube_list = self.options['image_list_path_1']
                 
-            cube1 = Cube(cube_list,
-                         silent_init=True,
-                         instrument=self.instrument,
-                         no_sort=True, ncpus=self.ncpus)
+            cube1 = FDCube(cube_list,
+                           silent_init=True,
+                           instrument=self.instrument,
+                           no_sort=True, ncpus=self.ncpus)
 
            
             zpd_found = False
@@ -883,12 +883,10 @@ class Orbs(Tools):
                         break
                 if not zpd_found: raise StandardError('zpd index could not be found')
                 
-            zpd_shift = int(int(cube1.dimz/2.) - zpd_index)
             self.options['zpd_index'] = zpd_index
-            self.options['zpd_shift'] = zpd_shift
             if not silent:
-                logging.info('ZPD index: {}, ZPD shift:{}'.format(
-                    self.options['zpd_index'], self.options['zpd_shift']))
+                logging.info('ZPD index: {}'.format(
+                    self.options['zpd_index']))
             
         # Init Indexer
         self.indexer = Indexer(data_prefix=self.options['object_name']
@@ -2506,10 +2504,10 @@ class Orbs(Tools):
         else: 
             raise StandardError("No folding order given, check the option file")
 
-        if 'zpd_shift' in self.options:
-            zpd_shift = self.options['zpd_shift']
+        if 'zpd_index' in self.options:
+            zpd_index = self.options['zpd_index']
         else:
-            zpd_shift = None
+            zpd_index = None
 
 
         if apodization_function is None:
@@ -2549,7 +2547,7 @@ class Orbs(Tools):
             balanced=balanced,
             fringes=fringes,
             wavenumber=wavenumber,
-            zpd_shift=zpd_shift)
+            zpd_index=zpd_index)
 
         perf_stats = perf.print_stats()
         del cube, perf
@@ -2571,9 +2569,9 @@ class Orbs(Tools):
         
         """Create phase maps
 
-        Phase maps are maps of the coefficients of a polynomial fit to
-        the phase. The dimensions of a phase map are the same as the
-        dimensions of the frames of the phase cube.
+        Phase maps are maps of the coefficients of a polynomial or
+        model fit to the phase. The dimensions of a phase map are the
+        same as the dimensions of the frames of the phase cube.
         
         :param camera_number: Camera number (must be 1, 2 or 0 for
           merged data).
@@ -2602,10 +2600,10 @@ class Orbs(Tools):
         else: 
             raise StandardError("No folding order given, check the option file")
 
-        if 'zpd_shift' in self.options:
-            zpd_shift = self.options['zpd_shift']
+        if 'zpd_index' in self.options:
+            zpd_index = self.options['zpd_index']
         else:
-            zpd_shift = None
+            zpd_index = None
             
         # get calibration laser map path
         calibration_laser_map_path = self._get_calibration_laser_map(
@@ -2657,7 +2655,7 @@ class Orbs(Tools):
         
         cube.create_phase_maps(
             self.options['step'], self.options['order'],
-            zpd_shift=zpd_shift, binning=binning,
+            zpd_index=zpd_index, binning=binning,
             filter_name=self.options["filter_name"],
             calibration_laser_map_path=calibration_laser_map_path,
             nm_laser=self.config["CALIB_NM_LASER"],
@@ -2766,10 +2764,10 @@ class Orbs(Tools):
         else: 
             raise StandardError("No folding order given, check the option file")
 
-        if 'zpd_shift' in self.options:
-            zpd_shift = self.options['zpd_shift']
+        if 'zpd_index' in self.options:
+            zpd_index = self.options['zpd_index']
         else:
-            zpd_shift = None
+            zpd_index = None
             
         # get calibration laser map path
         calibration_laser_map_path = self._get_calibration_laser_map(
@@ -2800,7 +2798,7 @@ class Orbs(Tools):
             self.options['phase_map_order_0_path'],
             self.options['phase_map_order_1_path'],
             self.options['step'], self.options['order'],
-            zpd_shift, self.options["filter_name"],
+            zpd_index, self.options["filter_name"],
             calibration_laser_map_path,
             self.config["CALIB_NM_LASER"],
             binning=BINNING)
@@ -3257,10 +3255,10 @@ class Orbs(Tools):
         self.indexer.set_file_group('merged')
 
         # get zpd shift
-        if 'zpd_shift' in self.options:
-            zpd_shift = self.options['zpd_shift']
+        if 'zpd_index' in self.options:
+            zpd_index = self.options['zpd_index']
         else:
-            zpd_shift = None
+            zpd_index = None
             
         # get phase map and phase coeffs
         if not optimize_phase:
@@ -3306,7 +3304,7 @@ class Orbs(Tools):
             filter_correction=filter_correction,
             cube_A_is_balanced = self._is_balanced(1),
             phase_correction=phase_correction,
-            zpd_shift=zpd_shift,
+            zpd_index=zpd_index,
             phase_order=self._get_phase_fit_order(),
             return_phase=return_phase)
 

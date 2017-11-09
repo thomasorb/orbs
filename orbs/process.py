@@ -33,6 +33,7 @@ __version__ = version.__version__
 from orb.core import Tools, Cube, ProgressBar, Standard, PhaseFile, FilterFile
 from orb.core import HDFCube, OutHDFCube, OutHDFQuadCube
 import orb.utils.fft
+import orb.fft
 import orb.utils.filters
 import orb.utils.spectrum
 import orb.utils.image
@@ -181,9 +182,9 @@ class RawData(HDFCube):
 
         .. seealso:: :py:meth:`orb.utils.image.create_master_frame`
         """
-        bias_cube = Cube(bias_list_path,
-                         instrument=self.instrument,
-                         ncpus=self.ncpus)
+        bias_cube = FDCube(bias_list_path,
+                           instrument=self.instrument,
+                           ncpus=self.ncpus)
         logging.info('Creating Master Bias')
         # try to read temperatures in the header of each bias and
         # return the mean
@@ -257,9 +258,9 @@ class RawData(HDFCube):
 
         .. seealso:: :py:meth:`orb.utils.image.create_master_frame`
         """
-        dark_cube = Cube(dark_list_path,
-                         instrument=self.instrument,
-                         ncpus=self.ncpus)
+        dark_cube = FDCube(dark_list_path,
+                           instrument=self.instrument,
+                           ncpus=self.ncpus)
         logging.info('Creating Master Dark')
 
         # try to read temperatures in the header of each dark and
@@ -346,9 +347,9 @@ class RawData(HDFCube):
 
         .. seealso:: :py:meth:`orb.utils.image.create_master_frame`
         """
-        flat_cube = Cube(flat_list_path,
-                         instrument=self.instrument,
-                         ncpus=self.ncpus)
+        flat_cube = FDCube(flat_list_path,
+                           instrument=self.instrument,
+                           ncpus=self.ncpus)
         logging.info('Creating Master Flat')
         
         # resizing if nescessary
@@ -999,9 +1000,9 @@ class RawData(HDFCube):
             bias_path, return_temperature=True, combine=combine,
             reject=reject)
         
-        bias_cube = Cube(bias_path,
-                         instrument=self.instrument,
-                         ncpus=self.ncpus)
+        bias_cube = FDCube(bias_path,
+                           instrument=self.instrument,
+                           ncpus=self.ncpus)
         
         min_x = int(bias_cube.dimx * BORDER_COEFF)
         max_x = int(bias_cube.dimx * (1. - BORDER_COEFF))
@@ -1014,9 +1015,9 @@ class RawData(HDFCube):
         
         readout_noise = orb.utils.stats.robust_mean(readout_noise)
         
-        dark_cube = Cube(dark_path,
-                         instrument=self.instrument,
-                         ncpus=self.ncpus)
+        dark_cube = FDCube(dark_path,
+                           instrument=self.instrument,
+                           ncpus=self.ncpus)
         dark_cube_dimz = dark_cube.dimz
         
         if not self.is_same_2D_size(dark_cube):
@@ -3026,7 +3027,7 @@ class Interferogram(HDFCube):
                     phase=phase_cube)
 
 
-    def create_phase_maps(self, step, order, zpd_shift=None, binning=4,
+    def create_phase_maps(self, step, order, zpd_index=None, binning=4,
                           filter_name=None, calibration_laser_map_path=None,
                           nm_laser=None, fit_order=1):
         """Create phase maps directly from the interferogram cube.
@@ -3040,8 +3041,9 @@ class Interferogram(HDFCube):
         
         :param order: Folding order.
         
-        :param zpd_shift: (Optional) ZPD shift. If None, ZPD shift is
-          computed from the median interferogram vector (default None).
+        :param zpd_index: (Optional) ZPD index. If None, ZPD index is
+          computed from the median interferogram vector (default
+          None).
 
         :param binning: (Optional) Binning factor of the cube to
           accelerate the phase map computation (default 4).
@@ -3059,13 +3061,7 @@ class Interferogram(HDFCube):
         :param fit_order: (Optional) Order of the polynomial used to
           fit the phase (default 1).
         """
-
-        def test(cube_col, step, order, zpd_shift,
-                 calib_col, filter_min_cm1, filter_max_cm1,
-                 nm_laser, fit_order, bla):
-            pass
-
-        def fit_phase_in_column(cube_col, step, order, zpd_shift,
+        def fit_phase_in_column(cube_col, step, order, zpd_index,
                                 calib_col, filter_min_cm1, filter_max_cm1,
                                 nm_laser, fit_order, phf):
         
@@ -3087,22 +3083,29 @@ class Interferogram(HDFCube):
                 interf[np.nonzero(interf == 0)] = np.nan
 
                 # compute phase
-                ifft = orb.utils.fft.transform_interferogram(
-                    interf, 1., 1., step, order, '2.0',
-                    zpd_shift, wavenumber=True,
-                    return_complex=True,
-                    phase_correction=False)
-                    
-                if (ifft is not None) and (not np.all(np.isnan(ifft))):
+                ## ifft = orb.utils.fft.transform_interferogram(
+                ##     interf, 1., 1., step, order, '2.0',
+                ##     zpd_shift, wavenumber=True,
+                ##     return_complex=True,
+                ##     phase_correction=False)
+                interf = orb.fft.Interferogram(interf)
+                interf.subtract_mean()
+                interf.apodize('2.0', zpd_index)
+                ifft = interf.transform()
+                logging.debug('{}'.format(type(ifft)))
                 
-                    iphase = np.unwrap(np.angle(ifft))
+                if ((ifft is not None)
+                    and (not ifft.allnan)
+                    and (not ifft.allzero)):
+                
+                    iphase = ifft.get_phase()
                     if int(order) & 1: iphase = iphase[::-1]
 
                     phase_col[ij,:] = np.copy(iphase)
 
                     # compute weights on phase
                     if filter_min_cm1 is None:
-                        weights = np.abs(ifft)
+                        weights = ifft.get_amplitude()
                         weights /= np.nanmean(weights)
                         weights[np.nonzero(weights < 0.5)] = 1e-35
                         weights = weights**2.
@@ -3142,7 +3145,7 @@ class Interferogram(HDFCube):
                             perr = np.sqrt(np.diag(pcov))
 
                         except Exception, e:
-                            print 'Exception occured during phase fit: ', e
+                            logging.debug('Exception occured during phase fit: {}'.format(e))
                             pfit = None
                     else:
                         pfit = None
@@ -3153,7 +3156,7 @@ class Interferogram(HDFCube):
                     
             return fit_coeffs_col, fit_err_col, phase_col
         
-        def optimize_phase_in_column(cube_col, step, order, zpd_shift,
+        def optimize_phase_in_column(cube_col, step, order, zpd_index,
                                      phase_maps, column_nb, calib_col, nm_laser,
                                      filter_min_cm1, filter_max_cm1, phf):
 
@@ -3190,7 +3193,7 @@ class Interferogram(HDFCube):
                     
                     result = orb.utils.fft.optimize_phase(
                         cube_col[ij,:],
-                        step, order, zpd_shift,
+                        step, order, zpd_index,
                         calib_col[ij], nm_laser,
                         guess=guess, return_coeffs=True,
                         fixed_params=fixed_params,
@@ -3203,7 +3206,8 @@ class Interferogram(HDFCube):
             return order0_col, err_col
 
         logging.info('Computing phase maps up to order {}'.format(fit_order))
-
+        logging.debug('ZPD index: {}'.format(zpd_index))
+        
         # get high order phase
         if filter_name is not None:
             phf = PhaseFile(filter_name,
@@ -3229,19 +3233,17 @@ class Interferogram(HDFCube):
             filter_min_cm1 = orb.utils.spectrum.nm2cm1(filter_params[3])
         else: filter_max_cm1 = None ; filter_min_cm1 = None
 
-        if zpd_shift is None:
+        if zpd_index is None:
             median_interf = self.get_zmedian()
-            zpd_shift = orb.utils.fft.find_zpd(
-                median_interf, return_zpd_shift=True)
+            zpd_index = orb.utils.fft.find_zpd(
+                median_interf)
         
         # binning interferogram cube and calibration laser map
-        self.create_binned_interferogram_cube(binning)
+        ## self.create_binned_interferogram_cube(binning)
+        warnings.warn('debug hack: binned interferogram not computed')
 
         # interferogram cube is cut to conserve only the symmetical part
-        zpd_index = int(int(self.dimz/2) - zpd_shift)
         cube_bin = self.read_fits(self._get_binned_interferogram_cube_path())[:,:,:2 * zpd_index]
-        # zpd shift used for phase computation must be modified when the number of frames is odd
-        zpd_shift = - int(self.dimz&1)
         
         if calibration_laser_map_path is not None:
             self.create_binned_calibration_laser_map(
@@ -3263,13 +3265,6 @@ class Interferogram(HDFCube):
         fit_coeffs_map.fill(np.nan)
         fit_err_map.fill(np.nan)
 
-        # for ii in range(cube_bin.shape[0]):
-        #     (fit_coeffs_map[ii,:,:],fit_err_map[ii,:],phase_cube[ii,:,:]) = \
-        #         fit_phase_in_column(cube_bin[ii,:,:], step, order, zpd_shift,
-        #                             calibration_laser_map[ii,:], filter_min_cm1,
-        #                             filter_max_cm1, nm_laser, fit_order, phf)
-        #
-
         job_server, ncpus = self._init_pp_server()
         progress = ProgressBar(cube_bin.shape[0])
         for ii in range(0, cube_bin.shape[0], ncpus):
@@ -3281,11 +3276,11 @@ class Interferogram(HDFCube):
             jobs = [(ijob, job_server.submit(
                 fit_phase_in_column, 
                 args=(cube_bin[ii+ijob,:,:],
-                      step, order, zpd_shift,
+                      step, order, zpd_index,
                       calibration_laser_map[ii+ijob,:],
                       filter_min_cm1, filter_max_cm1, nm_laser,
                       fit_order, phf),
-                modules=("import logging",
+                modules=("import logging", 'import orb.fft',
                          "import numpy as np", "import orb.utils.fft",
                          "import warnings", "import orb.cutils",
                          "import orb.utils.filters", "import scipy.interpolate",
@@ -3374,12 +3369,12 @@ class Interferogram(HDFCube):
             jobs = [(ijob, job_server.submit(
                 optimize_phase_in_column, 
                 args=(cube_bin[ii+ijob,:,:],
-                      step, order, zpd_shift,
+                      step, order, zpd_index,
                       phase_maps[1:], ii+ijob,
                       calibration_laser_map[ii+ijob,:], nm_laser,
                       filter_min_cm1, filter_max_cm1,
                       phf),
-                modules=("import logging",
+                modules=("import logging", 'import orb.fft',
                          "numpy as np", "import orb.utils.fft",
                          "import warnings", "import orb.utils.filters"))) 
                     for ijob in range(ncpus)]
@@ -5517,7 +5512,6 @@ class Spectrum(HDFCube):
           in wavelength (default False).
         """
         header = self._get_basic_header('Calibrated spectrum cube')
-        
         return (header
                 + self._project_header
                 + self._calibration_laser_header
@@ -5770,6 +5764,7 @@ class Spectrum(HDFCube):
 
         OUTPUT_SZ_COEFF = 1
 
+        
         if filter_correction:
             raise StandardError("Filter correction is not stable please don't use it")
 
@@ -5860,8 +5855,8 @@ class Spectrum(HDFCube):
                     flux_calibration_function(filter_axis.astype(float)),
                     filter_vector)
                 logging.info('Mean flux calib vector before adjustment with flux calibration coeff: {} erg/cm2/ADU'.format(mean_flux_calib_vector))
-                 # ME must be taken into account only when using the
-                 # flux calibration coeff derived from std images
+                # ME must be taken into account only when using the
+                # flux calibration coeff derived from std images
                 flux_calibration_coeff /= modulation_efficiency
                 logging.info('Flux calibration coeff (corrected for modulation efficiency {}): {} erg/cm2/ADU'.format(modulation_efficiency, flux_calibration_coeff))
                 flux_calibration_vector /=  mean_flux_calib_vector
@@ -5992,7 +5987,7 @@ class Spectrum(HDFCube):
             logging.info('Quad {}/{} written in {:.2f} s'.format(
                 iquad+1, self.config.QUAD_NB, time.time() - write_start_time))
             
-
+        
         ### update header
         if wavenumber:
             axis = orb.utils.spectrum.create_nm_axis(
