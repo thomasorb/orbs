@@ -38,6 +38,8 @@ import orb.utils.spectrum
 import orb.utils.image
 import orb.utils.misc
 import orb.utils.photometry
+import orb.cutils
+import orb.fit
 
 import orb.astrometry
 import orb.utils.astrometry
@@ -2031,17 +2033,17 @@ class CalibrationLaser(HDFCube):
                     fitp = []
                     
                 if (fitp != []):
-                    max_index_fit = fitp['lines-params'][0][2]
+                    max_index_fit = fitp['lines_params'][0][2]
                     max_array_column[ij] = 1. / orb.cutils.fast_pix2w(
                         np.array([max_index_fit], dtype=float),
                         cm1_axis_min, cm1_axis_step) * 1e7
-                    if 'lines-params-err' in fitp:
+                    if 'lines_params_err' in fitp:
                         fitparams_column[ij,:] = np.array(
-                            list(fitp['lines-params'][0])
-                            + list(fitp['lines-params-err'][0]))
+                            list(fitp['lines_params'][0])
+                            + list(fitp['lines_params_err'][0]))
                     else:
                         fitparams_column.fill(np.nan)
-                        fitparams_column[ij,:5] = fitp['lines-params'][0]
+                        fitparams_column[ij,:5] = fitp['lines_params'][0]
                 else:
                     max_array_column[ij] = np.nan
                     fitparams_column[ij,:].fill(np.nan)
@@ -2112,6 +2114,7 @@ class CalibrationLaser(HDFCube):
                              "numpy as np",
                              "math",
                              "import orb.utils.fft",
+                             "import orb.cutils",
                              "import orb.fit"))) 
                         for ijob in range(ncpus)]
 
