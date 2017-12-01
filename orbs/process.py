@@ -30,7 +30,7 @@ __docformat__ = 'reStructuredText'
 import version
 __version__ = version.__version__
 
-from orb.core import Tools, Cube, ProgressBar, Standard, PhaseFile, FilterFile
+from orb.core import Tools, ProgressBar, Standard, PhaseFile, FilterFile
 from orb.core import HDFCube, OutHDFCube, OutHDFQuadCube
 import orb.utils.fft
 import orb.fft
@@ -3239,8 +3239,8 @@ class Interferogram(HDFCube):
                 median_interf)
         
         # binning interferogram cube and calibration laser map
-        ## self.create_binned_interferogram_cube(binning)
-        warnings.warn('debug hack: binned interferogram not computed')
+        self.create_binned_interferogram_cube(binning)
+        #warnings.warn('debug hack: binned interferogram not computed')
 
         # interferogram cube is cut to conserve only the symmetical part
         cube_bin = self.read_fits(self._get_binned_interferogram_cube_path())[:,:,:2 * zpd_index]
@@ -3449,22 +3449,7 @@ class Interferogram(HDFCube):
         :param binning: Binning
         """
         if binning > 1:
-            logging.info('Binning interferogram cube')
-            image0_bin = orb.utils.image.nanbin_image(
-                self.get_data_frame(0), binning)
-            
-            cube_bin = np.empty((image0_bin.shape[0],
-                                 image0_bin.shape[1],
-                                 self.dimz), dtype=float)
-            cube_bin.fill(np.nan)
-            cube_bin[:,:,0] = image0_bin
-            progress = ProgressBar(self.dimz-1)
-            for ik in range(1, self.dimz):
-                progress.update(ik, info='Binning cube')
-                cube_bin[:,:,ik] = orb.utils.image.nanbin_image(
-                    self.get_data_frame(ik), binning)
-            progress.end()
-          
+            cube_bin = self.get_binned_cube(binning)
             
         else:
             cube_bin = self

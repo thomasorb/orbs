@@ -49,7 +49,7 @@ def main(args):
         return files_list
 
     
-    to = Tools(no_log=True, config_file_name='config.sitelle.orb')
+    to = Tools(instrument='sitelle')
 
     olist = make_files_list(args.object_path)
     first_file = to.read_fits(
