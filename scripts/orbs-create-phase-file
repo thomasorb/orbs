@@ -218,7 +218,9 @@ def main(args):
             # *cos(theta): i.e. they fall in the same channel in
             # non-calibrated phase cube
             iphase = np.unwrap(np.angle(ifft))
-
+            ## This was missing before...
+            if int(order) & 1: iphase = iphase[::-1]
+            ##
             w, irange = orb.utils.filters.compute_weights(
                 calib_map[ii,ij], nm_laser, dimz,
                 step, order, 0.15, filter_min_cm1, filter_max_cm1)
