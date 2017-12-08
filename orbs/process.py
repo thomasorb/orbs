@@ -3080,6 +3080,7 @@ class Interferogram(HDFCube):
             fit_coeffs_col = np.empty((cube_col.shape[0], fit_order+1),
                                       dtype=float)
             fit_err_col = np.empty(cube_col.shape[0], dtype=float)
+            phase_col.fill(np.nan)
             fit_coeffs_col.fill(np.nan)
             fit_err_col.fill(np.nan)
             
