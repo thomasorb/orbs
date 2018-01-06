@@ -4729,7 +4729,7 @@ class InterferogramMerger(Tools):
         ext_zpd_min = zpd_index - int(EXT_ZPD_SIZE * step_number / 2.)
         if ext_zpd_min < 0: ext_zpd_min = 0
         ext_zpd_max = zpd_index + int(EXT_ZPD_SIZE * step_number / 2.) + 1
-        if ext_zpd_max > self.cube_A.dimz:
+        if ext_zpd_max >= self.cube_A.dimz:
             ext_zpd_max = self.cube_A.dimz - 1
 
         photom_A_nozpd = np.copy(photom_A)
