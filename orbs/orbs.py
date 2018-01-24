@@ -48,8 +48,8 @@ import pp
 import bottleneck as bn
 
 
-from orb.core import Tools, Cube, Indexer, OptionFile, HDFCube, TextColor
-from orb.core import FilterFile, PhaseFile, ProgressBar
+from orb.core import Tools, FDCube, Indexer, OptionFile, HDFCube, TextColor
+from orb.core import FilterFile, ProgressBar
 from process import RawData, InterferogramMerger, Interferogram
 from process import Spectrum, CalibrationLaser
 from process import SourceExtractor, PhaseMaps, CosmicRayDetector
@@ -476,7 +476,7 @@ class Orbs(Tools):
                     # If the list of the imported
                     # files in the hdf5 cube is the same,
                     # export is not done again.
-                    cube = Cube(
+                    cube = FDCube(
                         self.options[option_key],
                         silent_init=True, no_sort=False,
                         ncpus=self.ncpus,
@@ -775,10 +775,10 @@ class Orbs(Tools):
 
         if 'image_list_path_1' in self.options:
             if fast_init:
-                cube1 = Cube(self.options['image_list_path_1'],
-                             silent_init=True,
-                             instrument=self.instrument,
-                             no_sort=True, ncpus=self.ncpus)
+                cube1 = FDCube(self.options['image_list_path_1'],
+                               silent_init=True,
+                               instrument=self.instrument,
+                               no_sort=True, ncpus=self.ncpus)
             else:
                 cube1 = HDFCube(self.options['image_list_path_1.hdf5'],
                                 silent_init=True,
@@ -809,10 +809,10 @@ class Orbs(Tools):
                     
         if 'image_list_path_2' in self.options:
             if fast_init:
-                cube2 = Cube(self.options['image_list_path_2'],
-                             silent_init=True,
-                             instrument=self.instrument,
-                             no_sort=True, ncpus=self.ncpus)
+                cube2 = FDCube(self.options['image_list_path_2'],
+                               silent_init=True,
+                               instrument=self.instrument,
+                               no_sort=True, ncpus=self.ncpus)
             else:
                 cube2 = HDFCube(self.options['image_list_path_2.hdf5'],
                                 silent_init=True,
@@ -856,10 +856,10 @@ class Orbs(Tools):
         if self.config["INSTRUMENT_NAME"] == 'SITELLE' and not fast_init:
             cube_list = self.options['image_list_path_1']
                 
-            cube1 = Cube(cube_list,
-                         silent_init=True,
-                         instrument=self.instrument,
-                         no_sort=True, ncpus=self.ncpus)
+            cube1 = FDCube(cube_list,
+                           silent_init=True,
+                           instrument=self.instrument,
+                           no_sort=True, ncpus=self.ncpus)
 
            
             zpd_found = False
