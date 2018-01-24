@@ -48,11 +48,11 @@ import pp
 import bottleneck as bn
 
 
-from orb.core import Tools, FDCube, Indexer, OptionFile, HDFCube, TextColor, Header
-from orb.core import FilterFile, PhaseFile, ProgressBar
+from orb.core import Tools, FDCube, Indexer, OptionFile, HDFCube, TextColor
+from orb.core import FilterFile, ProgressBar
 from process import RawData, InterferogramMerger, Interferogram
 from process import Spectrum, CalibrationLaser
-from process import SourceExtractor, PhaseMaps, CosmicRayDetector
+from process import SourceExtractor, CosmicRayDetector
 from orb.astrometry import Astrometry
 import orb.constants
 import orb.version
