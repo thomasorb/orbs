@@ -50,6 +50,9 @@ class BinnedInterferogramCube(orb.fft.InterferogramCube):
 
         def compute_phase_in_column(col, calib_col, zpd_index, params, base_axis):
             warnings.simplefilter('ignore', RuntimeWarning)
+            warnings.simplefilter('ignore', UserWarning)
+            warnings.simplefilter('ignore', FutureWarning)
+            
             phase_col = np.empty_like(col)
             phase_col.fill(np.nan)
             for ij in range(col.shape[0]):
@@ -108,9 +111,13 @@ class BinnedInterferogramCube(orb.fft.InterferogramCube):
 #################################################
 class BinnedPhaseCube(orb.core.OCube):
 
-    def get_phase_maps_path(self):
-        return self._data_path_hdr + 'phase_maps.hdf5'
-
+    def get_phase_maps_path(self, suffix=None):
+        if suffix is None: suffix = ''       
+        else:
+            if not isinstance(suffix, str):
+                raise TypeError('suffix must be a string')
+            suffix = '.' + suffix
+        return self._data_path_hdr + 'phase_maps{}.hdf5'.format(suffix)
 
     def get_phase(self, x, y):
         """Return a phase vector at position x, y
@@ -120,9 +127,8 @@ class BinnedPhaseCube(orb.core.OCube):
         """
         return orb.fft.Phase(
             self[x, y, :], self.get_base_axis(), params=self.params)
-
         
-    def polyfit(self, polydeg, coeffs=None):
+    def polyfit(self, polydeg, coeffs=None, suffix=None):
         """Create phase maps from a polynomial fit of the binned phase cube
 
         :param polydeg: Degree of the fitting polynomial. Must be >= 0.
@@ -130,12 +136,15 @@ class BinnedPhaseCube(orb.core.OCube):
         :param coeffs: Used to fix some coefficients to a given
           value. If not None, must be a list of length = deg. set a
           coeff to a np.nan or a None to let the parameter free.
+
+        :param suffix: Phase maps hdf5 file suffix (added before the
+          extension .hdf5)
         """
         def fit_phase_in_column(col, deg, coeffs, params, base_axis):
             warnings.simplefilter('ignore', RuntimeWarning)
-            coeffs_col = np.empty((col.shape[0], deg+1), dtype=float)
+            coeffs_col = np.empty((col.shape[0], deg + 1), dtype=float)
             coeffs_col.fill(np.nan)
-            coeffs_err_col = np.empty((col.shape[0], deg+1), dtype=float)
+            coeffs_err_col = np.empty((col.shape[0], deg + 1), dtype=float)
             coeffs_err_col.fill(np.nan)
             for ij in range(col.shape[0]):
                 spectrum = orb.fft.Phase(col[ij,:], base_axis, params)
@@ -146,13 +155,16 @@ class BinnedPhaseCube(orb.core.OCube):
                     logging.debug('fit error')
             return coeffs_col, coeffs_err_col            
 
+        if not isinstance(polydeg, int): raise TypeError('polydeg must be an integer')
+        if polydeg < 0: raise ValueError('polydeg must be >= 0')
+        
         if coeffs is not None:
             orb.utils.validate.has_len(coeffs, polydeg + 1)
             coeffs = np.array(coeffs, dtype=float) # change None by nan
         
-        coeffs_cube = np.empty((self.dimx, self.dimy, polydeg+1), dtype=float)
+        coeffs_cube = np.empty((self.dimx, self.dimy, polydeg + 1), dtype=float)
         coeffs_cube.fill(np.nan)
-        coeffs_err_cube = np.empty((self.dimx, self.dimy, polydeg+1), dtype=float)
+        coeffs_err_cube = np.empty((self.dimx, self.dimy, polydeg + 1), dtype=float)
         coeffs_err_cube.fill(np.nan)
             
         base_axis = np.copy(self.get_base_axis().data)
@@ -190,7 +202,8 @@ class BinnedPhaseCube(orb.core.OCube):
         coeffs_cube[np.nonzero(coeffs_cube == 0)] = np.nan
         
 
-        with self.open_hdf5(self.get_phase_maps_path(), 'w') as hdffile:
+        phase_maps_path = self.get_phase_maps_path(suffix=suffix)
+        with self.open_hdf5(phase_maps_path, 'w') as hdffile:
             self.add_params_to_hdf_file(hdffile)
             hdffile.create_dataset(
                 '/calibration_coeff_map',
@@ -206,9 +219,9 @@ class BinnedPhaseCube(orb.core.OCube):
                 hdffile.create_dataset(
                     '/phase_map_err_{}'.format(iz),
                     data=coeffs_err_cube[:,:,iz])
-        logging.info('phase maps written: {}'.format(self.get_phase_maps_path()))
+        logging.info('phase maps written: {}'.format(phase_maps_path))
             
-        return self.get_phase_maps_path()
+        return phase_maps_path
 
     
 
@@ -252,7 +265,8 @@ class PhaseMaps(orb.core.Tools):
             self.phase_maps_path = phase_maps_path
             self.calibration_coeff_map = f['calibration_coeff_map'][:]
             self.axis = f['cm1_axis'][:]
-            self.theta_map = orb.utils.spectrum.corr2theta(self.calibration_coeff_map)
+            self.theta_map = orb.utils.spectrum.corr2theta(
+                self.calibration_coeff_map)
             
             loaded = False
             iorder = 0
@@ -303,22 +317,12 @@ class PhaseMaps(orb.core.Tools):
                 gvar.sdev(self.phase_maps[iorder]),
                 self.dimx_unbinned, self.dimy_unbinned))
         
-        # theta fit
-        self.models = list()
-        thetas, imodel, istd = orb.utils.image.fit_map_theta(
-            self.phase_maps[0],
-            self.phase_maps_err[0],
-            np.cos(np.deg2rad(self.theta_map))) 
-        self.models.append((imodel, istd))
+    def _isvalid_order(self, order):
+        """Validate order
         
-        for iorder in range(1, len(self.phase_maps)):
-            self.models.append(
-                (np.nanmedian(self.phase_maps[iorder]),
-                 np.nanstd(self.phase_maps[iorder])))
-            
-        self.thetas = np.array(thetas)
-
-    def isvalid_order(self, order):
+        :param order: Polynomial order
+        """
+        if not isinstance(order, int): raise TypeError('order must be an integer')
         order = int(order)
         if order in range(len(self.phase_maps)):
             return True
@@ -326,35 +330,61 @@ class PhaseMaps(orb.core.Tools):
             raise ValueError('order must be between 0 and {}'.format(len(self.phase_maps)))
 
     def get_map(self, order):
-        if self.isvalid_order(order): return self.phase_maps[order]
+        """Return map of a given order
 
-    def get_model(self, order, err=False, theta_map=None):
-        """Return model projected on a given incident angle map.
+        :param order: Polynomial order
+        """
+        if self._isvalid_order(order):
+            return np.copy(self.phase_maps[order])
 
-        :param order: phase map order
+    def get_map_err(self, order):
+        """Return map uncertainty of a given order
 
-        :param theta_map: (Optional) If not None, returned model is
-          projected on this theta map instead of the original one
-          (incident angle must be given in degrees).
+        :param order: Polynomial order
+        """
+        if self._isvalid_order(order):
+            return np.copy(self.phase_maps_err[order])
 
-        :param err: (Optional) If True, the error on the model is
-          returned (default True).
+    def get_model_0(self):
+        """Return order 0 model as a Scipy.UnivariateSpline instance.
+
+        :return: (original theta vector, model, uncertainty), model
+          and uncertainty are returned as UnivariateSpline instances
 
         """
-        if theta_map is not None:
-            orb.utils.validate.is_ndarray(theta_map)
-            thetas = np.copy(theta_map)
-        else:
-            thetas = np.copy(self.thetas)
+        _phase_map = self.get_map(0)
+        _phase_map_err = self.get_map_err(0)
+        
+        thetas, model, err = orb.utils.image.fit_map_theta(
+            _phase_map,
+            _phase_map_err,
+            #np.cos(np.deg2rad(self.theta_map)),
+            self.theta_map)
 
-        if err: index = 1
-        else: index = 0
-        if self.isvalid_order(order):
-            if isinstance(self.models[order][index], float):
-                return np.ones_like(thetas) * self.models[order][index]
-            elif isinstance(self.models[order][index], scipy.interpolate.UnivariateSpline):
-                return self.models[order][index](thetas)
-            else: raise TypeError('model must be a scipy.UnivariateSpline instance or a float')
+        return thetas, model, err
+        # # self.models.append((imodel, istd))
+        
+        # # for iorder in range(1, len(self.phase_maps)):
+        # #     self.models.append(
+        # #         (np.nanmedian(self.phase_maps[iorder]),
+        # #          np.nanstd(self.phase_maps[iorder])))
+            
+        # # self.thetas = np.array(thetas)
+
+        # if theta_map is not None:
+        #     orb.utils.validate.is_ndarray(theta_map)
+        #     thetas = np.copy(theta_map)
+        # else:
+        #     thetas = np.copy(self.thetas)
+
+        # if err: index = 1
+        # else: index = 0
+        # if self._isvalid_order(order):
+        #     if isinstance(self.models[order][index], float):
+        #         return np.ones_like(thetas) * self.models[order][index]
+        #     elif isinstance(self.models[order][index], scipy.interpolate.UnivariateSpline):
+        #         return self.models[order][index](thetas)
+        #     else: raise TypeError('model must be a scipy.UnivariateSpline instance or a float')
 
 
     def get_coeffs(self, x, y, unbin=False):
@@ -408,7 +438,7 @@ class PhaseMaps(orb.core.Tools):
             
         return orb.fft.Phase(
             np.polynomial.polynomial.polyval(
-                self.axis, _coeffs),
+                self.axis, _coeffs).astype(float),
             axis=self.axis, params=self.params)
     
     ## def _get_phase_map_header(self, order, phase_map_type=None):
