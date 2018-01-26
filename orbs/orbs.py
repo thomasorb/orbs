@@ -730,27 +730,22 @@ class Orbs(Tools):
                 cube1 = FDCube(self.options['image_list_path_1'],
                                silent_init=True,
                                instrument=self.instrument,
-                               no_sort=True, ncpus=self.ncpus)
+                               no_sort=True, ncpus=self.ncpus,
+                               params=self.options,
+                               config=self.config,
+                               camera_index=1,
+                               zpd_index=0)
             else:
                 cube1 = HDFCube(self.options['image_list_path_1.hdf5'],
                                 silent_init=True,
                                 instrument=self.instrument,
-                                ncpus=self.ncpus)
-            dimz1 = cube1.dimz
-            cam1_image_shape = [cube1.dimx, cube1.dimy]
+                                ncpus=self.ncpus,
+                                params=self.options,
+                                config=self.config,
+                                camera_index=1, zpd_index=0)
             
-            # Get data binning
-            cam1_detector_shape = [self.config['CAM1_DETECTOR_SIZE_X'],
-                                   self.config['CAM1_DETECTOR_SIZE_Y']]
-            bin_cam_1 = orb.utils.image.compute_binning(
-                cam1_image_shape, cam1_detector_shape)
-            if not silent:
-                logging.info('Computed binning of camera 1: {}x{}'.format(
-                    *bin_cam_1))
-                
-            if bin_cam_1[0] != bin_cam_1[1]:
-                raise StandardError('Images with different binning along X and Y axis are not handled by ORBS')
-            self.options['bin_cam_1'] = bin_cam_1[0]
+            dimz1 = cube1.dimz
+            self.options['bin_cam_1'] = int(cube1.params.binning)
             
             # prebinning
             if 'prebinning' in self.options:
@@ -764,25 +759,22 @@ class Orbs(Tools):
                 cube2 = FDCube(self.options['image_list_path_2'],
                                silent_init=True,
                                instrument=self.instrument,
-                               no_sort=True, ncpus=self.ncpus)
+                               no_sort=True, ncpus=self.ncpus,
+                               params=self.options,
+                               config=self.config,
+                               camera_index=2,
+                               zpd_index=0)
             else:
                 cube2 = HDFCube(self.options['image_list_path_2.hdf5'],
                                 silent_init=True,
                                 instrument=self.instrument,
-                                ncpus=self.ncpus)
+                                ncpus=self.ncpus,
+                                params=self.options,
+                                config=self.config,
+                                camera_index=2,
+                                zpd_index=0)
             dimz2 = cube2.dimz
-            cam2_image_shape = [cube2.dimx, cube2.dimy]
-            # Get data binning
-            cam2_detector_shape = [self.config['CAM2_DETECTOR_SIZE_X'],
-                                   self.config['CAM2_DETECTOR_SIZE_Y']]
-            bin_cam_2 = orb.utils.image.compute_binning(
-                cam2_image_shape, cam2_detector_shape)
-            if not silent:
-                logging.info('Computed binning of camera 2: {}x{}'.format(
-                    *bin_cam_2))
-            if bin_cam_2[0] != bin_cam_2[1]:
-                raise StandardError('Images with different binning along X and Y axis are not handled by ORBS')
-            self.options['bin_cam_2'] = bin_cam_2[0]
+            self.options['bin_cam_2'] = int(cube2.params.binning)
             
             # prebinning
             if 'prebinning' in self.options:
@@ -1273,45 +1265,6 @@ class Orbs(Tools):
                 return self.indexer.get_path('cam2.interfero_cube', err=True)
         else: raise StandardError('Camera number must be 0, 1 or 2')
 
-
-    
-    def _get_phase_map_0_path(self, camera_number):
-        """Return order 0 phase map.
-
-        :param camera_number: Camera number. Can be 0, 1 or 2.
-        """
-        if 'phase_map_path' not in self.options:
-            phase_map_0_path = self.indexer.get_path(
-                'phase_map_fitted_0', camera_number)
-            if  phase_map_0_path is None:
-                warnings.warn(
-                    "No phase map found for the order 0.")
-        else:
-            phase_map_0_path = self.options['phase_map_path']        
-            logging.info("Order 0 phase map taken from external source: %s"%phase_map_0_path)
-        return phase_map_0_path
-
-    def _get_phase_map_paths(self, camera_number):
-        """Return the list of fitted phase map paths.
-
-        :param camera_number: Camera number. Can be 0, 1 or 2.    
-        """
-        phase_map_path_list = list()
-        # append order 0
-        phase_map_path_list.append(self._get_phase_map_0_path(camera_number))
-        # append orders > 0
-        for order in range(1, self._get_phase_fit_order() + 1):
-            
-            phase_map_path = self.indexer.get_path(
-                'phase_map_fitted_{}'.format(order),
-                camera_number)
-            
-            if  phase_map_path is None:
-                raise StandardError(
-                    "No phase map found for the order 0.")
-            else:
-                phase_map_path_list.append(phase_map_path)
-        return phase_map_path_list
 
     def _get_phase_fit_order(self):
         """Return phase fit order from the filter file"""
@@ -1889,7 +1842,6 @@ class Orbs(Tools):
             
         else:
             star_list_path_1 = None
-            mean_fwhm_1_arc = None
                 
             if laser:
                 alignment_coeffs = None
@@ -2010,12 +1962,7 @@ class Orbs(Tools):
         star_list_path_1, mean_fwhm_arc = self.detect_stars(
             cube1, 1)
         del cube1
-        
-        if "step_nb" in self.options: 
-            step_number = self.options["step_nb"]
-        else:
-            raise StandardError("No step number given, check the option file")
-            
+                    
         # get frame list paths
         interf_cube_path_1 = self.indexer.get_path(
             'cam1.interfero_cube', err=True)
@@ -2028,7 +1975,6 @@ class Orbs(Tools):
             interf_cube_path_B=interf_cube_path_2,
             data_prefix=self._get_data_prefix(0),
             project_header=self._get_project_fits_header(0),
-            alignment_coeffs=None,
             overwrite=self.overwrite,
             tuning_parameters=self.tuning_parameters,
             indexer=self.indexer,
@@ -2040,12 +1986,9 @@ class Orbs(Tools):
         perf = Performance(cube.cube_A, "Merging process", 1,
                            instrument=self.instrument)
 
-        cube.merge(star_list_path_1, step_number,
-                   mean_fwhm_arc, self.config["FIELD_OF_VIEW_1"],
+        cube.merge(star_list_path_1, 
                    add_frameB=add_frameB, 
                    smooth_vector=smooth_vector,
-                   profile_name=self.config["PSF_PROFILE"],
-                   moffat_beta=self.config["MOFFAT_BETA"],
                    compute_ext_light=(not self.options['no_sky']
                                       and self.config['EXT_ILLUMINATION']))
         
@@ -2158,6 +2101,7 @@ class Orbs(Tools):
 
         .. seealso:: :py:meth:`process.Interferogram.create_correction_vectors`
         """
+        raise NotImplementedError('Must be reimplemented properly based on level 2 enhancements')
         if (camera_number != 1) and (camera_number != 2):
             raise StandardError('This method (Orbs.orbs.correct_interferogram) is intended to be used only to correct single-camera interferograms (i.e. camera_number must be 1 or 2)')
 
@@ -2244,33 +2188,27 @@ class Orbs(Tools):
         return calibration_laser_map_path
 
 
-    def compute_spectrum(self, camera_number, apodization_function=None,
+    def compute_spectrum(self, camera_number,
+                         apodization_function=None,
                          phase_correction=True,
                          wave_calibration=False,
                          phase_cube=False,
-                         phase_coeffs=None,
                          no_star=False):
 
         """Compute a spectral cube from an interferogram cube.
      
-        :param apodization_function: (Optional) Apodization function. Default
-          None.
+        :param apodization_function: (Optional) Apodization
+          function. Default None.
     
-        :param phase_correction: (Optional) If False, no phase correction
-          will be done and the resulting spectrum will be the absolute value
-          of the complex spectrum (default True).
+        :param phase_correction: (Optional) If False, no phase
+          correction will be done and the resulting spectrum will be
+          the absolute value of the complex spectrum (default True).
 
         :param wave_calibration: (Optional) If True
           wavenumber/wavelength calibration is done (default False).
 
         :param phase_cube: (Optional) If True, only the phase cube is
           returned (default False).   
-
-        :param phase_coeffs: (Optional) Polynomial coefficients of
-          order higher than 0. If given those coefficients are used to
-          define the phase vector. If none given default path to the
-          phase maps of order > 0 are used to create it (Default
-          None).   
 
         :param no_star: (Optional) If True, the cube is considered to
           have been computed without the star dependant processes so
@@ -2282,35 +2220,18 @@ class Orbs(Tools):
         .. seealso:: :meth:`orb.utils.transform_interferogram`
         """
         if phase_cube: phase_correction = False
-        # get calibration laser map path
-        calibration_laser_map_path = self._get_calibration_laser_map(
-            camera_number)
-      
-        ## Load phase maps and create phase coefficients vector
-        phase_map_correction = False
-
-        if (not phase_cube and phase_correction):
-            
-            phase_map_correction = True
-            phase_map_paths = self._get_phase_map_paths(camera_number)
-            logging.info('Loaded phase maps:')
-            for phase_map_path in phase_map_paths:
-                logging.info('  {}'.format(phase_map_path))
-            
-        else:
-            phase_map_paths = None
-
-        # Load interferogram frames
+        
+        # get cube path
         cube_path = self._get_interfero_cube_path(
             camera_number, corrected=True)
                       
         # Get final bad frames vector
-        if 'bad_frames' in self.options:
-            bad_frames_list = self.options['bad_frames']
-        else: bad_frames_list = None
-        bad_frames_vector = self.create_bad_frames_vector(
-            camera_number,
-            bad_frames_list=bad_frames_list)
+        ## if 'bad_frames' in self.options:
+        ##     bad_frames_list = self.options['bad_frames']
+        ## else: bad_frames_list = None
+        ## bad_frames_vector = self.create_bad_frames_vector(
+        ##     camera_number,
+        ##     bad_frames_list=bad_frames_list)
         
         # init cube
         self.options["camera_number"] = camera_number
@@ -2335,60 +2256,34 @@ class Orbs(Tools):
         
         balanced = self._is_balanced(camera_number)
         
-        if "step" in self.options:
-            step = self.options["step"]
-        else: 
-            raise StandardError("No step size given, check the option file")
-            
-        if "order" in self.options:
-            order = self.options["order"]
-        else: 
-            raise StandardError("No folding order given, check the option file")
-
-        if 'zpd_index' in self.options:
-            zpd_index = self.options['zpd_index']
-        else:
-            zpd_index = None
-
-
         if apodization_function is None:
             if 'apodization_function' in self.options:
                 apodization_function = self.options['apodization_function']
             else:
-                apodization_function = 2.0
+                apodization_function = 1.0
 
-        if apodization_function is not None:
-            if apodization_function not in self._APODIZATION_FUNCTIONS:
-                try:
-                    apodization_function = float(apodization_function)
-                except ValueError:
-                    raise StandardError("Unrecognized apodization function. Please try a float or " + str(self._APODIZATION_FUNCTIONS))
-
-        if "fringes" in self.options:
-            fringes=self.options['fringes']
-        else: fringes = None
+        if apodization_function not in self._APODIZATION_FUNCTIONS:
+            try:
+                apodization_function = float(apodization_function)
+            except ValueError:
+                raise StandardError("Unrecognized apodization function. Please try a float or " + str(self._APODIZATION_FUNCTIONS))
 
         # wavenumber option
         wavenumber = True # output always in cm-1 (calibration step
                           # transform the spectrum in nm if needed)
-        if phase_cube:
-           wavenumber = False # phase cube computed in nm
+
+        phase_maps_path = self.indexer.get_path(
+            'phase_maps', file_group=camera_number)
 
         ## Compute spectrum
         cube.compute_spectrum(
-            calibration_laser_map_path, step, order,
-            self.config["CALIB_NM_LASER"],
-            bad_frames_vector=bad_frames_vector,
             phase_correction=phase_correction,
             wave_calibration=wave_calibration,
             window_type=apodization_function,
             phase_cube=phase_cube,
-            phase_map_paths=phase_map_paths,
-            filter_name=self.options["filter_name"],
+            phase_maps_path=phase_maps_path,
             balanced=balanced,
-            fringes=fringes,
-            wavenumber=wavenumber,
-            zpd_index=zpd_index)
+            wavenumber=wavenumber)
 
         perf_stats = perf.print_stats()
         del cube, perf
@@ -2421,32 +2316,13 @@ class Orbs(Tools):
         .. seealso:: :meth:`process.Phase.create_phase_maps`
         
         """
-        if "step" in self.options:
-            step = self.options["step"]
-        else: 
-            raise StandardError("No step size given, check the option file")
-            
-        if "order" in self.options:
-            order = self.options["order"]
-        else: 
-            raise StandardError("No folding order given, check the option file")
-
-        if 'zpd_index' in self.options:
-            zpd_index = self.options['zpd_index']
-        else:
-            zpd_index = None
-            
-        # get calibration laser map path
-        calibration_laser_map_path = self._get_calibration_laser_map(
-            camera_number)
-
-        # get wavefront map path
-        if 'wavefront_map_path' in self.options:
-            wavefront_map_path = self.options['wavefront_map_path']
-            logging.info('Wavefront map used: {}'.format(wavefront_map_path))
-        else:
-            warnings.warn('No path to a wavefront map given')
-            wavefront_map_path = None
+        ## # get wavefront map path
+        ## if 'wavefront_map_path' in self.options:
+        ##     wavefront_map_path = self.options['wavefront_map_path']
+        ##     logging.info('Wavefront map used: {}'.format(wavefront_map_path))
+        ## else:
+        ##     warnings.warn('No path to a wavefront map given')
+        ##     wavefront_map_path = None
         
                 
         # get base phase maps
@@ -2478,79 +2354,11 @@ class Orbs(Tools):
 
         if self.config["INSTRUMENT_NAME"] == 'SITELLE':
             binning = 6
-            div_nb = 1
-            if calibration_laser_map_path is None:
-                raise StandardError('Calibration laser map path must be set fot a SITELLE phase map fit')
         else:
             binning = 3
-            div_nb = 1
 
         fit_order = self._get_phase_fit_order()
-        
-        cube.create_phase_maps(
-            self.options['step'], self.options['order'],
-            zpd_index=zpd_index, binning=binning,
-            filter_name=self.options["filter_name"],
-            calibration_laser_map_path=calibration_laser_map_path,
-            nm_laser=self.config["CALIB_NM_LASER"],
-            fit_order=fit_order)
-
-        # unwrap and fit phase maps
-        
-        # create phase maps lists
-        phase_map_path_list = list()
-        for order in range(fit_order + 1):
-            phase_map_path_list.append(
-                cube._get_phase_map_path(order))
-        err_map_path_list = list()
-        err_map_path_list.append(
-            cube._get_phase_map_path(0, err=True))
-        if fit_order >= 1:
-            err_map_path_list.append(
-                cube._get_phase_map_path(1, err=True))
-
-        # init PhaseMaps
-        phasemaps = PhaseMaps(
-            phase_map_path_list,
-            err_map_path_list,
-            cube.dimx, cube.dimy,
-            instrument=self.instrument,
-            overwrite=self.overwrite,
-            tuning_parameters=self.tuning_parameters,
-            indexer=self.indexer,
-            project_header = self._get_project_fits_header(
-                camera_number),
-            data_prefix=self._get_data_prefix(camera_number),
-            calibration_laser_header=self._get_calibration_laser_fits_header(),
-            ncpus=self.ncpus)
-
-        # fit order 1
-        if fit_order > 0:
-            phasemaps.fit_phase_map(1, calibration_laser_map_path,
-                                    self.config["CALIB_NM_LASER"])
-    
-        # fit higher order but the last one 
-        for order in range(2, fit_order):
-            phasemaps.fit_phase_map(order, calibration_laser_map_path,
-                                    self.config["CALIB_NM_LASER"])
-
-        # reduce last order if > 1
-        if fit_order > 1:
-            phasemaps.reduce_phase_map(fit_order)
-
-        # unwrap and fit order 0 phase map
-        phasemaps.unwrap_phase_map_0()
-        
-        if fit:
-            if self.config["INSTRUMENT_NAME"] == 'SITELLE':
-                phase_model = 'sitelle'
-            else:
-                phase_model = 'spiomm'
-            phasemaps.fit_phase_map_0(
-                phase_model=phase_model,
-                calibration_laser_map_path=calibration_laser_map_path,
-                calibration_laser_nm=self.config["CALIB_NM_LASER"],
-                wavefront_map_path=wavefront_map_path)
+        cube.create_phase_maps(binning, fit_order)
             
         perf_stats = perf.print_stats()
         del perf

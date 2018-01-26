@@ -46,7 +46,7 @@ import gvar
 #################################################
 class BinnedInterferogramCube(orb.fft.InterferogramCube):
 
-    def compute_phase(self, zpd_index):
+    def compute_phase(self):
 
         def compute_phase_in_column(col, calib_col, zpd_index, params, base_axis):
             warnings.simplefilter('ignore', RuntimeWarning)
@@ -65,7 +65,7 @@ class BinnedInterferogramCube(orb.fft.InterferogramCube):
                 interf = interf.symmetric()
                 spectrum = interf.transform()
                 if isinstance(spectrum, orb.fft.Spectrum):
-                    spectrum = spectrum.interpolate(base_axis, quality=10)
+                    spectrum = spectrum.interpolate(base_axis, quality=10)                    
                     phase_col[ij,:] = np.copy(spectrum.get_phase().data)
             return phase_col
 
@@ -88,7 +88,7 @@ class BinnedInterferogramCube(orb.fft.InterferogramCube):
                     compute_phase_in_column, 
                     args=(self[:,ii+ijob,:],
                           calib_map[:,ii+ijob],
-                          zpd_index,
+                          self.params.zpd_index,
                           self.params.convert(),
                           base_axis),
                     modules=("import logging",
@@ -147,9 +147,9 @@ class BinnedPhaseCube(orb.core.OCube):
             coeffs_err_col = np.empty((col.shape[0], deg + 1), dtype=float)
             coeffs_err_col.fill(np.nan)
             for ij in range(col.shape[0]):
-                spectrum = orb.fft.Phase(col[ij,:], base_axis, params)
+                _phase = orb.fft.Phase(col[ij,:], base_axis, params)
                 try:
-                    coeffs_col[ij,:], coeffs_err_col[ij,:] = spectrum.polyfit(
+                    coeffs_col[ij,:], coeffs_err_col[ij,:] = _phase.polyfit(
                         deg, coeffs=coeffs, return_coeffs=True)
                 except orb.utils.err.FitError:
                     logging.debug('fit error')
@@ -303,7 +303,7 @@ class PhaseMaps(orb.core.Tools):
         else: self.binning = binx
 
         logging.info('Phase maps loaded : order {}, shape ({}, {}), binning {}'.format(
-            len(self.phase_maps), self.dimx, self.dimy, self.binning))
+            len(self.phase_maps) - 1, self.dimx, self.dimy, self.binning))
 
         # unbin maps
         self.unbinned_maps = list()
@@ -358,34 +358,27 @@ class PhaseMaps(orb.core.Tools):
         thetas, model, err = orb.utils.image.fit_map_theta(
             _phase_map,
             _phase_map_err,
-            #np.cos(np.deg2rad(self.theta_map)),
+            #np.cos(np.deg2rad(self.theta_map)), model is linear with
+            # this input but it will be analyzed later
             self.theta_map)
 
         return thetas, model, err
-        # # self.models.append((imodel, istd))
-        
-        # # for iorder in range(1, len(self.phase_maps)):
-        # #     self.models.append(
-        # #         (np.nanmedian(self.phase_maps[iorder]),
-        # #          np.nanstd(self.phase_maps[iorder])))
-            
-        # # self.thetas = np.array(thetas)
 
-        # if theta_map is not None:
-        #     orb.utils.validate.is_ndarray(theta_map)
-        #     thetas = np.copy(theta_map)
-        # else:
-        #     thetas = np.copy(self.thetas)
+    def modelize(self):
+        """Replace phase maps by their model inplace
+        """
+        thetas, model, err = self.get_model_0()
+        self.phase_maps[0] = model(self.theta_map)
 
-        # if err: index = 1
-        # else: index = 0
-        # if self._isvalid_order(order):
-        #     if isinstance(self.models[order][index], float):
-        #         return np.ones_like(thetas) * self.models[order][index]
-        #     elif isinstance(self.models[order][index], scipy.interpolate.UnivariateSpline):
-        #         return self.models[order][index](thetas)
-        #     else: raise TypeError('model must be a scipy.UnivariateSpline instance or a float')
+        for iorder in range(1, len(self.phase_maps)):
+            self.phase_maps[iorder] = (np.ones_like(self.phase_maps[iorder])
+                                       * np.nanmean(self.phase_maps[iorder]))
 
+    def reverse_polarity(self):
+        """Add pi to the order 0 phase map to reverse polarity of the
+        corrected spectrum.
+        """
+        self.phase_maps[0] += np.pi
 
     def get_coeffs(self, x, y, unbin=False):
         """Return coeffs at position x, y in the maps. x, y are binned
@@ -441,62 +434,6 @@ class PhaseMaps(orb.core.Tools):
                 self.axis, _coeffs).astype(float),
             axis=self.axis, params=self.params)
     
-    ## def _get_phase_map_header(self, order, phase_map_type=None):
-    ##     """Return the header of the phase map.
-
-    ##     :param order: Order of the parameter of the polynomial fitted
-    ##       to the phase.
-
-    ##     :param phase_map_type: (Optional) Type of phase map. Must be
-    ##       None, 'unwraped', 'fitted', 'error', 'unbinned' or 'residual'
-
-    ##     .. note:: unwraped, fitted and error are incompatible. If more
-    ##       than one of those options are set to True the priority order
-    ##       is unwraped, then fitted, then error.
-    ##     """
-    ##     if phase_map_type is not None:
-    ##         if phase_map_type == 'unwraped':
-    ##             header = self._get_basic_header(
-    ##                 'Unwraped phase map order %d'%order)
-    ##         elif phase_map_type == 'fitted':
-    ##             header = self._get_basic_header(
-    ##                 'Fitted phase map order %d'%order)
-    ##         elif phase_map_type == 'error':
-    ##             header = self._get_basic_header(
-    ##                 'Fitted phase error map order %d'%order)
-    ##         elif phase_map_type == 'residual':
-    ##             header = self._get_basic_header(
-    ##                 'Residual map on phase fit')
-    ##         elif phase_map_type == 'unbinned':
-    ##             header = self._get_basic_header(
-    ##                 'Unbinned phase map order %d'%order)    
-    ##         else:
-    ##             raise StandardError("Phase_map_type must be set to 'unwraped', 'fitted', 'error', 'residual', 'unbinned' or None")
-    ##     else:
-    ##         header = self._get_basic_header('Phase map order %d'%order)
-       
-    ##     if self.dimx is not None and self.dimy is not None:
-    ##         return (header
-    ##                 + self._project_header
-    ##                 + self._calibration_laser_header
-    ##                 + self._get_basic_frame_header(self.dimx, self.dimy))
-    ##     else:
-    ##         warnings.warn("Basic header could not be created (frame dimensions are not available)")
-    ##         return (header + self._project_header + self._calibration_header)
-
-    # def _get_calibration_laser_map_path(self):
-    #     """Return path to the calibration laser map created during the
-    #     fitting procedure of the phase map (with a SITELLE's fit model
-    #     of the phase)."""
-    #     return self._data_path_hdr + 'calibration_laser_map.fits'
-
-    # def _get_calibration_laser_map_header(self):
-    #     """Return a calibration laser map header."""
-    #     return (self._get_basic_header('Calibration laser map')
-    #             + self._project_header
-    #             + self._calibration_laser_header
-    #             + self._get_basic_frame_header(self.dimx, self.dimy))
-
 
     def unwrap_phase_map_0(self):
         """Unwrap order 0 phase map.
@@ -527,276 +464,3 @@ class PhaseMaps(orb.core.Tools):
                         overwrite=self.overwrite)
         if self.indexer is not None:
             self.indexer['phase_map_unwraped_0'] = phase_map_path
-
-
-    # def fit_phase_map(self, order, calibration_laser_map_path, nm_laser):
-    #     """Robust fit of phase maps of order > 0
-
-    #     :param order: Order of the phase map to fit.
-
-    #     :param calibration_laser_map_path: Path to the calibration laser map.
-
-    #     :param nm_laser: Calibration laser wavelength in nm
-        
-    #     .. seealso:: :py:meth:`orb.utils.image.fit_highorder_phase_map`
-    
-    #     """
-    #     if order == 0:
-    #         warnings.warn('This function is better used for phase maps of order > 0')
-    #     if order not in range(len(self.phase_maps)):
-    #         raise StandardError('Order {} does not exist'.format(order))
-    #     phase_map = np.copy(self.phase_maps[order])
-    #     res_map = np.copy(self.residual_maps[1])
-
-    #     # load calibration laser map
-    #     calibration_laser_map = self.read_fits(calibration_laser_map_path)
-    #     if (calibration_laser_map.shape[0] != self.dimx_unbinned):
-    #         calibration_laser_map = orb.utils.image.interpolate_map(
-    #             calibration_laser_map, self.dimx_unbinned, self.dimy_unbinned)
-    #     calibration_laser_map = orb.utils.image.nanbin_image(
-    #         calibration_laser_map, self.binning)
-
-        
-    #     (fitted_phase_map,
-    #      error_map) = orb.utils.image.fit_highorder_phase_map(
-    #         phase_map, res_map, calibration_laser_map, nm_laser)
-
-    #     ## save fitted phase map and error map
-    #     error_map_path = self._get_phase_map_path(
-    #         order, phase_map_type='error')
-    #     fitted_map_path = self._get_phase_map_path(
-    #         order, phase_map_type='fitted')
-    #     unbinned_map_path = self._get_phase_map_path(
-    #         order, phase_map_type='unbinned')
-
-    #     self.write_fits(
-    #         error_map_path,
-    #         orb.cutils.unbin_image(error_map,
-    #                                self.dimx_unbinned,
-    #                                self.dimy_unbinned),
-    #         fits_header= self._get_phase_map_header(
-    #             order, phase_map_type='error'),
-    #         overwrite=self.overwrite)
-    #     if self.indexer is not None:
-    #         self.indexer[
-    #             'phase_map_fitted_error_{}'.format(order)] = error_map_path
-            
-    #     self.write_fits(
-    #         fitted_map_path,
-    #         orb.cutils.unbin_image(fitted_phase_map,
-    #                                self.dimx_unbinned,
-    #                                self.dimy_unbinned), 
-    #         fits_header= self._get_phase_map_header(
-    #             order, phase_map_type='fitted'),
-    #         overwrite=self.overwrite)
-    #     if self.indexer is not None:
-    #         self.indexer['phase_map_fitted_{}'.format(order)] = fitted_map_path
-
-    #     self.write_fits(
-    #         unbinned_map_path,
-    #         orb.cutils.unbin_image(np.copy(self.phase_maps[order]),
-    #                                self.dimx_unbinned,
-    #                                self.dimy_unbinned), 
-    #         fits_header= self._get_phase_map_header(
-    #             order, phase_map_type='unbinned'),
-    #         overwrite=self.overwrite)
-    #     if self.indexer is not None:
-    #         self.indexer['phase_map_unbinned_{}'.format(order)] = unbinned_map_path
-
-            
-    # def reduce_phase_map(self, order):
-    #     """Reduce a phase map to only one number.
-
-    #     .. note:: The reduced phase maps are also saved as 'fitted'.
-
-    #     :param order: Order of the phase map to reduce.
-    #     """
-    #     if order == 0:
-    #         warnings.warn('This function is better used for phase maps of order > 0')
-    #     if order not in range(len(self.phase_maps)):
-    #         raise StandardError('Order {} does not exist'.format(order))
-    #     phase_map = np.copy(self.phase_maps[order])
-    #     res_map = np.copy(self.residual_maps[1])
-
-    #     # reduction
-    #     phase_coeff = orb.utils.fft.compute_phase_coeffs_vector(
-    #         [phase_map], res_map=res_map)[0]
-    #     logging.info('Reduced coeff of order {}: {}'.format(
-    #         order, phase_coeff))
-
-    #     ## save fitted phase map and error map
-    #     ## error_map_path = self._get_phase_map_path(order, phase_map_type='error')
-    #     fitted_map_path = self._get_phase_map_path(order, phase_map_type='fitted')
-
-    #     ## self.write_fits(
-    #     ##     error_map_path,
-    #     ##     orb.cutils.unbin_image(error_map,
-    #     ##                            self.dimx_unbinned,
-    #     ##                            self.dimy_unbinned),
-    #     ##     fits_header= self._get_phase_map_header(order, phase_map_type='error'),
-    #     ##     overwrite=self.overwrite)
-    #     ## if self.indexer is not None:
-    #     ##     self.indexer['phase_map_fitted_error_{}'.format(order)] = error_map_path
-            
-    #     self.write_fits(
-    #         fitted_map_path,
-    #         np.array(phase_coeff, dtype=float), 
-    #         fits_header= self._get_phase_map_header(order, phase_map_type='fitted'),
-    #         overwrite=self.overwrite)
-    #     if self.indexer is not None:
-    #         self.indexer['phase_map_fitted_{}'.format(order)] = fitted_map_path
-
-
-    # def fit_phase_map_0(self, 
-    #                     phase_model='spiomm',
-    #                     calibration_laser_map_path=None,
-    #                     calibration_laser_nm=None,
-    #                     wavefront_map_path=None):
-    #     """Fit the order 0 phase map.
-
-    #     Help remove most of the noise. This process is useful if the
-    #     phase map has been computed from astronomical data without a
-    #     high SNR for every pixel in all the filter bandpass.
-
-    #     :param phase_model: (Optional) Model used to fit phase, can be
-    #       'spiomm' or 'sitelle'. If 'spiomm', the model is a very
-    #       basic one considering only linear variation of the phase map
-    #       along the columns. If 'sitelle', the phase model is based on
-    #       a the calibration laser map, tip tilt and rotation of the
-    #       calibration laser map are considered in the fit, along with
-    #       the first order of the phase (default 'spiomm').
-
-    #     :param calibration_laser_map_path: (Optional) Path to the
-    #       calibration laser map. Only useful if the phase model is
-    #       'sitelle' (default None).
-
-    #     :param calibration_laser_nm: (Optional) Wavelength of the
-    #       calibration laser (in nm). Only useful if the phase model is
-    #       'sitelle' (default None).
-    
-    #     :param wavefront_map_path: (Optional) Only used with
-    #       SITELLE. Residual between the modeled calibration laser map
-    #       and the real laser map. This residual can generally be
-    #       fitted with Zernike polynomials. If given, the wavefront is
-    #       considered stable and is removed before the model is fitted
-    #       (default None).
-    #      """
-
-    #     FIT_DEG = 1 # Degree of the polynomial used for the fit
-        
-    #     MAX_FIT_ERROR = 0.1 # Maximum fit error over which a warning
-    #                         # is raised
-                       
-    #     BORDER = 0.02 # percentage of the image length removed on the
-    #                   # border to fit the phase map (cannot be more
-    #                   # than 0.5)
-
-    #     phase_map = np.copy(self.phase_map_order_0_unwraped)
-    #     # border points are removed
-    #     mask = np.ones_like(phase_map, dtype=bool)
-    #     border = int((self.dimx + self.dimy)/2. * BORDER )
-    #     mask[border:-border,border:-border] = False
-    #     mask[np.nonzero(phase_map == 0.)] = True
-    #     phase_map[np.nonzero(mask)] = np.nan
-    #     # error map
-    #     err_map = self.residual_maps[0]
-    #     err_map[np.nonzero(mask)] = np.nan
-    #     err_map = err_map**0.5
-
-    #     if phase_model == 'sitelle' and calibration_laser_map_path is None:
-    #         raise StandardError('Calibration laser map must be set for a SITELLE phase map fit')
-
-    #     # load calibration laser map
-    #     calibration_laser_map = self.read_fits(calibration_laser_map_path)
-    #     if (calibration_laser_map.shape[0] != self.dimx_unbinned):
-    #         calibration_laser_map = orb.utils.image.interpolate_map(
-    #             calibration_laser_map, self.dimx_unbinned, self.dimy_unbinned)
-    #     calibration_laser_map = orb.utils.image.nanbin_image(
-    #         calibration_laser_map, self.binning)
-
-    #     # load wavefront map
-    #     if wavefront_map_path is not None:
-    #         wavefront_map = self.read_fits(wavefront_map_path)
-    #         if (wavefront_map.shape[0] != self.dimx_unbinned):
-    #             wavefront_map = orb.utils.image.interpolate_map(
-    #                 wavefront_map, self.dimx_unbinned, self.dimy_unbinned)
-    #         wavefront_map = orb.utils.image.nanbin_image(
-    #             wavefront_map, self.binning)
-    #     else: wavefront_map = None
-
-        
-    #     if phase_model == 'spiomm':
-    #         fitted_phase_map, error_map, fit_error = orb.utils.image.fit_map(
-    #             phase_map, err_map, FIT_DEG)
-    #         new_calibration_laser_map = calibration_laser_map
-
-    #     elif phase_model == 'sitelle':
-    #         (fitted_phase_map, error_map,
-    #          fit_error, new_calibration_laser_map, trans_coeffs) = (
-    #             orb.utils.image.fit_sitelle_phase_map(
-    #                 np.copy(phase_map), np.copy(err_map),
-    #                 np.copy(calibration_laser_map),
-    #                 calibration_laser_nm,
-    #                 pixel_size=(
-    #                     float(self._get_config_parameter('PIX_SIZE_CAM1'))
-    #                     * self.binning),
-    #                 binning=1, return_coeffs=True,
-    #                 wavefront_map=wavefront_map))
-
-    #     logging.info(
-    #         "Normalized root-mean-square deviation on the fit: %f%%"%(
-    #             fit_error*100.))
-
-    #     ## compute max flux error due to order 0 error. An error of
-    #     ## pi/2 is equivalent to 100% loss of flux. Note that noise
-    #     ## plus model errors are considered at the same
-    #     ## time. Therefore this estimation is very conservative.  The
-    #     ## flux error estimation varies with the
-    #     ## cos(order0_error). The flux error percentage is thus 100 *
-    #     ## (1 - cos(error_in_radians))
-    #     res_std = orb.utils.stats.robust_std(
-    #         orb.utils.stats.sigmacut(
-    #             error_map, sigma=3)) # in radians
-    #     max_flux_error = 1 - np.cos(res_std)
-    #     logging.info(
-    #         "Phase Map order 0 residual std: {}, Max flux error (conservative estimate): {}%".format(res_std, max_flux_error*100.))
-
-    #     if fit_error > MAX_FIT_ERROR:
-    #         warnings.warn("Normalized root-mean-square deviation on the fit is too high (%f > %f): phase correction will certainly be uncorrect !"%(fit_error, MAX_FIT_ERROR))
-        
-    #     ## save fitted phase map and error map
-    #     error_map_path = self._get_phase_map_path(0, phase_map_type='error')
-    #     fitted_map_path = self._get_phase_map_path(0, phase_map_type='fitted')
-
-    #     if new_calibration_laser_map is not None:
-    #         self.write_fits(
-    #             self._get_calibration_laser_map_path(),
-    #             orb.cutils.unbin_image(new_calibration_laser_map,
-    #                                    self.dimx_unbinned,
-    #                                    self.dimy_unbinned), 
-    #             fits_header=self._get_calibration_laser_map_header(),
-    #             overwrite=self.overwrite)
-    #         if self.indexer is not None:
-    #             self.indexer['phase_calibration_laser_map'] = self._get_calibration_laser_map_path()
-        
-    #     self.write_fits(
-    #         error_map_path,
-    #         orb.cutils.unbin_image(error_map,
-    #                                self.dimx_unbinned,
-    #                                self.dimy_unbinned),
-    #         fits_header= self._get_phase_map_header(0, phase_map_type='error'),
-    #         overwrite=self.overwrite)
-    #     if self.indexer is not None:
-    #         self.indexer['phase_map_fitted_error_0'] = error_map_path
-            
-    #     self.write_fits(
-    #         fitted_map_path,
-    #         orb.cutils.unbin_image(fitted_phase_map,
-    #                                self.dimx_unbinned,
-    #                                self.dimy_unbinned), 
-    #         fits_header= self._get_phase_map_header(0, phase_map_type='fitted'),
-    #         overwrite=self.overwrite)
-    #     if self.indexer is not None:
-    #         self.indexer['phase_map_fitted_0'] = fitted_map_path
-       
-        
