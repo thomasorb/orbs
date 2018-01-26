@@ -40,7 +40,7 @@ import orb.core
 import warnings
 import orb.utils
 import gvar
-import scipy
+
 #################################################
 #### CLASS BinnedInterferogramCube ##############
 #################################################

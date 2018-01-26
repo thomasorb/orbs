@@ -53,7 +53,6 @@ from orb.core import FilterFile, ProgressBar
 from process import RawData, InterferogramMerger, Interferogram
 from process import Spectrum, CalibrationLaser
 from process import SourceExtractor, CosmicRayDetector
-from orb.astrometry import Astrometry
 import orb.constants
 import orb.version
 import orb.utils.spectrum
@@ -271,11 +270,7 @@ class Orbs(Tools):
         * DARK_ACTIVATION_ENERGY: Calibrated activation energy of the
           dark frames. Used to correct for varying dark level of the
           camera 2 of SpIOMM
-          
-        * BIAS_CALIB_PARAMS: Bias calibration parameters a, b of the
-          function : bias_level = aT + b [T in degrees C]. Used to
-          correct for varying dark level of the camera 2 of SpIOMM
-          
+                    
         * EXT_ILLUMINATION: If there is a chance for some light to
           enter in one of the cameras and not the other this must be
           set to 1. This way this external light can be tracked by the
@@ -301,11 +296,11 @@ class Orbs(Tools):
         
         * step: SPESTEP
         
-        * step_number: SPESTNB
+        * step_nb: SPESTNB
         
         * order: SPEORDR
         
-        * exp_time: SPEEXPT
+        * exposure_time: SPEEXPT
         
         * dark_time: SPEDART
         
@@ -440,13 +435,7 @@ class Orbs(Tools):
         def export_images(value, fast_init, option_key,
                           mask_key, camera_index):
             if os.path.isdir(value):
-                self.options[option_key] = (
-                    self._create_list_from_dir(
-                        value, list_file_path,
-                        image_mode=image_mode,
-                        chip_index=chip_index,
-                        prebinning=prebinning,
-                        check=not fast_init))
+                raise ValueError('A path to a directory cannot be given. Please give a path to a list of files.')
             else:
                 self.options[option_key] = value
 
@@ -522,25 +511,7 @@ class Orbs(Tools):
                                    mask_key=None):
             value = self.optionfile.get(key, str)
             if value is None : return
-            list_file_path =os.path.join(
-                self._get_project_dir(), key + ".list")
 
-            if self.config["INSTRUMENT_NAME"] == 'SITELLE':
-                image_mode = 'sitelle'
-                chip_index = camera_index
-            elif self.config["INSTRUMENT_NAME"] == 'SpIOMM':
-                image_mode = 'spiomm'
-                chip_index = None
-            else:
-                image_mode = None
-                chip_index = None
-
-            if 'prebinning' in self.options:
-                prebinning = self.options['prebinning']
-            else:
-                prebinning = None
-
-            # check if path is a directory or a file list
             if os.path.exists(value):
                 export_images(value, fast_init,
                               option_key, mask_key,
@@ -584,24 +555,6 @@ class Orbs(Tools):
                     logging.info(line[:-1])
 
         
-        # defining DARK_ACTIVATION_ENERGY
-        self.config["DARK_ACTIVATION_ENERGY"] = float(
-            self._get_config_parameter(
-                "DARK_ACTIVATION_ENERGY", optional=True))
-
-        # defining BIAS_CALIB_PARAMS
-        BIAS_CALIB_PARAM_A = self._get_config_parameter(
-            "BIAS_CALIB_PARAM_A", optional=True)
-        BIAS_CALIB_PARAM_B = self._get_config_parameter(
-            "BIAS_CALIB_PARAM_B", optional=True)
-
-        if ((BIAS_CALIB_PARAM_A is not None)
-            and (BIAS_CALIB_PARAM_B is not None)):
-            self.config["BIAS_CALIB_PARAMS"] = [
-                float(BIAS_CALIB_PARAM_A),
-                float(BIAS_CALIB_PARAM_B)]
-        else: warnings.warn("No bias calibration parameters (check BIAS_CALIB_A, BIAS_CALIB_B in the configuration file.)")
-
         # Read option file to get observation parameters
         if not os.path.exists(option_file_path):
             raise StandardError("Option file does not exists !")
@@ -636,7 +589,7 @@ class Orbs(Tools):
         
             
         store_option_parameter('step', 'SPESTEP', float)
-        store_option_parameter('step_number', 'SPESTNB', int)
+        store_option_parameter('step_nb', 'SPESTNB', int)
         store_option_parameter('order', 'SPEORDR', float)
         
         # check step and order
@@ -649,7 +602,7 @@ class Orbs(Tools):
             if abs(self.options['step'] - float(_step))/float(_step) > 0.1:
                 raise StandardError('There is more than 10% difference between the step size in the option file ({}) and the step size recorded in the filter file ({})'.format(self.options['step'], _step))
                 
-        store_option_parameter('exp_time', 'SPEEXPT', float)
+        store_option_parameter('exposure_time', 'SPEEXPT', float)
         store_option_parameter('dark_time', 'SPEDART', float)
         store_option_parameter('obs_date', 'OBSDATE', str)
         store_option_parameter('target_ra', 'TARGETR', str)
@@ -755,7 +708,7 @@ class Orbs(Tools):
         store_folder_parameter('flat_path_2', 'DIRFLT2', 2)
         store_folder_parameter('calib_path_1', 'DIRCAL1', 1)
         store_folder_parameter('calib_path_2', 'DIRCAL2', 2)
-        #ostore_folder_parameter('flat_spectrum_path', 'DIRFLTS', None)
+        #store_folder_parameter('flat_spectrum_path', 'DIRFLTS', None)
         store_folder_parameter('standard_image_path_1', 'DIRSTD1', 1,
                                mask_key='std_mask_path')
         store_folder_parameter('standard_image_path_2', 'DIRSTD2', 2,
@@ -770,7 +723,6 @@ class Orbs(Tools):
             if 'calib_path_2.hdf5' in self.options:
                 self.options['image_list_path_2.hdf5'] = self.options[
                     'calib_path_2.hdf5']
-
 
 
         if 'image_list_path_1' in self.options:
@@ -846,11 +798,11 @@ class Orbs(Tools):
             if dimz1 != dimz2:
                 raise StandardError('The number of images of CAM1 and CAM2 are not the same (%d != %d)'%(dimz1, dimz2))
                 
-            if self.options['step_number'] < dimz1:
+            if self.options['step_nb'] < dimz1:
                 if not silent:
                     warnings.warn('Step number option changed to {} because the number of steps ({}) of a full cube must be greater or equal to the number of images given for CAM1 and CAM2 ({})'.format(
-                    dimz1, self.options['step_number'], dimz1))
-                self.options['step_number'] = dimz1
+                    dimz1, self.options['step_nb'], dimz1))
+                self.options['step_nb'] = dimz1
 
         # get ZPD shift in SITELLE's case
         if self.config["INSTRUMENT_NAME"] == 'SITELLE' and not fast_init:
@@ -922,12 +874,8 @@ class Orbs(Tools):
                             self.correct_interferogram)
         self.roadmap.attach('compute_calibration_laser_map',
                             self.compute_calibration_laser_map)
-        self.roadmap.attach('compute_phase',
-                            self.compute_phase)
         self.roadmap.attach('compute_phase_maps',
                             self.compute_phase_maps)
-        self.roadmap.attach('compute_phase_maps_from_external_source',
-                            self.compute_phase_maps_from_external_source)
         self.roadmap.attach('compute_spectrum',
                             self.compute_spectrum)
         self.roadmap.attach('calibrate_spectrum',
@@ -996,8 +944,8 @@ class Orbs(Tools):
         hdr.append(('COMMENT','',''))
         if "object_name" in self.options:
             hdr.append(('OBJECT', self.options["object_name"], 'Object Name'))
-        if "exp_time" in self.options:
-            hdr.append(('EXPTIME', self.options["exp_time"], 
+        if "exposure_time" in self.options:
+            hdr.append(('EXPTIME', self.options["exposure_time"], 
                         'Exposure time'))
         if "filter_name" in self.options:
             hdr.append(('FILTER', self.options["filter_name"], 
@@ -1011,8 +959,8 @@ class Orbs(Tools):
         if "step" in self.options:
             hdr.append(('STEP', self.options["step"], 
                         'Step size in nm'))
-        if "step_number" in self.options:
-            hdr.append(('STEPNB', self.options["step_number"], 
+        if "step_nb" in self.options:
+            hdr.append(('STEPNB', self.options["step_nb"], 
                         'Number of steps'))
         if "target_ra" in self.options:
             hdr.append(('TARGETR', ':'.join(self.options["target_ra"]), 
@@ -1183,7 +1131,9 @@ class Orbs(Tools):
             if ("image_list_path_1" in self.options):
                 self.indexer.set_file_group('cam1')
                 cube = RawData(
-                    self.options["image_list_path_1.hdf5"], 
+                    self.options["image_list_path_1.hdf5"],
+                    params=self.options,
+                    config=self.config,
                     data_prefix=self._get_data_prefix(1),
                     project_header=self._get_project_fits_header(1),
                     overwrite=self.overwrite,
@@ -1197,7 +1147,9 @@ class Orbs(Tools):
             if ("image_list_path_2" in self.options):
                 self.indexer.set_file_group('cam2')
                 cube = RawData(
-                    self.options["image_list_path_2.hdf5"], 
+                    self.options["image_list_path_2.hdf5"],
+                    params=self.options,
+                    config=self.config,
                     data_prefix=self._get_data_prefix(2),
                     project_header=self._get_project_fits_header(2),
                     overwrite=self.overwrite,
@@ -1288,24 +1240,16 @@ class Orbs(Tools):
 
         
         if camera_number == 2:
-            fov = self.config["FIELD_OF_VIEW_2"]
             wcs_rotation = (self.config["WCS_ROTATION"]
                             - self.config["INIT_ANGLE"])
         else:
-            fov = self.config["FIELD_OF_VIEW_1"]
             wcs_rotation = self.config["WCS_ROTATION"]
 
 
         # load SIP file in ORB's data/ folder
         sip = self.load_sip(self._get_sip_file_path(camera_number))
-        
-        return Astrometry(cube, data_prefix=self._get_data_prefix(camera_number),
-                          tuning_parameters=self.tuning_parameters,
-                          target_radec=target_radec, target_xy=target_xy,
-                          wcs_rotation=wcs_rotation,
-                          instrument=self.instrument,
-                          ncpus=self.ncpus, sip=sip)
 
+        return cube.get_astrometry(sip=sip)
 
     def _get_interfero_cube_path(self, camera_number, corrected=False):
         """Return the path to the interferogram cube for each camera
@@ -1679,58 +1623,6 @@ class Orbs(Tools):
 
         return star_list_path, mean_fwhm
 
-    def get_noise_values(self, camera_number):
-        """Return readout noise and dark current level from bias and
-        dark frames.
-
-        :param camera_number: Camera number (can be either 1 or 2).
-
-        :return: readout_noise, dark_current_level
-         
-        .. seealso:: :py:meth:`process.RawData.get_noise_values`
-        """
-        logging.info("Computing noise levels")
-        
-        bias_path = None
-        dark_path = None
-        
-        if camera_number == 1:
-            if "bias_path_1" in self.options:
-                bias_path = self.options["bias_path_1"]
-            if "dark_path_1" in self.options:
-                dark_path = self.options["dark_path_1"]
-                
-        if camera_number == 2:
-            if "bias_path_2" in self.options:
-                bias_path = self.options["bias_path_2"]
-            if "dark_path_2" in self.options:
-                dark_path = self.options["dark_path_2"]
-            
-        exposition_time = self.options["exp_time"]
-        if "dark_time" in self.options:
-                dark_int_time = self.options["dark_time"]
-        else: dark_int_time = None
-        
-        if (bias_path is not None and dark_path is not None
-            and dark_int_time is not None):
-               
-            cube = self._init_raw_data_cube(camera_number)
-            readout_noise, dark_current_level = cube.get_noise_values(
-                bias_path, dark_path, exposition_time,
-                dark_int_time, combine='average',
-                reject='avsigclip')
-            del cube
-
-            logging.info(
-                'Computed readout noise of camera %d from bias frames: %f ADU/pixel'%(camera_number, readout_noise))
-            logging.info(
-                'Computed dark current level  of camera %d from dark frames: %f ADU/pixel'%(camera_number, dark_current_level))
- 
-            return readout_noise, dark_current_level
-        
-        else:
-            return None, None
-
 
     def compute_alignment_vector(self, camera_number):
         """Run the computation of the alignment vector.
@@ -1743,9 +1635,7 @@ class Orbs(Tools):
               
         .. seealso:: :meth:`orb.astrometry.Astrometry.detect_stars`
         .. seealso:: :meth:`process.RawData.create_alignment_vector`
-        """
-        readout_noise, dark_current_level = self.get_noise_values(camera_number)
-        
+        """        
         cube = self._init_raw_data_cube(camera_number)
         
         perf = Performance(cube, "Alignment vector computation", camera_number,
@@ -1755,12 +1645,8 @@ class Orbs(Tools):
             cube, camera_number)
 
         cube.create_alignment_vector(
-            star_list_path, mean_fwhm_arc,
-            self.config["FIELD_OF_VIEW_1"],
-            profile_name='gaussian', # Better for alignment tasks
-            moffat_beta=self.config["MOFFAT_BETA"],
-            readout_noise=readout_noise,
-            dark_current_level=dark_current_level)
+            star_list_path, 
+            profile_name='gaussian') # gaussian is better for alignment tasks
         
         perf_stats = perf.print_stats()
         del cube, perf
@@ -1805,33 +1691,7 @@ class Orbs(Tools):
 
         .. seealso:: :meth:`process.RawData.create_cosmic_ray_map`
         """
-        cube = self._init_raw_data_cube(camera_number)
-
-        if "step_number" in self.options: 
-            step_number = self.options["step_number"]
-        else:
-            warnings.warn("No step number given, check the option file.")
-
-        if "bad_frames" in self.options:
-            bad_frames_vector = self.options["bad_frames"]
-        else:
-            bad_frames_vector = []
-
-        star_list_path, mean_fwhm_pix = self.detect_stars(
-            cube, camera_number, return_fwhm_pix=True, all_sources=True,
-            realign=True)
-
-        perf = Performance(cube, "Cosmic ray map computation", camera_number,
-                           instrument=self.instrument)
-
-        cube.create_cosmic_ray_map(z_coeff=z_coeff, step_number=step_number,
-                                   bad_frames_vector=bad_frames_vector,
-                                   star_list_path=star_list_path)
-
-
-        perf_stats = perf.print_stats()
-        del cube, perf
-        return perf_stats
+        raise NotImplementedError('Used only with SpIOMM. SHould be reimplemented based on stuff done before level2')
 
     def check_bad_frames(self, camera_number):
         """Check for bad frames using the number of detected cosmic
@@ -1914,13 +1774,6 @@ class Orbs(Tools):
 
             optimize_dark_coeff = self.config['OPTIM_DARK_CAM2']
         
-        if "exp_time" in self.options:
-            exposition_time = self.options["exp_time"]
-        else:  exposition_time = None
-        if "dark_time" in self.options:
-            dark_int_time = self.options["dark_time"]
-        else: dark_int_time = None
-
         if "bad_frames" in self.options:
             bad_frames_vector = self.options["bad_frames"]
         else:
@@ -1942,11 +1795,7 @@ class Orbs(Tools):
             flat_path=flat_path, alignment_vector_path=None,
             cr_map_cube_path=cr_map_cube_path,
             bad_frames_vector=bad_frames_vector, 
-            dark_int_time=dark_int_time, flat_int_time=None,
-            exposition_time=exposition_time,
             optimize_dark_coeff=optimize_dark_coeff,
-            dark_activation_energy=self.config["DARK_ACTIVATION_ENERGY"],
-            bias_calibration_params=self.config["BIAS_CALIB_PARAMS"],
             z_range=z_range, combine=combine, reject=reject,
             flat_smooth_deg=flat_smooth_deg)
         perf_stats = perf.print_stats()
@@ -2022,10 +1871,6 @@ class Orbs(Tools):
         else:
             raise StandardError("No binning for the camera 2 given")
 
-        # get initial shift
-        init_dx = self.config["INIT_DX"] / bin_cam_2
-        init_dy = self.config["INIT_DY"] / bin_cam_2
-
         # get interferograms frames paths
         if raw:
             interf_cube_path_1 = self.options["image_list_path_1.hdf5"]
@@ -2046,10 +1891,7 @@ class Orbs(Tools):
             star_list_path_1 = None
             mean_fwhm_1_arc = None
                 
-            if not laser:
-                alignment_coeffs = [init_dx, init_dy,
-                                    self.config["INIT_ANGLE"], 0., 0.]
-            else:
+            if laser:
                 alignment_coeffs = None
             
 
@@ -2059,21 +1901,21 @@ class Orbs(Tools):
             ComputingClass = CosmicRayDetector
         else:
             ComputingClass = InterferogramMerger
+
         cube = ComputingClass(
             interf_cube_path_1, interf_cube_path_2,
             bin_A=bin_cam_1, bin_B=bin_cam_2,
-            pix_size_A=self.config["PIX_SIZE_CAM1"],
-            pix_size_B=self.config["PIX_SIZE_CAM2"],
             data_prefix=self._get_data_prefix(0),
             project_header=self._get_project_fits_header(0),
             cube_A_project_header=self._get_project_fits_header(1),
             cube_B_project_header=self._get_project_fits_header(2),
-            alignment_coeffs=alignment_coeffs,
             overwrite=self.overwrite,
             tuning_parameters=self.tuning_parameters,
             indexer=self.indexer,
             instrument=self.instrument,
-            ncpus=self.ncpus)
+            ncpus=self.ncpus,
+            params=self.options,
+            config=self.config)
 
         # find alignment coefficients
         
@@ -2081,10 +1923,9 @@ class Orbs(Tools):
             if not laser:
                 cube.find_alignment(
                     star_list_path_1,
-                    self.config["INIT_ANGLE"], init_dx, init_dy,
-                    mean_fwhm_1_arc, self.config["FIELD_OF_VIEW_1"],
                     combine_first_frames=raw)
             else:
+                raise NotImplementedError('init_dx, init_dy and init_angle must be defined in find_laser_alignment itself')
                 cube.find_laser_alignment(
                     init_dx, init_dy, self.config["INIT_ANGLE"])
         else:
@@ -2133,7 +1974,9 @@ class Orbs(Tools):
             tuning_parameters=self.tuning_parameters,
             indexer=self.indexer,
             instrument=self.instrument,
-            ncpus=self.ncpus)
+            ncpus=self.ncpus,
+            params=self.options,
+            config=self.config)
         
         perf = Performance(cube.cube_A, "Alternative merging process", 1,
                            instrument=self.instrument)
@@ -2168,8 +2011,8 @@ class Orbs(Tools):
             cube1, 1)
         del cube1
         
-        if "step_number" in self.options: 
-            step_number = self.options["step_number"]
+        if "step_nb" in self.options: 
+            step_number = self.options["step_nb"]
         else:
             raise StandardError("No step number given, check the option file")
             
@@ -2179,10 +2022,6 @@ class Orbs(Tools):
         interf_cube_path_2 = self.indexer.get_path(
             'merged.transformed_interfero_cube', err=True)
         
-        # get noise values
-        readout_noise_1, dark_current_level_1 = self.get_noise_values(1)
-        readout_noise_2, dark_current_level_2 = self.get_noise_values(2)
-
         self.indexer.set_file_group('merged')
         cube = InterferogramMerger(
             interf_cube_path_A=interf_cube_path_1,
@@ -2194,7 +2033,9 @@ class Orbs(Tools):
             tuning_parameters=self.tuning_parameters,
             indexer=self.indexer,
             instrument=self.instrument,
-            ncpus=self.ncpus)
+            ncpus=self.ncpus,
+            params=self.options,
+            config=self.config)
         
         perf = Performance(cube.cube_A, "Merging process", 1,
                            instrument=self.instrument)
@@ -2206,11 +2047,7 @@ class Orbs(Tools):
                    profile_name=self.config["PSF_PROFILE"],
                    moffat_beta=self.config["MOFFAT_BETA"],
                    compute_ext_light=(not self.options['no_sky']
-                                      and self.config['EXT_ILLUMINATION']),
-                   readout_noise_1=readout_noise_1,
-                   dark_current_level_1=dark_current_level_1,
-                   readout_noise_2=readout_noise_2,
-                   dark_current_level_2=dark_current_level_2)
+                                      and self.config['EXT_ILLUMINATION']))
         
         perf_stats = perf.print_stats()
         del perf, cube
@@ -2331,7 +2168,9 @@ class Orbs(Tools):
         self.options["camera_number"] = camera_number
         self.indexer.set_file_group(camera_number)
         cube = Interferogram(
-            interf_cube_path, 
+            interf_cube_path,
+            params=self.options,
+            config=self.config,        
             data_prefix=self._get_data_prefix(camera_number),
             project_header = self._get_project_fits_header(
                 camera_number),
@@ -2349,8 +2188,8 @@ class Orbs(Tools):
             raw_cube, camera_number)
         del raw_cube
 
-        if "step_number" in self.options: 
-            step_number = self.options["step_number"]
+        if "step_nb" in self.options: 
+            step_number = self.options["step_nb"]
         else:
             warnings.warn("No step number given, check the option file")
             
@@ -2478,7 +2317,9 @@ class Orbs(Tools):
         self.indexer.set_file_group(camera_number)
 
         cube = Interferogram(
-            cube_path, 
+            cube_path,
+            params=self.options,
+            config=self.config,        
             data_prefix=self._get_data_prefix(camera_number),
             project_header = self._get_project_fits_header(
                 camera_number),
@@ -2554,16 +2395,6 @@ class Orbs(Tools):
         return perf_stats
 
 
-    def compute_phase(self, camera_number):
-        """Create a phase cube.
-
-        :param camera_number: Camera number (must be 1, 2 or 0 for
-          merged data)   
-        """
-        self.compute_spectrum(camera_number, apodization_function='learner95', 
-                              phase_correction=False, phase_cube=True)
-
-
     def compute_phase_maps(self, camera_number, fit=True,
                            no_star=False):
         
@@ -2628,7 +2459,10 @@ class Orbs(Tools):
             
         self.indexer.set_file_group(camera_number)
         cube = Interferogram(
-            interfero_cube_path, silent_init=True,
+            interfero_cube_path,
+            params=self.options,
+            config=self.config,
+            silent_init=True,
             instrument=self.instrument,
             overwrite=self.overwrite,
             tuning_parameters=self.tuning_parameters,
@@ -2720,139 +2554,7 @@ class Orbs(Tools):
             
         perf_stats = perf.print_stats()
         del perf
-        return perf_stats
-
-
-    def compute_phase_maps_from_external_source(self, camera_number):    
-        """Create phase maps from an external source.
-
-        This function is useful to correct for phase of cubes with a
-        low continuum (e.g. extended sources like Galactic HII region
-        covering al the field of view)
-
-        .. warning:: Must be used only if compute_phase_maps is not
-          working well enough. Flux error and phase correction errors
-          will be much higher with this function.
-
-        * Order 0 phase map must come from another cube.
-
-        * Order 1 coefficient is computed from stars in the cube.
-
-        Phase maps are maps of the coefficients of a polynomial fit to
-        the phase. The dimensions of a phase map are the same as the
-        dimensions of the frames of the phase cube.
-        
-        :param camera_number: Camera number (must be 1, 2 or 0 for
-          merged data).
-        
-        .. seealso:: :meth:`process.Phase.create_phase_maps`
-
-        .. warning:: This function cannot be used with SpIOMM
-        """
-        BINNING = 20
-        
-        if self.config['INSTRUMENT_NAME'] == 'SpIOMM':
-            raise StandardError('This function cannot be used with SpIOMM')
-        
-        if "step" in self.options:
-            step = self.options["step"]
-        else: 
-            raise StandardError("No step size given, check the option file")
-            
-        if "order" in self.options:
-            order = self.options["order"]
-        else: 
-            raise StandardError("No folding order given, check the option file")
-
-        if 'zpd_index' in self.options:
-            zpd_index = self.options['zpd_index']
-        else:
-            zpd_index = None
-            
-        # get calibration laser map path
-        calibration_laser_map_path = self._get_calibration_laser_map(
-            camera_number)
-
-        interfero_cube_path = self._get_interfero_cube_path(
-                camera_number, corrected=True)
-
-        self.indexer.set_file_group(camera_number)
-        cube = Interferogram(
-            interfero_cube_path, silent_init=True,
-            instrument=self.instrument,
-            overwrite=self.overwrite,
-            tuning_parameters=self.tuning_parameters,
-            indexer=self.indexer,
-            project_header = self._get_project_fits_header(
-                camera_number),
-                             data_prefix=self._get_data_prefix(camera_number),
-            calibration_laser_header=self._get_calibration_laser_fits_header(),
-            ncpus=self.ncpus)
-        
-        perf = Performance(cube, "Phase map creation", camera_number,
-                           instrument=self.instrument)
-
-        fit_order = self._get_phase_fit_order()
-
-        cube.create_phase_maps_from_external_source(
-            self.options['phase_map_order_0_path'],
-            self.options['phase_map_order_1_path'],
-            self.options['step'], self.options['order'],
-            zpd_index, self.options["filter_name"],
-            calibration_laser_map_path,
-            self.config["CALIB_NM_LASER"],
-            binning=BINNING)
-
-        # unwrap and fit phase maps
-        
-        # create phase maps lists
-        phase_map_path_list = [cube._get_phase_map_path(0),
-                               cube._get_phase_map_path(1)]
-        err_map_path_list =  [self.options['phase_map_order_0_path'],#Hack
-                              self.options['phase_map_order_0_path']]#Hack
-
-        # init PhaseMaps (only used to get the right path to write
-        # phase maps)
-        phasemaps = PhaseMaps(
-            phase_map_path_list,
-            err_map_path_list,
-            cube.dimx, cube.dimy,
-            instrument=self.instrument,
-            overwrite=self.overwrite,
-            tuning_parameters=self.tuning_parameters,
-            indexer=self.indexer,
-            project_header = self._get_project_fits_header(
-                camera_number),
-            data_prefix=self._get_data_prefix(camera_number),
-            calibration_laser_header=self._get_calibration_laser_fits_header(),
-            ncpus=self.ncpus)
-
-        # unbin phase maps
-        pm0_unbin = orb.cutils.unbin_image(
-            self.read_fits(phase_map_path_list[0]), cube.dimx, cube.dimy)
-        pm1_unbin = orb.cutils.unbin_image(
-            self.read_fits(phase_map_path_list[1]), cube.dimx, cube.dimy)
-           
-        # write unbinned phase maps (hack on PhaseMaps class ;)
-        fitted_map_path = phasemaps._get_phase_map_path(
-            0, phase_map_type='fitted')
-        self.write_fits(fitted_map_path, pm0_unbin,
-                        fits_header= phasemaps._get_phase_map_header(
-                            0, phase_map_type='fitted'),
-                        overwrite=self.overwrite)
-        self.indexer['phase_map_fitted_0'] = fitted_map_path
-                
-        fitted_map_path = phasemaps._get_phase_map_path(
-            1, phase_map_type='fitted')
-        self.write_fits(fitted_map_path, pm1_unbin,
-                        fits_header= phasemaps._get_phase_map_header(
-                            1, phase_map_type='fitted'),
-                        overwrite=self.overwrite)
-        self.indexer['phase_map_fitted_1'] = fitted_map_path
-
-        perf_stats = perf.print_stats()
-        del perf
-        return perf_stats
+        return perf_stats                
 
     def _find_standard_star(self, camera_number):
         """Register cube to find standard star position
@@ -2969,7 +2671,9 @@ class Orbs(Tools):
 
         self.indexer.set_file_group(camera_number)
         spectrum = Spectrum(
-            spectrum_cube_path, 
+            spectrum_cube_path,
+            params=self.options,
+            config=self.config,
             data_prefix=self._get_data_prefix(camera_number),
             project_header = self._get_project_fits_header(
                 camera_number),
@@ -3083,7 +2787,7 @@ class Orbs(Tools):
             step, order,
             calibration_laser_map_path,
             self.config['CALIB_NM_LASER'],
-            self.options['exp_time'],
+            self.options['exposure_time'],
             correct_wcs=correct_wcs,
             flux_calibration_vector=(
                 flux_calibration_axis,
@@ -3156,7 +2860,9 @@ class Orbs(Tools):
             tuning_parameters=self.tuning_parameters,
             indexer=self.indexer,
             instrument=self.instrument,
-            ncpus=self.ncpus)
+            ncpus=self.ncpus,
+            params=self.options,
+            config=self.config)
 
         perf = Performance(sex.cube_B, "Extraction of source interferograms", 0,
                            instrument=self.instrument)
@@ -3288,7 +2994,9 @@ class Orbs(Tools):
             tuning_parameters=self.tuning_parameters,
             indexer=self.indexer,
             instrument=self.instrument,
-            ncpus=self.ncpus)
+            ncpus=self.ncpus,
+            params=self.options,
+            config=self.config)
 
         sex.compute_source_spectra(
             source_list,
