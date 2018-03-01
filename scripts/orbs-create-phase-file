@@ -122,8 +122,8 @@ def old_unwrap_phase_cube(final_phase_cube):
     
 def main(args):
 
-    #import pydevd
-    #pydevd.settrace('localhost', port=8888, stdoutToServer=True, stderrToServer=True)
+    import pydevd
+    pydevd.settrace('localhost', port=8888, stdoutToServer=True, stderrToServer=True)
 
     if not (0 < args.x < 1): raise Exception('x must be between 0 and 1')
     if not (0 < args.y < 1): raise Exception('y must be between 0 and 1')
@@ -219,7 +219,7 @@ def main(args):
             # non-calibrated phase cube
             iphase = np.unwrap(np.angle(ifft))
             ## This was missing before...
-            if int(order) & 1: iphase = iphase[::-1]
+            ## if int(order) & 1: iphase = iphase[::-1] ## already done in utils.fft.transform_interferogram
             ##
             w, irange = orb.utils.filters.compute_weights(
                 calib_map[ii,ij], nm_laser, dimz,
@@ -257,8 +257,8 @@ def main(args):
     #     :,:,dimz/2-dx:dimz/2+dx+1], axis=2)
     # final_phase_cube = (final_phase_cube.T - median_frame.T).T
 
-    ## orb.utils.io.write_fits(
-    ##     'final_phase_cube.fits', final_phase_cube, overwrite=True)
+    orb.utils.io.write_fits(
+        'final_phase_cube.fits', final_phase_cube, overwrite=True)
     ## orb.utils.io.write_fits(
     ##     'spectrum.fits', spectrum, overwrite=True)
     ## final_phase_cube = orb.utils.io.read_fits('final_phase_cube.fits')
@@ -269,7 +269,7 @@ def main(args):
 
     max_angle = np.percentile(calib_map, 99.99)
     min_angle = np.percentile(calib_map, 0.01)
-    angles = np.linspace(min_angle, max_angle, 50)
+    angles = np.linspace(min_angle, max_angle, 30)
     phases = list()
     phases_err_min = list()
     phases_err_max = list()
