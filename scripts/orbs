@@ -214,8 +214,8 @@ def start(args, resume=False):
     elif args.single2: cams = 'single2'
 
     # special targets are mutually exclusive
-    if np.sum([args.flat, args.standard, args.stars, args.laser, args.raw, args.sources, args.extphase, args.extphase, args.phasecube]) > 1:
-        raise StandardError("only one special target (flat, standard, laser, stars, raw, sources, extphase) can be choosen")
+    if np.sum([args.flat, args.standard, args.stars, args.laser, args.raw, args.sources, args.extphase, args.nophase, args.phasecube]) > 1:
+        raise StandardError("only one special target (flat, standard, laser, stars, raw, sources, extphase, nophase, phasecube) can be choosen")
         sys.exit(2)
     if args.flat: target = 'flat'
     elif args.standard: target = 'standard'
