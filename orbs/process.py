@@ -2866,6 +2866,13 @@ class Interferogram(HDFCube):
                 int(0.02*self.dimx),
                 0, self.dimx,
                 0, self.dimy)
+            ### DEBUG
+            # xmin = 213-5
+            # xmax = 213+5
+            # ymin = 1416-5
+            # ymax = 1416+5
+            ### DEBUG
+
             mean_interf = bn.nanmedian(bn.nanmedian(
                 self.get_data(xmin, xmax, ymin, ymax, 0, self.dimz),
                 axis=0), axis=0)
@@ -2900,7 +2907,11 @@ class Interferogram(HDFCube):
                 return_complex=True, high_order_phase=mean_high_phase)
 
             # Write (complex) mean spectrum to disk. Fast/simple check of phase correction quality
-            self.write_fits(self._data_path_hdr+'mean_spectrum.fits',mean_spectrum,overwrite=self.overwrite)
+            # Complex array needs to be recast to real data as FITS format does not support complex numbers
+            mean_spectrum_flt = np.ndarray((mean_spectrum.size,2),dtype=np.float32)
+            mean_spectrum_flt[:,0] = mean_spectrum.real
+            mean_spectrum_flt[:,1] = mean_spectrum.imag
+            self.write_fits(self._data_path_hdr+'mean_spectrum.fits',mean_spectrum_flt,overwrite=self.overwrite)
 
             if np.nanmean(mean_spectrum.real) < 0:
                 logging.info("Negative polarity : 0th order phase map has been corrected (add PI)")
@@ -2963,7 +2974,7 @@ class Interferogram(HDFCube):
             iquad_data = iquad_data.astype(complex)
 
             ## DEBUG
-            #for ii in range(0, x_max - x_min):
+            # for ii in range(0, x_max - x_min):
             #    iquad_data[ii,:,:] = _compute_spectrum_in_column(nm_laser,calibration_laser_map[x_min+ii,y_min:y_max],
             #                                                     step,order,iquad_data[ii,:,:].real, window_type,
             #                                                     zpd_shift,phase_correction,wave_calibration,

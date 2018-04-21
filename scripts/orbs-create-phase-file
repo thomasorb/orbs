@@ -122,8 +122,8 @@ def old_unwrap_phase_cube(final_phase_cube):
     
 def main(args):
 
-    import pydevd
-    pydevd.settrace('localhost', port=8888, stdoutToServer=True, stderrToServer=True)
+    # import pydevd
+    # pydevd.settrace('localhost', port=8888, stdoutToServer=True, stderrToServer=True)
 
     if not (0 < args.x < 1): raise Exception('x must be between 0 and 1')
     if not (0 < args.y < 1): raise Exception('y must be between 0 and 1')
