@@ -65,8 +65,12 @@ def check_option_file(path):
 def unwrap_phase_cube(final_phase_cube):
     # another hack pending a good solution...
 
+    OUTLIER_REJECT = 1e10
     sh = final_phase_cube.shape
+    # Make some cleanup in case we get really high outliers
+    final_phase_cube[np.abs(final_phase_cube)>OUTLIER_REJECT]=np.nan
 
+    # Unwrap first along wavenumber axis, for each LOS
     for i in range(sh[1]):
         for j in range(sh[2]):
             los=final_phase_cube[:,i,j]
@@ -118,17 +122,17 @@ def old_unwrap_phase_cube(final_phase_cube):
     
 def main(args):
 
-    import pydevd
-    pydevd.settrace('localhost', port=8888, stdoutToServer=True, stderrToServer=True)
+    # import pydevd
+    # pydevd.settrace('localhost', port=8888, stdoutToServer=True, stderrToServer=True)
 
     if not (0 < args.x < 1): raise Exception('x must be between 0 and 1')
     if not (0 < args.y < 1): raise Exception('y must be between 0 and 1')
     if not (0 < args.s <= 1): raise Exception('s must be between 0 and 1')
 
     if args.instrument_mode == 'sitelle':
-        config_file_name = 'config.sitelle.orb'
+        instrument = 'sitelle'
     if args.instrument_mode == 'spiomm':
-        config_file_name = 'config.spiomm.orb'
+        instrument = 'spiomm'
 
     if args.camera == 1:
         cams = 'single1'
@@ -145,7 +149,7 @@ def main(args):
     option_file_path = check_option_file(args.option_file_path)
     project = Orbs(option_file_path[0], 'object', cams,
                    silent=True, fast_init=True,
-                   config_file_name=config_file_name,
+                   instrument=instrument,
                    raw_data_files_check=False)
 
     interf_cube = orb.utils.io.read_fits(project.indexer.get_path(
@@ -214,13 +218,15 @@ def main(args):
             # *cos(theta): i.e. they fall in the same channel in
             # non-calibrated phase cube
             iphase = np.unwrap(np.angle(ifft))
-
+            ## This was missing before...
+            ## if int(order) & 1: iphase = iphase[::-1] ## already done in utils.fft.transform_interferogram
+            ##
             w, irange = orb.utils.filters.compute_weights(
                 calib_map[ii,ij], nm_laser, dimz,
                 step, order, 0.15, filter_min_cm1, filter_max_cm1)
 
-            iphase[:irange[0]] = np.nan
-            iphase[irange[1]:] = np.nan
+            iphase[:int(irange[0])] = np.nan
+            iphase[int(irange[1]):] = np.nan
 
             final_phase_cube[ii-xmin, ij-ymin, :] = iphase
 
@@ -251,8 +257,8 @@ def main(args):
     #     :,:,dimz/2-dx:dimz/2+dx+1], axis=2)
     # final_phase_cube = (final_phase_cube.T - median_frame.T).T
 
-    ## orb.utils.io.write_fits(
-    ##     'final_phase_cube.fits', final_phase_cube, overwrite=True)
+    orb.utils.io.write_fits(
+        'final_phase_cube.fits', final_phase_cube, overwrite=True)
     ## orb.utils.io.write_fits(
     ##     'spectrum.fits', spectrum, overwrite=True)
     ## final_phase_cube = orb.utils.io.read_fits('final_phase_cube.fits')
@@ -263,7 +269,7 @@ def main(args):
 
     max_angle = np.percentile(calib_map, 99.99)
     min_angle = np.percentile(calib_map, 0.01)
-    angles = np.linspace(min_angle, max_angle, 50)
+    angles = np.linspace(min_angle, max_angle, 30)
     phases = list()
     phases_err_min = list()
     phases_err_max = list()

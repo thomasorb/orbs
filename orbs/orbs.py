@@ -393,7 +393,7 @@ class Orbs(Tools):
     option_file_path = None
     """Path to the option file"""
 
-    targets = ['object', 'flat', 'standard', 'laser', 'nostar', 'raw', 'sources', 'extphase', 'nophase']
+    targets = ['object', 'flat', 'standard', 'laser', 'nostar', 'raw', 'sources', 'extphase', 'nophase', 'phasecube']
     """Possible target types"""
     
     target = None
@@ -1495,7 +1495,8 @@ class Orbs(Tools):
 
 
     def start_reduction(self, apodization_function=None, start_step=0,
-                        phase_correction=True, alt_merge=False,
+                        phase_correction=True, phase_cube=False,
+                        alt_merge=False,
                         save_as_quads=False,
                         add_frameB=True, filter_correction=True,
                         wcs_calibration=True):
@@ -1513,6 +1514,9 @@ class Orbs(Tools):
         :param phase_correction: (Optional) If False, no phase
           correction will be done and the resulting spectrum will be
           the absolute value of the complex spectrum (default True).
+
+        :param phase_cube: (Optional) If True, the phase cube will
+          be computed instead of the spectrum (default False).
 
         :param alt_merge: (Optional) If True, alternative merging
           process will be choosen. Star photometry is not used during

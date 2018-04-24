@@ -38,6 +38,8 @@ import orb.utils.spectrum
 import orb.utils.image
 import orb.utils.misc
 import orb.utils.photometry
+import orb.cutils
+import orb.fit
 
 import orb.astrometry
 import orb.utils.astrometry
@@ -2035,7 +2037,7 @@ class CalibrationLaser(HDFCube):
                     max_array_column[ij] = 1. / orb.cutils.fast_pix2w(
                         np.array([max_index_fit], dtype=float),
                         cm1_axis_min, cm1_axis_step) * 1e7
-                    if 'lines-params-err' in fitp:
+                    if 'lines_params_err' in fitp:
                         fitparams_column[ij,:] = np.array(
                             list(fitp['lines_params'][0])
                             + list(fitp['lines_params_err'][0]))
@@ -2112,6 +2114,7 @@ class CalibrationLaser(HDFCube):
                              "numpy as np",
                              "math",
                              "import orb.utils.fft",
+                             "import orb.cutils",
                              "import orb.fit"))) 
                         for ijob in range(ncpus)]
 
@@ -2863,6 +2866,13 @@ class Interferogram(HDFCube):
                 int(0.02*self.dimx),
                 0, self.dimx,
                 0, self.dimy)
+            ### DEBUG
+            # xmin = 213-5
+            # xmax = 213+5
+            # ymin = 1416-5
+            # ymax = 1416+5
+            ### DEBUG
+
             mean_interf = bn.nanmedian(bn.nanmedian(
                 self.get_data(xmin, xmax, ymin, ymax, 0, self.dimz),
                 axis=0), axis=0)
@@ -2895,7 +2905,14 @@ class Interferogram(HDFCube):
                 ext_phase=mean_phase_vector,
                 return_phase=False, balanced=balanced, wavenumber=wavenumber,
                 return_complex=True, high_order_phase=mean_high_phase)
-            
+
+            # Write (complex) mean spectrum to disk. Fast/simple check of phase correction quality
+            # Complex array needs to be recast to real data as FITS format does not support complex numbers
+            mean_spectrum_flt = np.ndarray((mean_spectrum.size,2),dtype=np.float32)
+            mean_spectrum_flt[:,0] = mean_spectrum.real
+            mean_spectrum_flt[:,1] = mean_spectrum.imag
+            self.write_fits(self._data_path_hdr+'mean_spectrum.fits',mean_spectrum_flt,overwrite=self.overwrite)
+
             if np.nanmean(mean_spectrum.real) < 0:
                 logging.info("Negative polarity : 0th order phase map has been corrected (add PI)")
                 phase_maps[0] += math.pi
@@ -2955,7 +2972,16 @@ class Interferogram(HDFCube):
                                        y_min, y_max, 
                                        0, self.dimz)
             iquad_data = iquad_data.astype(complex)
-                
+
+            ## DEBUG
+            # for ii in range(0, x_max - x_min):
+            #    iquad_data[ii,:,:] = _compute_spectrum_in_column(nm_laser,calibration_laser_map[x_min+ii,y_min:y_max],
+            #                                                     step,order,iquad_data[ii,:,:].real, window_type,
+            #                                                     zpd_shift,phase_correction,wave_calibration,
+            #                                                     bad_frames_vector,get_phase_map_cols(phase_maps,x_min+ii,y_min,y_max),
+            #                                                     phase_cube,balanced,filter_min,filter_max,fringes,wavenumber,phf)
+            ## DEBUG
+
             # multi-processing server init
             job_server, ncpus = self._init_pp_server()
             progress = ProgressBar(x_max - x_min)
@@ -3077,6 +3103,7 @@ class Interferogram(HDFCube):
             fit_coeffs_col = np.empty((cube_col.shape[0], fit_order+1),
                                       dtype=float)
             fit_err_col = np.empty(cube_col.shape[0], dtype=float)
+            phase_col.fill(np.nan)
             fit_coeffs_col.fill(np.nan)
             fit_err_col.fill(np.nan)
             
@@ -3096,7 +3123,7 @@ class Interferogram(HDFCube):
                 if (ifft is not None) and (not np.all(np.isnan(ifft))):
                 
                     iphase = np.unwrap(np.angle(ifft))
-                    if int(order) & 1: iphase = iphase[::-1]
+                    # if int(order) & 1: iphase = iphase[::-1] ## Already reversed in utils.fft.transform_interferogram
 
                     phase_col[ij,:] = np.copy(iphase)
 
@@ -3263,12 +3290,13 @@ class Interferogram(HDFCube):
         fit_coeffs_map.fill(np.nan)
         fit_err_map.fill(np.nan)
 
+        ## DEBUG
         # for ii in range(cube_bin.shape[0]):
         #     (fit_coeffs_map[ii,:,:],fit_err_map[ii,:],phase_cube[ii,:,:]) = \
         #         fit_phase_in_column(cube_bin[ii,:,:], step, order, zpd_shift,
         #                             calibration_laser_map[ii,:], filter_min_cm1,
         #                             filter_max_cm1, nm_laser, fit_order, phf)
-        #
+        ## DEBUG
 
         job_server, ncpus = self._init_pp_server()
         progress = ProgressBar(cube_bin.shape[0])
@@ -3554,16 +3582,19 @@ class Interferogram(HDFCube):
             self._get_binned_interferogram_cube_path())
 
         # 3D optimization
-        params_fit = orb.utils.fft.optimize_phase3d(
-            cube_bin, step, order, zpd_shift,
-            calibration_laser_map, nm_laser,
-            phf,
-            pm0=np.copy(phase_map_order_0),
-            pm1=np.copy(phase_map_order_1))
+        #params_fit = orb.utils.fft.optimize_phase3d(
+        #    cube_bin, step, order, zpd_shift,
+        #    calibration_laser_map, nm_laser,
+        #    phf,
+        #    pm0=np.copy(phase_map_order_0),
+        #    pm1=np.copy(phase_map_order_1))
         
-        order0_map = params_fit[0] + phase_map_order_0
-        order1_map = params_fit[1] + phase_map_order_1 / self.dimz
-        
+        #order0_map = params_fit[0] + phase_map_order_0
+        #order1_map = params_fit[1] + phase_map_order_1 / self.dimz
+
+        order0_map = phase_map_order_0
+        order1_map = phase_map_order_1 / self.dimz
+
         # write phase map order 0
         self.write_fits(self._get_phase_map_path(0),
                         order0_map,
@@ -4725,7 +4756,7 @@ class InterferogramMerger(Tools):
         ext_zpd_min = zpd_index - int(EXT_ZPD_SIZE * step_number / 2.)
         if ext_zpd_min < 0: ext_zpd_min = 0
         ext_zpd_max = zpd_index + int(EXT_ZPD_SIZE * step_number / 2.) + 1
-        if ext_zpd_max > self.cube_A.dimz:
+        if ext_zpd_max >= self.cube_A.dimz:
             ext_zpd_max = self.cube_A.dimz - 1
 
         photom_A_nozpd = np.copy(photom_A)
@@ -5642,7 +5673,7 @@ class Spectrum(HDFCube):
             """
             
             """
-            INTERP_POWER = 30 * output_sz_coeff
+            INTERP_POWER = 30 * output_sz_coeff ## * 5 ###### DEBUG FACTOR 5
             ZP_LENGTH = orb.utils.fft.next_power_of_two(
                 spectrum_col.shape[1] * INTERP_POWER)
 
@@ -5693,6 +5724,7 @@ class Spectrum(HDFCube):
                         -center-int(interf_complex.shape[0]&1):]
                     interf_complex = np.copy(zp_interf)
                     spectrum_highres = np.fft.fft(interf_complex).real
+                    ### spectrum_highres = np.fft.fft(interf_complex) ### DEBUG
                 else:
                     spectrum_highres = np.copy(ispectrum)
 
@@ -5746,7 +5778,7 @@ class Spectrum(HDFCube):
                     result_col[icol,:] = spectrum_highres
 
             return result_col.real
-
+            ### return result_col ### DEBUG
         
         def get_mean_scale_map(ref_scale_map, spectrum_scale_map):
             
@@ -5947,6 +5979,18 @@ class Spectrum(HDFCube):
             ncpus_max = int(ncpus)
             progress = ProgressBar(int((x_max-x_min)/ncpus_max))
 
+            # ii = 0 ## np.int((x_max-x_min)/2) #### DEBUG
+            # testit = _calibrate_spectrum_column(iquad_data[ii,:,:self.dimz],
+            #                                     filter_function,
+            #                                     filter_min, filter_max,
+            #                                     flux_calibration_function,
+            #                                     exposure_time,
+            #                                     iquad_calibration_laser_map[ii,:],
+            #                                     nm_laser, step, order, wavenumber,
+            #                                     spectral_calibration,
+            #                                     base_axis_correction_coeff,
+            #                                     OUTPUT_SZ_COEFF)
+
             for ii in range(0, x_max-x_min, ncpus):
                 progress.update(int(ii/ncpus_max), 
                                 info="quad : %d, column : %d"%(iquad + 1, ii))
@@ -5989,6 +6033,7 @@ class Spectrum(HDFCube):
                 iquad+1, self.config.QUAD_NB))
             write_start_time = time.time()
             out_cube.write_quad(iquad, data=iquad_data.real)
+            ### out_cube.write_quad(iquad, data=iquad_data, force_float32=False, force_complex64=True) ### DEBUG
             logging.info('Quad {}/{} written in {:.2f} s'.format(
                 iquad+1, self.config.QUAD_NB, time.time() - write_start_time))
             
@@ -6636,7 +6681,9 @@ class SourceExtractor(InterferogramMerger):
         
         # get high order phase
         if filter_name is not None:
-            phf = PhaseFile(filter_name)
+            phf = PhaseFile(filter_name,
+                            instrument=self.instrument,
+                            ncpus=self.ncpus)
             logging.info('Phase file: {}'.format(phf.improved_path))
             
         logging.info("Apodization function: %s"%apodization_function)

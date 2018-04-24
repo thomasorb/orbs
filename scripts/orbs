@@ -214,10 +214,12 @@ def start(args, resume=False):
     elif args.single2: cams = 'single2'
 
     # special targets are mutually exclusive
-    if np.sum([args.flat, args.standard, args.stars, args.laser, args.raw, args.sources, args.extphase]) > 1:
-        raise StandardError("only one special target (flat, standard, laser, stars, raw, sources, extphase) can be choosen")
+    if np.sum([args.flat, args.standard, args.stars, args.laser, args.raw, args.sources, args.extphase, args.nophase, args.phasecube]) > 1:
+        raise StandardError("only one special target (flat, standard, laser, stars, raw, sources, extphase, nophase, phasecube) can be choosen")
         sys.exit(2)
-    if args.flat: target = 'flat'
+    if args.flat: 
+	target = 'flat'
+	args.nophase = True
     elif args.standard: target = 'standard'
     elif args.laser: target = 'laser'
     elif args.stars: target = 'stars'
@@ -228,6 +230,7 @@ def start(args, resume=False):
     elif args.sources: target = 'sources'
     elif args.extphase: target = 'extphase'
     elif args.nophase: target = 'nophase'
+    elif args.phasecube: target = 'phasecube'
 
 
     # check first if reduction can be resumed
@@ -275,6 +278,10 @@ def start(args, resume=False):
     if args.nophase is not False:
         logging.info(
             "No phase correction will be done")
+
+    if args.phasecube:
+        logging.info(
+            "Phase cube will be computed, not spectrum")
 
     if args.stars:
         logging.info(
@@ -360,6 +367,7 @@ def start(args, resume=False):
             start_step=args.start_step,
             save_as_quads=args.quadrants,
             phase_correction=not args.nophase,
+            phase_cube=args.phasecube,
             alt_merge=args.alt_merge,
             add_frameB=args.add_frameB,
             filter_correction=not args.nofilter,
@@ -497,6 +505,10 @@ def add_all_operations(instrument_parser, epilog, epilog_steps):
     group_spiomm.add_argument('--nophase', dest='nophase', action='store_true',
                               default=False,
                               help='(SpIOMM specific option) If this argument is set no phase correction will be done and the resulting spectrum will be the absolute value of the complex spectrum.')
+
+    group_spiomm.add_argument('--phasecube', dest='phasecube', action='store_true',
+                              default=False,
+                              help='(SpIOMM specific option) If this argument is set to True, a phase cube will be computed in place of the spectrum')
 
     group_spiomm.add_argument('--nocam2', dest='add_frameB',
                               action='store_false',
