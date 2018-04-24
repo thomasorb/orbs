@@ -489,7 +489,6 @@ class Orbs(Tools):
                                 overwrite=True,
                                 mask=image_mask)
 
-
                 self.options[option_key + '.hdf5'] = export_path
 
 
@@ -607,10 +606,12 @@ class Orbs(Tools):
         store_option_parameter('obs_date', 'OBSDATE', str)
         store_option_parameter('target_ra', 'TARGETR', str)
         if 'target_ra' in self.options:
-            self.options['target_ra'] = self.options['target_ra'].split(':')
+            self.options['target_ra'] = orb.utils.astrometry.ra2deg(
+                self.options['target_ra'].split(':'))
         store_option_parameter('target_dec', 'TARGETD', str)
         if 'target_dec' in self.options:
-            self.options['target_dec'] = self.options['target_dec'].split(':')
+            self.options['target_dec'] = orb.utils.astrometry.dec2deg(
+                self.options['target_dec'].split(':'))
         store_option_parameter('target_x', 'TARGETX', float)
         store_option_parameter('target_y', 'TARGETY', float)
         store_option_parameter('standard_path', 'STDPATH', str)
@@ -955,10 +956,14 @@ class Orbs(Tools):
             hdr.append(('STEPNB', self.options["step_nb"], 
                         'Number of steps'))
         if "target_ra" in self.options:
-            hdr.append(('TARGETR', ':'.join(self.options["target_ra"]), 
+            hdr.append(('TARGETR', orb.utils.astrometry.deg2ra(
+                self.options["target_ra"],
+                string=True),
                         'Target Right Ascension'))
         if "target_dec" in self.options:
-            hdr.append(('TARGETD', ':'.join(self.options["target_dec"]), 
+            hdr.append(('TARGETD', orb.utils.astrometry.deg2dec(
+                self.options["target_dec"],
+                string=True), 
                         'Target Declination'))
         if "target_x" in self.options:
             hdr.append(('TARGETX', self.options["target_x"], 
@@ -1175,24 +1180,10 @@ class Orbs(Tools):
         .. seealso:: :py:class:`orb.astrometry.Astrometry`
         """
 
-        if "target_ra" in self.options:
-            target_ra = orb.utils.astrometry.ra2deg(
-                self.options["target_ra"])
-        else: target_ra = None
-            
-        if "target_dec" in self.options:
-            target_dec = orb.utils.astrometry.dec2deg(
-                self.options["target_dec"])
-        else: target_dec = None
-        if "target_x" in self.options:
-            target_x = self.options["target_x"]
-        else: target_x = None
-        
-        if "target_y" in self.options:
-            target_y = self.options["target_y"]
-        else: target_y = None
+        cube.params['camera_index'] = camera_number
 
-        if target_x is not None and target_y is not None:
+        if 'target_x' in cube.params and 'target_y' in cube.params:
+            
             if camera_number == 2:
                 # get binning factor for each camera
                 if "bin_cam_1" in self.options: 
@@ -1204,6 +1195,7 @@ class Orbs(Tools):
                     bin_cam_2 = self.options["bin_cam_2"]
                 else:
                     raise StandardError("No binning for the camera 2 given")
+
                 # get initial shift
                 init_dx = self.config["INIT_DX"] / bin_cam_2
                 init_dy = self.config["INIT_DY"] / bin_cam_2
@@ -1213,35 +1205,35 @@ class Orbs(Tools):
                 xrc = cube.dimx / 2.
                 yrc = cube.dimy / 2.
                 
-                target_xy = orb.cutils.transform_A_to_B(
-                    target_x, target_y,
+                target_x, target_y = orb.cutils.transform_A_to_B(
+                    cube.params.target_x, cube.params.target_y,
                     init_dx, init_dy,
                     self.config["INIT_ANGLE"],
                     0., 0., xrc, yrc, zoom, zoom)
-               
-            else:
-                target_xy = [target_x, target_y]
                 
-        else:
-            target_xy = None
-
-        if target_ra is not None and target_dec is not None:
-            target_radec = [target_ra, target_dec]
-        else:
-            target_radec = None
-
+                cube.params['target_x'] = target_x
+                cube.params['target_y'] = target_y
+               
+                
+        wcs_rotation = self._get_wcs_rotation(camera_number)
         
-        if camera_number == 2:
-            wcs_rotation = (self.config["WCS_ROTATION"]
-                            - self.config["INIT_ANGLE"])
-        else:
-            wcs_rotation = self.config["WCS_ROTATION"]
-
+        cube.params['wcs_rotation'] = wcs_rotation
 
         # load SIP file in ORB's data/ folder
         sip = self.load_sip(self._get_sip_file_path(camera_number))
 
         return cube.get_astrometry(sip=sip)
+
+
+    def _get_wcs_rotation(self, camera_number):
+        """Return wcs rotation parameter, given the camera number"""
+        if camera_number == 2:
+            wcs_rotation = (self.config["WCS_ROTATION"]
+                            - self.config["INIT_ANGLE"])
+        else:
+            wcs_rotation = self.config["WCS_ROTATION"]
+        return wcs_rotation
+        
 
     def _get_interfero_cube_path(self, camera_number, corrected=False):
         """Return the path to the interferogram cube for each camera
@@ -1854,6 +1846,9 @@ class Orbs(Tools):
         else:
             ComputingClass = InterferogramMerger
 
+        params = dict(self.options) 
+        params['wcs_rotation'] = self._get_wcs_rotation(0)
+
         cube = ComputingClass(
             interf_cube_path_1, interf_cube_path_2,
             bin_A=bin_cam_1, bin_B=bin_cam_2,
@@ -1866,7 +1861,7 @@ class Orbs(Tools):
             indexer=self.indexer,
             instrument=self.instrument,
             ncpus=self.ncpus,
-            params=self.options,
+            params=params,
             config=self.config)
 
         # find alignment coefficients
@@ -2156,36 +2151,37 @@ class Orbs(Tools):
         return perf_stats
 
 
-    def _get_calibration_laser_map(self, camera_number):
-        """Return calibration laser map path.
+    # def _get_calibration_laser_map(self, camera_number):
+    #     """Return calibration laser map path.
 
-        :param camera_number: Camera number (can be 1, 2 or 0)
-        """
-        if 'calibration_laser_map_path' in self.options:
-            calibration_laser_map_path = self.options[
-                'calibration_laser_map_path']
-            logging.info('Using an external calibration laser map: %s'%(
-                calibration_laser_map_path))
+    #     :param camera_number: Camera number (can be 1, 2 or 0)
+    #     """
+        
+    #     if 'calibration_laser_map_path' in self.options:
+    #         calibration_laser_map_path = self.options[
+    #             'calibration_laser_map_path']
+    #         logging.info('Using an external calibration laser map: %s'%(
+    #             calibration_laser_map_path))
             
-        else:
-            if (camera_number == 0 or camera_number == 1):
-                calibration_laser_map_path = self.indexer[
-                    'cam1.calibration_laser_map']
-            elif camera_number == 2:
-                calibration_laser_map_path = self.indexer[
-                    'cam2.calibration_laser_map']
-            else:
-                raise StandardError("Camera number must be 0,1 or 2")
+    #     else:
+    #         if (camera_number == 0 or camera_number == 1):
+    #             calibration_laser_map_path = self.indexer[
+    #                 'cam1.calibration_laser_map']
+    #         elif camera_number == 2:
+    #             calibration_laser_map_path = self.indexer[
+    #                 'cam2.calibration_laser_map']
+    #         else:
+    #             raise StandardError("Camera number must be 0,1 or 2")
 
-        if calibration_laser_map_path is None:
-            warnings.warn("No calibration laser map found")
-            return None
+    #     if calibration_laser_map_path is None:
+    #         warnings.warn("No calibration laser map found")
+    #         return None
             
-        if not os.path.exists(calibration_laser_map_path):
-            warnings.warn("Calibration laser map not found ({} does not exist)".format(calibration_laser_map_path))
-            return None
+    #     if not os.path.exists(calibration_laser_map_path):
+    #         warnings.warn("Calibration laser map not found ({} does not exist)".format(calibration_laser_map_path))
+    #         return None
             
-        return calibration_laser_map_path
+    #     return calibration_laser_map_path
 
 
     def compute_spectrum(self, camera_number,
@@ -2382,7 +2378,9 @@ class Orbs(Tools):
         
         # standard image registration to find std star
         std_cube = HDFCube(std_path, ncpus=self.ncpus,
-                           instrument=self.instrument)
+                           instrument=self.instrument,
+                           params=self.options,
+                           config=self.config)
         std_astrom = self._init_astrometry(std_cube, camera_number)
         std_hdr = std_cube.get_frame_header(0) 
         std_ra, std_dec, std_pm_ra, std_pm_dec = self._get_standard_radec(
@@ -2447,39 +2445,16 @@ class Orbs(Tools):
 
         .. seealso:: :py:class:`process.Spectrum`
         """
-        if "step" in self.options:
-            step = self.options["step"]
-        else: 
-            raise StandardError("No step size given, check the option file")
-        if "order" in self.options:
-            order = self.options["order"]
-        else: 
-            raise StandardError("No folding order given, check the option file")
-                    
-        if "target_ra" in self.options:
-            target_ra = self.options["target_ra"]
-        else: target_ra = None
-            
-        if "target_dec" in self.options:
-            target_dec = self.options["target_dec"]
-        else: target_dec = None
+        for iopt in ['target_ra', 'target_dec', 'target_x', 'target_y']:
+            if iopt not in self.options:
+                raise Exception('{} must be in the options'.format(iopt))
         
-        if "target_x" in self.options:
-            target_x = self.options["target_x"]
-        else: target_x = None
         
-        if "target_y" in self.options:
-            target_y = self.options["target_y"]
-        else: target_y = None
-
-        
-        # get filter file
-        spectrum_cube_path = self.indexer.get_path(
-            'spectrum_cube', camera_number)
-
         self.indexer.set_file_group(camera_number)
+        
         spectrum = Spectrum(
-            spectrum_cube_path,
+            self.indexer.get_path(
+                'spectrum_cube', camera_number),
             params=self.options,
             config=self.config,
             data_prefix=self._get_data_prefix(camera_number),
@@ -2502,8 +2477,8 @@ class Orbs(Tools):
         ################
 
         # Get WCS
-        if (target_ra is None or target_dec is None
-            or target_x is None or target_y is None):
+        if (self.options['target_ra'] is None or self.options['target_dec'] is None
+            or self.options['target_x'] is None or self.options['target_y'] is None):
             warnings.warn("Some WCS options were not given. WCS correction cannot be done.")
             correct_wcs = None
         elif no_star:
@@ -2530,16 +2505,6 @@ class Orbs(Tools):
                 del exc_info
                 correct_wcs = None
 
-        # Get calibration laser map
-        calibration_laser_map_path = None
-        
-        if calibration_laser_map_path is None:
-            calibration_laser_map_path = self._get_calibration_laser_map(
-                camera_number)
-        
-        logging.info('Calibration laser map used: {}'.format(
-            calibration_laser_map_path))
-
 
         # Get flux calibration vector
         (flux_calibration_axis,
@@ -2550,7 +2515,7 @@ class Orbs(Tools):
             std_name = self._get_standard_name(std_path)
             (flux_calibration_axis,
              flux_calibration_vector) = spectrum.get_flux_calibration_vector(
-                std_path, std_name, self.options["filter_name"])
+                std_path, std_name)
         else:
             warnings.warn("Standard related options were not given or the name of the filter is unknown. Flux calibration vector cannot be computed")
 
@@ -2564,6 +2529,9 @@ class Orbs(Tools):
             # find the real star position
             std_x1, std_y1, fwhm_pix1 = self._find_standard_star(1)
             std_x2, std_y2, fwhm_pix2 = self._find_standard_star(2)
+            ## std_x1, std_y1 = (1099.417, 1034.814)
+            ## std_x2, std_y2 = (1102.676, 1027.210)
+            ## fwhm_pix1 = 4
             
             if std_x1 is not None and std_x2 is not None:
                 flux_calibration_coeff = spectrum.get_flux_calibration_coeff(
@@ -2572,30 +2540,18 @@ class Orbs(Tools):
                     std_name,
                     (std_x1, std_y1),
                     (std_x2, std_y2),
-                    fwhm_pix1,
-                    self.options['step'],
-                    self.options['order'],
-                    self.options["filter_name"],
-                    self._get_optics_file_path(self.options["filter_name"]),
-                    calibration_laser_map_path, 
-                    self.config['CALIB_NM_LASER'])
+                    fwhm_pix1)
     
         else:
             warnings.warn("Standard related options were not given or the name of the filter is unknown. Flux calibration coeff cannot be computed")
-
-        # Get wavelentgh calibration from phase cube (unsure)
-        ## warnings.warn('Calibration laser map taken from phase map fit (internal calibration laser map)')
-        ## calibration_laser_map_path = self.indexer.get_path(
-        ##     'phase_calibration_laser_map', camera_number)
-
             
         # Calibration
         spectrum.calibrate(
-            self.options["filter_name"],
-            step, order,
-            calibration_laser_map_path,
-            self.config['CALIB_NM_LASER'],
-            self.options['exposure_time'],
+            ## self.options["filter_name"],
+            ## step, order,
+            ## calibration_laser_map_path,
+            ## self.config['CALIB_NM_LASER'],
+            ## self.options['exposure_time'],
             correct_wcs=correct_wcs,
             flux_calibration_vector=(
                 flux_calibration_axis,
@@ -2897,7 +2853,9 @@ class Orbs(Tools):
                                                    camera_number)
         spectrum = HDFCube(spectrum_cube_path,
                            instrument=self.instrument,
-                           ncpus=self.ncpus)
+                           ncpus=self.ncpus,
+                           params=self.options,
+                           config=self.config)
         spectrum_header = spectrum.get_cube_header()
 
         if 'wavenumber' in self.options:
@@ -2930,8 +2888,11 @@ class Orbs(Tools):
             zpd_index = self.options['zpd_index']
         else:
             cube = HDFCube(self._get_interfero_cube_path(
-                camera_number, corrected=True), ncpus=self.ncpus,
-                           instrument=self.instrument)
+                camera_number, corrected=True), 
+                           cpus=self.ncpus,
+                           instrument=self.instrument,
+                           params=self.options,
+                           config=self.config)
             zpd_index = orb.utils.fft.find_zpd(
                 cube.get_zmedian(nozero=True))
             
@@ -2948,17 +2909,12 @@ class Orbs(Tools):
             camera_number, apod, wavenumber=wavenumber,
             spectral_calibration=self.options['spectral_calibration'])
 
-        # get calibration laser map
-        calibration_laser_map_path = self._get_calibration_laser_map(
-            camera_number)
-
         # get deep frame path
         deep_frame_path = self.indexer.get_path('deep_frame', camera_number)
 
         
         spectrum.export(spectrum_path, header=spectrum_header,
                         overwrite=self.overwrite, force_hdf5=True,
-                        calibration_laser_map_path=calibration_laser_map_path,
                         deep_frame_path=deep_frame_path)
 
     def export_standard_spectrum(self, camera_number, phase_correction=True,

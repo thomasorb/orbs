@@ -305,6 +305,10 @@ class PhaseMaps(orb.core.Tools):
         logging.info('Phase maps loaded : order {}, shape ({}, {}), binning {}'.format(
             len(self.phase_maps) - 1, self.dimx, self.dimy, self.binning))
 
+        self._compute_unbinned_maps()
+
+    def _compute_unbinned_maps(self):
+        """Compute unbinnned maps"""
         # unbin maps
         self.unbinned_maps = list()
         self.unbinned_maps_err = list()
@@ -373,12 +377,16 @@ class PhaseMaps(orb.core.Tools):
         for iorder in range(1, len(self.phase_maps)):
             self.phase_maps[iorder] = (np.ones_like(self.phase_maps[iorder])
                                        * np.nanmean(self.phase_maps[iorder]))
+        self._compute_unbinned_maps()
+
 
     def reverse_polarity(self):
         """Add pi to the order 0 phase map to reverse polarity of the
         corrected spectrum.
         """
         self.phase_maps[0] += np.pi
+        self._compute_unbinned_maps()
+
 
     def get_coeffs(self, x, y, unbin=False):
         """Return coeffs at position x, y in the maps. x, y are binned
