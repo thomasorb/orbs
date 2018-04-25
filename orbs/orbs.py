@@ -1965,6 +1965,9 @@ class Orbs(Tools):
             'merged.transformed_interfero_cube', err=True)
         
         self.indexer.set_file_group('merged')
+        params = dict(self.options) 
+        params['wcs_rotation'] = self._get_wcs_rotation(0)
+
         cube = InterferogramMerger(
             interf_cube_path_A=interf_cube_path_1,
             interf_cube_path_B=interf_cube_path_2,
@@ -1975,7 +1978,7 @@ class Orbs(Tools):
             indexer=self.indexer,
             instrument=self.instrument,
             ncpus=self.ncpus,
-            params=self.options,
+            params=params,
             config=self.config)
         
         perf = Performance(cube.cube_A, "Merging process", 1,
