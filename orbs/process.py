@@ -2062,8 +2062,8 @@ class Interferogram(HDFCube):
 
         :param poly_order: Order of the fitted polynomial
         """
-        logging.info('Computing phase maps up to order {}'.format(poly_order))
-
+        logging.info('Computing phase maps up to order {}'.format(poly_order))        
+        
         self.create_binned_interferogram_cube(binning)
 
         interf_cube = BinnedInterferogramCube(
@@ -2095,7 +2095,8 @@ class Interferogram(HDFCube):
             
             phase_cube = BinnedPhaseCube(
                 self.read_fits(self._get_binned_phase_cube_path()),
-                self.params, instrument=self.instrument)
+                self.params, instrument=self.instrument,
+                data_prefix=self._data_prefix)
 
             iphase_maps_path = phase_cube.polyfit(
                 poly_order, coeffs=poly_coeffs, suffix=suffix)

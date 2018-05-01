@@ -153,7 +153,7 @@ class BinnedPhaseCube(orb.core.OCube):
                         deg, coeffs=coeffs, return_coeffs=True)
                 except orb.utils.err.FitError:
                     logging.debug('fit error')
-            return coeffs_col, coeffs_err_col            
+            return coeffs_col, coeffs_err_col                  
 
         if not isinstance(polydeg, int): raise TypeError('polydeg must be an integer')
         if polydeg < 0: raise ValueError('polydeg must be >= 0')
