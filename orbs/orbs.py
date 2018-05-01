@@ -2266,7 +2266,7 @@ class Orbs(Tools):
                 apodization_function = float(apodization_function)
             except ValueError:
                 raise StandardError("Unrecognized apodization function. Please try a float or " + str(self._APODIZATION_FUNCTIONS))
-
+            
         # wavenumber option
         wavenumber = True # output always in cm-1 (calibration step
                           # transform the spectrum in nm if needed)
@@ -2469,7 +2469,7 @@ class Orbs(Tools):
             indexer=self.indexer,
             instrument=self.instrument,
             ncpus=self.ncpus)
-
+        
         perf = Performance(spectrum, "Spectrum calibration", camera_number,
                            instrument=self.instrument)
 
@@ -2550,11 +2550,6 @@ class Orbs(Tools):
             
         # Calibration
         spectrum.calibrate(
-            ## self.options["filter_name"],
-            ## step, order,
-            ## calibration_laser_map_path,
-            ## self.config['CALIB_NM_LASER'],
-            ## self.options['exposure_time'],
             correct_wcs=correct_wcs,
             flux_calibration_vector=(
                 flux_calibration_axis,

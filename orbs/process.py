@@ -2306,10 +2306,10 @@ class Interferogram(HDFCube):
             self.config.QUAD_NB,
             overwrite=self.overwrite)
 
-        ## out_cube.append_header(pyfits.Header(self._get_spectrum_header(
-        ##     self.get_base_axis().data, window_type, phase=phase_cube,
-        ##     wavenumber=wavenumber)))
-
+        out_cube.append_header(pyfits.Header(self._get_spectrum_header(
+            self.get_base_axis().data, window_type, phase=phase_cube,
+            wavenumber=wavenumber)))
+        
         def get_phase_maps_cols(phase_maps, _x, _y_min, _y_max):            
             # create phase column
             phase_maps_cols = np.empty((_y_max - _y_min, self.dimz), dtype=float)
@@ -4366,9 +4366,6 @@ class Spectrum(HDFCube):
         return hdr
         
     def calibrate(self,
-                  ## filter_name, step, order,
-                  ## calibration_laser_map_path, nm_laser,
-                  ## exposure_time,
                   correct_wcs=None,
                   flux_calibration_vector=None,
                   flux_calibration_coeff=None,
