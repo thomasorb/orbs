@@ -42,6 +42,7 @@ import numpy as np
 import xml.etree.ElementTree
 import logging
 import warnings
+import shutil
 
 import astropy
 import pp
@@ -1055,17 +1056,6 @@ class Orbs(Tools):
         return ('.' + os.sep + self.options['object_name']
                 + '_' +  self.options['filter_name'] + '.' + cam + '.')
 
-    def _get_flat_phase_map_path(self, camera_number, order):
-        """Return path to the order 0 phase map from a flat cube.
-        
-        :param camera_number: Camera number (must be 1, 2 or 0 for
-          merged data).
-
-        :param order: Phase map order
-        """
-        return (self._get_root_data_path_hdr(camera_number)
-                + 'flat_phase_map.order{}.fits'.format(order))
-
     def _get_calibration_laser_map_path(self, camera_number):
         """Return path to the calibration laser map from a flat cube.
         
@@ -1829,14 +1819,9 @@ class Orbs(Tools):
             cube1 = self._init_raw_data_cube(1)
             star_list_path_1, mean_fwhm_1_arc = self.detect_stars(
                 cube1, 0, saturation_threshold=self.config['SATURATION_THRESHOLD'])
-            del cube1
-            alignment_coeffs = None
-            
+            del cube1            
         else:
             star_list_path_1 = None
-                
-            if laser:
-                alignment_coeffs = None
             
 
         # Init InterferogramMerger class
@@ -1866,16 +1851,16 @@ class Orbs(Tools):
 
         # find alignment coefficients
         
-        if alignment_coeffs is None:
-            if not laser:
-                cube.find_alignment(
-                    star_list_path_1,
-                    combine_first_frames=raw)
-            else:
+        if not no_star:
+            cube.find_alignment(
+                star_list_path_1,
+                combine_first_frames=raw)
+        else:
+            if laser:
                 raise NotImplementedError('init_dx, init_dy and init_angle must be defined in find_laser_alignment itself')
                 cube.find_laser_alignment(
                     init_dx, init_dy, self.config["INIT_ANGLE"])
-        else:
+
             logging.info("Alignment parameters: {} {} {} {} {}".format(
                 cube.dx, cube.dy, cube.dr, cube.da, cube.db))
 
@@ -1911,18 +1896,20 @@ class Orbs(Tools):
 
         # Init class
         self.indexer.set_file_group('merged')
+
+        params = dict(self.options) 
+        params['wcs_rotation'] = self._get_wcs_rotation(0)
         cube = InterferogramMerger(
             interf_cube_path_A=interf_cube_path_1,
             interf_cube_path_B=interf_cube_path_2,
             data_prefix=self._get_data_prefix(0),
             project_header=self._get_project_fits_header(0),
-            alignment_coeffs=None,
             overwrite=self.overwrite,
             tuning_parameters=self.tuning_parameters,
             indexer=self.indexer,
             instrument=self.instrument,
             ncpus=self.ncpus,
-            params=self.options,
+            params=params,
             config=self.config)
         
         perf = Performance(cube.cube_A, "Alternative merging process", 1,
@@ -2806,35 +2793,15 @@ class Orbs(Tools):
           merged data).
         """
         logging.info('Writing flat phase maps to disk')
-        phase_map_path = self.indexer.get_path(
-            'phase_map_unwraped_0', camera_number)
-        phase_map_data, phase_map_hdr = self.read_fits(phase_map_path,
-                                                       return_header=True)
-        self.write_fits(self._get_flat_phase_map_path(camera_number, 0),
-                        phase_map_data, fits_header=phase_map_hdr,
-                        overwrite=self.overwrite)
 
-        # exported order 1 map is multiplied by the number of steps to
-        # make it more "portable"
-        phase_map_path = self.indexer.get_path(
-            'phase_map_unbinned_1', camera_number)
-        phase_map_data, phase_map_hdr = self.read_fits(
-            phase_map_path, return_header=True)
-        step_nb = self._init_raw_data_cube(1).dimz
-        phase_map_data *= step_nb
-        self.write_fits(self._get_flat_phase_map_path(camera_number, 1),
-                        phase_map_data, fits_header=phase_map_hdr,
-                        overwrite=self.overwrite)
+        phase_maps_path = self.indexer.get_path(
+            'phase_maps', file_group=camera_number)
 
-        
-        logging.info('Writing flat calibration map to disk')
-        calib_map_path = self.indexer.get_path(
-            'phase_calibration_laser_map', camera_number)
-        calib_map_data, calib_map_hdr = self.read_fits(calib_map_path,
-                                                       return_header=True)
-        self.write_fits(self._get_calibration_laser_map_path(camera_number),
-                        calib_map_data, fits_header=calib_map_hdr,
-                        overwrite=self.overwrite)
+        exported_path = ('.' + os.sep + os.path.split(phase_maps_path)[-1])
+
+        shutil.copyfile(phase_maps_path, exported_path)
+        logging.info('Flat phase maps exported at {}'.format(exported_path))
+
         
         
 
