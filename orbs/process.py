@@ -59,6 +59,202 @@ import warnings
 import logging
 import time
 
+
+#################################################
+#### CLASS CubeMask #############################
+#################################################
+class CubeMask(object):
+
+    def __init__(self, shape):
+        """Init CubeMask class
+
+        :param shape: Cube shape.
+        """
+        if not isinstance(shape, tuple) or isinstance(shape, list):
+            raise TypeError('shape must be a tuple or a list')
+        
+        if len(shape) != 3:
+            raise TypeError('shape must be of length 3')
+
+        for ishape in shape:
+            if not isinstance(ishape, int):
+                raise TypeError('shape must be a tuple of 3 int')
+            
+        self.shape = tuple(shape)
+        self.dimx, self.dimy, self.dimz = self.shape
+
+        # this step initializes the whole set of bad pixels list
+        self.reset()
+
+        logging.debug('Cube Mask initialized with shape {}'.format(self.shape))
+
+    def _get_empty_frame(self):
+        """Return an empty mask frame"""
+        try:
+            self._empty_frame.fill(False)
+        except AttributeError:
+            self._empty_frame = np.zeros((self.dimx, self.dimy), dtype=bool)
+        return self._empty_frame
+
+    def _get_cr_byframe_mask(self, index):
+        """Return mask of a frame as a list of pixels
+
+        :param index: frame index
+        """
+        if index not in range(self.dimz): raise ValueError('invalid frame index')
+
+        if self.cr_byframe[index] is not None:
+            return self.cr_byframe[index]
+        else:
+            return (np.array([], dtype=int), np.array([], dtype=int),)
+
+    def _get_cr_key(self, xy):
+        """Return the key corresponding to a given pixel position in the
+        cr_byspectrum dict.
+
+        :param xy: (x,y) coordinates
+        """
+        if np.size(xy) != 2: raise TypeError('pos must be a couple of integer values')
+        return '{},{}'.format(*xy)
+
+    def _get_cr_byspectrum_mask(self, xy):
+        """Return a mask of the cosmic rays at a given position in the
+        cr_byspectrum dict
+
+        :param xy: (x,y) coordinates
+        """
+        key = self._get_cr_key(xy)
+        if key in self.cr_byspectrum:
+            return self.cr_byspectrum[key]
+        else:
+            return None
+
+    def _set_cr_byspectrum_mask(self, xy, mask):
+        """Set the cr_byspectrum dict at a given position.
+
+        .. warning:: mask is not updated but overwritten.
+
+        :param xy: (x,y) coordinates
+
+        :param mask: mask in a numpy.nonzero format.
+        """
+        
+        self.cr_byspectrum[self._get_cr_key(xy)] = mask
+
+    def reset(self):
+        """Reset all bad pixels lists"""
+        self.cr_byframe = [None for i in range(self.dimz)]
+        self.cr_byspectrum = dict()
+        self.bad_frames = list()
+        self.bad_region = np.copy(self._get_empty_frame())
+        
+    def append(self, index, bad_pix_list):
+        """Append new bad pixels to a frame
+
+        :param index: frame index
+
+        :param bad_pix_list: list of bad pixels as returne by numpy.nonzero
+        """
+        if index not in range(self.dimz): raise ValueError('invalid frame index')
+        maskf = self._get_empty_frame()
+
+        # load previous bad pixels
+        maskf[self._get_cr_byframe_mask(index)] = True
+
+        # append new bad pixels to cr frame
+        maskf[bad_pix_list] = True
+        self.cr_byframe[index] = np.nonzero(maskf)
+
+        # append new bad pixels to cr spectra
+        masksp = np.zeros(self.dimz, dtype=bool)
+        bad_pixels = np.array(self.cr_byframe[index]).T
+        for ipix in range(bad_pixels.shape[0]):
+            ixy = bad_pixels[ipix,:]
+            imask = self._get_cr_byspectrum_mask(ixy)
+            if imask is not None:
+                masksp[imask] = True
+                
+            masksp[index] = True
+            self._set_cr_byspectrum_mask(ixy, np.nonzero(masksp))
+        
+    def load_cr_map(self, cr_map_path, alignment_parameters_path=None):
+        """Load a cosmic ray map. If the map comes from camera B, it must be
+        realigned with the corresponding alignment parameters which
+        can be found in the files of the reduction pipeline.
+
+        :param cr_map_path: Path to the cosmic ray map
+
+        :param alignment_parameters: Path to a file containing the
+          alignement parameters (dx, dy, dr, da, db, crx, cry, zx, zy)
+        """
+        cr_map_file = HDFCube(cr_map_path)
+        if cr_map_file.shape != self.shape:
+            raise TypeError('Cosmic ray map must have shape {} but has shape {}'.format(
+                self.shape, cr_map.shape))
+
+        if alignment_parameters_path is not None:
+            if not isinstance(alignment_parameters_path, str):
+                raise TypeError('alignment_parameters must be a path to an alignment parameters file')
+            dx, dy, dr, da, db, rcx, rcy, zx, zy =  orb.utils.io.read_fits(alignment_parameters_path)
+            
+        progress = ProgressBar(self.dimz)
+        for iframe in range(self.dimz):
+            progress.update(iframe, info='loading cr frame {}'.format(iframe))
+            masked_pixels = np.nonzero(cr_map_file.get_data_frame(iframe))
+            if alignment_parameters_path is not None:
+                masked_pixels = np.array(masked_pixels, dtype=float).T
+                for ipix in range(masked_pixels.shape[0]):                        
+                    masked_pixels[ipix,:] = orb.cutils.transform_B_to_A(
+                        masked_pixels[ipix, 0], masked_pixels[ipix, 1],
+                        dx, dy, dr, da, db, rcx, rcy, zx, zy)
+                    
+                masked_pixels = (masked_pixels[:,0].astype(int),
+                                 masked_pixels[:,1].astype(int))
+                
+            self.append(iframe, masked_pixels)
+        progress.end()
+
+
+    def load_ds9_region_file(self, reg_path):
+        """Load a ds9 region file as a mask"""
+        self.bad_region[orb.utils.misc.get_mask_from_ds9_region_file(
+            reg_path, (0, self.dimx), (0, self.dimy), integrate=True)] = True
+
+    def load_bad_frames(self, bad_frames_list):
+        """Load a list of bad frames indexes"""
+        orb.utils.validate.is_iterable(bad_frames_list)
+
+        if (np.any(bad_frames_list >= self.dimz)
+            or np.any(bad_frames_list < 0)):
+            raise ValueError('invalid bad frame index')
+
+        self.bad_frames = list(bad_frames_list)
+
+    def get_spectrum_mask(self, x, y):
+        """Return a mask along a spectrum taken a a given position
+        :param x: X position of the spectrum
+        :param y: Y position of the spectrum
+        """
+        orb.utils.validate.index(x, 0, self.dimx)
+        orb.utils.validate.index(y, 0, self.dimy)
+
+        mask = np.zeros(self.dimz, dtype=bool)
+
+        if self.bad_region[x,y]:
+            mask.fill(True)
+            return np.nonzero(mask)
+        
+        for ibad in self.bad_frames:
+            mask[ibad] = True
+
+        spmask = self._get_cr_byspectrum_mask([x,y])
+        if spmask is not None:
+            mask[spmask] = True
+            
+
+        return np.nonzero(mask)
+
+
 ##################################################
 #### CLASS RawData ###############################
 ##################################################
