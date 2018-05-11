@@ -144,7 +144,7 @@ class Orbs(Tools):
 
     :STDPATH: Path to the standard spectrum file
 
-    :PHASEMAP0: Path to the external phase map file
+    :PHASEMAPS: Path to the external phase map file
 
     :STDNAME: Name of the standard used for flux calibration
 
@@ -339,7 +339,7 @@ class Orbs(Tools):
           
         * standard_path: STDPATH
         
-        * phase_map_path: PHASEMAP0
+        * phase_map_path: PHASEMAPS
         
         * fringes: FRINGES
         
@@ -616,8 +616,7 @@ class Orbs(Tools):
         store_option_parameter('target_x', 'TARGETX', float)
         store_option_parameter('target_y', 'TARGETY', float)
         store_option_parameter('standard_path', 'STDPATH', str)
-        store_option_parameter('phase_map_order_0_path', 'PHASEMAP0', str)
-        store_option_parameter('phase_map_order_1_path', 'PHASEMAP1', str)
+        store_option_parameter('phase_maps_path', 'PHASEMAPS', str)
         store_option_parameter('star_list_path_1', 'STARLIST1', str)
         store_option_parameter('star_list_path_2', 'STARLIST2', str)
         store_option_parameter('apodization_function', 'APOD', str)
@@ -725,7 +724,6 @@ class Orbs(Tools):
             if 'calib_path_2.hdf5' in self.options:
                 self.options['image_list_path_2.hdf5'] = self.options[
                     'calib_path_2.hdf5']
-
 
         if 'image_list_path_1' in self.options:
             if fast_init:
@@ -2258,9 +2256,12 @@ class Orbs(Tools):
         wavenumber = True # output always in cm-1 (calibration step
                           # transform the spectrum in nm if needed)
 
-        phase_maps_path = self.indexer.get_path(
-            'phase_maps', file_group=camera_number)
-
+        if self.target == 'extphase':
+            phase_maps_path = self.options['phase_maps_path']
+        else:     
+            phase_maps_path = self.indexer.get_path(
+                'phase_maps', file_group=camera_number)
+            
         ## Compute spectrum
         cube.compute_spectrum(
             phase_correction=phase_correction,

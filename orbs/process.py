@@ -2202,22 +2202,6 @@ class Interferogram(HDFCube):
                 else:
                     spectrum_column[ij,:] = ispectrum.get_amplitude()
 
-
-                ## spectrum_column[ij,:] = (
-                ##     orb.utils.fft.transform_interferogram(
-                ##         interf, nm_laser, calibration_laser_map_column[ij],
-                ##         step, order, window_type, zpd_shift,
-                ##         bad_frames_vector=bad_frames_vector,
-                ##         phase_correction=phase_correction,
-                ##         wave_calibration=wave_calibration,
-                ##         ext_phase=ext_phase,
-                ##         return_phase=return_phase,
-                ##         balanced=balanced,
-                ##         wavenumber=wavenumber,
-                ##         return_complex=True,
-                ##         high_order_phase=phf))
-
-
             if np.nansum(spectrum_column) == 0:
                 logging.debug('Whole column filled with zeroes')
                 
@@ -2312,7 +2296,7 @@ class Interferogram(HDFCube):
         
         def get_phase_maps_cols(phase_maps, _x, _y_min, _y_max):            
             # create phase column
-            phase_maps_cols = np.empty((_y_max - _y_min, self.dimz), dtype=float)
+            phase_maps_cols = np.empty((_y_max - _y_min, np.size(phase_maps.axis)), dtype=float)
             for ij in range(phase_maps_cols.shape[0]):
                 phase_maps_cols[ij, :] = phase_maps.get_phase(_x, _y_min + ij, unbin=True).data
 
