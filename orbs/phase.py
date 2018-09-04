@@ -298,7 +298,7 @@ class PhaseMaps(orb.core.Tools):
                  overwrite=False, indexer=None, **kwargs):
         """Initialize PhaseMaps class.
 
-        :param phase_maps_path: path tot the hdf5 file containing the
+        :param phase_maps_path: path to the hdf5 file containing the
           phase maps.
       
         :param overwrite: (Optional) If True existing FITS files will

@@ -27,21 +27,22 @@
 ## Create a phase file from the binned phase cube created when
 ## computing phase maps
 
-import argparse
-from argparse import ArgumentParser
-import orb.core, orbs.version
-import orb.utils.io
-import orb.utils.spectrum
-import orb.utils.vector
-import orb.utils.image
-import orb.utils.filters
-from orb.core import Tools, PhaseFile
-from orb.core import OptionFile, ProgressBar
-from orbs.orbs import Orbs, JobFile
 import os
 import numpy as np
 import pylab as pl
-import scipy.interpolate
+import logging
+
+import argparse
+from argparse import ArgumentParser
+
+import orb.core, orbs.version
+import orb.utils.io
+import orb.fft
+from orb.core import Tools, Logger
+from orb.core import OptionFile, ProgressBar
+from orbs.orbs import Orbs, JobFile
+from orbs.process import Interferogram
+import orbs.phase
 
 
 def check_option_file(path):
@@ -64,79 +65,110 @@ def check_option_file(path):
 
     
 def main(args):
-
-
-    if args.instrument_mode == 'sitelle':
-        config_file_name = 'config.sitelle.orb'
-    if args.instrument_mode == 'spiomm':
-        config_file_name = 'config.spiomm.orb'
-
+    
     if args.camera == 1:
         cams = 'single1'
         cam = 'cam1'
         
     elif args.camera == 2:
+        raise NotImplementedError('not implemented. use --cam 1 instead')
         cams = 'single2'
         cam = 'cam2'
     else:
+        raise NotImplementedError('not implemented. use --cam 1 instead')
         cams = 'full'
         cam = 'merged'
 
 
     option_file_path = check_option_file(args.option_file_path)
     project = Orbs(option_file_path[0], 'object', cams,
-                   silent=True, fast_init=True,
-                   config_file_name=config_file_name,
+                   instrument=args.instrument_mode,
+                   silent=False, fast_init=False,
                    raw_data_files_check=False)
 
+
+    # create phase cube
+    interfero_cube_path = project._get_interfero_cube_path(
+        args.camera, corrected=False)        
+            
+    cube = Interferogram(
+        interfero_cube_path,
+            params=project.options,
+            config=project.config,
+            silent_init=True,
+            instrument=project.instrument,
+            overwrite=True,
+            indexer=project.indexer,
+            project_header = project._get_project_fits_header(
+                args.camera),
+            data_prefix=project._get_data_prefix(args.camera))
+
+    if args.instrument_mode == 'sitelle': binning = 6
+    else: binning = 3
+        
+    cube.create_binned_interferogram_cube(binning)
+    
     return
-    # write output
-    phf = PhaseFile(project.options["filter_name"])
-    phf.write_improved_phase_file(
-        step, order, angles, phases, phases_err_min, phases_err_max)
-        
+
+    interferogram_cube = orbs.phase.BinnedInterferogramCube(
+        interfero_cube_path, project.options, instrument=project.instrument,
+        data_prefix=project._get_data_prefix(args.camera),
+        overwrite=True, config=project.config)
+
+    phase_cube_path =  interferogram_cube._data_path_hdr + 'binned_phase_cube.fits'
+
+    #phase_cube = interferogram_cube.compute_phase()
+    #orb.utils.io.write_fits(phase_cube_path, phase_cube, overwrite=True)
+
+    phase_cube = orbs.phase.BinnedPhaseCube(
+        phase_cube_path,
+        project.options, instrument=project.instrument,
+        data_prefix=project._get_data_prefix(args.camera),
+        overwrite=True, config=project.config)
+
+    # iterative polynomial fit
+
+    #phase_maps_path = phase_cube.iterative_polyfit(2, suffix='phase_file')
+    phase_maps_path = './flats_SN2/CAM1/flats_SN2.cam1.BinnedPhaseCube.phase_maps.iter.phase_file.0.hdf5'
+    phasemaps = orbs.phase.PhaseMaps(phase_maps_path)
+
+    phasemaps.modelize()
+    phase_cube_model_path =  phase_cube._data_path_hdr + 'binned_phase_cube_model.fits'
+    #phasemaps.generate_phase_cube(phase_cube_model_path, coeffs=(None, None, 0))
+
+    # get high order residual
+
+    phase_cube_model = orb.utils.io.read_fits(phase_cube_model_path)
+    phase_cube_residual = orb.utils.io.read_fits(phase_cube_path) - phase_cube_model
+    
+    high_order_phase = np.nanmean(np.nanmean(phase_cube_residual, axis=0), axis=0)
+
+    
+    # write high order phase file
+
+    high_order_phase = orb.fft.Phase(high_order_phase, phase_cube.get_base_axis(),
+                                     params=phase_cube.params)
+    
+    high_order_phase = high_order_phase.cleaned()
+
+    # clean high order phase from low orders
+    hop_corr = high_order_phase.data - high_order_phase.polyfit(1).data
+    
+    high_order_phase_path = phase_cube._data_path_hdr + 'high_order_phase.fits'
+    orb.utils.io.write_fits(high_order_phase_path,
+                            np.array([hop_corr, high_order_phase.axis.data]),
+                            overwrite=True)
+    
+            
     if args.plot:
-        
-        
-        cm1_axis_base_spectrum = np.copy(cm1_axis_base)
-        ax = pl.subplot(211)
-        ax2 = pl.subplot(212)
-        axis = orb.utils.spectrum.cm12nm(cm1_axis_base)
-        axis_spectrum = orb.utils.spectrum.cm12nm(cm1_axis_base_spectrum)
-        ax2.plot(axis_spectrum, spectrum / np.nanmax(spectrum), label='Spectrum', c='0.5')
-        ax2.set_ylabel('Spectrum normalized amplitude')
-        ax2.legend()
-        ax2.set_xlabel('Wavelength (nm)')
-        ax2.set_xlim([np.nanmin(axis_spectrum), np.nanmax(axis_spectrum)])
+        pl.plot(high_order_phase.axis.data,
+                hop_corr,
+                label='High Order phase')
+        pl.ylabel('Phase (rad)')
+        pl.xlabel('Wavenumber (cm-1)')
 
-
-        iang = len(angles)/2
-        cm1_axis_phase = orb.utils.spectrum.create_cm1_axis(
-            dimz, step, order,
-            corr=angles[iang] / nm_laser)
-
-
-        print angles[iang],base_calib
-        iphase = phases[iang] + 0.2
-        iphase = orb.utils.vector.interpolate_axis(
-            iphase, cm1_axis_base, 1, old_axis=cm1_axis_phase)
-        phase_err_min = phases_err_min[iang]
-        phase_err_max = phases_err_max[iang]
-        phase_err_min = orb.utils.vector.interpolate_axis(
-            phase_err_min,cm1_axis_base,1,old_axis=cm1_axis_phase)
-        phase_err_max = orb.utils.vector.interpolate_axis(
-            phase_err_max,cm1_axis_base,1,old_axis=cm1_axis_phase)
-
-        ax.fill_between(axis,
-                        iphase - phase_err_min,
-                        iphase + phase_err_max,
-                        facecolor='0.5',linewidth=0., alpha=0.5)
-        ax.plot(axis, iphase, c='red', linewidth=3.,
-                label='Median Phase')
-        ax.set_ylabel('Phase (radians)')
-        ax.legend()
-        ax.grid()
-        ax.set_xlim([np.nanmin(axis_spectrum), np.nanmax(axis_spectrum)])
+        pl.legend()
+        pl.grid()
         pl.tight_layout()
         pl.show()
 
@@ -166,7 +198,7 @@ if __name__ == "__main__":
                         dest='camera',
                         type=int,
                         action='store',
-                        default=0,
+                        default=1,
                         choices=[0,1,2],
                         help='Camera number (default 0)')
 
@@ -176,7 +208,19 @@ if __name__ == "__main__":
                         default=False,
                         help='Plot final phase vector')
 
+    parser.add_argument(
+        '--debug', dest='debug', action='store_true',
+        default=False,
+        help="Turn on debug mode (logging messages displayed on screen are more informative)")
 
     args = parser.parse_args()
 
+
+    # start and config logging
+    try:
+        logger = Logger(debug = args.debug)
+    except AttributeError:
+        logger = Logger(debug=False)
+
+    
     main(args)

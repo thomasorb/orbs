@@ -798,40 +798,47 @@ class Orbs(Tools):
 
         # get ZPD shift in SITELLE's case
         if self.config["INSTRUMENT_NAME"] == 'SITELLE' and not fast_init:
-            cube_list = self.options['image_list_path_1']
-                
-            cube1 = FDCube(cube_list,
-                           silent_init=True,
-                           instrument=self.instrument,
-                           no_sort=True, ncpus=self.ncpus)
 
-           
-            zpd_found = False
-            if target == 'laser':
-                for ik in range(cube1.dimz):
-                    sitstep = cube1.get_frame_header(ik)['SITFRING']
-                    if sitstep > 0:
-                        zpd_index = ik
-                        zpd_found = True
-                        break
-                if not zpd_found:
-                    if not silent:
-                        warnings.warn('zpd index could not be found, forced to 25% of the interferogram size')
-                    zpd_index = int(cube1.dimz * 0.25)
-            else:
-                for ik in range(cube1.dimz):
-                    sitstep = cube1.get_frame_header(ik)['SITSTEP']
-                    if sitstep == 0:
-                        zpd_index = ik
-                        zpd_found = True
-                        break
-                if not zpd_found: raise StandardError('zpd index could not be found')
+            try: # check if the zpd index has already been computed
+                zpd_index = int(self.read_fits(self._get_zpd_index_file_path()))
+            except IOError: 
+                cube_list = self.options['image_list_path_1']
+
+                cube1 = FDCube(cube_list,
+                               silent_init=True,
+                               instrument=self.instrument,
+                               no_sort=True, ncpus=self.ncpus)
+
+
+                zpd_found = False
+                if target == 'laser':
+                    for ik in range(cube1.dimz):
+                        sitstep = cube1.get_frame_header(ik)['SITFRING']
+                        if sitstep > 0:
+                            zpd_index = ik
+                            zpd_found = True
+                            break
+                    if not zpd_found:
+                        if not silent:
+                            warnings.warn('zpd index could not be found, forced to 25% of the interferogram size')
+                        zpd_index = int(cube1.dimz * 0.25)
+                else:
+                    for ik in range(cube1.dimz):
+                        sitstep = cube1.get_frame_header(ik)['SITSTEP']
+                        if sitstep == 0:
+                            zpd_index = ik
+                            zpd_found = True
+                            break
+                    if not zpd_found: raise StandardError('zpd index could not be found')
                 
             self.options['zpd_index'] = zpd_index
             if not silent:
                 logging.info('ZPD index: {}'.format(
                     self.options['zpd_index']))
             
+            self.write_fits(self._get_zpd_index_file_path(),
+                            np.array(self.options['zpd_index']),
+                            overwrite=True)
         # Init Indexer
         self.indexer = Indexer(data_prefix=self.options['object_name']
                                + '_' + self.options['filter_name'] + '.',
@@ -1053,6 +1060,11 @@ class Orbs(Tools):
         
         return ('.' + os.sep + self.options['object_name']
                 + '_' +  self.options['filter_name'] + '.' + cam + '.')
+
+    def _get_zpd_index_file_path(self):
+        """Return path to the zpd index file.        
+        """
+        return self._get_root_data_path_hdr(1) + 'zpd_index.fits'
 
     def _get_calibration_laser_map_path(self, camera_number):
         """Return path to the calibration laser map from a flat cube.
