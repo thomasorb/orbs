@@ -62,68 +62,9 @@ def check_option_file(path):
         return path, dict(), 'option_file'
 
 
-def unwrap_phase_cube(final_phase_cube):
-    # another hack pending a good solution...
-
-    sh = final_phase_cube.shape
-
-    for i in range(sh[1]):
-        for j in range(sh[2]):
-            los=final_phase_cube[:,i,j]
-            nonans = ~np.isnan(los)
-            los[nonans] = np.unwrap(los[nonans])
-            final_phase_cube[:,i,j] = los
-    # Compute median phase over wavenumbers
-    med_phase = np.nanmedian(final_phase_cube,axis=0)
-    # Unwrap in y direction (axis=1)
-    for i in range(sh[2]):
-        oldcol = med_phase[:,i]
-        col = np.empty_like(oldcol)
-        col.fill(np.nan)
-        nonans = ~np.isnan(oldcol)
-        col[nonans] = np.unwrap(oldcol[nonans])
-        final_phase_cube[:,:,i] += (col-oldcol)[None,:]
-    # Last unwrap along x direction (axis=2)
-    med_phase_line = np.nanmedian(final_phase_cube,axis=(0,1))
-    umed_phase_line = np.empty_like(med_phase_line)
-    umed_phase_line.fill(np.nan)
-    nonans = ~np.isnan(med_phase_line)
-    umed_phase_line[nonans] = np.unwrap(med_phase_line[nonans])
-    final_phase_cube += (umed_phase_line-med_phase_line)[None,None,:]
-    final_phase_cube -= np.nanmedian(final_phase_cube)
-    return(final_phase_cube)
-
-def old_unwrap_phase_cube(final_phase_cube):
-
-    for ik in range(final_phase_cube.shape[2]):
-        frame = final_phase_cube[:,:,ik]
-        frame = np.mod(frame, np.pi) # all values are modulo PI
-
-        # unwrap frame around median
-        _med = np.nanmedian(frame)
-        if ik > 0:
-            last_med = np.nanmedian(final_phase_cube[:,:,ik-1])
-            if abs(_med - last_med) > np.pi/2:
-                if _med - last_med > 0:
-                    frame -= np.pi ; _med -= np.pi
-                else:
-                    frame += np.pi ; _med += np.pi
-
-        frame[np.nonzero(_med - frame >= np.pi/4)] += np.pi
-        frame[np.nonzero(frame - _med >= np.pi/4)] -= np.pi
-
-        final_phase_cube[:,:,ik] = np.copy(frame)
-    return final_phase_cube
-
     
 def main(args):
 
-    import pydevd
-    pydevd.settrace('localhost', port=8888, stdoutToServer=True, stderrToServer=True)
-
-    if not (0 < args.x < 1): raise Exception('x must be between 0 and 1')
-    if not (0 < args.y < 1): raise Exception('y must be between 0 and 1')
-    if not (0 < args.s <= 1): raise Exception('s must be between 0 and 1')
 
     if args.instrument_mode == 'sitelle':
         config_file_name = 'config.sitelle.orb'
@@ -148,151 +89,7 @@ def main(args):
                    config_file_name=config_file_name,
                    raw_data_files_check=False)
 
-    interf_cube = orb.utils.io.read_fits(project.indexer.get_path(
-        '{}.binned_interferogram_cube'.format(cam), err=True))
-    step = project.options['step']
-    order = project.options['order']
-    nm_laser = project.config["CALIB_NM_LASER"]
-
-    calib_map = orb.utils.io.read_fits(project.indexer.get_path(
-        '{}.binned_calibration_laser_map'.format(cam), err=True))
-
-    filter_file_path = project._get_filter_file_path(
-        project.options["filter_name"])
-
-    filter_min, filter_max = orb.utils.filters.get_filter_bandpass(
-        filter_file_path)
-    filter_min_cm1, filter_max_cm1 = orb.utils.spectrum.nm2cm1(
-        [filter_max, filter_min])
-    
-    base_calib = calib_map[calib_map.shape[0]/2,
-                           calib_map.shape[1]/2]
-    
-    CROP_COEFF = args.s # proportion of the phase map to keep when
-                        # cropping
-
-    # FILTER_EDGE_COEFF = -0.2
-
-    dimx, dimy, dimz = interf_cube.shape
-
-    if CROP_COEFF < 1:
-        xmin,xmax,ymin,ymax = orb.utils.image.get_box_coords(
-            dimx*args.x,
-            dimy*args.y,
-            int(CROP_COEFF*dimx),
-            0, dimx,
-            0, dimy)
-    else:
-        xmin = 0 ; xmax = dimx ; ymin = 0 ; ymax = dimy
-
-    final_phase_cube = np.empty((xmax-xmin, ymax-ymin,
-                                 dimz), dtype=float)
-    final_phase_cube.fill(np.nan)
-
-    cm1_axis_base = orb.utils.spectrum.create_cm1_axis(
-        dimz, step, order, corr=base_calib/nm_laser)
-
-    # compute phase cube
-    
-    final_phase = np.zeros(dimz, dtype=float)    
-    progress = ProgressBar(xmax-xmin)
-    spectrum = np.zeros(dimz, dtype=float)
-    for ii in range(xmin, xmax):
-        progress.update(ii-xmin, info='Creating phase cube')
-        for ij in range(ymin, ymax):
-            cm1_axis = orb.utils.spectrum.create_cm1_axis(
-                dimz, step, order,
-                corr=calib_map[ii,ij]/nm_laser)
-            
-            ifft = orb.utils.fft.transform_interferogram(
-                interf_cube[ii,ij,:], 1, 1,
-                step, order, '2.0', 0, phase_correction=False,
-                return_complex=True, wavenumber=True,
-                wave_calibration=False)            
-            
-            # phase is not calibrated because order > 0 are all
-            # *cos(theta): i.e. they fall in the same channel in
-            # non-calibrated phase cube
-            iphase = np.unwrap(np.angle(ifft))
-
-            w, irange = orb.utils.filters.compute_weights(
-                calib_map[ii,ij], nm_laser, dimz,
-                step, order, 0.15, filter_min_cm1, filter_max_cm1)
-
-            iphase[:irange[0]] = np.nan
-            iphase[irange[1]:] = np.nan
-
-            final_phase_cube[ii-xmin, ij-ymin, :] = iphase
-
-            ispec = np.abs(ifft)
-            if not np.all(np.isnan(ispec)):
-                ispec = orb.utils.vector.interpolate_axis(
-                    ispec, cm1_axis_base, 1, old_axis=cm1_axis)
-                spectrum += ispec
-        
-    progress.end()
-
-    # unwrap phase cube
-    
-    final_phase = np.empty(dimz, dtype=float)
-    final_phase_err_max = np.empty_like(final_phase)
-    final_phase_err_min = np.empty_like(final_phase)
-    final_phase_err = np.empty_like(final_phase)
-
-    final_phase_cube = unwrap_phase_cube(final_phase_cube)
-    median_frame = np.nanmedian(final_phase_cube,axis=2)
-    # dx = 2
-    # median_frame = np.nanmedian(final_phase_cube[
-    #     :,:,dimz/2-dx:dimz/2+dx+1], axis=2)
-    final_phase_cube = (final_phase_cube.T - median_frame.T).T
-    final_phase_cube = unwrap_phase_cube(final_phase_cube)
-    # dx = 10
-    # median_frame = np.nanmedian(final_phase_cube[
-    #     :,:,dimz/2-dx:dimz/2+dx+1], axis=2)
-    # final_phase_cube = (final_phase_cube.T - median_frame.T).T
-
-    ## orb.utils.io.write_fits(
-    ##     'final_phase_cube.fits', final_phase_cube, overwrite=True)
-    ## orb.utils.io.write_fits(
-    ##     'spectrum.fits', spectrum, overwrite=True)
-    ## final_phase_cube = orb.utils.io.read_fits('final_phase_cube.fits')
-    ## spectrum = orb.utils.io.read_fits('spectrum.fits')
-
-
-    # sum over incident angles
-
-    max_angle = np.percentile(calib_map, 99.99)
-    min_angle = np.percentile(calib_map, 0.01)
-    angles = np.linspace(min_angle, max_angle, 50)
-    phases = list()
-    phases_err_min = list()
-    phases_err_max = list()
-
-    for iang in range(1, len(angles)):
-        ipix = np.nonzero(
-            (calib_map[xmin:xmax,ymin:ymax] > angles[iang-1])
-            * (calib_map[xmin:xmax,ymin:ymax] <= angles[iang]))
-        ixx = ipix[0]
-        iyy = ipix[1]
-        iphases = np.empty((len(ixx), dimz), dtype=float)
-        for i in range(len(ixx)):
-            ii = ixx[i] ; ij = iyy[i]
-            iphases[i,:] = final_phase_cube[ii,ij]
-            iphases[i,:] -= np.nanmedian(iphases[i,:])
-        
-        phases.append(np.nanmedian(iphases, axis=0))
-        ierr_min = np.abs(np.nanpercentile(iphases, 16, axis=0) - phases[-1])
-        ierr_max = np.abs(np.nanpercentile(iphases, 84, axis=0) - phases[-1])
-        phases_err_min.append(ierr_min)
-        phases_err_max.append(ierr_max)
-
-        ## pl.plot(phases[-1])
-        ## pl.plot(phases[-1] - ierr_min)
-        ## pl.plot(phases[-1] + ierr_max)
-        ## pl.show()
-        ierr = np.nanmax((ierr_min, ierr_max), axis=0)
-        print "median error at angle {:.2f}: {:.2f} [{:.2f}%] [over {} phase vectors]".format(angles[iang], np.nanmedian(ierr), np.nanmedian(ierr) / np.pi * 100., len(ixx))
-
+    return
     # write output
     phf = PhaseFile(project.options["filter_name"])
     phf.write_improved_phase_file(
@@ -378,26 +175,6 @@ if __name__ == "__main__":
                         action='store_true',
                         default=False,
                         help='Plot final phase vector')
-
-    parser.add_argument('-x',
-                        dest='x',
-                        type=float,
-                        default=0.5,
-                        help='Relative X position of the center of the extracted portion of the phase cube used to create the mean phase vector (must be between 0 and 1, default 0.5)')
-
-    parser.add_argument('-y',
-                        dest='y',
-                        type=float,
-                        default=0.5,
-                        help='Relative Y position of the center of the extracted portion of the phase cube used to create the mean phase vector (must be between 0 and 1, default 0.5)')
-
-    parser.add_argument('-s',
-                        dest='s',
-                        type=float,
-                        default=1.,
-                        help='Relative size the extracted portion of the phase cube used to create the mean phase vector (must be between 0 and 1, default 0.8)')
-
-
 
 
     args = parser.parse_args()

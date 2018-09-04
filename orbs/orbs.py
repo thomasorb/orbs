@@ -2277,7 +2277,7 @@ class Orbs(Tools):
         return perf_stats
 
 
-    def compute_phase_maps(self, camera_number, fit=True,
+    def compute_phase_maps(self, camera_number, 
                            no_star=False):
         
         """Create phase maps
@@ -2289,11 +2289,6 @@ class Orbs(Tools):
         :param camera_number: Camera number (must be 1, 2 or 0 for
           merged data).
 
-        :param fit: (Optional) If True computed phase maps are fitted
-          to remove noise. Especially useful if phase maps are created
-          from the astronomical data cube itself and not from a flat
-          cube (default True).
-
         :param no_star: (Optional) If True, the cube is considered to
           have been computed without the star dependant processes so
           that the interferogram could not be corrected for sky
@@ -2302,16 +2297,7 @@ class Orbs(Tools):
         
         .. seealso:: :meth:`process.Phase.create_phase_maps`
         
-        """
-        ## # get wavefront map path
-        ## if 'wavefront_map_path' in self.options:
-        ##     wavefront_map_path = self.options['wavefront_map_path']
-        ##     logging.info('Wavefront map used: {}'.format(wavefront_map_path))
-        ## else:
-        ##     warnings.warn('No path to a wavefront map given')
-        ##     wavefront_map_path = None
-        
-                
+        """             
         # get base phase maps
         if not no_star:
             interfero_cube_path = self._get_interfero_cube_path(

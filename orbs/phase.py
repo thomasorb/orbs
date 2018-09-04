@@ -134,34 +134,62 @@ class BinnedPhaseCube(orb.core.OCube):
         :param polydeg: Degree of the fitting polynomial. Must be >= 0.
 
         :param coeffs: Used to fix some coefficients to a given
-          value. If not None, must be a list of length = deg. set a
-          coeff to a np.nan or a None to let the parameter free.
+          value. If not None, must be a list of length = polydeg +
+          1. set a coeff to a np.nan or a None to let the parameter
+          free. Each coefficient can also be a map (like the one
+          returned by PhaseMaps.get_map()).
 
         :param suffix: Phase maps hdf5 file suffix (added before the
           extension .hdf5)
+
+        :return: Path to the phase maps file (can then be opened with
+          PhaseMaps).
+
         """
-        def fit_phase_in_column(col, deg, coeffs, params, base_axis):
+        def fit_phase_in_column(col, deg, incoeffs_col, params, base_axis):
             warnings.simplefilter('ignore', RuntimeWarning)
-            coeffs_col = np.empty((col.shape[0], deg + 1), dtype=float)
-            coeffs_col.fill(np.nan)
-            coeffs_err_col = np.empty((col.shape[0], deg + 1), dtype=float)
-            coeffs_err_col.fill(np.nan)
+            outcoeffs_col = np.empty((col.shape[0], deg + 1), dtype=float)
+            outcoeffs_col.fill(np.nan)
+            outcoeffs_err_col = np.empty((col.shape[0], deg + 1), dtype=float)
+            outcoeffs_err_col.fill(np.nan)
             for ij in range(col.shape[0]):
+                icoeffs = tuple([icoeff[ij] for icoeff in incoeffs_col])
                 _phase = orb.fft.Phase(col[ij,:], base_axis, params)
                 try:
-                    coeffs_col[ij,:], coeffs_err_col[ij,:] = _phase.polyfit(
-                        deg, coeffs=coeffs, return_coeffs=True)
+                    outcoeffs_col[ij,:], outcoeffs_err_col[ij,:] = _phase.polyfit(
+                        deg, coeffs=icoeffs, return_coeffs=True)
                 except orb.utils.err.FitError:
                     logging.debug('fit error')
-            return coeffs_col, coeffs_err_col                  
+            return outcoeffs_col, outcoeffs_err_col                  
 
         if not isinstance(polydeg, int): raise TypeError('polydeg must be an integer')
         if polydeg < 0: raise ValueError('polydeg must be >= 0')
+
+        logging.info('Coefficients: {}'.format(coeffs))
         
-        if coeffs is not None:
-            orb.utils.validate.has_len(coeffs, polydeg + 1)
-            coeffs = np.array(coeffs, dtype=float) # change None by nan
+        if coeffs is None:
+            coeffs = [None] * (polydeg + 1)
+        else:
+            coeffs = list(coeffs)
+
+        if len(coeffs) != polydeg + 1: raise TypeError('coeffs must have length {}'.format(
+                polydeg+1))
         
+        for icoeff in range(len(coeffs)):
+            if coeffs[icoeff] is None: coeffs[icoeff] = np.nan
+
+            if isinstance(coeffs[icoeff], np.ndarray):
+                if coeffs[icoeff].shape != (self.dimx, self.dimy):
+                    raise TypeError('coefficient map must have the same shape as the cube {}'.format((self.dimx, self.dimy)))
+                if np.any(np.isnan(coeffs[icoeff])):
+                    raise ValueError('coefficient map contains at least one NaN')
+            elif isinstance(coeffs[icoeff], float):
+                # float coefficient is converted to a map
+                coeffs[icoeff] = np.ones((self.dimx, self.dimy), dtype=float) * coeffs[icoeff]
+            else:    
+                raise TypeError('coefficient {} ({}) has type {} but must be a float, a numpy.ndarray map or None'.format(icoeff + 1, coeffs[icoeff], type(coeffs[icoeff])))
+
+
         coeffs_cube = np.empty((self.dimx, self.dimy, polydeg + 1), dtype=float)
         coeffs_cube.fill(np.nan)
         coeffs_err_cube = np.empty((self.dimx, self.dimy, polydeg + 1), dtype=float)
@@ -172,26 +200,27 @@ class BinnedPhaseCube(orb.core.OCube):
         job_server, ncpus = self._init_pp_server()
         progress = orb.core.ProgressBar(self.dimx)
         for ii in range(0, self.dimx, ncpus):
-                progress.update(
-                    ii,
-                    info="computing column {}/{}".format(ii, self.dimx))
-                if ii + ncpus >= self.dimx:
-                    ncpus = self.dimx - ii
+            progress.update(
+                ii,
+                info="computing column {}/{}".format(ii, self.dimx))
+            if ii + ncpus >= self.dimx:
+                ncpus = self.dimx - ii
 
-                jobs = [(ijob, job_server.submit(
-                    fit_phase_in_column, 
-                    args=(self[:,ii+ijob,:],
-                          polydeg, coeffs,
-                          self.params.convert(), base_axis),
-                    modules=("import logging",
-                             "import warnings",
-                             "import numpy as np",
-                             "import orb.fft",
-                             "import orb.utils.err")))
-                        for ijob in range(ncpus)]
+            jobs = [(ijob, job_server.submit(
+                fit_phase_in_column, 
+                args=(np.copy(self[:,ii+ijob,:]),
+                      polydeg,
+                      [icoeff[:,ii+ijob] for icoeff in coeffs],
+                      self.params.convert(), np.copy(base_axis)),
+                modules=("import logging",
+                         "import warnings",
+                         "import numpy as np",
+                         "import orb.fft",
+                         "import orb.utils.err")))
+                    for ijob in range(ncpus)]
 
-                for ijob, job in jobs:
-                    coeffs_cube[:,ii+ijob,:], coeffs_err_cube[:,ii+ijob,:] = job() 
+            for ijob, job in jobs:
+                coeffs_cube[:,ii+ijob,:], coeffs_err_cube[:,ii+ijob,:] = job() 
         progress.end()
         self._close_pp_server(job_server)
 
@@ -201,7 +230,6 @@ class BinnedPhaseCube(orb.core.OCube):
         coeffs_cube[:,:,0] = orb.utils.image.unwrap_phase_map0(coeffs_cube[:,:,0])
         coeffs_cube[np.nonzero(coeffs_cube == 0)] = np.nan
         
-
         phase_maps_path = self.get_phase_maps_path(suffix=suffix)
         with self.open_hdf5(phase_maps_path, 'w') as hdffile:
             self.add_params_to_hdf_file(hdffile)
@@ -210,7 +238,7 @@ class BinnedPhaseCube(orb.core.OCube):
                 data=self.get_calibration_coeff_map())
             hdffile.create_dataset(
                 '/cm1_axis',
-                data=base_axis)
+                data=base_axis.astype(float))
 
             for iz in range(coeffs_cube.shape[2]):
                 hdffile.create_dataset(
@@ -222,7 +250,41 @@ class BinnedPhaseCube(orb.core.OCube):
         logging.info('phase maps written: {}'.format(phase_maps_path))
             
         return phase_maps_path
+    
+    def iterative_polyfit(self, polydeg, suffix=None):
+        """Fit the cube iteratively, starting by fitting all orders, then
+        fixing the last free order to its mean in the map obtained
+        from the preceding fit.
 
+        :param polydeg: Degree of the fitting polynomial. Must be >= 0.
+
+        :param suffix: Phase maps hdf5 file suffix (added before the
+          extension .hdf5)
+
+        :return: Path to the last phase maps file (can then be opened
+          with PhaseMaps).
+        """
+
+        if not isinstance(polydeg, int): raise TypeError('polydeg must be an integer')
+        if polydeg < 0: raise ValueError('polydeg must be >= 0')
+
+        if suffix is None: suffix = ''
+        suffix = 'iter.' + suffix
+
+        coeffs = list([None]) * (polydeg + 1)
+        
+        for ideg in range(polydeg + 1)[::-1]:
+            ipm_path = self.polyfit(polydeg, suffix=suffix + '.' + str(ideg), coeffs=coeffs)
+            ipm = PhaseMaps(ipm_path)
+            last_map = ipm.get_map(ideg)
+            last_dist = orb.utils.stats.sigmacut(last_map)
+            logging.info('Computed coefficient of order {}: {:.2e} ({:.2e})'.format(
+                ideg, np.nanmean(last_dist), np.nanstd(last_dist)))
+            coeffs[ideg] = np.nanmean(last_dist)
+            print coeffs
+        logging.info('final computed phase maps path: {}'.format(ipm_path))
+
+        return ipm_path
     
 
 #################################################
@@ -443,6 +505,31 @@ class PhaseMaps(orb.core.Tools):
             axis=self.axis, params=self.params)
     
 
+    def generate_phase_cube(self, path, coeffs=None):
+        """Generate a phase cube from the given phase maps.
+
+        :param coeffs: Used to set some coefficients to a given
+          value. If not None, must be a list of length = order. set a
+          coeff to a np.nan to use the phase map value.
+
+        """
+        phase_cube = np.empty((self.dimx, self.dimy, self.axis.size), dtype=float)
+        phase_cube.fill(np.nan)
+        
+        progress = orb.core.ProgressBar(self.dimx)
+        for ii in range(self.dimx):
+            progress.update(
+                ii, info="computing column {}/{}".format(
+                    ii, self.dimx))
+                
+            for ij in range(self.dimy):
+                phase_cube[ii, ij, :] = self.get_phase(ii, ij, coeffs=coeffs).data
+                
+        progress.end()
+
+        orb.utils.io.write_fits(path, phase_cube, overwrite=True)
+        
+    
     def unwrap_phase_map_0(self):
         """Unwrap order 0 phase map.
 
