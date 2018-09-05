@@ -1891,19 +1891,24 @@ class Interferogram(HDFCube):
        Transform (FFT).
     """
 
+    def _get_phase_cube_model_path(self):
+        """Return path to the phase cube model"""
+        return self._data_path_hdr + 'phase_cube_model.fits'
+
+    def _get_high_order_phase_path(self):
+        """Return path to the high order phase"""
+        return self._data_path_hdr + 'high_order_phase.hdf5'
+    
     def _get_binned_phase_cube_path(self):
-        """Return path to the binned phase cube.
-        """
+        """Return path to the binned phase cube."""
         return self._data_path_hdr + "binned_phase_cube.fits"
 
     def _get_binned_interferogram_cube_path(self):
-        """Return path to the binned interferogram cube.
-        """
+        """Return path to the binned interferogram cube."""
         return self._data_path_hdr + "binned_interferogram_cube.fits"
 
     def _get_binned_calibration_laser_map_path(self):
-        """Return path to the binned calibration laser map
-        """
+        """Return path to the binned calibration laser map."""
         return self._data_path_hdr + "binned_calibration_laser_map.fits"
 
     def _get_transmission_vector_path(self):
@@ -2166,7 +2171,7 @@ class Interferogram(HDFCube):
         of sky transmission and stray light.
 
         :param sky_transmission_vector_path: Path to the transmission
-          vector.All the interferograms of the cube are divided by
+          vector. All the interferograms of the cube are divided by
           this vector. The vector must have the same size as the 3rd
           axis of the cube (the OPD axis).
 
@@ -2250,16 +2255,27 @@ class Interferogram(HDFCube):
         self._close_pp_server(job_server)
             
 
-    def create_phase_maps(self, binning, poly_order, poly_coeffs=None):
+    def create_phase_maps(self, binning, poly_order,
+                          high_order_phase_path=None):
         """Create phase maps
 
         :param binning: Interferogram cube is binned before to
           accelerate computation.
 
-        :param poly_order: Order of the fitted polynomial
+        :param poly_order: Order of the fitted polynomial (must be >= 2)
+
+        :param high_order_phase_path: (Optional) Path to an HDF5 phase
+          file.
         """
-        logging.info('Computing phase maps up to order {}'.format(poly_order))        
+        if not isinstance(poly_order, int): raise TypeError('poly_order must be an int')
+        if poly_order < 2: raise ValueError('poly_order = {} but must be >= 2'.format(poly_order))
         
+        logging.info('Computing phase maps up to order {}'.format(poly_order))        
+
+        if high_order_phase_path is not None:
+            high_order_phase = orb.fft.Phase(high_order_phase_path, None)
+            logging.info('High order phase file loaded: {}'.format(high_order_phase_path))      
+
         self.create_binned_interferogram_cube(binning)
 
         interf_cube = BinnedInterferogramCube(
@@ -2275,43 +2291,51 @@ class Interferogram(HDFCube):
             self.indexer['binned_phase_cube'] = (
                 self._get_binned_phase_cube_path())
 
+        phase_cube = BinnedPhaseCube(
+            self.read_fits(self._get_binned_phase_cube_path()),
+            self.params, instrument=self.instrument,
+            data_prefix=self._data_prefix)
 
-        # first fits
-        if poly_coeffs is None:
-            poly_coeffs = [None] * (poly_order + 1)
-        else:
-            orb.utils.validate.is_iterable(poly_coeffs, object_name='poly_coeffs')
-            
-        for i in range(poly_order + 1):
-            if poly_coeffs[poly_order - i] is not None:
-                continue
-            logging.info('Set of phase coeffs: {} (None = free parameter)'.format(poly_coeffs))
-            if i < poly_order: suffix = 'order{}'.format(poly_order - i)
-            else: suffix = 'final'
-            
-            phase_cube = BinnedPhaseCube(
-                self.read_fits(self._get_binned_phase_cube_path()),
-                self.params, instrument=self.instrument,
-                data_prefix=self._data_prefix)
+        # compute phase maps iteratively
+        
+        final_phase_maps_path = phase_cube.iterative_polyfit(
+            poly_order, high_order_phase=high_order_phase)
 
-            iphase_maps_path = phase_cube.polyfit(
-                poly_order, coeffs=poly_coeffs, suffix=suffix)
-            iphase_maps = PhaseMaps(iphase_maps_path)
-            last_map = iphase_maps.get_map(poly_order - i)
-            last_dist = orb.utils.stats.sigmacut(last_map)
-            logging.info('Computed coefficient of order {}: {:.2e} ({:.2e})'.format(
-                poly_order - i, np.nanmean(last_dist), np.nanstd(last_dist)))
-            poly_coeffs[poly_order - i] = np.nanmean(last_dist)
-
-        logging.info('final computed phase maps path: {}'.format(iphase_maps_path))
+        logging.info('final computed phase maps path: {}'.format(final_phase_maps_path))
         if self.indexer is not None:                 
-            self.indexer['phase_maps'] = iphase_maps_path
+            self.indexer['phase_maps'] = final_phase_maps_path
 
-            
+        # compute high order phase
+
+        phasemaps = PhaseMaps(final_phase_maps_path)
+        phasemaps.modelize()
+
+        coeffs = [None] * 2 + [0] * (poly_order - 1)
+        phasemaps.generate_phase_cube(self._get_phase_cube_model_path(),
+                                      coeffs=coeffs)
+        phase_cube_model = self.read_fits(self._get_phase_cube_model_path())
+        phase_cube_residual = self.read_fits(self._get_binned_phase_cube_path()) - phase_cube_model
+        high_order_phase = np.nanmean(np.nanmean(phase_cube_residual, axis=0), axis=0)
+        high_order_phase = orb.fft.Phase(high_order_phase, phase_cube.get_base_axis(),
+                                         params=phase_cube.params)
+        high_order_phase = high_order_phase.cleaned()
+        high_order_phase_corr = orb.fft.Phase(
+            high_order_phase.data - high_order_phase.polyfit(1).data,
+            high_order_phase.axis.data,
+            params=phase_cube.params)
+
+        high_order_phase_corr.writeto(self._get_high_order_phase_path())
+    
+        logging.info('high order phase path: {}'.format(
+            self._get_high_order_phase_path()))
+        if self.indexer is not None:                 
+            self.indexer['high_order_phase'] = self._get_high_order_phase_path()
+
 
     def compute_spectrum(self, phase_correction=True,
                          bad_frames_vector=None, window_type=None,
                          phase_cube=False, phase_maps_path=None,
+                         high_order_phase_path=None,
                          wave_calibration=False, balanced=True,
                          wavenumber=False):
         
@@ -2331,6 +2355,9 @@ class Interferogram(HDFCube):
 
         :param phase_maps_path: (Optional) Path to the HDF5 phase map
           file.
+
+        :param high_order_phase_path: (Optional) Path to an HDF5 phase
+          file.
       
         :param balanced: (Optional) If False, the interferogram is
           considered as unbalanced. It is flipped before its
@@ -2345,7 +2372,8 @@ class Interferogram(HDFCube):
           False).
 
         :param wave_calibration: (Optional) If True wavelength
-          calibration is done (default False).     
+          calibration is done (default False).
+
         """
 
         def _compute_spectrum_in_column(params, calibration_coeff_map_column,
@@ -2355,6 +2383,8 @@ class Interferogram(HDFCube):
                                         phase_maps_col,
                                         phase_maps_axis,
                                         phase_maps_params,
+                                        high_order_phase_data,
+                                        high_order_phase_axis,
                                         return_phase, # not implemented
                                         balanced,
                                         wavenumber): # nm computation not implemented
@@ -2366,7 +2396,7 @@ class Interferogram(HDFCube):
             orb.utils.log.setup_socket_logging()
             dimz = data.shape[1]
             spectrum_column = np.zeros_like(data, dtype=complex)
-  
+            ho_phase = Phase(high_order_phase_data, high_order_phase_axis, params)
                 
             for ij in range(data.shape[0]):
                 # throw out interferograms with less than half non-zero values
@@ -2383,14 +2413,13 @@ class Interferogram(HDFCube):
                 iinterf = Interferogram(
                     iinterf_data, params,
                     calib_coeff=icalib_coeff)
-
                 
                 ispectrum = iinterf.get_spectrum()
-
 
                 iphase = Phase(phase_maps_col[ij,:],
                                axis=phase_maps_axis,
                                params=phase_maps_params)
+                iphase.add(ho_phase)
 
                 if phase_correction:
                     ispectrum.correct_phase(iphase)
@@ -2415,6 +2444,15 @@ class Interferogram(HDFCube):
             phase_maps = PhaseMaps(phase_maps_path)
             phase_maps.modelize() # phase maps model is computed in place
             logging.info('Phase maps file: {}'.format(phase_maps_path))
+            if high_order_phase_path is not None:
+                high_order_phase = orb.fft.Phase(high_order_phase_path, None)
+                logging.info('High order phase file loaded: {}'.format(high_order_phase_path))
+                high_order_phase_data = np.copy(high_order_phase.data)
+                high_order_phase_axis = np.copy(high_order_phase.axis.data)
+            else:
+                high_order_phase = None
+                high_order_phase_data = None
+                high_order_phase_axis = None
         else:
             phase_maps = None
             warnings.warn('No phase correction')
@@ -2459,6 +2497,7 @@ class Interferogram(HDFCube):
             mean_spectrum = mean_interf.get_spectrum()
             
             mean_phase = phase_maps.get_phase(self.dimx/2, self.dimy/2, unbin=True)
+            mean_phase.add(high_order_phase)
             mean_spectrum.correct_phase(mean_phase)
                         
             if np.nanmean(mean_spectrum.data.real) < 0:
@@ -2498,7 +2537,6 @@ class Interferogram(HDFCube):
 
             return phase_maps_cols
         
-
         for iquad in range(0, self.config.QUAD_NB):
             x_min, x_max, y_min, y_max = self.get_quadrant_dims(iquad)
             iquad_data = self.get_data(x_min, x_max, 
@@ -2526,6 +2564,8 @@ class Interferogram(HDFCube):
                               phase_maps, x_min + ii + ijob, y_min, y_max),
                           phase_maps.axis,
                           phase_maps.params.convert(),
+                          high_order_phase_data,
+                          high_order_phase_axis,
                           phase_cube, balanced,
                           wavenumber), 
                     modules=("import logging",
@@ -5517,176 +5557,177 @@ class SourceExtractor(InterferogramMerger):
 
         :param phase_order: (Optional) If phase_map_paths is set to None, phase_order must be given.
         """
-        
-        source_interf = self.read_fits(source_interf_path)
+        raise NotImplementedError('must be reimplemented since phase and fft computation have changed (level2)')
+    
+        # source_interf = self.read_fits(source_interf_path)
 
-        if phase_map_paths is None and phase_order is None and phase_correction:
-            raise StandardError('If phase correction is required and phase_map_paths is not given, phase must be computed for each source independantly and phase_order must be set.')
+        # if phase_map_paths is None and phase_order is None and phase_correction:
+        #     raise StandardError('If phase correction is required and phase_map_paths is not given, phase must be computed for each source independantly and phase_order must be set.')
 
-        if filter_name is None:
-            raise StandardError('No filter name given')
-
-        
-        if len(source_interf.shape) == 1:
-            source_interf = np.array([source_interf])
-
-
-        # get calibration laser map
-        calibration_laser_map = self.read_fits(
-            calibration_laser_map_path)
-        
-        # wavenumber
-        if wavenumber:
-            logging.info('Wavenumber (cm-1) output')
-        else:
-            logging.info('Wavelength (nm) output')
+        # if filter_name is None:
+        #     raise StandardError('No filter name given')
 
         
-        source_list = np.array(source_list)
+        # if len(source_interf.shape) == 1:
+        #     source_interf = np.array([source_interf])
 
-        # create spectra array (spec_nb, spec_size, 2) : spectra are in [:,0]
-        # and spectral axes are in [:,1]
-        spectra = np.empty((source_interf.shape[0],
-                            source_interf.shape[1], 2), dtype=float)
-        spectra.fill(np.nan)
-        step_nb = source_interf.shape[1]
 
-        # get zpd shift
-        if zpd_shift is None:
-            zpd_shift = orb.utils.fft.find_zpd(
-                self.cube_A.get_zmedian(nozero=True),
-                return_zpd_shift=True)
+        # # get calibration laser map
+        # calibration_laser_map = self.read_fits(
+        #     calibration_laser_map_path)
         
-        logging.info("ZPD shift: {}".format(zpd_shift))
+        # # wavenumber
+        # if wavenumber:
+        #     logging.info('Wavenumber (cm-1) output')
+        # else:
+        #     logging.info('Wavelength (nm) output')
 
-        # load phase maps
-        if (phase_map_paths is not None and phase_correction):
-            phase_maps = list()
-            for phase_map_path in phase_map_paths:
-                phase_maps.append(self.read_fits(phase_map_path))
-                logging.info('Loaded phase map: {}'.format(phase_map_path))
+        
+        # source_list = np.array(source_list)
+
+        # # create spectra array (spec_nb, spec_size, 2) : spectra are in [:,0]
+        # # and spectral axes are in [:,1]
+        # spectra = np.empty((source_interf.shape[0],
+        #                     source_interf.shape[1], 2), dtype=float)
+        # spectra.fill(np.nan)
+        # step_nb = source_interf.shape[1]
+
+        # # get zpd shift
+        # if zpd_shift is None:
+        #     zpd_shift = orb.utils.fft.find_zpd(
+        #         self.cube_A.get_zmedian(nozero=True),
+        #         return_zpd_shift=True)
+        
+        # logging.info("ZPD shift: {}".format(zpd_shift))
+
+        # # load phase maps
+        # if (phase_map_paths is not None and phase_correction):
+        #     phase_maps = list()
+        #     for phase_map_path in phase_map_paths:
+        #         phase_maps.append(self.read_fits(phase_map_path))
+        #         logging.info('Loaded phase map: {}'.format(phase_map_path))
             
-        else:
-            phase_maps = None
+        # else:
+        #     phase_maps = None
         
-        # get high order phase
-        if filter_name is not None:
-            raise NotImplementedError('new Phase transform must be used')
+        # # get high order phase
+        # if filter_name is not None:
+        #     raise NotImplementedError('new Phase transform must be used')
                 
-            phf = PhaseFile(filter_name)
+        #     phf = PhaseFile(filter_name)
             
-            logging.info('Phase file: {}'.format(phf.improved_path))
+        #     logging.info('Phase file: {}'.format(phf.improved_path))
             
-        logging.info("Apodization function: %s"%apodization_function)
-        logging.info("Folding order: %f"%order)
-        logging.info("Step size: %f"%step)
-        logging.info("ZPD shift: %f"%zpd_shift)
+        # logging.info("Apodization function: %s"%apodization_function)
+        # logging.info("Folding order: %f"%order)
+        # logging.info("Step size: %f"%step)
+        # logging.info("ZPD shift: %f"%zpd_shift)
 
         
-        hdr = self._get_extracted_source_spectra_header(
-            apodization_function)
+        # hdr = self._get_extracted_source_spectra_header(
+        #     apodization_function)
 
-        for isource in range(source_interf.shape[0]):
-            x = source_list[isource,0]
-            y = source_list[isource,1]
-            interf = source_interf[isource, :]
+        # for isource in range(source_interf.shape[0]):
+        #     x = source_list[isource,0]
+        #     y = source_list[isource,1]
+        #     interf = source_interf[isource, :]
             
-            nm_laser_obs = calibration_laser_map[int(x), int(y)]
+        #     nm_laser_obs = calibration_laser_map[int(x), int(y)]
             
-            if phase_correction:                
-                coeffs_list = list()
-                if phase_maps is not None:
-                    for phase_map in phase_maps:
-                        if np.size(phase_map) > 1:
-                            coeffs_list.append(phase_map[int(x), int(y)])
-                        else:
-                            coeffs_list.append(phase_map)
-                else:
-                    optimize_phase = True
-                    coeffs_list = np.empty(phase_order+1, dtype=float)
+        #     if phase_correction:                
+        #         coeffs_list = list()
+        #         if phase_maps is not None:
+        #             for phase_map in phase_maps:
+        #                 if np.size(phase_map) > 1:
+        #                     coeffs_list.append(phase_map[int(x), int(y)])
+        #                 else:
+        #                     coeffs_list.append(phase_map)
+        #         else:
+        #             optimize_phase = True
+        #             coeffs_list = np.empty(phase_order+1, dtype=float)
                             
-                if optimize_phase:
-                    guess = np.array(coeffs_list)
-                    guess.fill(0.)
+        #         if optimize_phase:
+        #             guess = np.array(coeffs_list)
+        #             guess.fill(0.)
                     
-                    ext_phase = orb.utils.fft.optimize_phase(
-                        interf, step, order, zpd_shift,
-                        nm_laser_obs, nm_laser, guess=guess,
-                        high_order_phase=phf)
-                else:
-                    ext_phase = np.polynomial.polynomial.polyval(
-                        np.arange(step_nb), coeffs_list)
+        #             ext_phase = orb.utils.fft.optimize_phase(
+        #                 interf, step, order, zpd_shift,
+        #                 nm_laser_obs, nm_laser, guess=guess,
+        #                 high_order_phase=phf)
+        #         else:
+        #             ext_phase = np.polynomial.polynomial.polyval(
+        #                 np.arange(step_nb), coeffs_list)
 
-            else:
-                ext_phase = None
+        #     else:
+        #         ext_phase = None
 
-            # replace zeros by nans
-            interf[np.nonzero(interf == 0)] = np.nan
+        #     # replace zeros by nans
+        #     interf[np.nonzero(interf == 0)] = np.nan
 
-            if return_phase:
-                phase_correction = False
-                ext_phase = None
+        #     if return_phase:
+        #         phase_correction = False
+        #         ext_phase = None
 
-            raise NotImplementedError('new fft transform must be used')
+        #     raise NotImplementedError('new fft transform must be used')
                 
-            ## spec = orb.utils.fft.transform_interferogram(
-            ##     interf, nm_laser, nm_laser_obs, step, order,
-            ##     apodization_function, zpd_shift,
-            ##     phase_correction=phase_correction,
-            ##     ext_phase=ext_phase,
-            ##     wavenumber=wavenumber,
-            ##     wave_calibration=False,
-            ##     return_phase=return_phase)
+        #     ## spec = orb.utils.fft.transform_interferogram(
+        #     ##     interf, nm_laser, nm_laser_obs, step, order,
+        #     ##     apodization_function, zpd_shift,
+        #     ##     phase_correction=phase_correction,
+        #     ##     ext_phase=ext_phase,
+        #     ##     wavenumber=wavenumber,
+        #     ##     wave_calibration=False,
+        #     ##     return_phase=return_phase)
 
-            if wavenumber:
-                spec_axis = orb.utils.spectrum.create_cm1_axis(
-                    spec.shape[0], step, order, corr=nm_laser_obs/nm_laser)
-            else:
-                spec_axis = orb.utils.spectrum.create_nm_axis(
-                    spec.shape[0], step, order, corr=nm_laser_obs/nm_laser)
+        #     if wavenumber:
+        #         spec_axis = orb.utils.spectrum.create_cm1_axis(
+        #             spec.shape[0], step, order, corr=nm_laser_obs/nm_laser)
+        #     else:
+        #         spec_axis = orb.utils.spectrum.create_nm_axis(
+        #             spec.shape[0], step, order, corr=nm_laser_obs/nm_laser)
 
-            if filter_correction:
-                # load filter function
-                (filter_function,
-                 filter_min_pix, filter_max_pix) = (
-                    FilterFile(filter_name).get_filter_function(
-                        step, order, step_nb,
-                        wavenumber=wavenumber,
-                        corr=nm_laser_obs/nm_laser))    
+        #     if filter_correction:
+        #         # load filter function
+        #         (filter_function,
+        #          filter_min_pix, filter_max_pix) = (
+        #             FilterFile(filter_name).get_filter_function(
+        #                 step, order, step_nb,
+        #                 wavenumber=wavenumber,
+        #                 corr=nm_laser_obs/nm_laser))    
        
-                spec /= filter_function
-                spec[:filter_min_pix] = np.nan
-                spec[filter_max_pix:] = np.nan
+        #         spec /= filter_function
+        #         spec[:filter_min_pix] = np.nan
+        #         spec[filter_max_pix:] = np.nan
 
-            # check polarity 
-            if optimize_phase:
-                if np.nanmean(spec) < 0.:
-                    warnings.warn('Negative polarity of the spectrum')
-                    spec = -spec
+        #     # check polarity 
+        #     if optimize_phase:
+        #         if np.nanmean(spec) < 0.:
+        #             warnings.warn('Negative polarity of the spectrum')
+        #             spec = -spec
 
-            spectra[isource, :, 0] = spec
-            spectra[isource, :, 1] = spec_axis
+        #     spectra[isource, :, 0] = spec
+        #     spectra[isource, :, 1] = spec_axis
 
-            hdr.append(('AXCORR{}'.format(isource),
-                        nm_laser_obs/nm_laser,
-                        'Spectral axis correction coeff for source {}'.format(isource)))
+        #     hdr.append(('AXCORR{}'.format(isource),
+        #                 nm_laser_obs/nm_laser,
+        #                 'Spectral axis correction coeff for source {}'.format(isource)))
 
-        if wavenumber:
-            wave_type = 'WAVENUMBER'
-        else:
-            wave_type = 'WAVELENGTH'
-        hdr.append(('WAVTYPE', '{}'.format(wave_type),
-                    'Spectral axis type: wavenumber or wavelength'))
+        # if wavenumber:
+        #     wave_type = 'WAVENUMBER'
+        # else:
+        #     wave_type = 'WAVELENGTH'
+        # hdr.append(('WAVTYPE', '{}'.format(wave_type),
+        #             'Spectral axis type: wavenumber or wavelength'))
         
-        self.write_fits(
-            self._get_extracted_source_spectra_path(),
-            spectra,
-            fits_header=hdr,
-            overwrite=self.overwrite)
+        # self.write_fits(
+        #     self._get_extracted_source_spectra_path(),
+        #     spectra,
+        #     fits_header=hdr,
+        #     overwrite=self.overwrite)
         
-        if self.indexer is not None:
-            self.indexer['extracted_source_spectra'] = (
-                self._get_extracted_source_spectra_path())
+        # if self.indexer is not None:
+        #     self.indexer['extracted_source_spectra'] = (
+        #         self._get_extracted_source_spectra_path())
             
             
 

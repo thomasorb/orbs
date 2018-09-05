@@ -128,7 +128,7 @@ class BinnedPhaseCube(orb.core.OCube):
         return orb.fft.Phase(
             self[x, y, :], self.get_base_axis(), params=self.params)
         
-    def polyfit(self, polydeg, coeffs=None, suffix=None):
+    def polyfit(self, polydeg, coeffs=None, suffix=None, high_order_phase=None):
         """Create phase maps from a polynomial fit of the binned phase cube
 
         :param polydeg: Degree of the fitting polynomial. Must be >= 0.
@@ -142,19 +142,29 @@ class BinnedPhaseCube(orb.core.OCube):
         :param suffix: Phase maps hdf5 file suffix (added before the
           extension .hdf5)
 
+        :param high_order_phase: Phase vector removed before
+          fitting. Must be an orb.fft.Phase instance.
+
         :return: Path to the phase maps file (can then be opened with
           PhaseMaps).
 
         """
-        def fit_phase_in_column(col, deg, incoeffs_col, params, base_axis):
+        def fit_phase_in_column(col, deg, incoeffs_col, params, base_axis,
+                                high_order_phase_proj):
             warnings.simplefilter('ignore', RuntimeWarning)
             outcoeffs_col = np.empty((col.shape[0], deg + 1), dtype=float)
             outcoeffs_col.fill(np.nan)
             outcoeffs_err_col = np.empty((col.shape[0], deg + 1), dtype=float)
             outcoeffs_err_col.fill(np.nan)
+            if high_order_phase_proj is not None:
+                _ho_phase = orb.fft.Phase(high_order_phase_proj, base_axis, params)
+            else:
+                _ho_phase = None
             for ij in range(col.shape[0]):
                 icoeffs = tuple([icoeff[ij] for icoeff in incoeffs_col])
                 _phase = orb.fft.Phase(col[ij,:], base_axis, params)
+                if _ho_phase is not None:
+                    _phase.subtract(_ho_phase)
                 try:
                     outcoeffs_col[ij,:], outcoeffs_err_col[ij,:] = _phase.polyfit(
                         deg, coeffs=icoeffs, return_coeffs=True)
@@ -164,6 +174,13 @@ class BinnedPhaseCube(orb.core.OCube):
 
         if not isinstance(polydeg, int): raise TypeError('polydeg must be an integer')
         if polydeg < 0: raise ValueError('polydeg must be >= 0')
+
+        if high_order_phase is not None:
+            if not isinstance(high_order_phase, orb.fft.Phase):
+                raise TypeError('high_order_phase must be an orb.fft.Phase instance')
+            high_order_phase_proj = high_order_phase.project(self.get_base_axis())
+        else: 
+            high_order_phase_proj = None
 
         logging.info('Coefficients: {}'.format(coeffs))
         
@@ -199,6 +216,7 @@ class BinnedPhaseCube(orb.core.OCube):
 
         job_server, ncpus = self._init_pp_server()
         progress = orb.core.ProgressBar(self.dimx)
+        
         for ii in range(0, self.dimx, ncpus):
             progress.update(
                 ii,
@@ -211,7 +229,8 @@ class BinnedPhaseCube(orb.core.OCube):
                 args=(np.copy(self[:,ii+ijob,:]),
                       polydeg,
                       [icoeff[:,ii+ijob] for icoeff in coeffs],
-                      self.params.convert(), np.copy(base_axis)),
+                      self.params.convert(), np.copy(base_axis),
+                      high_order_phase_proj.data),
                 modules=("import logging",
                          "import warnings",
                          "import numpy as np",
@@ -251,7 +270,7 @@ class BinnedPhaseCube(orb.core.OCube):
             
         return phase_maps_path
     
-    def iterative_polyfit(self, polydeg, suffix=None):
+    def iterative_polyfit(self, polydeg, suffix=None, high_order_phase=None):
         """Fit the cube iteratively, starting by fitting all orders, then
         fixing the last free order to its mean in the map obtained
         from the preceding fit.
@@ -261,6 +280,9 @@ class BinnedPhaseCube(orb.core.OCube):
         :param suffix: Phase maps hdf5 file suffix (added before the
           extension .hdf5)
 
+        :param high_order_phase: Phase vector removed before
+          fitting. Must be an orb.fft.Phase instance.
+
         :return: Path to the last phase maps file (can then be opened
           with PhaseMaps).
         """
@@ -269,19 +291,21 @@ class BinnedPhaseCube(orb.core.OCube):
         if polydeg < 0: raise ValueError('polydeg must be >= 0')
 
         if suffix is None: suffix = ''
-        suffix = 'iter.' + suffix
+        else: suffix += '.'
 
         coeffs = list([None]) * (polydeg + 1)
         
         for ideg in range(polydeg + 1)[::-1]:
-            ipm_path = self.polyfit(polydeg, suffix=suffix + '.' + str(ideg), coeffs=coeffs)
-            ipm = PhaseMaps(ipm_path)
-            last_map = ipm.get_map(ideg)
-            last_dist = orb.utils.stats.sigmacut(last_map)
-            logging.info('Computed coefficient of order {}: {:.2e} ({:.2e})'.format(
-                ideg, np.nanmean(last_dist), np.nanstd(last_dist)))
-            coeffs[ideg] = np.nanmean(last_dist)
-            print coeffs
+            ipm_path = self.polyfit(
+                polydeg, suffix=suffix + 'iter{}'.format(ideg),
+                coeffs=coeffs, high_order_phase=high_order_phase)
+            if ideg > 0:
+                ipm = PhaseMaps(ipm_path)
+                last_map = ipm.get_map(ideg)
+                last_dist = orb.utils.stats.sigmacut(last_map)
+                logging.info('Computed coefficient of order {}: {:.2e} ({:.2e})'.format(
+                    ideg, np.nanmean(last_dist), np.nanstd(last_dist)))
+                coeffs[ideg] = np.nanmean(last_dist)
         logging.info('final computed phase maps path: {}'.format(ipm_path))
 
         return ipm_path

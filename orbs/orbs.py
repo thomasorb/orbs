@@ -2273,7 +2273,9 @@ class Orbs(Tools):
         else:     
             phase_maps_path = self.indexer.get_path(
                 'phase_maps', file_group=camera_number)
-            
+
+        high_order_phase_path = self._get_phase_file_path(self.options['filter_name'])
+
         ## Compute spectrum
         cube.compute_spectrum(
             phase_correction=phase_correction,
@@ -2281,6 +2283,7 @@ class Orbs(Tools):
             window_type=apodization_function,
             phase_cube=phase_cube,
             phase_maps_path=phase_maps_path,
+            high_order_phase_path=high_order_phase_path,
             balanced=balanced,
             wavenumber=wavenumber)
 
@@ -2289,8 +2292,7 @@ class Orbs(Tools):
         return perf_stats
 
 
-    def compute_phase_maps(self, camera_number, 
-                           no_star=False):
+    def compute_phase_maps(self, camera_number, no_star=False):
         
         """Create phase maps
 
@@ -2343,7 +2345,10 @@ class Orbs(Tools):
             binning = 3
 
         fit_order = self._get_phase_fit_order()
-        cube.create_phase_maps(binning, fit_order)
+        high_order_phase_path = self._get_phase_file_path(self.options['filter_name'])
+
+        cube.create_phase_maps(binning, fit_order,
+                               high_order_phase_path=high_order_phase_path)
             
         perf_stats = perf.print_stats()
         del perf
@@ -2800,6 +2805,15 @@ class Orbs(Tools):
 
         shutil.copyfile(phase_maps_path, exported_path)
         logging.info('Flat phase maps exported at {}'.format(exported_path))
+
+        high_order_phase_path = self.indexer.get_path(
+            'high_order_phase', file_group=camera_number)
+
+        exported_path = ('.' + os.sep + os.path.split(high_order_phase_path)[-1])
+
+        shutil.copyfile(high_order_phase_path, exported_path)
+        logging.info('High order phase file exported at {}'.format(exported_path))
+
 
         
         
