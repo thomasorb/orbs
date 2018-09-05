@@ -178,7 +178,7 @@ class BinnedPhaseCube(orb.core.OCube):
         if high_order_phase is not None:
             if not isinstance(high_order_phase, orb.fft.Phase):
                 raise TypeError('high_order_phase must be an orb.fft.Phase instance')
-            high_order_phase_proj = high_order_phase.project(self.get_base_axis())
+            high_order_phase_proj = high_order_phase.project(self.get_base_axis()).data
         else: 
             high_order_phase_proj = None
 
@@ -230,7 +230,7 @@ class BinnedPhaseCube(orb.core.OCube):
                       polydeg,
                       [icoeff[:,ii+ijob] for icoeff in coeffs],
                       self.params.convert(), np.copy(base_axis),
-                      high_order_phase_proj.data),
+                      high_order_phase_proj),
                 modules=("import logging",
                          "import warnings",
                          "import numpy as np",

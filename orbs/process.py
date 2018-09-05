@@ -2262,19 +2262,21 @@ class Interferogram(HDFCube):
         :param binning: Interferogram cube is binned before to
           accelerate computation.
 
-        :param poly_order: Order of the fitted polynomial (must be >= 2)
+        :param poly_order: Order of the fitted polynomial (must be >= 1)
 
         :param high_order_phase_path: (Optional) Path to an HDF5 phase
           file.
         """
         if not isinstance(poly_order, int): raise TypeError('poly_order must be an int')
-        if poly_order < 2: raise ValueError('poly_order = {} but must be >= 2'.format(poly_order))
+        if poly_order < 1: raise ValueError('poly_order = {} but must be >= 1'.format(poly_order))
         
         logging.info('Computing phase maps up to order {}'.format(poly_order))        
 
         if high_order_phase_path is not None:
             high_order_phase = orb.fft.Phase(high_order_phase_path, None)
-            logging.info('High order phase file loaded: {}'.format(high_order_phase_path))      
+            logging.info('High order phase file loaded: {}'.format(high_order_phase_path))
+        else:
+            high_order_phase = None
 
         self.create_binned_interferogram_cube(binning)
 
@@ -2306,7 +2308,6 @@ class Interferogram(HDFCube):
             self.indexer['phase_maps'] = final_phase_maps_path
 
         # compute high order phase
-
         phasemaps = PhaseMaps(final_phase_maps_path)
         phasemaps.modelize()
 
@@ -2318,9 +2319,19 @@ class Interferogram(HDFCube):
         high_order_phase = np.nanmean(np.nanmean(phase_cube_residual, axis=0), axis=0)
         high_order_phase = orb.fft.Phase(high_order_phase, phase_cube.get_base_axis(),
                                          params=phase_cube.params)
-        high_order_phase = high_order_phase.cleaned()
+        high_order_phase = high_order_phase.cleaned(border_ratio=-0.1)
+
+        # remove orders 0 and 1 from the phase residual
+        phase_corr = high_order_phase.data - high_order_phase.polyfit(1).data
+
+        # extrapolate values on the border to avoid phase switch off
+        # filter borders
+        filtmin = np.argmin(np.isnan(phase_corr))
+        phase_corr[:filtmin] = phase_corr[filtmin]
+        filtmax = np.argmax(np.isnan(phase_corr))
+        phase_corr[filtmax:] = phase_corr[filtmax-1]
         high_order_phase_corr = orb.fft.Phase(
-            high_order_phase.data - high_order_phase.polyfit(1).data,
+            phase_corr,
             high_order_phase.axis.data,
             params=phase_cube.params)
 

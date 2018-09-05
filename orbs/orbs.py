@@ -2344,8 +2344,15 @@ class Orbs(Tools):
         else:
             binning = 3
 
-        fit_order = self._get_phase_fit_order()
-        high_order_phase_path = self._get_phase_file_path(self.options['filter_name'])
+        high_order_phase_path = self._get_phase_file_path(
+            self.options['filter_name'])
+        
+        if high_order_phase_path is not None and os.path.exists(high_order_phase_path):
+            fit_order = 1
+        else:
+            high_order_phase_path = None
+            fit_order = self._get_phase_fit_order()
+            
 
         cube.create_phase_maps(binning, fit_order,
                                high_order_phase_path=high_order_phase_path)
