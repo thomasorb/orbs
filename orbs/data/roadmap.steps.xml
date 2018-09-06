@@ -42,7 +42,7 @@
   </step>
 
   <step name="compute_phase_maps">
-    <outfile name='phase_map_0'></outfile>
+    <outfile name='phase_maps'></outfile>
   </step>
 
   <step name="compute_phase_maps_from_external_source">
