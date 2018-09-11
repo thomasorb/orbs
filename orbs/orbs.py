@@ -389,7 +389,7 @@ class Orbs(Tools):
     option_file_path = None
     """Path to the option file"""
 
-    targets = ['object', 'flat', 'standard', 'laser', 'nostar', 'raw', 'sources', 'extphase', 'nophase', 'phasecube']
+    targets = ['object', 'flat', 'standard', 'laser', 'nostar', 'raw', 'sources', 'extphase', 'nophase', 'phasecube', 'detrend']
     """Possible target types"""
     
     target = None
@@ -593,7 +593,7 @@ class Orbs(Tools):
         store_option_parameter('order', 'SPEORDR', float)
         
         # check step and order
-        if 'filter_name' in self.options and target != 'laser':
+        if 'filter_name' in self.options and target != 'laser' and target != 'detrend':
             _step, _order = FilterFile(
                 self.options['filter_name']).get_observation_params()
             if int(self.options['order']) != int(_order):
@@ -654,6 +654,10 @@ class Orbs(Tools):
                 self.options['order'] = self.config['CALIB_ORDER']
             if 'step' not in self.options:
                 self.options['step'] = self.config['CALIB_STEP_SIZE']
+
+        # This is needed later
+        if target == 'detrend':
+            self.options['calibration_laser_map_path'] = 'DUMMY'
                 
         # If a keyword is the same as a configuration keyword,
         # config option is changed
@@ -666,7 +670,7 @@ class Orbs(Tools):
 
         # Calibration laser wavelength is changed if the calibration
         # laser map gives a new calibration laser wavelentgh
-        if target != 'laser':
+        if target != 'laser' and target != 'detrend':
             calib_hdu = self.read_fits(
                 self.options['calibration_laser_map_path'],
                 return_hdu_only=True)
@@ -3402,6 +3406,9 @@ class JobFile(OptionFile):
     # IF True target is a laser
     _is_laser = False
 
+    # IF True target is a detrend
+    _is_detrend = False
+
     # If True Init is fast, some checking is not done
     _fast_init = False
 
@@ -3419,7 +3426,7 @@ class JobFile(OptionFile):
         'FILTER': 'FILTER'}
 
     def __init__(self, option_file_path, protected_keys=[], is_laser=False,
-                 fast_init=False, **kwargs):
+                 is_detrend=False, fast_init=False, **kwargs):
         """Initialize class
 
         :param option_file_path: Path to the option file
@@ -3428,6 +3435,9 @@ class JobFile(OptionFile):
           the basic ones (default []).
 
         :param is_laser: (Optional) If True target is a Laser (default
+          False)
+
+        :param is_detrend: (Optional) If True target is a detrend cube (default
           False)
 
         :param fast_init: (Optional) If True conversion is fast and
@@ -3443,6 +3453,9 @@ class JobFile(OptionFile):
                 
         if is_laser:
             self._is_laser = True
+
+        if is_detrend:
+	    self._is_detrend = True
 
         if fast_init:
             self._fast_init = True
@@ -3565,6 +3578,9 @@ class JobFile(OptionFile):
         """Return True if target is a laser"""
         return bool(self._is_laser)
 
+    def is_detrend(self):
+	"""Return True if target is a detrend cube"""
+	return bool(self._is_detrend)
 
     def _get_from_hdr(self, key, cast=str, optional=False):
         """Return the value associated to a keyword in the header of
@@ -3660,7 +3676,7 @@ class JobFile(OptionFile):
         if 'CALIBMAP' in self.options:
             out_params['calibration_laser_map_path'] = self.options['CALIBMAP']
        
-        elif not self.is_laser() and not self._fast_init:
+        elif not self.is_laser() and not self.is_detrend() and not self._fast_init:
             raise StandardError('CALIBMAP keyword must be set')
 
 

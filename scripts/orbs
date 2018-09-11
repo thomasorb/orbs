@@ -113,7 +113,7 @@ class RecordFile(object):
 ##### MAIN FUNCTIONS #########################################
 ##############################################################
         
-def check_option_file(to, path, is_laser, fast_init):
+def check_option_file(to, path, is_laser, is_detrend, fast_init):
     """Check the option file type.
 
     If the option file is a job file for SITELLE, parse the file
@@ -122,9 +122,10 @@ def check_option_file(to, path, is_laser, fast_init):
     :param to: an orb.Tools instance
     :param path: path of the option file to check
     :param is_laser: If True, the target is a laser cube.
+    :param is_detrend: If True, the target is a detrend cube.
     :param fast_init: If True init is fast ans some checking is not done
     """
-    jobfile = JobFile(path, is_laser=is_laser, fast_init=fast_init)
+    jobfile = JobFile(path, is_laser=is_laser, is_detrend=is_detrend, fast_init=fast_init)
     if jobfile.is_jobfile():
         return jobfile.convert2opt()
     else:
@@ -214,7 +215,7 @@ def start(args, resume=False):
     elif args.single2: cams = 'single2'
 
     # special targets are mutually exclusive
-    if np.sum([args.flat, args.standard, args.stars, args.laser, args.raw, args.sources, args.extphase, args.nophase, args.phasecube]) > 1:
+    if np.sum([args.flat, args.standard, args.stars, args.laser, args.raw, args.sources, args.extphase, args.nophase, args.phasecube,args.detrend]) > 1:
         raise StandardError("only one special target (flat, standard, laser, stars, raw, sources, extphase, nophase, phasecube) can be choosen")
         sys.exit(2)
     if args.flat: 
@@ -231,6 +232,7 @@ def start(args, resume=False):
     elif args.extphase: target = 'extphase'
     elif args.nophase: target = 'nophase'
     elif args.phasecube: target = 'phasecube'
+    elif args.detrend:  target = 'detrend'
 
 
     # check first if reduction can be resumed
@@ -341,6 +343,8 @@ def start(args, resume=False):
     if args.start_step != 0: 
         logging.info("Starting step: %d"%args.start_step)
 
+    if args.detrend:
+	logging.info("Detrend mode")
   
     ###################################
     # Run ORBS with the given options #
@@ -439,6 +443,10 @@ def add_all_operations(instrument_parser, epilog, epilog_steps):
     group_target.add_argument('--raw', dest='raw', action='store_true',
                               default=False,
                               help='Run a fast raw reduction of astronomical data. Skip cosmic-ray detection and phase correction. Resulting spectra then have a sinc^2 instrumental line shape.')
+
+    group_target.add_argument('--detrend', dest='detrend', action='store_true',
+			      default=False,
+                              help='Run in detrend mode only.')
 
     group_target.add_argument('--sources', dest='sources', action='store_true',
                               default=False,
@@ -636,8 +644,10 @@ if __name__ == "__main__":
 
     if args.subparser_name == 'start':
         is_laser = args.laser
+	is_detrend = args.detrend
     else:
         is_laser = False
+	is_detrend = False
 
     if (args.subparser_name == 'status'
         or args.subparser_name == 'clean'):
@@ -647,7 +657,7 @@ if __name__ == "__main__":
 
     # check whether the option file is a job file or a 'real' option file
     args.option_file_path, out_params, file_type = check_option_file(
-        get_to(args), args.option_file_path, is_laser=is_laser, fast_init=fast_init)
+        get_to(args), args.option_file_path, is_laser=is_laser, is_detrend=is_detrend, fast_init=fast_init)
 
     # start and config logging
     try:
