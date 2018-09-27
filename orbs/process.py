@@ -2321,20 +2321,38 @@ class Interferogram(HDFCube):
         coeffs = [None] * 2 + [0] * (poly_order - 1)
         phasemaps.generate_phase_cube(self._get_phase_cube_model_path(),
                                       coeffs=coeffs)
+        
         phase_cube_model = self.read_fits(self._get_phase_cube_model_path())
         phase_cube_residual = self.read_fits(self._get_binned_phase_cube_path()) - phase_cube_model
+
+        ## remove the median of the phase vector at each pixel
+        fake_phase = phase_cube.get_phase(10, 10)
+        zmin, zmax = fake_phase.get_filter_bandpass_pix(border_ratio=0.2)
+        medframe = np.nanmean(phase_cube_residual[:,:,zmin:zmax], axis=2)        
+        phase_cube_residual = np.subtract(phase_cube_residual.T, medframe.T).T
+
+        # compute mean
         high_order_phase = np.nanmean(phase_cube_residual, axis=(0,1))
-        high_order_phase_std = np.nanstd(phase_cube_residual, axis=(0,1))
-        
         high_order_phase = orb.fft.Phase(high_order_phase, phase_cube.get_base_axis(),
                                          params=phase_cube.params)
+        
+        # compute std
+        high_order_phase_std = np.nanstd(phase_cube_residual, axis=(0,1))
+
+        median_std = np.median(high_order_phase_std[zmin:zmax])
+        logging.info('median std of each phase value: {:.2e} rad'.format(
+            median_std))
+        
+        logging.info('estimated precision: {:.2e} rad'.format(
+            median_std / np.sqrt(phase_cube.dimx * phase_cube.dimy)))
+        
+        
         high_order_phase_std = orb.fft.Phase(
             high_order_phase_std, phase_cube.get_base_axis(),
             params=phase_cube.params)
-        
-        high_order_phase = high_order_phase.cleaned(border_ratio=-0.1)
 
         # remove orders 0 and 1 from the phase residual
+        high_order_phase = high_order_phase.cleaned(border_ratio=-0.1)
         phase_corr = high_order_phase.data - high_order_phase.polyfit(1).data
 
         # extrapolate values on the border to avoid phase switch off
