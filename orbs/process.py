@@ -1901,7 +1901,11 @@ class Interferogram(HDFCube):
     def _get_high_order_phase_path(self):
         """Return path to the high order phase"""
         return self._data_path_hdr + 'high_order_phase.hdf5'
-    
+
+    def _get_high_order_phase_std_path(self):
+        """Return path to the high order phase std"""
+        return self._data_path_hdr + 'high_order_phase_std.hdf5'
+
     def _get_binned_phase_cube_path(self):
         """Return path to the binned phase cube."""
         return self._data_path_hdr + "binned_phase_cube.fits"
@@ -2319,9 +2323,15 @@ class Interferogram(HDFCube):
                                       coeffs=coeffs)
         phase_cube_model = self.read_fits(self._get_phase_cube_model_path())
         phase_cube_residual = self.read_fits(self._get_binned_phase_cube_path()) - phase_cube_model
-        high_order_phase = np.nanmean(np.nanmean(phase_cube_residual, axis=0), axis=0)
+        high_order_phase = np.nanmean(phase_cube_residual, axis=(0,1))
+        high_order_phase_std = np.nanstd(phase_cube_residual, axis=(0,1))
+        
         high_order_phase = orb.fft.Phase(high_order_phase, phase_cube.get_base_axis(),
                                          params=phase_cube.params)
+        high_order_phase_std = orb.fft.Phase(
+            high_order_phase_std, phase_cube.get_base_axis(),
+            params=phase_cube.params)
+        
         high_order_phase = high_order_phase.cleaned(border_ratio=-0.1)
 
         # remove orders 0 and 1 from the phase residual
@@ -2339,6 +2349,7 @@ class Interferogram(HDFCube):
             params=phase_cube.params)
 
         high_order_phase_corr.writeto(self._get_high_order_phase_path())
+        high_order_phase_std.writeto(self._get_high_order_phase_std_path())
     
         logging.info('high order phase path: {}'.format(
             self._get_high_order_phase_path()))
