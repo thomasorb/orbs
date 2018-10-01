@@ -43,7 +43,7 @@ import xml.etree.ElementTree
 import logging
 import warnings
 import shutil
-
+from datetime import datetime
 import astropy
 import pp
 import bottleneck as bn
@@ -3773,9 +3773,12 @@ class JobsWalker():
                 if key not in self.data:
                     self.data[key] = list()
                 if key in iof.options:
-                    self.data[key].append(iof.options[key])
+                    val = iof.options[key]
                 else:
-                    self.data[key].append(None)
+                    val = None
+                if key == 'OBSDATE':
+                    val = datetime.strptime(val, '%Y-%m-%d')
+                self.data[key].append(val)
                 
             
     def get_opt_files(self):
