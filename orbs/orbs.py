@@ -3729,3 +3729,66 @@ class JobFile(OptionFile):
 
 
     
+class JobsWalker():
+
+    """Construct a database of all the job files found in a given folder
+    and its subfolders.
+    """
+    keys = ['OBJECT', 'SPESTNB', 'OBSDATE', 'STDPATH', 'TARGETR', 'DIRCAM1', 'DIRCAM2', 'TARGETD', 'SPEEXPT', 'CALIBMAP', 
+            'TARGETX', 'TARGETY', 'SPEORDR', 'DIRFLT1', 'DIRFLT2', 'SPESTEP', 'STDNAME', 'HOUR_UT', 'FILTER']
+    
+    def __init__(self, root_folders):
+        """Init class.
+
+        :param root_folders: A list of path to the folders where the
+          job files are to be found.
+        """
+        if not isinstance(root_folders, list):
+            raise TypeError('root_folders must be a list of folders where the job files (*.job) are to be found')
+        self.root_folders = list()
+        for irf in root_folders:
+            if not os.path.isdir(irf):
+                raise IOError('{} not found'.format(irf))
+            self.root_folders.append(irf)
+        self.update()
+        
+
+    def update(self):
+        """update the database. """
+        self.optfiles = list()
+        for irootf in self.root_folders:
+            for root, dirs, files in os.walk(irootf):
+                for file_ in files:
+                    if file_.endswith(".job"):
+                        ijobpath = os.path.join(root, file_)
+                        if os.path.exists(ijobpath + '.opt'):
+                            self.optfiles.append(ijobpath + '.opt')
+                        else:
+                            warnings.warn('{} does not have any corresponding opt file.'.format(ijobpath))
+
+        self.data = dict()
+        for ioptpath in self.optfiles:
+            iof = orb.core.OptionFile(ioptpath)
+            for key in self.keys:
+                if key not in self.data:
+                    self.data[key] = list()
+                if key in iof.options:
+                    self.data[key].append(iof.options[key])
+                else:
+                    self.data[key].append(None)
+                
+            
+    def get_opt_files(self):
+        """Return a list of the option files found"""
+        return list(self.optfiles)
+    
+    def get_data(self):
+        """Return the content of the job files as a dict, which can be
+           directly passed to a pandas DataFrame.
+
+           .. code::
+             jw = JobWalker(['path1', 'path2'])
+             data = pd.DataFrame(jw.get_data()))
+        """
+        return dict(self.data)
+            
