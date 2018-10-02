@@ -389,7 +389,8 @@ class Orbs(Tools):
     option_file_path = None
     """Path to the option file"""
 
-    targets = ['object', 'flat', 'standard', 'laser', 'nostar', 'raw', 'sources', 'extphase', 'nophase', 'phasecube']
+    targets = ['object', 'flat', 'standard', 'laser', 'nostar', 'raw',
+               'sources', 'extphase', 'nophase', 'phasecube']
     """Possible target types"""
     
     target = None
