@@ -3737,6 +3737,7 @@ class JobsWalker():
     """
     keys = ['OBJECT', 'SPESTNB', 'OBSDATE', 'STDPATH', 'TARGETR', 'DIRCAM1', 'DIRCAM2', 'TARGETD', 'SPEEXPT', 'CALIBMAP', 
             'TARGETX', 'TARGETY', 'SPEORDR', 'DIRFLT1', 'DIRFLT2', 'SPESTEP', 'STDNAME', 'HOUR_UT', 'FILTER']
+    base_keys = ['OBJECT', 'SPESTNB', 'OBSDATE', 'SPEEXPT', 'FILTER', 'LASTRUN', 'PATH']
     
     def __init__(self, root_folders):
         """Init class.
@@ -3768,6 +3769,8 @@ class JobsWalker():
                             warnings.warn('{} does not have any corresponding opt file.'.format(ijobpath))
 
         self.data = dict()
+        self.data['LASTRUN'] = list()
+        self.data['PATH'] = list()
         for ioptpath in self.optfiles:
             iof = orb.core.OptionFile(ioptpath)
             for key in self.keys:
@@ -3780,12 +3783,27 @@ class JobsWalker():
                 if key == 'OBSDATE':
                     val = datetime.strptime(val, '%Y-%m-%d')
                 self.data[key].append(val)
-                
+            if os.path.exists(ioptpath + '.log'):
+                self.data['LASTRUN'].append(datetime.fromtimestamp(
+                    os.path.getmtime(ioptpath + '.log')))
+            else:
+                self.data['LASTRUN'].append(None)
+            self.data['PATH'].append(ioptpath)
             
     def get_opt_files(self):
         """Return a list of the option files found"""
         return list(self.optfiles)
     
+    def get_all_data(self):
+        """Return the whole content of the job files as a dict, which can be
+           directly passed to a pandas DataFrame.
+
+           .. code::
+             jw = JobWalker(['path1', 'path2'])
+             data = pd.DataFrame(jw.get_data()))
+        """
+        return dict(self.data)
+
     def get_data(self):
         """Return the content of the job files as a dict, which can be
            directly passed to a pandas DataFrame.
@@ -3794,5 +3812,8 @@ class JobsWalker():
              jw = JobWalker(['path1', 'path2'])
              data = pd.DataFrame(jw.get_data()))
         """
-        return dict(self.data)
-            
+        _data = dict()
+        for key in self.base_keys:
+            _data[key] = list(self.data[key])
+        return _data
+
