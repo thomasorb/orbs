@@ -396,7 +396,10 @@ class Orbs(Tools):
     target = None
     """Choosen target to reduce"""
 
-    def __init__(self, option_file_path, target, cams,
+    cams = ['single1', 'single2', 'full']
+    """Possible camera names"""
+    
+    def __init__(self, option_file_path, target, cam,
                  instrument=None, ncpus=None,
                  overwrite=True, silent=False, fast_init=False,
                  raw_data_files_check=True, logfile_path=None):
@@ -408,7 +411,7 @@ class Orbs(Tools):
           reduction road map. Target may be 'object', 'flat',
           'standard', 'laser', 'raw', 'sources' or 'extphase'.
 
-        :param cams: Camera number. Can be 'single1', 'single2' or
+        :param cam: Camera number. Can be 'single1', 'single2' or
           'full' for both cameras.
 
         :param instrument: (Optional) name of the instrument config to
@@ -555,6 +558,10 @@ class Orbs(Tools):
                 for line in conf_file:
                     logging.info(line[:-1])
 
+
+        # check params
+        if cam not in self.cams:
+            raise ValueError('cams must be in {}'.format(self.cams))
         
         # Read option file to get observation parameters
         if not os.path.exists(option_file_path):
@@ -694,10 +701,13 @@ class Orbs(Tools):
         # get folders paths
         if not silent:
             logging.info('Reading data folders')
-        store_folder_parameter('image_list_path_1', 'DIRCAM1', 1,
-                               mask_key='object_mask_path')
-        store_folder_parameter('image_list_path_2', 'DIRCAM2', 2,
-                               mask_key='object_mask_path')
+        if cam in ['single1', 'full']:
+            store_folder_parameter('image_list_path_1', 'DIRCAM1', 1,
+                                   mask_key='object_mask_path')
+        if cam in ['single2', 'full']:
+            store_folder_parameter('image_list_path_2', 'DIRCAM2', 2,
+                                   mask_key='object_mask_path')
+            
         store_folder_parameter('bias_path_1', 'DIRBIA1', 1)
         store_folder_parameter('bias_path_2', 'DIRBIA2', 2)
         store_folder_parameter('dark_path_1', 'DIRDRK1', 1)
@@ -840,6 +850,7 @@ class Orbs(Tools):
             self.write_fits(self._get_zpd_index_file_path(),
                             np.array(self.options['zpd_index']),
                             overwrite=True)
+        
         # Init Indexer
         self.indexer = Indexer(data_prefix=self.options['object_name']
                                + '_' + self.options['filter_name'] + '.',
@@ -853,7 +864,7 @@ class Orbs(Tools):
             raise StandardError('Unknown target type: target must be in {}'.format(self.targets))
 
         self.roadmap = RoadMap(
-            self.config["INSTRUMENT_NAME"].lower(), target, cams, self.indexer)
+            self.config["INSTRUMENT_NAME"].lower(), target, cam, self.indexer)
 
         # attach methods to roadmap steps
         self.roadmap.attach('compute_alignment_vector',
@@ -884,7 +895,6 @@ class Orbs(Tools):
                             self.extract_source_interferograms)
         self.roadmap.attach('compute_source_spectra',
                             self.compute_source_spectra)        
-        
         
     def _get_calibration_standard_fits_header(self):
 
@@ -1659,7 +1669,7 @@ class Orbs(Tools):
 
     def compute_interferogram(self, camera_number, 
                               z_range=[], combine='average', reject='avsigclip',
-                              flat_smooth_deg=0):
+                              flat_smooth_deg=0, no_corr=False):
         """Run the computation of the corrected interferogram from raw
            frames
 
@@ -1681,10 +1691,26 @@ class Orbs(Tools):
         :param flat_smooth_deg: (Optional) If > 0 smooth the master
           flat (help removing possible fringe pattern) (default
           0). See :py:meth:`process.RawData._load_flat`.
-          
+         
+        :param no_corr: (Optional) If True, no correction is made and
+          the interferogram cube is just a copy of the raw cube
+          (default False).
+
         .. seealso:: :py:meth:`process.RawData.correct`
+
         """
         cube = self._init_raw_data_cube(camera_number)
+
+        if no_corr:
+            if not os.path.exists(os.path.abspath(cube._get_interfero_cube_path())):
+                os.symlink(os.path.abspath(self.options["image_list_path_1.hdf5"]),
+                           os.path.abspath(cube._get_interfero_cube_path()))
+                self.indexer['interfero_cube'] = cube._get_interfero_cube_path()
+            else:
+                warnings.warn('interferogram symlink already created')
+
+            return
+        
         perf = Performance(cube, "Interferogram computation", camera_number,
                            instrument=self.instrument)
 
@@ -3728,6 +3754,9 @@ class JobFile(OptionFile):
 
         
 
+##################################################
+#### CLASS JobsWalker ############################
+##################################################
 
     
 class JobsWalker():
