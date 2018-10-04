@@ -1702,6 +1702,8 @@ class Orbs(Tools):
         cube = self._init_raw_data_cube(camera_number)
 
         if no_corr:
+            try: os.makedirs(os.path.split(cube._get_interfero_cube_path())[0])
+            except OSError: pass
             if not os.path.exists(os.path.abspath(cube._get_interfero_cube_path())):
                 os.symlink(os.path.abspath(self.options["image_list_path_1.hdf5"]),
                            os.path.abspath(cube._get_interfero_cube_path()))
