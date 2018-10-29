@@ -5213,6 +5213,8 @@ class Spectrum(HDFCube):
                 self.params.step, self.params.order, STEP_NB,
                 wavenumber=False, corr=corr))
 
+
+        raise NotImplementedError('should be reconsidered, calculation must not be done here and user should use orb.photometry directly')
         # convert it to erg/cm2/s by summing all the photons
         std_th_flux = th_spectrum * filter_function / np.nanmax(filter_function)
         std_th_flux = np.diff(th_spectrum_axis) * 10. * std_th_flux[:-1]

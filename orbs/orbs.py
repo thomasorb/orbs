@@ -2964,9 +2964,11 @@ class Orbs(Tools):
           reliable external phase can be provided (e.g. Standard
           stars).
         """
-        std_spectrum, hdr = self.read_fits(self.indexer.get_path(
+        std_spectrum, hdr = self.read_fits(
+            self.indexer.get_path(
             'extracted_source_spectra', file_group=camera_number),
-                                           return_header=True)
+            return_header=True)
+        
         corr = hdr['AXCORR0']
         axis = orb.utils.spectrum.create_cm1_axis(
             std_spectrum.shape[0], self.options['step'], self.options['order'],
