@@ -44,7 +44,7 @@ import gvar
 #################################################
 #### CLASS BinnedInterferogramCube ##############
 #################################################
-class BinnedInterferogramCube(orb.fft.InterferogramCube):
+class BinnedInterferogramCube(orb.fft.InterferogramOCube):
 
     def compute_phase(self):
 
