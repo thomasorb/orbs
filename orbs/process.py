@@ -30,7 +30,7 @@ __docformat__ = 'reStructuredText'
 import version
 __version__ = version.__version__
 
-from orb.core import Tools, ProgressBar, Standard, FilterFile
+from orb.core import Tools, ProgressBar, FilterFile
 from orb.core import FDCube, HDFCube, OutHDFCube, OutHDFQuadCube, OCube
 import orb.utils.fft
 import orb.fft
@@ -2436,12 +2436,19 @@ class Interferogram(HDFCube):
             from orb.fft import Interferogram, Phase
             import logging
             import orb.utils.log
+            import time
             orb.utils.log.setup_socket_logging()
             dimz = data.shape[1]
             spectrum_column = np.zeros_like(data, dtype=complex)
-            ho_phase = Phase(high_order_phase_data, high_order_phase_axis, params)
-                
+            ho_phase = Phase(high_order_phase_data,
+                             axis=high_order_phase_axis,
+                             params=params)
+
+            times = {'loop':list(), 'probe1':list(), 'probe2':list()}
             for ij in range(data.shape[0]):
+                itime = dict()
+                stime = time.time()
+            
                 # throw out interferograms with less than half non-zero values
                 # (zero values are considered as bad points : cosmic rays, bad
                 # frames etc.)
@@ -2453,10 +2460,12 @@ class Interferogram(HDFCube):
 
                 icalib_coeff = calibration_coeff_map_column[ij]
 
+                times['probe1'].append(time.time()-stime)
                 iinterf = Interferogram(
-                    iinterf_data, params,
+                    iinterf_data, params=params,
                     calib_coeff=icalib_coeff)
-                
+
+                times['probe2'].append(time.time()-stime)
                 ispectrum = iinterf.get_spectrum()
 
                 iphase = Phase(phase_maps_col[ij,:],
@@ -2470,10 +2479,11 @@ class Interferogram(HDFCube):
                 else:
                     spectrum_column[ij,:] = ispectrum.get_amplitude()
 
+                times['loop'].append(time.time()-stime)
             if np.nansum(spectrum_column) == 0:
                 logging.debug('Whole column filled with zeroes')
                 
-            return spectrum_column
+            return spectrum_column, times
 
             
         if not phase_cube:
@@ -2543,7 +2553,8 @@ class Interferogram(HDFCube):
             
             mean_calib = np.nanmean(self.get_calibration_coeff_map()[xmin:xmax, ymin:ymax])
 
-            mean_interf = orb.fft.Interferogram(mean_interf, self.params, calib_coeff=mean_calib)
+            mean_interf = orb.fft.Interferogram(
+                mean_interf, params=self.params, calib_coeff=mean_calib)
             mean_spectrum = mean_interf.get_spectrum()
             
             mean_phase = phase_maps.get_phase(self.dimx/2, self.dimy/2, unbin=True)
@@ -2592,6 +2603,7 @@ class Interferogram(HDFCube):
             iquad_data = self.get_data(x_min, x_max, 
                                        y_min, y_max, 
                                        0, self.dimz)
+            iquad_data = iquad_data.astype(np.complex128)
             ## iquad_data = np.empty((x_max-x_min, y_max-y_min,self.dimz), dtype=float)
             # multi-processing server init
             job_server, ncpus = self._init_pp_server()
@@ -2625,7 +2637,10 @@ class Interferogram(HDFCube):
                 for ijob, job in jobs:
                     # spectrum comes in place of the interferograms
                     # to avoid using too much memory
-                    iquad_data[ii+ijob,:,:] = job()
+                    iquad_data[ii+ijob,:,:], times = job()
+                    logging.debug({'looping time: {}'.format(np.median(times['loop']))})
+                    logging.debug({'probe1 time: {}'.format(np.median(times['probe1']))})
+                    logging.debug({'probe2 time: {}'.format(np.median(times['probe2']))})
                 
                 progress.update(ii, info="Quad %d/%d column : %d"%(
                         iquad+1L, self.config.QUAD_NB, ii))
