@@ -39,6 +39,7 @@ import orb.fft
 import orb.core
 import warnings
 import orb.utils
+import orb.utils.io
 import gvar
 
 #################################################
@@ -250,7 +251,7 @@ class BinnedPhaseCube(orb.core.OCube):
         coeffs_cube[np.nonzero(coeffs_cube == 0)] = np.nan
         
         phase_maps_path = self.get_phase_maps_path(suffix=suffix)
-        with self.open_hdf5(phase_maps_path, 'w') as hdffile:
+        with orb.utils.io.open_hdf5(phase_maps_path, 'w') as hdffile:
             self.add_params_to_hdf_file(hdffile)
             hdffile.create_dataset(
                 '/calibration_coeff_map',
@@ -334,7 +335,7 @@ class PhaseMaps(orb.core.Tools):
 
         :param kwargs: Kwargs are :meth:`core.Tools` properties.
         """
-        with self.open_hdf5(phase_maps_path, 'r') as f:
+        with orb.utils.io.open_hdf5(phase_maps_path, 'r') as f:
             kwargs['instrument'] = f.attrs['instrument']
     
         orb.core.Tools.__init__(self, **kwargs)
@@ -347,7 +348,7 @@ class PhaseMaps(orb.core.Tools):
 
         self.phase_maps = list()
         self.phase_maps_err = list()
-        with self.open_hdf5(phase_maps_path, 'r') as f:
+        with orb.utils.io.open_hdf5(phase_maps_path, 'r') as f:
             self.phase_maps_path = phase_maps_path
             self.calibration_coeff_map = f['calibration_coeff_map'][:]
             self.axis = f['cm1_axis'][:]

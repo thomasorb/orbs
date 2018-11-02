@@ -485,7 +485,7 @@ class Orbs(Tools):
                         mask_key += '_{}'.format(camera_index)
                         if mask_key in self.options:
                             warnings.warn('Mask applied: {}'.format(self.options[mask_key]))
-                            image_mask = self.read_fits(
+                            image_mask = orb.utils.io.read_fits(
                                 self.options[mask_key])
                         else: image_mask = None
                     else: image_mask = None
@@ -498,7 +498,7 @@ class Orbs(Tools):
 
 
         def check_exported_cube(export_path, cube):
-            with self.open_hdf5(export_path, 'r') as f:
+            with orb.utils.io.open_hdf5(export_path, 'r') as f:
                 if 'image_list' in f:
                     new_image_list = f['image_list'][:]
                     old_image_list = np.array(
@@ -675,7 +675,7 @@ class Orbs(Tools):
         # Calibration laser wavelength is changed if the calibration
         # laser map gives a new calibration laser wavelentgh
         if target != 'laser':
-            calib_hdu = self.read_fits(
+            calib_hdu = orb.utils.io.read_fits(
                 self.options['calibration_laser_map_path'],
                 return_hdu_only=True)
             if 'CALIBNM' in calib_hdu[0].header:
@@ -811,7 +811,7 @@ class Orbs(Tools):
         if self.config["INSTRUMENT_NAME"] == 'SITELLE' and not fast_init:
             
             try: # check if the zpd index has already been computed
-                zpd_index = int(self.read_fits(self._get_zpd_index_file_path()))
+                zpd_index = int(orb.utils.io.read_fits(self._get_zpd_index_file_path()))
             except IOError: 
                 cube_list = self.options['image_list_path_1']
 
@@ -847,7 +847,7 @@ class Orbs(Tools):
                 logging.info('ZPD index: {}'.format(
                     self.options['zpd_index']))
             
-            self.write_fits(self._get_zpd_index_file_path(),
+            orb.utils.io.write_fits(self._get_zpd_index_file_path(),
                             np.array(self.options['zpd_index']),
                             overwrite=True)
         
@@ -1318,7 +1318,7 @@ class Orbs(Tools):
             cube = HDFCube(std_path, instrument=self.instrument, ncpus=self.ncpus)
             hdr = cube.get_frame_header(0)
         else:
-            hdr = self.read_fits(std_path, return_hdu_only=True)[0].header
+            hdr = orb.utils.io.read_fits(std_path, return_hdu_only=True)[0].header
         return ''.join(hdr['OBJECT'].strip().split()).upper()
         
    
@@ -1378,7 +1378,7 @@ class Orbs(Tools):
             merge_bad_frames_path = self.indexer['merged.bad_frames_vector']
             if merge_bad_frames_path is not None:
                 if os.path.exists(merge_bad_frames_path):
-                    merge_bad_frames = self.read_fits(merge_bad_frames_path)
+                    merge_bad_frames = orb.utils.io.read_fits(merge_bad_frames_path)
                     bad_frames_vector[np.nonzero(merge_bad_frames)] = 1
 
         if bad_frames_list is not None:
@@ -2631,8 +2631,8 @@ class Orbs(Tools):
             'alignment_parameters',
             file_group=camera_number)
         if alignment_parameters_path is not None:
-            alignment_coeffs = self.read_fits(alignment_parameters_path)[:5]
-            mean_fwhm_1_arc = self.read_fits(alignment_parameters_path)[8]
+            alignment_coeffs = orb.utils.io.read_fits(alignment_parameters_path)[:5]
+            mean_fwhm_1_arc = orb.utils.io.read_fits(alignment_parameters_path)[8]
         else:
             alignment_coeffs = None
 
@@ -2662,7 +2662,7 @@ class Orbs(Tools):
 
         # detect stars in cube 1
         cube1 = self._init_raw_data_cube(1)
-        deep_frame = self.read_fits(self.indexer['cam1.deep_frame'])
+        deep_frame = orb.utils.io.read_fits(self.indexer['cam1.deep_frame'])
         star_list_path_1, mean_fwhm_1_arc = self.detect_stars(
                 cube1, 0, saturation_threshold=self.config[
                 'SATURATION_THRESHOLD'], deep_frame=deep_frame)
@@ -2821,11 +2821,11 @@ class Orbs(Tools):
         calibration_laser_map_path = self.indexer.get_path(
             'calibration_laser_map', camera_number)
        
-        map_data, map_hdr = self.read_fits(
+        map_data, map_hdr = orb.utils.io.read_fits(
             calibration_laser_map_path,
             return_header=True)
         
-        self.write_fits(self._get_calibration_laser_map_path(camera_number),
+        orb.utils.io.write_fits(self._get_calibration_laser_map_path(camera_number),
                         map_data, fits_header=map_hdr,
                         overwrite=self.overwrite)
 
@@ -2964,7 +2964,7 @@ class Orbs(Tools):
           reliable external phase can be provided (e.g. Standard
           stars).
         """
-        std_spectrum, hdr = self.read_fits(
+        std_spectrum, hdr = orb.utils.io.read_fits(
             self.indexer.get_path(
             'extracted_source_spectra', file_group=camera_number),
             return_header=True)
@@ -2984,7 +2984,7 @@ class Orbs(Tools):
 
         std_spectrum_path = self._get_standard_spectrum_path(camera_number)
         
-        self.write_fits(std_spectrum_path, std_spectrum,
+        orb.utils.io.write_fits(std_spectrum_path, std_spectrum,
                         fits_header=hdr,
                         overwrite=True)
         
@@ -2994,7 +2994,7 @@ class Orbs(Tools):
         :param camera_number: Camera number (must be 1, 2 or 0 for
           merged data).
         """
-        source_spectra, hdr = self.read_fits(self.indexer.get_path(
+        source_spectra, hdr = orb.utils.io.read_fits(self.indexer.get_path(
             'extracted_source_spectra', file_group=camera_number),
                                              return_header=True)
         if len(source_spectra.shape) == 1:
@@ -3015,9 +3015,9 @@ class Orbs(Tools):
         source_spectra_path = self._get_extracted_source_spectra_path(
             camera_number)
         
-        self.write_fits(source_spectra_path, source_spectra,
-                        fits_header=hdr,
-                        overwrite=True)
+        orb.utils.io.write_fits(source_spectra_path, source_spectra,
+                                fits_header=hdr,
+                                overwrite=True)
     
         
         
