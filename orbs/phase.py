@@ -37,6 +37,7 @@ import logging
 
 import orb.fft
 import orb.core
+import orb.cube
 import warnings
 import orb.utils
 import orb.utils.io
@@ -45,7 +46,7 @@ import gvar
 #################################################
 #### CLASS BinnedInterferogramCube ##############
 #################################################
-class BinnedInterferogramCube(orb.fft.InterferogramOCube):
+class BinnedInterferogramCube(orb.cube.InterferogramCube):
 
     def compute_phase(self):
 
@@ -110,7 +111,7 @@ class BinnedInterferogramCube(orb.fft.InterferogramOCube):
 #################################################
 #### CLASS BinnedPhaseCube ######################
 #################################################
-class BinnedPhaseCube(orb.core.OCube):
+class BinnedPhaseCube(orb.cube.Cube):
 
     def get_phase_maps_path(self, suffix=None):
         if suffix is None: suffix = ''       

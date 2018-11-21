@@ -214,23 +214,15 @@ def start(args, resume=False):
     elif args.single2: cams = 'single2'
 
     # special targets are mutually exclusive
-    if np.sum([args.flat, args.standard, args.stars, args.laser, args.raw, args.sources, args.extphase, args.nophase, args.phasecube]) > 1:
-        raise StandardError("only one special target (flat, standard, laser, stars, raw, sources, extphase, nophase, phasecube) can be choosen")
+    if np.sum([args.flat, args.standard, args.laser, args.extphase]) > 1:
+        raise StandardError("only one special target (flat, standard, laser, raw, extphase) can be choosen")
         sys.exit(2)
     if args.flat: 
 	target = 'flat'
-	args.nophase = True
     elif args.standard: target = 'standard'
     elif args.laser: target = 'laser'
-    elif args.stars: target = 'stars'
     elif args.nostar: target = 'nostar'
-    elif args.raw:
-        target = 'raw'
-        args.nophase = True
-    elif args.sources: target = 'sources'
     elif args.extphase: target = 'extphase'
-    elif args.nophase: target = 'nophase'
-    elif args.phasecube: target = 'phasecube'
 
 
     # check first if reduction can be resumed
@@ -275,22 +267,6 @@ def start(args, resume=False):
         logging.info(
             "Camera 2 reduction in single mode")
 
-    if args.nophase is not False:
-        logging.info(
-            "No phase correction will be done")
-
-    if args.phasecube:
-        logging.info(
-            "Phase cube will be computed, not spectrum")
-
-    if args.stars:
-        logging.info(
-            "Computing only stars spectrum")
-
-    if args.nostar:
-        warnings.warn(
-            "Star-dependant processes will be skipped")
-
     if args.nofilter:
         warnings.warn(
             "No filter correction during calibration")
@@ -299,22 +275,9 @@ def start(args, resume=False):
         warnings.warn(
             "No WCS calibration")
 
-    if args.alt_merge:
-        warnings.warn(
-            "Alternative merging process")
-
     if args.raw:
         warnings.warn(
             "Raw (faster) reduction process: no cosmic rays removal and no phase correction.")
-
-    if args.sources:
-        logging.info(
-            "Sources extraction process.")
-
-    if args.sources:
-        logging.info(
-            "Reduction with external phase map")
-
 
     if args.flat:
         logging.info(
@@ -323,10 +286,6 @@ def start(args, resume=False):
     if args.standard:
         logging.info(
             "Standard cube: The spectrum of the standard star will be returned")
-
-    if args.quadrants:
-        logging.info(
-            "Resulting spectrum will be splitted in quadrants")
 
     if args.apodization_function is not None:
         logging.info(
@@ -366,10 +325,6 @@ def start(args, resume=False):
             apodization_function=args.apodization_function,
             start_step=args.start_step,
             save_as_quads=args.quadrants,
-            phase_correction=not args.nophase,
-            phase_cube=args.phasecube,
-            alt_merge=args.alt_merge,
-            add_frameB=args.add_frameB,
             filter_correction=not args.nofilter,
             wcs_calibration=not args.nowcs)
        
@@ -387,7 +342,7 @@ def start(args, resume=False):
 
 
 
-def add_all_operations(instrument_parser, epilog, epilog_steps):
+def add_all_operations(instrument_parser, epilog):
 
     instrument_parser.add_argument(
         'option_file_path', action='store',
@@ -407,7 +362,7 @@ def add_all_operations(instrument_parser, epilog, epilog_steps):
 
     subparsers = instrument_parser.add_subparsers(help='operation type', dest='subparser_name')
 
-    parser_start = subparsers.add_parser('start', help='Start the reduction process.', formatter_class=argparse.RawDescriptionHelpFormatter, epilog=epilog_steps+ epilog)
+    parser_start = subparsers.add_parser('start', help='Start the reduction process.', formatter_class=argparse.RawDescriptionHelpFormatter, epilog=epilog)
 
 
     group_target = parser_start.add_argument_group('Particular targets', '')
@@ -422,32 +377,14 @@ def add_all_operations(instrument_parser, epilog, epilog_steps):
                               default=False,
                               help="Use it to reduce a standard star cube. Instead of returning a full cube, return the spectrum of the standard. The standard star position must be the target position defined in the option file (see TARGETR, TARGETD, TARGETX, TARGETY).")
 
-    group_target.add_argument('--stars', dest='stars',
-                              action='store_true',
-                              default=False,
-                              help="Compute only the spectra of the detected stars in the cube. The interferogram of each star is evaluated from star photometry. Note that this option is not compatible with the option --flat or the option --nostar.")
-
     group_target.add_argument('--laser', dest='laser',
                               action='store_true',
                               default=False,
                               help="Compute a calibration laser map from a calibration laser cube.")
 
-    group_target.add_argument('--nostar', dest='nostar', action='store_true',
-                               default=False,
-                               help='Run a reduction but skip all star-dependant processes. Warning, this kind of reduction is far less precise. The default alignement parameters (defined in the configuration file) are used.')
-
-    group_target.add_argument('--raw', dest='raw', action='store_true',
-                              default=False,
-                              help='Run a fast raw reduction of astronomical data. Skip cosmic-ray detection and phase correction. Resulting spectra then have a sinc^2 instrumental line shape.')
-
-    group_target.add_argument('--sources', dest='sources', action='store_true',
-                              default=False,
-                              help='Run a sources extraction process. Make sure SOURCE_LIST_PATH is set to a valid source file (X Y coordinates in pixels, one source by line; index of the first pixel is 0, which is different from ds9 indexing).')
-
     group_target.add_argument('--extphase', dest='extphase', action='store_true',
                               default=False,
                               help='Run a reduction with an external phase map (useful for extended HII region covering the whole FOV). PHASEMAP0 keyword must be present in the option file.')
-
 
     parser_start.add_argument(
         '--debug', dest='debug', action='store_true',
@@ -479,60 +416,10 @@ def add_all_operations(instrument_parser, epilog, epilog_steps):
                                default=False,
                                help='No WCS calibration of the spectral cube')
 
-    group_special.add_argument('--quadrants', dest='quadrants',
-                               action='store_true',
-                               default=False,
-                               help='Save the resulting spectral cube in quadrants to avoid the manipulation of a large data set. A quadrant can be seen as an independent cubes of smaller field of view.')
-
     group_special.add_argument('--nocheck', dest='nocheck',
                                action='store_true',
                                default=False,
                                help='If raw data cubes have already been built original data files are not checked again.')
-
-
-
-
-    group_spiomm = parser_start.add_argument_group('SpIOMM specific options', '')
-
-    group_spiomm.add_argument('-1', dest='single1', action='store_true',
-                              default=False,
-                              help='(SpIOMM specific option) Reduction of camera 1 alone')
-
-    group_spiomm.add_argument('-2', dest='single2', action='store_true',
-                              default=False,
-                              help='(SpIOMM specific option) Reduction of camera 2 alone')
-
-    group_spiomm.add_argument('--nophase', dest='nophase', action='store_true',
-                              default=False,
-                              help='(SpIOMM specific option) If this argument is set no phase correction will be done and the resulting spectrum will be the absolute value of the complex spectrum.')
-
-    group_spiomm.add_argument('--phasecube', dest='phasecube', action='store_true',
-                              default=False,
-                              help='(SpIOMM specific option) If this argument is set to True, a phase cube will be computed in place of the spectrum')
-
-    group_spiomm.add_argument('--nocam2', dest='add_frameB',
-                              action='store_false',
-                              default=True,
-                              help='(SpIOMM specific option) Use camera 2 only to compute transmission vector but do not merge frames. Use it for the full reduction process if camera 2 frames are too noisy or if the fringing effect must be removed. This option is used at the merging step.')
-
-    group_spiomm.add_argument('--altmerge', dest='alt_merge',
-                              action='store_true',
-                              default=False,
-                              help="(SpIOMM specific option) Alternative merging process. Star photometry is not used during the merging process. Might be more noisy but useful if for some reason the correction vectors cannot be well computed (e.g. not enough good stars, intense emission lines everywhere in the field).")
-
-    group_spiomm.add_argument('--init_angle',
-                              dest='init_angle',
-                              action='store',
-                              default=None,
-                              type=float,
-                              help="(SpIOMM specific option) Change default config variable INIT_ANGLE for this reduction only.")
-
-
-    group_spiomm.add_argument('--align',
-                              dest='alignment_coeffs',
-                              action='store',
-                              default=None,
-                              help="(SpIOMM specific option) Alignment coefficients if already known. Alignment step is skipped. Useful to compute a FLAT cube with alignments coefficients computed from an astrophysical object. Alignment coefficients must be formatted this way: dx,dy,dr,da,db (no space, 5 numbers comma separated): e.g. --align=25.2,36.5,-85.8,0.1,0.5.")
 
 
     parser_resume = subparsers.add_parser('resume', help='Resume reduction process from the last completed step.')
@@ -560,58 +447,14 @@ if __name__ == "__main__":
     epilog = """  ORBS version: {}, ORB version: {}
   Author: Thomas Martin (thomas.martin.1@ulaval.ca)""".format(
       orbs.version.__version__, orb.core.__version__)
-
-
-    # load roadmaps to create the epilog help
-    rm_spiomm_object_full = RoadMap('spiomm', 'object', 'full', None)
-    rm_spiomm_flat_full = RoadMap('spiomm', 'flat', 'full', None)
-    rm_spiomm_object_single1 = RoadMap('spiomm', 'object', 'single1', None)
-    rm_spiomm_standard_full = RoadMap('spiomm', 'standard', 'full', None)
-    rm_spiomm_laser_full = RoadMap('spiomm', 'laser', 'full', None)
-    
-
-    
-    epilog_steps = """
-  Object full reduction steps
-  ---------------------------
-  
-{}
-
-  Flat full reduction step
-  ------------------------
-
-{}
-
-  Standard full reduction step
-  ----------------------------
-
-{}
-
-  Laser full reduction step
-  -------------------------
-
-{}
-
-  Object single reduction steps
-  -----------------------------
-  
-{}
-
-""".format(rm_spiomm_object_full.get_steps_str(indent=5),
-           rm_spiomm_flat_full.get_steps_str(indent=5),
-           rm_spiomm_standard_full.get_steps_str(indent=5),
-           rm_spiomm_laser_full.get_steps_str(indent=5),
-           rm_spiomm_object_single1.get_steps_str(indent=5))
-
-
+     
     # define main parser
     parser = ArgumentParser(
         prog='orbs',
         version=('ORBS-version: {}, ORB-version: {}'.format(
             orbs.version.__version__, orb.core.__version__)),
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        description="Run the whole reduction process.",
-        epilog=epilog)
+        description="Run the whole reduction process.")
 
 
     instrument_parsers = parser.add_subparsers(help='instrument mode', dest='instrument_mode')
@@ -621,8 +464,8 @@ if __name__ == "__main__":
     sitelle_parser = instrument_parsers.add_parser('sitelle', help='SITELLE mode')
 
     # add the same operations to all instrument parsers
-    add_all_operations(spiomm_parser, epilog, epilog_steps)
-    add_all_operations(sitelle_parser, epilog, epilog_steps)
+    add_all_operations(spiomm_parser, epilog)
+    add_all_operations(sitelle_parser, epilog)
 
     if len(sys.argv) < 2:
         parser.print_usage()

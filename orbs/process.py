@@ -412,7 +412,7 @@ class RawData(HDFCube):
 
         # Create master bias
         # Resizing if nescessary (Warning this must be avoided)
-        if self.is_same_2D_size(bias_cube):
+        if self.has_same_2D_size(bias_cube):
             bias_frames = bias_cube.get_all_data()   
         else:
             warnings.warn("Bad bias cube dimensions : resizing data")
@@ -488,7 +488,7 @@ class RawData(HDFCube):
                     warnings.warn("Some of the dark temperatures could not be read. Check presence of the keyword 'CCD-TEMP'")
 
         # Resizing operation if nescessary (this must be avoided)
-        if self.is_same_2D_size(dark_cube):
+        if self.has_same_2D_size(dark_cube):
             dark_frames = dark_cube.get_all_data().astype(float)
             
         else:
@@ -549,7 +549,7 @@ class RawData(HDFCube):
         logging.info('Creating Master Flat')
         
         # resizing if nescessary
-        if self.is_same_2D_size(flat_cube):   
+        if self.has_same_2D_size(flat_cube):   
             flat_frames = flat_cube.get_all_data().astype(float)
             
         else:
@@ -778,7 +778,7 @@ class RawData(HDFCube):
                            ncpus=self.ncpus)
         dark_cube_dimz = dark_cube.dimz
         
-        if not self.is_same_2D_size(dark_cube):
+        if not self.has_same_2D_size(dark_cube):
             dark_cube = dark_cube.get_resized_data(self.dimx, self.dimy)
             dark_cube_dimz = dark_cube.shape[2]
 
@@ -1490,38 +1490,38 @@ class RawData(HDFCube):
         del out_cube
 
         
-        # check median level of frames (Because bad bias/dark frames can
-        # cause a negative median level for the frames of camera 2)
-        logging.info('Checking frames level')
-        interf_cube = HDFCube(self._get_interfero_cube_path(),
-                              instrument=self.instrument,
-                              ncpus=self.ncpus)
-        zmedian = interf_cube.get_zmedian()
-        corr_level = -np.min(zmedian) + 10. # correction level
-        header = self._get_interfero_frame_header()
-        # correct frames if nescessary by adding the same level to every frame
-        if np.min(zmedian) < 0.:
-            out_cube = OutHDFCube(self._get_interfero_cube_path(),
-                                  (self.dimx, self.dimy, z_max-z_min),
-                                  overwrite=self.overwrite)
+        # # check median level of frames (Because bad bias/dark frames can
+        # # cause a negative median level for the frames of camera 2)
+        # logging.info('Checking frames level')
+        # interf_cube = HDFCube(self._get_interfero_cube_path(),
+        #                       instrument=self.instrument,
+        #                       ncpus=self.ncpus)
+        # zmedian = interf_cube.get_zmedian()
+        # corr_level = -np.min(zmedian) + 10. # correction level
+        # header = self._get_interfero_frame_header()
+        # # correct frames if nescessary by adding the same level to every frame
+        # if np.min(zmedian) < 0.:
+        #     out_cube = OutHDFCube(self._get_interfero_cube_path(),
+        #                           (self.dimx, self.dimy, z_max-z_min),
+        #                           overwrite=self.overwrite)
             
-            warnings.warn('Negative median level of some frames. Level of all frames is being added %f counts'%(corr_level))
-            progress = ProgressBar(interf_cube.dimz)
-            for iz in range(interf_cube.dimz):
-                progress.update(iz, info='Correcting negative level of frames')
-                frame = interf_cube.get_data_frame(iz) + corr_level
-                mask = interf_cube.get_data_frame(iz, mask=True)
+        #     warnings.warn('Negative median level of some frames. Level of all frames is being added %f counts'%(corr_level))
+        #     progress = ProgressBar(interf_cube.dimz)
+        #     for iz in range(interf_cube.dimz):
+        #         progress.update(iz, info='Correcting negative level of frames')
+        #         frame = interf_cube.get_data_frame(iz) + corr_level
+        #         mask = interf_cube.get_data_frame(iz, mask=True)
                 
-                out_cube.write_frame(
-                    iz,
-                    data=frame,
-                    mask=mask,
-                    header=header,
-                    record_stats=True)
-            progress.end()
+        #         out_cube.write_frame(
+        #             iz,
+        #             data=frame,
+        #             mask=mask,
+        #             header=header,
+        #             record_stats=True)
+        #     progress.end()
 
-            out_cube.close()
-            del out_cube
+        #     out_cube.close()
+        #     del out_cube
         
         if self.indexer is not None:
             self.indexer['interfero_cube'] = self._get_interfero_cube_path()
@@ -1996,182 +1996,6 @@ class Interferogram(HDFCube):
                 + self._get_basic_spectrum_cube_header(axis,
                                                        wavenumber=wavenumber)
                 + self._get_fft_params_header(apodization_function))
-
-    def create_correction_vectors(self, star_list_path,
-                                  fwhm_arc, fov, profile_name='gaussian',
-                                  moffat_beta=3.5, step_number=None,
-                                  bad_frames_vector=[],
-                                  aperture_photometry=True):
-        """Create a sky transmission vector computed from star
-        photometry and an stray light vector computed from the median
-        of the frames.
-
-        :param star_list_path: Path to a list of star positions.
-        
-        :param box_size: (Optional) The size of the box in pixel
-            around each given star used to fit a 2D gaussian (default
-            15 pixels). Choose it to be between 3 and 6 times the
-            FWHM.
-
-        :param step_number: (Optional) 'Full' number of steps if the
-          cube was complete. Might be different from the 'real' number
-          of steps obtained. Helps in finding ZPD (default None).
-
-        :param bad_frames_vector: (Optional) Contains the index of the
-          frames considered as bad (default []).
-
-        :param aperture_photometry: If True, flux of stars is computed
-          by aperture photometry. Else, The flux is evaluated given
-          the fit parameters.
-        
-        .. note:: The sky transmission vector gives the absorption
-          caused by clouds or airmass variation.
-
-        .. note:: The stray light vector gives the counts added
-          homogeneously to each frame caused by a cloud reflecting
-          light coming from the ground, the moon or the sun.
-
-        .. warning:: This method is intented to be used to correct a
-          'single camera' interferogram cube. In the case of a merged
-          interferogram this is already done by the
-          :py:meth:`process.InterferogramMerger.merge` with a far
-          better precision (because both cubes are used to compute it)
-        """
-        raise NotImplementedError('Must be reimplemented properly based on level 2 enhancements')
-        
-        # Length ratio of the ZPD over the entire cube. This is used
-        # to correct the external illumination vector
-        ZPD_SIZE = float(self._get_tuning_parameter('ZPD_SIZE', 0.20))
-        
-        # number of pixels used on each side to smooth the
-        # transmission vector
-        SMOOTH_DEG = int(self._get_tuning_parameter('SMOOTH_DEG', 0))
-
-        def _sigmean(frame):
-            return orb.utils.stats.robust_mean(orb.utils.stats.sigmacut(frame))
-        
-        logging.info("Creating correction vectors")
-
-
-        if aperture_photometry:
-            logging.info('Star flux evaluated by aperture photometry')
-            photometry_type = 'aperture_flux'
-        else:
-            logging.info('Star flux evaluated from fit parameters')
-            photometry_type = 'flux'
-
-        ## Computing stray light vector
-        logging.info("Computing stray light vector")
-        # Multiprocessing server init
-        job_server, ncpus = self._init_pp_server() 
-        
-        stray_light_vector = np.empty(self.dimz, dtype=float)
-        progress = ProgressBar(self.dimz)
-        for ik in range(0, self.dimz, ncpus):
-            # No more jobs than frames to compute
-            if (ik + ncpus >= self.dimz): 
-                ncpus = self.dimz - ik
-
-            jobs = [(ijob, job_server.submit(
-                _sigmean,
-                args=(self.get_data_frame(ik+ijob),),
-                modules=("import logging",
-                         'import orb.utils.stats',)))
-                    for ijob in range(ncpus)]
-
-            for ijob, job in jobs:
-                stray_light_vector[ik+ijob] = job()
-                
-            progress.update(ik, info='Computing frame %d'%ik)
-            
-        self._close_pp_server(job_server)
-        progress.end()
-
-        ## get stars photometry to compute transmission vector
-        logging.info("Computing transmission vector")
-        astrom = Astrometry(self, profile_name=profile_name,
-                            moffat_beta=moffat_beta,
-                            data_prefix=self._data_prefix,
-                            star_list_path=star_list_path,
-                            tuning_parameters=self._tuning_parameters,
-                            instrument=self.instrument,
-                            ncpus=self.ncpus)
-
-        astrom.fit_stars_in_cube(local_background=True,
-                                 fix_aperture_size=True,
-                                 precise_guess=True,
-                                 multi_fit=True, save=True)
-        
-        astrom.load_fit_results(astrom._get_fit_results_path())
-        
-        photom = astrom.fit_results[:,:,photometry_type]
-
-        for iph in range(photom.shape[0]):
-            photom[iph,:] /= np.median(photom[iph,:])
-        
-        transmission_vector = np.array(
-            [orb.utils.stats.robust_mean(orb.utils.stats.sigmacut(photom[:,iz]))
-             for iz in range(self.dimz)])
-        
-        # correct for zeros, bad frames and NaN values
-        bad_frames_vector = [bad_frame
-                             for bad_frame in bad_frames_vector
-                             if (bad_frame < step_number and bad_frame >= 0)]
-        
-        transmission_vector[bad_frames_vector] = np.nan
-        stray_light_vector[bad_frames_vector] = np.nan
-        
-        transmission_vector = orb.utils.vector.correct_vector(
-            transmission_vector, bad_value=0., polyfit=False, deg=1)
-        stray_light_vector = orb.utils.vector.correct_vector(
-            stray_light_vector, bad_value=0., polyfit=False, deg=1)
-        
-        # correct for ZPD
-        zmedian = self.get_zmedian(nozero=True)
-        zpd_index = orb.utils.fft.find_zpd(zmedian,
-                                           step_number=step_number)
-        logging.info('ZPD index: %d'%zpd_index)
-        
-        zpd_min = zpd_index - int((ZPD_SIZE * step_number)/2.)
-        zpd_max = zpd_index + int((ZPD_SIZE * step_number)/2.) + 1
-        if zpd_min < 1: zpd_min = 1
-        if zpd_max > self.dimz:
-            zpd_max = self.dimz - 1
-        
-        transmission_vector[zpd_min:zpd_max] = 0.
-        transmission_vector = orb.utils.vector.correct_vector(
-            transmission_vector, bad_value=0., polyfit=False, deg=1)
-        stray_light_vector[zpd_min:zpd_max] = 0.
-        stray_light_vector = orb.utils.vector.correct_vector(
-            stray_light_vector, bad_value=0., polyfit=False, deg=1)
-        
-        # smooth
-        if SMOOTH_DEG > 0:
-            transmission_vector = orb.utils.vector.smooth(transmission_vector,
-                                                          deg=SMOOTH_DEG)
-            stray_light_vector = orb.utils.vector.smooth(stray_light_vector,
-                                                         deg=SMOOTH_DEG)
-            
-        # normalization of the transmission vector
-        transmission_vector /= orb.utils.stats.robust_median(
-            transmission_vector)
-
-        # save correction vectors
-        orb.utils.io.write_fits(self._get_transmission_vector_path(),
-                        transmission_vector,
-                        fits_header= self._get_transmission_vector_header(),
-                        overwrite=self.overwrite)
-        if self.indexer is not None:
-            self.indexer['transmission_vector'] = (
-                self._get_transmission_vector_path())
-        
-        orb.utils.io.write_fits(self._get_stray_light_vector_path(),
-                        stray_light_vector,
-                        fits_header= self._get_stray_light_vector_header(),
-                        overwrite=self.overwrite)
-        if self.indexer is not None:
-            self.indexer['stray_light_vector'] = (
-                self._get_stray_light_vector_path())
 
     def correct_interferogram(self, transmission_vector_path,
                               stray_light_vector_path):
@@ -5371,443 +5195,4 @@ class Spectrum(HDFCube):
             std_step, std_order, std_exp_time,
             std_corr, 
             filter_min_pix, filter_max_pix)
-        
-
-#################################################
-#### CLASS SourceExtractor ######################
-#################################################
-class SourceExtractor(InterferogramMerger):
-
-
-    def _get_extracted_source_interferograms_path(self):
-        """Return path to extracted source interferograms"""
-        return self._data_path_hdr + "extracted_source_interferograms.fits"
-
-    def _get_extracted_source_fwhm_path(self):
-        """Return path to extracted source fwhm follow-up"""
-        return self._data_path_hdr + "extracted_source_fwhm.fits"
-
-    def _get_extracted_source_interferograms_header(self):
-        """Return header of extracted source interferograms data file"""
-        return (self._get_basic_header('Extracted source interferograms')
-                + self._project_header)
-
-    def _get_extracted_source_fwhm_header(self):
-        """Return header of extracted source fwhm data file"""
-        return (self._get_basic_header('Extracted source fwhm')
-                + self._project_header)
-
-
-    def _get_extracted_source_spectra_path(self):
-        """Return path to extracted source spectra"""
-        return self._data_path_hdr + "extracted_source_spectra.fits"
-
-    def _get_extracted_source_spectra_header(self, apodization_function):
-        """Return header of extracted source spectra data file"""
-        return (self._get_basic_header('Extracted source spectra')
-                + self._project_header
-                + self._get_fft_params_header(apodization_function))
-
-    def extract_source_interferograms(self, source_list,
-                                      star_list_path, fov,
-                                      alignment_vector_1_path,
-                                      alignment_vector_2_path,
-                                      modulation_ratio_path,
-                                      transmission_vector_path,
-                                      ext_illumination_vector_path,
-                                      fwhm_arc,
-                                      deep_frame=None,
-                                      profile_name='gaussian',
-                                      moffat_beta=3.5):
-
-        """Extract the interferogram of all sources.
-
-        :param deep_frame: if a deep frame is given the fwhm of the
-          sources is fitted as a first guess.
-        """
-        def _fit_sources_in_frame(frameA, frameB, source_listA, box_size,
-                                  profile_name, scale, mean_fwhm_pix, fwhm_ratio,
-                                  default_beta,
-                                  fit_tol, alignment_coeffs, rc, zoom_factor,
-                                  modulation_ratio, dxA, dyA, star_list):
-        
-            source_listA[:,0] += dxA
-            source_listA[:,1] += dyA
-            source_listB = orb.utils.astrometry.transform_star_position_A_to_B(
-                source_listA, alignment_coeffs, rc, zoom_factor)    
-
-            # detect fwhm in frame
-            istar_list = np.copy(star_list)
-            istar_list[:,0] += dxA
-            istar_list[:,1] += dyA
-            
-            imean_fwhm_pix, _ = orb.utils.astrometry.detect_fwhm_in_frame(
-                frameA, istar_list, mean_fwhm_pix)
-            if imean_fwhm_pix is not None:
-                imean_fwhm_pix = imean_fwhm_pix[0]
-            else:
-                imean_fwhm_pix = mean_fwhm_pix
-                        
-            ifwhm_pix = np.sqrt(imean_fwhm_pix**2. + fwhm_ratio)
-
-            # extract aperture photometry
-            fit_resA = orb.utils.astrometry.multi_aperture_photometry(
-                frameA, source_listA, ifwhm_pix, silent=True)
-            fit_resB = orb.utils.astrometry.multi_aperture_photometry(
-                frameB, source_listB, ifwhm_pix, silent=True)
-            photomA = [fit['aperture_flux'] for fit in fit_resA]
-            photomB = [fit['aperture_flux'] for fit in fit_resB]
-                
-            return (photomA - modulation_ratio * photomB,
-                    photomA + modulation_ratio * photomB,
-                    ifwhm_pix)
-        
-        
-        MERGE_BOX_SZ_COEFF = 7        
-
-        fwhm_arc_A = float(fwhm_arc)
-        fwhm_arc_B = float(fwhm_arc)
-        
-        alignment_coeffs = [self.dx, self.dy, self.dr, self.da, self.db]
-
-        alignment_vector_1 = orb.utils.io.read_fits(
-            alignment_vector_1_path)
-        alignment_vector_2 = orb.utils.io.read_fits(
-            alignment_vector_2_path)
-        modulation_ratio = orb.utils.io.read_fits(
-            modulation_ratio_path)
-        transmission_vector = orb.utils.io.read_fits(
-            transmission_vector_path)
-        ext_illumination_vector = orb.utils.io.read_fits(
-            ext_illumination_vector_path)
-
-
-        if deep_frame is not None:
-            astrom_deep = Astrometry(deep_frame, 
-                                     profile_name=profile_name,
-                                     moffat_beta=moffat_beta,
-                                     data_prefix=self._data_prefix + 'merged.',
-                                     tuning_parameters=self._tuning_parameters,
-                                     check_mask=False,
-                                     instrument=self.instrument,
-                                     ncpus=self.ncpus)
-            source_list = np.array(source_list)
-            astrom_deep.reset_star_list(source_list)
-
-            fit_res_deep = astrom_deep.fit_stars_in_frame(0, multi_fit=False)
-            deep_fwhm_pix = fit_res_deep[:,'fwhm_pix']
-        else: deep_fwhm_pix = None
-            
-
-        
-        astrom = Astrometry(self.cube_B, 
-                            profile_name=profile_name,
-                            moffat_beta=moffat_beta,
-                            data_prefix=self._data_prefix + 'merged.',
-                            tuning_parameters=self._tuning_parameters,
-                            check_mask=False,
-                            instrument=self.instrument,
-                            ncpus=self.ncpus)
-
-        if deep_fwhm_pix is None:
-            fwhm_ratio = 1
-        else:
-            fwhm_ratio = deep_fwhm_pix**2. - astrom.fwhm_pix**2.
-        
-        # load star list
-        star_list = astrom.load_star_list(star_list_path)
-
-        # load source list
-        source_list = np.array(source_list)
-        astrom.reset_star_list(source_list)
-
-        astrom.fit_results = orb.astrometry.StarsParams(
-            source_list.shape[0], self.cube_A.dimz,
-            silent=self._silent,
-            instrument=self.instrument,
-            ncpus=self.ncpus)
-
-        job_server, ncpus = self._init_pp_server()
-
-        frames = np.empty((self.cube_A.dimx, self.cube_A.dimy, ncpus),
-                          dtype=float)
-        
-        photom = np.empty((source_list.shape[0],
-                           self.cube_A.dimz), dtype=float)
-        fwhmm = np.empty((source_list.shape[0],
-                          self.cube_A.dimz), dtype=float)
-
-        # transm is not used at the moment ...
-        transm = np.empty((source_list.shape[0],
-                           self.cube_A.dimz), dtype=float)
-        
-        progress = ProgressBar(int(self.cube_A.dimz), silent=self._silent)
-        # fit all sources in each frame
-        for ik in range(0, self.cube_A.dimz, ncpus):
-            progress.update(ik, info="frame : " + str(ik))
-            
-            # no more jobs than frames to compute
-            if (ik + ncpus >= self.cube_A.dimz):
-                ncpus = self.cube_A.dimz - ik
-
-            framesA = self.cube_A.get_data(0, self.cube_A.dimx,
-                                           0, self.cube_A.dimy,
-                                           ik, ik+ncpus, silent=True)
-            framesB = self.cube_B.get_data(0, self.cube_B.dimx,
-                                           0, self.cube_B.dimy,
-                                           ik, ik+ncpus, silent=True)
-
-            # get stars photometry for each frame
-            jobs = [(ijob, job_server.submit(
-                _fit_sources_in_frame,
-                args=(framesA[:,:,ijob], framesB[:,:,ijob],
-                      source_list, astrom.box_size,
-                      astrom.profile_name,
-                      astrom.scale,
-                      astrom.fwhm_pix,
-                      fwhm_ratio,
-                      astrom.default_beta,
-                      astrom.fit_tol,
-                      alignment_coeffs, self.rc, self.zoom_factor,
-                      modulation_ratio,
-                      alignment_vector_1[ik+ijob,0],
-                      alignment_vector_1[ik+ijob,1],
-                      star_list),
-                modules=("import logging",
-                         "from orb.utils.astrometry import fit_star, sky_background_level, aperture_photometry, get_profile",
-                         "from orb.astrometry import StarsParams",
-                         "import orb.astrometry",
-                         "import orb.utils.image",
-                         "import orb.utils.astrometry",
-                         "import numpy as np",
-                         "import math",
-                         "import orb.utils as utils",
-                         "import orb.cutils as cutils",
-                         "import bottleneck as bn",
-                         "import warnings")))
-                    for ijob in range(ncpus)]
-            
-            for ijob, job in jobs:
-                photom[:,ik+ijob], transm[:,ik+ijob], fwhmm[:,ik+ijob] = job()
-            
-        self._close_pp_server(job_server)
-        progress.end()
-
-        # interferogram correction
-        for i in range(photom.shape[0]):
-            photom[i,:] = photom[i,:] / transmission_vector
-
-        orb.utils.io.write_fits(
-            self._get_extracted_source_interferograms_path(),
-            photom,
-            fits_header=self._get_extracted_source_interferograms_header(),
-            overwrite=self.overwrite)
-
-        if self.indexer is not None:
-            self.indexer['extracted_source_interferograms'] = (
-                self._get_extracted_source_interferograms_path())
-
-        orb.utils.io.write_fits(
-            self._get_extracted_source_fwhm_path(),
-            fwhmm,
-            fits_header=self._get_extracted_source_fwhm_header(),
-            overwrite=self.overwrite)
-
-
-        return photom
-
-
-    def compute_source_spectra(self, source_list, source_interf_path,
-                               step, order, apodization_function,
-                               filter_name, phase_map_paths,
-                               nm_laser,
-                               calibration_laser_map_path,
-                               phase_correction=True,
-                               optimize_phase=False,
-                               wavenumber=True,
-                               filter_correction=True,
-                               cube_A_is_balanced=True,
-                               zpd_shift=None,
-                               phase_order=None,
-                               return_phase=False):
-        
-        """Compute source spectra
-
-
-        :param phase_order: (Optional) If phase_map_paths is set to None, phase_order must be given.
-        """
-        raise NotImplementedError('must be reimplemented since phase and fft computation have changed (level2)')
-    
-        # source_interf = orb.utils.io.read_fits(source_interf_path)
-
-        # if phase_map_paths is None and phase_order is None and phase_correction:
-        #     raise StandardError('If phase correction is required and phase_map_paths is not given, phase must be computed for each source independantly and phase_order must be set.')
-
-        # if filter_name is None:
-        #     raise StandardError('No filter name given')
-
-        
-        # if len(source_interf.shape) == 1:
-        #     source_interf = np.array([source_interf])
-
-
-        # # get calibration laser map
-        # calibration_laser_map = orb.utils.io.read_fits(
-        #     calibration_laser_map_path)
-        
-        # # wavenumber
-        # if wavenumber:
-        #     logging.info('Wavenumber (cm-1) output')
-        # else:
-        #     logging.info('Wavelength (nm) output')
-
-        
-        # source_list = np.array(source_list)
-
-        # # create spectra array (spec_nb, spec_size, 2) : spectra are in [:,0]
-        # # and spectral axes are in [:,1]
-        # spectra = np.empty((source_interf.shape[0],
-        #                     source_interf.shape[1], 2), dtype=float)
-        # spectra.fill(np.nan)
-        # step_nb = source_interf.shape[1]
-
-        # # get zpd shift
-        # if zpd_shift is None:
-        #     zpd_shift = orb.utils.fft.find_zpd(
-        #         self.cube_A.get_zmedian(nozero=True),
-        #         return_zpd_shift=True)
-        
-        # logging.info("ZPD shift: {}".format(zpd_shift))
-
-        # # load phase maps
-        # if (phase_map_paths is not None and phase_correction):
-        #     phase_maps = list()
-        #     for phase_map_path in phase_map_paths:
-        #         phase_maps.append(orb.utils.io.read_fits(phase_map_path))
-        #         logging.info('Loaded phase map: {}'.format(phase_map_path))
-            
-        # else:
-        #     phase_maps = None
-        
-        # # get high order phase
-        # if filter_name is not None:
-        #     raise NotImplementedError('new Phase transform must be used')
-                
-        #     phf = PhaseFile(filter_name)
-            
-        #     logging.info('Phase file: {}'.format(phf.improved_path))
-            
-        # logging.info("Apodization function: %s"%apodization_function)
-        # logging.info("Folding order: %f"%order)
-        # logging.info("Step size: %f"%step)
-        # logging.info("ZPD shift: %f"%zpd_shift)
-
-        
-        # hdr = self._get_extracted_source_spectra_header(
-        #     apodization_function)
-
-        # for isource in range(source_interf.shape[0]):
-        #     x = source_list[isource,0]
-        #     y = source_list[isource,1]
-        #     interf = source_interf[isource, :]
-            
-        #     nm_laser_obs = calibration_laser_map[int(x), int(y)]
-            
-        #     if phase_correction:                
-        #         coeffs_list = list()
-        #         if phase_maps is not None:
-        #             for phase_map in phase_maps:
-        #                 if np.size(phase_map) > 1:
-        #                     coeffs_list.append(phase_map[int(x), int(y)])
-        #                 else:
-        #                     coeffs_list.append(phase_map)
-        #         else:
-        #             optimize_phase = True
-        #             coeffs_list = np.empty(phase_order+1, dtype=float)
-                            
-        #         if optimize_phase:
-        #             guess = np.array(coeffs_list)
-        #             guess.fill(0.)
-                    
-        #             ext_phase = orb.utils.fft.optimize_phase(
-        #                 interf, step, order, zpd_shift,
-        #                 nm_laser_obs, nm_laser, guess=guess,
-        #                 high_order_phase=phf)
-        #         else:
-        #             ext_phase = np.polynomial.polynomial.polyval(
-        #                 np.arange(step_nb), coeffs_list)
-
-        #     else:
-        #         ext_phase = None
-
-        #     # replace zeros by nans
-        #     interf[np.nonzero(interf == 0)] = np.nan
-
-        #     if return_phase:
-        #         phase_correction = False
-        #         ext_phase = None
-
-        #     raise NotImplementedError('new fft transform must be used')
-                
-        #     ## spec = orb.utils.fft.transform_interferogram(
-        #     ##     interf, nm_laser, nm_laser_obs, step, order,
-        #     ##     apodization_function, zpd_shift,
-        #     ##     phase_correction=phase_correction,
-        #     ##     ext_phase=ext_phase,
-        #     ##     wavenumber=wavenumber,
-        #     ##     wave_calibration=False,
-        #     ##     return_phase=return_phase)
-
-        #     if wavenumber:
-        #         spec_axis = orb.utils.spectrum.create_cm1_axis(
-        #             spec.shape[0], step, order, corr=nm_laser_obs/nm_laser)
-        #     else:
-        #         spec_axis = orb.utils.spectrum.create_nm_axis(
-        #             spec.shape[0], step, order, corr=nm_laser_obs/nm_laser)
-
-        #     if filter_correction:
-        #         # load filter function
-        #         (filter_function,
-        #          filter_min_pix, filter_max_pix) = (
-        #             FilterFile(filter_name).get_filter_function(
-        #                 step, order, step_nb,
-        #                 wavenumber=wavenumber,
-        #                 corr=nm_laser_obs/nm_laser))    
-       
-        #         spec /= filter_function
-        #         spec[:filter_min_pix] = np.nan
-        #         spec[filter_max_pix:] = np.nan
-
-        #     # check polarity 
-        #     if optimize_phase:
-        #         if np.nanmean(spec) < 0.:
-        #             warnings.warn('Negative polarity of the spectrum')
-        #             spec = -spec
-
-        #     spectra[isource, :, 0] = spec
-        #     spectra[isource, :, 1] = spec_axis
-
-        #     hdr.append(('AXCORR{}'.format(isource),
-        #                 nm_laser_obs/nm_laser,
-        #                 'Spectral axis correction coeff for source {}'.format(isource)))
-
-        # if wavenumber:
-        #     wave_type = 'WAVENUMBER'
-        # else:
-        #     wave_type = 'WAVELENGTH'
-        # hdr.append(('WAVTYPE', '{}'.format(wave_type),
-        #             'Spectral axis type: wavenumber or wavelength'))
-        
-        # orb.utils.io.write_fits(
-        #     self._get_extracted_source_spectra_path(),
-        #     spectra,
-        #     fits_header=hdr,
-        #     overwrite=self.overwrite)
-        
-        # if self.indexer is not None:
-        #     self.indexer['extracted_source_spectra'] = (
-        #         self._get_extracted_source_spectra_path())
-            
-            
-
         
