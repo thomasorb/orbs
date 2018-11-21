@@ -49,11 +49,12 @@ import pp
 import bottleneck as bn
 
 
-from orb.core import Tools, FDCube, Indexer, OptionFile, HDFCube, TextColor
+from orb.core import Tools, Indexer, OptionFile, TextColor
+from orb.cube import FDCube, HDFCube
 from orb.core import FilterFile, ProgressBar
 from process import RawData, InterferogramMerger, Interferogram
 from process import Spectrum, CalibrationLaser
-from process import SourceExtractor, CosmicRayDetector
+from process import CosmicRayDetector
 import orb.constants
 import orb.version
 import orb.utils.spectrum
@@ -139,16 +140,11 @@ class Orbs(Tools):
     :DIRCAL2: Path to the directory containing the images of the
       calibration laser cube of the camera 2
 
-    :DIRFLTS: Path to the directory containing the flat spectrum
-      frames
-
     :STDPATH: Path to the standard spectrum file
 
     :PHASEMAPS: Path to the external phase map file
 
     :STDNAME: Name of the standard used for flux calibration
-
-    :FRINGES: Fringes parameters
 
     :STARLIST1: Path to a list of star positions for the camera 1
 
@@ -276,9 +272,6 @@ class Orbs(Tools):
           enter in one of the cameras and not the other this must be
           set to 1. This way this external light can be tracked by the
           merge process.
-
-        * PREBINNING: Prebinning of the frames, useful for a quick
-          reduction.
     """
     
     options = dict()
@@ -340,11 +333,7 @@ class Orbs(Tools):
         * standard_path: STDPATH
         
         * phase_map_path: PHASEMAPS
-        
-        * fringes: FRINGES
-        
-        * flat_spectrum_path: DIRFLTS
-          
+                  
         * star_list_path_1: STARLIST1
           
         * star_list_path_2: STARLIST2
@@ -360,8 +349,6 @@ class Orbs(Tools):
         * wavenumber: WAVENUMBER
 
         * spectral_calibration: WAVE_CALIB
-
-        * prebinning: PREBINNING
 
         * no_sky: NOSKY
 
@@ -394,11 +381,8 @@ class Orbs(Tools):
     
     target = None
     """Choosen target to reduce"""
-
-    cams = ['single1', 'single2', 'full']
-    """Possible camera names"""
     
-    def __init__(self, option_file_path, target, cam,
+    def __init__(self, option_file_path, target,
                  instrument=None, ncpus=None,
                  overwrite=True, silent=False, fast_init=False,
                  raw_data_files_check=True, logfile_path=None):
@@ -409,9 +393,6 @@ class Orbs(Tools):
         :param target: Target type to reduce. Used to define the
           reduction road map. Target may be 'object', 'flat',
           'standard', 'laser' or 'extphase'.
-
-        :param cam: Camera number. Can be 'single1', 'single2' or
-          'full' for both cameras.
 
         :param instrument: (Optional) name of the instrument config to
           load (default None).
@@ -489,9 +470,7 @@ class Orbs(Tools):
                         else: image_mask = None
                     else: image_mask = None
                         
-                    cube.export(export_path, force_hdf5=True,
-                                overwrite=True,
-                                mask=image_mask)
+                    cube.export(export_path, mask=image_mask)
 
                 self.options[option_key + '.hdf5'] = export_path
 
@@ -556,12 +535,7 @@ class Orbs(Tools):
                 logging.info("Configuration file content:")
                 for line in conf_file:
                     logging.info(line[:-1])
-
-
-        # check params
-        if cam not in self.cams:
-            raise ValueError('cams must be in {}'.format(self.cams))
-        
+ 
         # Read option file to get observation parameters
         if not os.path.exists(option_file_path):
             raise StandardError("Option file does not exists !")
@@ -634,7 +608,6 @@ class Orbs(Tools):
         store_option_parameter('wavenumber', 'WAVENUMBER', bool)
         store_option_parameter('spectral_calibration', 'WAVE_CALIB', bool)
         store_option_parameter('no_sky', 'NOSKY', bool)
-        store_option_parameter('prebinning', 'PREBINNING', int)
         store_option_parameter('source_list_path', 'SOURCE_LIST_PATH', str)
         
         # get image mask
@@ -643,11 +616,6 @@ class Orbs(Tools):
         store_option_parameter('std_mask_path_1', 'STDMASK1', str)
         store_option_parameter('std_mask_path_2', 'STDMASK2', str)
         
-        
-        fringes = self.optionfile.get_fringes()
-        if fringes is not None:
-            self.options['fringes'] = fringes
-
         bad_frames = self.optionfile.get_bad_frames()
         if bad_frames is not None:
             self.options['bad_frames'] = bad_frames
@@ -700,13 +668,11 @@ class Orbs(Tools):
         # get folders paths
         if not silent:
             logging.info('Reading data folders')
-        if cam in ['single1', 'full']:
-            store_folder_parameter('image_list_path_1', 'DIRCAM1', 1,
-                                   mask_key='object_mask_path')
-        if cam in ['single2', 'full']:
-            store_folder_parameter('image_list_path_2', 'DIRCAM2', 2,
-                                   mask_key='object_mask_path')
-            
+
+        store_folder_parameter('image_list_path_1', 'DIRCAM1', 1,
+                               mask_key='object_mask_path')
+        store_folder_parameter('image_list_path_2', 'DIRCAM2', 2,
+                               mask_key='object_mask_path')    
         store_folder_parameter('bias_path_1', 'DIRBIA1', 1)
         store_folder_parameter('bias_path_2', 'DIRBIA2', 2)
         store_folder_parameter('dark_path_1', 'DIRDRK1', 1)
@@ -719,7 +685,6 @@ class Orbs(Tools):
         store_folder_parameter('flat_path_2', 'DIRFLT2', 2)
         store_folder_parameter('calib_path_1', 'DIRCAL1', 1)
         store_folder_parameter('calib_path_2', 'DIRCAL2', 2)
-        #store_folder_parameter('flat_spectrum_path', 'DIRFLTS', None)
         store_folder_parameter('standard_image_path_1', 'DIRSTD1', 1,
                                mask_key='std_mask_path')
         store_folder_parameter('standard_image_path_2', 'DIRSTD2', 2,
@@ -741,10 +706,7 @@ class Orbs(Tools):
                                silent_init=True,
                                instrument=self.instrument,
                                no_sort=True, ncpus=self.ncpus,
-                               params=self.options,
-                               config=self.config,
-                               camera_index=1,
-                               zpd_index=0)
+                               config=self.config)
             else:
                 cube1 = HDFCube(self.options['image_list_path_1.hdf5'],
                                 silent_init=True,
@@ -753,16 +715,11 @@ class Orbs(Tools):
                                 params=self.options,
                                 config=self.config,
                                 camera_index=1, zpd_index=0)
+                self.options['bin_cam_1'] = int(cube1.params.binning)
+
             
             dimz1 = cube1.dimz
-            self.options['bin_cam_1'] = int(cube1.params.binning)
             
-            # prebinning
-            if 'prebinning' in self.options:
-                if self.options['prebinning'] is not None:
-                    self.options['bin_cam_1'] = (
-                        self.options['bin_cam_1']
-                        * self.options['prebinning'])
                     
         if 'image_list_path_2' in self.options:
             if fast_init:
@@ -770,10 +727,7 @@ class Orbs(Tools):
                                silent_init=True,
                                instrument=self.instrument,
                                no_sort=True, ncpus=self.ncpus,
-                               params=self.options,
-                               config=self.config,
-                               camera_index=2,
-                               zpd_index=0)
+                               config=self.config)
             else:
                 cube2 = HDFCube(self.options['image_list_path_2.hdf5'],
                                 silent_init=True,
@@ -783,16 +737,10 @@ class Orbs(Tools):
                                 config=self.config,
                                 camera_index=2,
                                 zpd_index=0)
-            dimz2 = cube2.dimz
-            self.options['bin_cam_2'] = int(cube2.params.binning)
+                self.options['bin_cam_2'] = int(cube2.params.binning)
             
-            # prebinning
-            if 'prebinning' in self.options:
-                if self.options['prebinning'] is not None:
-                    self.options['bin_cam_2'] = (
-                        self.options['bin_cam_2']
-                        * self.options['prebinning'])
-                    
+            dimz2 = cube2.dimz
+                                
         # Check step number, number of raw images
         if (('image_list_path_1' in self.options)
             and ('image_list_path_2' in self.options)):
@@ -863,7 +811,7 @@ class Orbs(Tools):
             raise StandardError('Unknown target type: target must be in {}'.format(self.targets))
 
         self.roadmap = RoadMap(
-            self.config["INSTRUMENT_NAME"].lower(), target, cam, self.indexer)
+            self.config["INSTRUMENT_NAME"].lower(), target, 'full', self.indexer)
 
         # attach methods to roadmap steps
         self.roadmap.attach('compute_alignment_vector',
@@ -3021,7 +2969,7 @@ class JobFile(OptionFile):
             try:
                 from orbdb.core import OrbDB
                 self.db = OrbDB('sitelle', **kwargs)
-            except ImportError, e:
+            except Exception, e:
                 warnings.warn('Orbdb import error: {}'.format(e))
                 self.db = None
 
@@ -3080,8 +3028,7 @@ class JobFile(OptionFile):
             
 
     ## generate list of files
-    def _generate_file_list(self, key, ftype,
-                            chip_index, prebin):
+    def _generate_file_list(self, key, ftype, chip_index):
         """Generate a file list from the option file and write it in a file.
 
         :param key: Base key of the files
@@ -3091,8 +3038,6 @@ class JobFile(OptionFile):
         
         :param chip_index: SITELLE's chip index (1 or 2 for camera 1
           or camera 2) :
-
-        :param prebin: Prebinning.
         """
 
         # list is sorted in the job file order so the job file
@@ -3112,8 +3057,6 @@ class JobFile(OptionFile):
         fpath = '{}.{}.cam{}.list'.format(self.input_file_path, ftype, chip_index)
         with open(fpath, 'w') as flist:
             flist.write('# {} {}\n'.format('sitelle', chip_index))
-            if prebin is not None:
-                flist.write('# prebinning {}\n'.format(int(prebin)))
             progress = ProgressBar(len(l))
             for i in range(len(l)):
                 progress.update(i, info='adding file: {}'.format(l[i]))
@@ -3256,29 +3199,29 @@ class JobFile(OptionFile):
 
         if 'OBS' in self.options: # target image list
             self.option_file_params['DIRCAM1'] = self._generate_file_list(
-                'OBS', 'object', 1, self['PREBINNING'])
+                'OBS', 'object', 1)
             self.option_file_params['DIRCAM2'] = self._generate_file_list(
-                'OBS', 'object', 2, self['PREBINNING'])
+                'OBS', 'object', 2)
         if 'FLAT' in self.options: # flat image list
             self.option_file_params['DIRFLT1'] = self._generate_file_list(
-                'FLAT', 'flat', 1, self['PREBINNING'])
+                'FLAT', 'flat', 1)
             self.option_file_params['DIRFLT2'] = self._generate_file_list(
-                'FLAT', 'flat', 2, self['PREBINNING'])
+                'FLAT', 'flat', 2)
         if 'DARK' in self.options: # dark image list
             self.option_file_params['DIRDRK1'] = self._generate_file_list(
-                'DARK', 'dark', 1, self['PREBINNING'])
+                'DARK', 'dark', 1)
             self.option_file_params['DIRDRK2'] = self._generate_file_list(
-                'DARK', 'dark', 2, self['PREBINNING'])
+                'DARK', 'dark', 2)
         if 'COMPARISON' in self.options: # wavelength calibration file list
             self.option_file_params['DIRCAL1'] = self._generate_file_list(
-                'COMPARISON', 'calib', 1, self['PREBINNING'])
+                'COMPARISON', 'calib', 1)
             self.option_file_params['DIRCAL2'] = self._generate_file_list(
-                'COMPARISON', 'calib', 2, self['PREBINNING'])
+                'COMPARISON', 'calib', 2)
         if 'STDIM' in self.options: # standard image list
             self.option_file_params['DIRSTD1'] = self._generate_file_list(
-                'STDIM', 'stdim', 1, self['PREBINNING'])
+                'STDIM', 'stdim', 1)
             self.option_file_params['DIRSTD2'] = self._generate_file_list(
-                'STDIM', 'stdim', 2, self['PREBINNING'])
+                'STDIM', 'stdim', 2)
 
         with open(output_file_path, 'w') as f:
             # create option file header

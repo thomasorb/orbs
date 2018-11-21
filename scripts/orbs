@@ -136,7 +136,7 @@ def get_to(args):
 
 def init_orbs(args, target, cams, silent=False, fast_init=False, no_check=False):
     # load option file and init Orbs class
-    return Orbs(args.option_file_path, target, cams, overwrite=True,
+    return Orbs(args.option_file_path, target, overwrite=True,
                 instrument=args.instrument_mode, silent=silent,
                 fast_init=fast_init, ncpus=args.ncpus, raw_data_files_check=not no_check,
                 logfile_path=get_logfile_name(args))
@@ -205,30 +205,20 @@ def start(args, resume=False):
     # Check options #
     #################
 
-    # single camera mode are mutually exclusive
-    if args.single1 and args.single2:
-        raise StandardError("options -1 and -2 are not compatible. You must choose the camera you want to reduce in single mode")
-        sys.exit(2)
-
-    if args.single1: cams = 'single1'
-    elif args.single2: cams = 'single2'
-
     # special targets are mutually exclusive
     if np.sum([args.flat, args.standard, args.laser, args.extphase]) > 1:
-        raise StandardError("only one special target (flat, standard, laser, raw, extphase) can be choosen")
+        raise StandardError("only one special target (flat, standard, laser, extphase) can be choosen")
         sys.exit(2)
-    if args.flat: 
-	target = 'flat'
+    if args.flat: target = 'flat'
     elif args.standard: target = 'standard'
     elif args.laser: target = 'laser'
-    elif args.nostar: target = 'nostar'
     elif args.extphase: target = 'extphase'
 
 
     # check first if reduction can be resumed
     if not resume and args.start_step == 0:
         project_fast_init = init_orbs(
-            args, target, cams, fast_init=True, silent=True, no_check=True)
+            args, target, 0, fast_init=True, silent=True, no_check=True)
 
         if project_fast_init.roadmap.get_resume_step() > 0:
             project_fast_init.roadmap.print_status()
@@ -259,14 +249,6 @@ def start(args, resume=False):
     for arg in args.__dict__:
         logging.info('{}: {}'.format(arg, args.__dict__[arg]))
 
-    if args.single1:
-        logging.info(
-            "Camera 1 reduction in single mode")
-
-    if args.single2:
-        logging.info(
-            "Camera 2 reduction in single mode")
-
     if args.nofilter:
         warnings.warn(
             "No filter correction during calibration")
@@ -274,10 +256,6 @@ def start(args, resume=False):
     if args.nowcs:
         warnings.warn(
             "No WCS calibration")
-
-    if args.raw:
-        warnings.warn(
-            "Raw (faster) reduction process: no cosmic rays removal and no phase correction.")
 
     if args.flat:
         logging.info(
@@ -294,9 +272,6 @@ def start(args, resume=False):
         logging.info(
             "No apodization will be done to the computed spectrum")
 
-    if args.init_angle is not None: 
-        logging.info("Initial angle: %f"%args.init_angle)
-
     if args.start_step != 0: 
         logging.info("Starting step: %d"%args.start_step)
 
@@ -307,9 +282,9 @@ def start(args, resume=False):
     
     # record roadmap
     recfile = RecordFile(args.option_file_path)
-    recfile.add_record(args.instrument_mode, target, cams)
+    recfile.add_record(args.instrument_mode, target, 0)
     
-    project = init_orbs(args, target, cams, no_check=args.nocheck)
+    project = init_orbs(args, target, 0, no_check=args.nocheck)
 
     if args.init_angle is not None:
         project.set_init_angle(args.init_angle)
@@ -370,7 +345,7 @@ def add_all_operations(instrument_parser, epilog):
     group_target.add_argument('--flat', dest='flat',
                               action='store_true',
                               default=False,
-                              help="The reduction stops to the phase map step. This option must be used with flat cubes. All star dependant processes are skipped also (same as --nostar option).")
+                              help="The reduction stops to the phase map step. This option must be used with flat cubes. All star dependant processes are skipped also.")
 
     group_target.add_argument('--standard', dest='standard',
                               action='store_true',
@@ -396,7 +371,7 @@ def add_all_operations(instrument_parser, epilog):
                               action='store',
                               default=0,
                               type=int,
-                              help="Starting step. Use it to start (or restart) from a specific reduction step. To simply resume a reduction use the operation 'resume' instead. Note that the step designation is different for the full reduction (2 cameras) and the single camera reduction (1 camera). Note also that some processes are also skipped if the option --nostar is used (e.g. the first step: Compute alignment vectors).")
+                              help="Starting step. Use it to start (or restart) from a specific reduction step. To simply resume a reduction use the operation 'resume' instead.")
 
     parser_start.add_argument('--apod', '-a',
                               dest='apodization_function',

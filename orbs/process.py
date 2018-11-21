@@ -31,7 +31,7 @@ import version
 __version__ = version.__version__
 
 from orb.core import Tools, ProgressBar, FilterFile
-from orb.core import FDCube, HDFCube, OutHDFCube, OutHDFQuadCube, OCube
+from orb.cube import FDCube, HDFCube
 import orb.utils.fft
 import orb.fft
 import orb.utils.filters
