@@ -50,7 +50,7 @@ import bottleneck as bn
 
 
 from orb.core import Tools, Indexer, OptionFile, TextColor
-from orb.cube import FDCube, HDFCube
+from orb.cube import FDCube, HDFCube, Cube
 from orb.core import FilterFile, ProgressBar
 from process import RawData, InterferogramMerger, Interferogram
 from process import Spectrum, CalibrationLaser
@@ -385,7 +385,7 @@ class Orbs(Tools):
     def __init__(self, option_file_path, target,
                  instrument=None, ncpus=None,
                  overwrite=True, silent=False, fast_init=False,
-                 raw_data_files_check=True, logfile_path=None):
+                 logfile_path=None):
         """Initialize Orbs class.
 
         :param option_file_path: Path to the option file.
@@ -411,11 +411,6 @@ class Orbs(Tools):
         :param fast_init: (Optional) Fast init. Data files are not
           checked. Gives access to Orbs variables (e.g. object dependant file
           paths). This mode is faster but less safe.
-
-        :param raw_data_files_check: (Optional) If True, correspondance
-          between original data files and built raw data cubes is
-          checked. If False, raw data cubes are considered ok (default
-          True).
         """
         def export_images(value, fast_init, option_key,
                           mask_key, camera_index):
@@ -424,70 +419,39 @@ class Orbs(Tools):
             else:
                 self.options[option_key] = value
 
+            if fast_init: return
+
             # export fits frames as an hdf5 cube
-            if not fast_init:
 
-                # check if the hdf5 cube already
-                # exists. 
-                export_path = (
-                    self._get_project_dir()
-                    + os.path.splitext(
-                        os.path.split(
-                            self.options[option_key])[1])[0]
-                    + '.hdf5')
-
-                already_exported = False
-                check_ok = False
-                if os.path.exists(export_path):
-                    already_exported = True
-                    if not raw_data_files_check:
-                        check_ok = True
-                        warnings.warn(
-                            'Exported HDF5 cube {} not checked !'.format(export_path))
-
-
-                if not check_ok or not already_exported:
-                    # If the list of the imported
-                    # files in the hdf5 cube is the same,
-                    # export is not done again.
-                    cube = FDCube(
-                        self.options[option_key],
-                        silent_init=True, no_sort=False,
-                        ncpus=self.ncpus,
-                        instrument=self.instrument)
-
-                    if already_exported:
-                        check_ok = check_exported_cube(export_path, cube)
-                        
-                if not check_ok or not already_exported:
-                    # create mask
-                    if mask_key is not None:
-                        mask_key += '_{}'.format(camera_index)
-                        if mask_key in self.options:
-                            warnings.warn('Mask applied: {}'.format(self.options[mask_key]))
-                            image_mask = orb.utils.io.read_fits(
-                                self.options[mask_key])
-                        else: image_mask = None
+            # check if the hdf5 cube already
+            # exists. 
+            export_path = (
+                self._get_project_dir()
+                + os.path.splitext(
+                    os.path.split(
+                        self.options[option_key])[1])[0]
+                + '.hdf5')
+            
+            if not os.path.exists(export_path):
+                cube = FDCube(
+                    self.options[option_key],
+                    silent_init=True, no_sort=False,
+                    ncpus=self.ncpus,
+                    instrument=self.instrument)
+                
+                # create mask
+                if mask_key is not None:
+                    mask_key += '_{}'.format(camera_index)
+                    if mask_key in self.options:
+                        warnings.warn('Mask applied: {}'.format(self.options[mask_key]))
+                        image_mask = orb.utils.io.read_fits(
+                            self.options[mask_key])
                     else: image_mask = None
-                        
-                    cube.export(export_path, mask=image_mask)
+                else: image_mask = None
 
-                self.options[option_key + '.hdf5'] = export_path
+                cube.export(export_path, mask=image_mask)
 
-
-        def check_exported_cube(export_path, cube):
-            with orb.utils.io.open_hdf5(export_path, 'r') as f:
-                if 'image_list' in f:
-                    new_image_list = f['image_list'][:]
-                    old_image_list = np.array(
-                        cube.image_list)
-                    if (np.size(new_image_list) == np.size(old_image_list)):
-                        if (np.all(new_image_list == old_image_list)
-                            and f.attrs['dimz'] == len(cube.image_list)):
-                            logging.info('Exported HDF5 cube {} check: OK'.format(export_path))
-                            return True
-            return False
-                         
+            self.options[option_key + '.hdf5'] = export_path                         
 
         def store_folder_parameter(option_key, key, camera_index,
                                    mask_key=None):
@@ -708,13 +672,13 @@ class Orbs(Tools):
                                no_sort=True, ncpus=self.ncpus,
                                config=self.config)
             else:
-                cube1 = HDFCube(self.options['image_list_path_1.hdf5'],
-                                silent_init=True,
-                                instrument=self.instrument,
-                                ncpus=self.ncpus,
-                                params=self.options,
-                                config=self.config,
-                                camera_index=1, zpd_index=0)
+                cube1 = Cube(self.options['image_list_path_1.hdf5'],
+                             instrument=self.instrument,
+                             ncpus=self.ncpus,
+                             params=self.options,
+                             config=self.config,
+                             camera_index=1,
+                             zpd_index=0)
                 self.options['bin_cam_1'] = int(cube1.params.binning)
 
             
@@ -729,14 +693,13 @@ class Orbs(Tools):
                                no_sort=True, ncpus=self.ncpus,
                                config=self.config)
             else:
-                cube2 = HDFCube(self.options['image_list_path_2.hdf5'],
-                                silent_init=True,
-                                instrument=self.instrument,
-                                ncpus=self.ncpus,
-                                params=self.options,
-                                config=self.config,
-                                camera_index=2,
-                                zpd_index=0)
+                cube2 = Cube(self.options['image_list_path_2.hdf5'],
+                             instrument=self.instrument,
+                             ncpus=self.ncpus,
+                             params=self.options,
+                             config=self.config,
+                             camera_index=2,
+                             zpd_index=0)
                 self.options['bin_cam_2'] = int(cube2.params.binning)
             
             dimz2 = cube2.dimz

@@ -134,11 +134,11 @@ def get_to(args):
     to = Tools(instrument=args.instrument_mode)
     return to
 
-def init_orbs(args, target, cams, silent=False, fast_init=False, no_check=False):
+def init_orbs(args, target, cams, silent=False, fast_init=False):
     # load option file and init Orbs class
     return Orbs(args.option_file_path, target, overwrite=True,
                 instrument=args.instrument_mode, silent=silent,
-                fast_init=fast_init, ncpus=args.ncpus, raw_data_files_check=not no_check,
+                fast_init=fast_init, ncpus=args.ncpus,
                 logfile_path=get_logfile_name(args))
 
 def status(args):
@@ -148,7 +148,7 @@ def status(args):
         raise StandardError('No reduction process started')
     for record in recfile.records:
         project = init_orbs(args, record['target'], record['cams'], silent=True,
-                            fast_init=True, no_check=True)
+                            fast_init=True)
         rm = RoadMap(record['instrument'], record['target'], record['cams'],
                      project.indexer)
         rm.print_status()
@@ -173,7 +173,7 @@ def clean(args):
     recfile = RecordFile(args.option_file_path)
     for record in recfile.records:
         project = init_orbs(args, record['target'], record['cams'], silent=True,
-                            fast_init=True, no_check=True)
+                            fast_init=True)
         rm = RoadMap(record['instrument'], record['target'], record['cams'],
                      project.indexer)
 
@@ -218,7 +218,7 @@ def start(args, resume=False):
     # check first if reduction can be resumed
     if not resume and args.start_step == 0:
         project_fast_init = init_orbs(
-            args, target, 0, fast_init=True, silent=True, no_check=True)
+            args, target, 0, fast_init=True, silent=True)
 
         if project_fast_init.roadmap.get_resume_step() > 0:
             project_fast_init.roadmap.print_status()
@@ -284,10 +284,7 @@ def start(args, resume=False):
     recfile = RecordFile(args.option_file_path)
     recfile.add_record(args.instrument_mode, target, 0)
     
-    project = init_orbs(args, target, 0, no_check=args.nocheck)
-
-    if args.init_angle is not None:
-        project.set_init_angle(args.init_angle)
+    project = init_orbs(args, target, 0)
 
     # get resume step if reduction must be resumed
     if resume:
@@ -299,7 +296,6 @@ def start(args, resume=False):
         project.start_reduction(
             apodization_function=args.apodization_function,
             start_step=args.start_step,
-            save_as_quads=args.quadrants,
             filter_correction=not args.nofilter,
             wcs_calibration=not args.nowcs)
        
@@ -390,11 +386,6 @@ def add_all_operations(instrument_parser, epilog):
                                action='store_true',
                                default=False,
                                help='No WCS calibration of the spectral cube')
-
-    group_special.add_argument('--nocheck', dest='nocheck',
-                               action='store_true',
-                               default=False,
-                               help='If raw data cubes have already been built original data files are not checked again.')
 
 
     parser_resume = subparsers.add_parser('resume', help='Resume reduction process from the last completed step.')
