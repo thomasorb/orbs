@@ -27,9 +27,6 @@
 # This script is aimed to run the whole reduction
 # process.
 
-# To run this script simply use the following command :
-# $ ./orbs option_file.opt start
-# Remember : for any help please refer to the documentation
 import sys, os, time, traceback
 import argparse
 from argparse import ArgumentParser
@@ -42,7 +39,7 @@ orbs_path = os.path.normpath(('%s'%os.sep).join(str(script_path[0]).split(os.sep
 sys.path.append(orbs_path)
 
 import orb
-from orb.core import Tools, OptionFile, Logger
+from orb.core import Tools, Logger
 import orbs
 from orbs.orbs import Orbs, RoadMap, JobFile
 
@@ -63,13 +60,13 @@ class RecordFile(object):
     records = None
     last_command = None
     
-    def __init__(self, option_file_path):
+    def __init__(self, job_file_path):
         """Init class
 
-        :param option_file_path: Path to the option file.
+        :param job_file_path: Path to the job file.
         """
         
-        self.file_path = option_file_path + '.rec'
+        self.file_path = job_file_path + '.rec'
         # parse file
         self.records = list()
         if os.path.exists(self.file_path):
@@ -112,38 +109,21 @@ class RecordFile(object):
 ##############################################################
 ##### MAIN FUNCTIONS #########################################
 ##############################################################
-        
-def check_option_file(to, path, is_laser, fast_init):
-    """Check the option file type.
-
-    If the option file is a job file for SITELLE, parse the file
-    and create an option file readable by ORBS.
-
-    :param to: an orb.Tools instance
-    :param path: path of the option file to check
-    :param is_laser: If True, the target is a laser cube.
-    :param fast_init: If True init is fast ans some checking is not done
-    """
-    jobfile = JobFile(path, is_laser=is_laser, fast_init=fast_init)
-    if jobfile.is_jobfile():
-        return jobfile.convert2opt()
-    else:
-        return path, dict(), 'option_file'
 
 def get_to(args):
     to = Tools(instrument=args.instrument_mode)
     return to
 
 def init_orbs(args, target, cams, silent=False, fast_init=False):
-    # load option file and init Orbs class
-    return Orbs(args.option_file_path, target, overwrite=True,
+    # load job file and init Orbs class
+    return Orbs(args.job_file_path, target,
                 instrument=args.instrument_mode, silent=silent,
                 fast_init=fast_init, ncpus=args.ncpus,
                 logfile_path=get_logfile_name(args))
 
 def status(args):
     # log in record file
-    recfile = RecordFile(args.option_file_path)
+    recfile = RecordFile(args.job_file_path)
     if len(recfile.records) < 1:
         raise StandardError('No reduction process started')
     for record in recfile.records:
@@ -154,7 +134,7 @@ def status(args):
         rm.print_status()
 
 def resume(args, parser):
-    recfile = RecordFile(args.option_file_path)
+    recfile = RecordFile(args.job_file_path)
     if len(recfile.records) < 1:
         raise StandardError('No reduction process to resume')
     args = parser.parse_args(recfile.last_command)
@@ -170,7 +150,7 @@ def clean(args):
                 logging.info('removing file {}'.format(path))
                 os.remove(path)
     
-    recfile = RecordFile(args.option_file_path)
+    recfile = RecordFile(args.job_file_path)
     for record in recfile.records:
         project = init_orbs(args, record['target'], record['cams'], silent=True,
                             fast_init=True)
@@ -186,7 +166,7 @@ def clean(args):
 
 
 def get_logfile_name(args):
-     return os.path.basename(args.option_file_path) + '.log'
+     return os.path.basename(args.job_file_path) + '.log'
 
 def start(args, resume=False):
     """Start reduction operation
@@ -281,7 +261,7 @@ def start(args, resume=False):
     ###################################
     
     # record roadmap
-    recfile = RecordFile(args.option_file_path)
+    recfile = RecordFile(args.job_file_path)
     recfile.add_record(args.instrument_mode, target, 0)
     
     project = init_orbs(args, target, 0)
@@ -316,8 +296,8 @@ def start(args, resume=False):
 def add_all_operations(instrument_parser, epilog):
 
     instrument_parser.add_argument(
-        'option_file_path', action='store',
-        help="Path to the option file (can be a SITELLE job file).")
+        'job_file_path', action='store',
+        help="Path to the job file.")
 
     instrument_parser.add_argument(
         '--noprint', dest='noprint', action='store_true',
@@ -355,7 +335,7 @@ def add_all_operations(instrument_parser, epilog):
 
     group_target.add_argument('--extphase', dest='extphase', action='store_true',
                               default=False,
-                              help='Run a reduction with an external phase map (useful for extended HII region covering the whole FOV). PHASEMAP0 keyword must be present in the option file.')
+                              help='Run a reduction with an external phase map (useful for extended HII region covering the whole FOV). PHASEMAP0 keyword must be present in the job file.')
 
     parser_start.add_argument(
         '--debug', dest='debug', action='store_true',
@@ -439,9 +419,9 @@ if __name__ == "__main__":
         
     args = parser.parse_args()
     
-    # check option file existence
-    if not os.path.exists(args.option_file_path):
-        raise Exception('Option file %s does not exist'%args.option_file_path)
+    # check job file 
+    if not os.path.exists(args.job_file_path):
+        raise Exception('Job file %s does not exist'%args.job_file_path)
 
     if args.subparser_name == 'start':
         is_laser = args.laser
@@ -454,9 +434,9 @@ if __name__ == "__main__":
     else:
         fast_init = False
 
-    # check whether the option file is a job file or a 'real' option file
-    args.option_file_path, out_params, file_type = check_option_file(
-        get_to(args), args.option_file_path, is_laser=is_laser, fast_init=fast_init)
+    # Read job file (check for file integrity)
+    jobfile = JobFile(args.job_file_path, args.instrument_mode, is_laser=is_laser)
+    out_params = jobfile.get_params()
 
     # start and config logging
     try:
@@ -464,11 +444,7 @@ if __name__ == "__main__":
     except AttributeError:
         logger = Logger(debug=False)
         
-    logger.start_file_logging(logfile_path=args.option_file_path + '.log')
-
-
-    if file_type == 'sitelle_job_file' and args.instrument_mode != 'sitelle':
-        raise StandardError("Input file is a SITELLE job file but mode is not set to 'sitelle'. Please restart with option --mode sitelle or change the input file")
+    logger.start_file_logging(logfile_path=args.job_file_path + '.log')
 
     if 'calibration_laser_map_path' in out_params:
         args.calibration_laser_map_path = out_params['calibration_laser_map_path']
@@ -478,9 +454,9 @@ if __name__ == "__main__":
     ###################
     
     if args.subparser_name == 'start':
-        logging.info("Start %s"%args.option_file_path.strip())
+        logging.info("Start %s"%args.job_file_path.strip())
         # record last command
-        recfile = RecordFile(args.option_file_path)
+        recfile = RecordFile(args.job_file_path)
         recfile.last_command = sys.argv[1:]
         recfile.update()
 
@@ -488,15 +464,15 @@ if __name__ == "__main__":
         start(args)
         
     if args.subparser_name == 'status':
-        logging.info("Status %s"%args.option_file_path.strip())
+        logging.info("Status %s"%args.job_file_path.strip())
         status(args)
         
     if args.subparser_name == 'resume':
-        logging.info("Resume %s"%args.option_file_path.strip())
+        logging.info("Resume %s"%args.job_file_path.strip())
         resume(args, parser)
 
     if args.subparser_name == 'clean':
-        logging.info("Clean %s"%args.option_file_path.strip())
+        logging.info("Clean %s"%args.job_file_path.strip())
         clean(args)
 
         

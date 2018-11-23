@@ -31,7 +31,7 @@ import version
 __version__ = version.__version__
 
 from orb.core import Tools, ProgressBar, FilterFile
-from orb.cube import FDCube, HDFCube
+from orb.cube import InterferogramCube, SpectralCube
 import orb.utils.fft
 import orb.fft
 import orb.utils.filters
@@ -190,7 +190,7 @@ class CubeMask(object):
         :param alignment_parameters: Path to a file containing the
           alignement parameters (dx, dy, dr, da, db, crx, cry, zx, zy)
         """
-        cr_map_file = HDFCube(cr_map_path)
+        cr_map_file = Cube(cr_map_path)
         if cr_map_file.shape != self.shape:
             raise TypeError('Cosmic ray map must have shape {} but has shape {}'.format(
                 self.shape, cr_map.shape))
@@ -262,7 +262,7 @@ class CubeMask(object):
 #### CLASS RawData ###############################
 ##################################################
 
-class RawData(HDFCube):
+class RawData(InterferogramCube):
     """ORBS raw data processing class.
 
     .. note:: Raw data is the output data of SpIOMM/SITELLE without
@@ -670,7 +670,7 @@ class RawData(HDFCube):
         # Instanciating cosmic ray map cube
         if (cr_map_cube_path is None):
                 cr_map_cube_path = self._get_cr_map_cube_path()
-        cr_map_cube = HDFCube(cr_map_cube_path,
+        cr_map_cube = Cube(cr_map_cube_path,
                               instrument=self.instrument,
                               ncpus=self.ncpus)
         cr_map = cr_map_cube.get_all_data()
@@ -1397,7 +1397,7 @@ class RawData(HDFCube):
             cr_map_cube_path = self._get_cr_map_cube_path()
             
         if os.path.exists(cr_map_cube_path):
-            cr_map_cube = HDFCube(cr_map_cube_path,
+            cr_map_cube = Cube(cr_map_cube_path,
                                   instrument=self.instrument,
                                   ncpus=self.ncpus)
             logging.info("Loaded cosmic ray map: {}".format(cr_map_cube_path))
@@ -1569,7 +1569,7 @@ class RawData(HDFCube):
 #### CLASS CalibrationLaser ######################
 ##################################################
 
-class CalibrationLaser(HDFCube):
+class CalibrationLaser(InterferogramCube):
     """ ORBS calibration laser processing class.
 
     CalibrationLaser class is aimed to compute the calibration laser map that
@@ -1886,7 +1886,7 @@ class CalibrationLaser(HDFCube):
 #### CLASS Interferogram #########################
 ##################################################
 
-class Interferogram(HDFCube):
+class Interferogram(InterferogramCube):
     """ORBS interferogram processing class.
 
     .. note:: Interferogram data is defined as data already processed
@@ -2674,7 +2674,7 @@ class InterferogramMerger(Tools):
         self._wcs_header = wcs_header
        
         if interf_cube_path_A is not None:
-            self.cube_A = HDFCube(interf_cube_path_A,
+            self.cube_A = Cube(interf_cube_path_A,
                                   project_header=cube_A_project_header,
                                   instrument=self.instrument,
                                   ncpus=self.ncpus,
@@ -2682,7 +2682,7 @@ class InterferogramMerger(Tools):
                                   params=self.params,
                                   camera_index=1)
         if interf_cube_path_B is not None:
-            self.cube_B = HDFCube(interf_cube_path_B,
+            self.cube_B = Cube(interf_cube_path_B,
                                   project_header=cube_B_project_header,
                                   instrument=self.instrument,
                                   ncpus=self.ncpus,
@@ -4050,7 +4050,7 @@ class InterferogramMerger(Tools):
         else:
             stray_light_vector = np.zeros_like(flux_vector)
        
-        merged_cube = HDFCube(self._get_merged_interfero_cube_path(),
+        merged_cube = Cube(self._get_merged_interfero_cube_path(),
                               instrument=self.instrument,
                               ncpus=self.ncpus,
                               config=self.config,
@@ -4364,7 +4364,7 @@ class CosmicRayDetector(InterferogramMerger):
 ##################################################
 #### CLASS Spectrum ##############################
 ##################################################
-class Spectrum(HDFCube):
+class Spectrum(SpectralCube):
     """
     ORBS spectrum processing class.
 
@@ -5075,9 +5075,9 @@ class Spectrum(HDFCube):
         std_x1, std_y1 = std_pos_1
         std_x2, std_y2 = std_pos_2
         
-        cube1 = HDFCube(std_image_cube_path_1)
+        cube1 = Cube(std_image_cube_path_1)
         std_hdr = cube1.get_frame_header(0)
-        cube2 = HDFCube(std_image_cube_path_2)
+        cube2 = Cube(std_image_cube_path_2)
     
         if 'EXPTIME' in std_hdr:
             std_exp_time = std_hdr['EXPTIME']

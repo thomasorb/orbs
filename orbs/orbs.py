@@ -3,7 +3,7 @@
 # Author: Thomas Martin <thomas.martin.1@ulaval.ca>
 # File: orbs.py
 
-## Copyright (c) 2010-2017 Thomas Martin <thomas.martin.1@ulaval.ca>
+## Copyright (c) 2010-2018 Thomas Martin <thomas.martin.1@ulaval.ca>
 ## 
 ## This file is part of ORBS
 ##
@@ -49,12 +49,14 @@ import pp
 import bottleneck as bn
 
 
-from orb.core import Tools, Indexer, OptionFile, TextColor
+from orb.core import Tools, Indexer, TextColor
 from orb.cube import FDCube, HDFCube, Cube
 from orb.core import FilterFile, ProgressBar
 from process import RawData, InterferogramMerger, Interferogram
 from process import Spectrum, CalibrationLaser
 from process import CosmicRayDetector
+from core import JobFile
+
 import orb.constants
 import orb.version
 import orb.utils.spectrum
@@ -75,127 +77,8 @@ class Orbs(Tools):
 
     Help managing files during the reduction process and offer
     simple high level methods to reduce SpIOMM/SITELLE data. You must init
-    Orbs class with a path to an option file (e.g. option.opt)
+    Orbs class with a path to a job file (e.g. file.job)
     containing all the parameters needed to run a reduction.
-
-    .. note:: The option file must contain at least the following
-      parameters (each parameter is preceded by a keyword). See
-      'options' attribute to get all the possible keywords.
-
-    :OBJECT: Name of the object
-
-    :FILTER: Filter name
-
-    :SPESTEP: Step size of the moving mirror (in nm)
-
-    :SPESTNB: Number of steps
-
-    :SPEORDR: Order of the spectral folding
-
-    :SPEEXPT: Exposition time of the frames (in s)
-
-    :SPEDART: Exposition time of the dark frames (in s)
-    
-    :OBSDATE: Observation date (YYYY-MM-DD)
-
-    :HOUR_UT: UT hour of the observation (HH:MM:SS)
-
-    :BAD_FRAMES: List of bad frames indexes
-
-    :TARGETR: RA of the target (hour:min:sec)
-        
-    :TARGETD: DEC of the target (degree:min:sec)
-
-    :TARGETX: X position of the target in the first frame
-
-    :TARGETY: Y position of the target in the first frame
-
-    :DIRCAM1: Path to the directory containing the images of the
-      camera 1
-
-    :DIRCAM2: Path to the directory containing the images of the
-      camera 2
-
-    :DIRBIA1: Path to the directory containing the bias frames for the
-      camera 1
-
-    :DIRBIA2: Path to the directory containing the bias frames for the
-      camera 2
-
-    :DIRDRK1: Path to the directory containing the dark frames for the
-      camera 1
-
-    :DIRDRK2: Path to the directory containing the dark frames for the
-      camera 2
-
-    :DIRFLT1: Path to the directory containing the flat frames for the
-      camera 1
-          
-    :DIRFLT2: Path to the directory containing the flat frames for the
-      camera 2
-          
-    :DIRCAL1: Path to the directory containing the images of the
-      calibration laser cube of the camera 1
-
-    :DIRCAL2: Path to the directory containing the images of the
-      calibration laser cube of the camera 2
-
-    :STDPATH: Path to the standard spectrum file
-
-    :PHASEMAPS: Path to the external phase map file
-
-    :STDNAME: Name of the standard used for flux calibration
-
-    :STARLIST1: Path to a list of star positions for the camera 1
-
-    :STARLIST2: Path to a list of star positions for the camera 2
-
-    :APOD: Apodization function name
-
-    :CALIBMAP: Path to the calibration laser map
-
-    :TRYCAT: If True (an integer > 0) a star catalogue (e.g. USNO-B1)
-      is used for star detection (TARGETR, TARGETD, TARGETX, TARGETY
-      must be given in the option file). If False star detection will
-      use its own algorithm. You can also force ORBS to use a given
-      star list, see STARLIST1 and STARLIST2 keywords. This option is
-      set to False by default
-        
-    :WAVENUMBER: If True (an integer > 0) the output spectrum will be
-      in wavenumber instead of wavelength. This option avoids the use
-      of interpolation to transform the original wavenumber spectrum
-      to a wavelength spectrum
-          
-    :WAVE_CALIB: If True (an integer > 0) the output sepctrum will be
-      wavelength calibrated using the calibration laser map. This
-      option is set to True by default
-
-    :NOSKY: If True (an integer > 0) sky-dependant processes are skipped.
-
-    :NOSTAR: If True (an integer > 0) star-dependant processes are skipped.
-
-    :SOURCE_LIST_PATH: Path to a list of sources (X Y), one source by
-       line. Used for sources extraction.
-
-
-    .. note::
-    
-        * The order of the parameters is not important
-        
-        * Lines without a keyword are treated as commentaries (but the
-          use of # is better)
-        
-        * Paths can be either relative or absolut
-        
-        * An example of an option file (options.opt) can be found in
-          the scripts folder (Orbs/scripts) of the package
-          
-        * 'orbs-optcreator' is an executable script that can be used
-          to create an option file
-
-          
-    .. warning:: Two parameters are needed **at least** : the object
-        name (OBJECT) and the filter name (FILTER)
     """
 
     __version__ = None # imported from __version__ given in the core module
@@ -204,13 +87,6 @@ class Orbs(Tools):
     """Apodization functions that recognized by ORBS. Any float > 1 is
     recognized by :py:meth:`orb.utils.gaussian_window` (see
     :py:meth:`orb.utils.fft.gaussian_window`)"""
-
-    
-    project_name = None
-    """Name of the project, created during class initialization"""
-    overwrite = None
-    """Overwriting option. If True, existing FITS files will be
-    overwritten"""
 
     config = dict()
     """Dictionary containing all the options of the config file.  All
@@ -275,85 +151,10 @@ class Orbs(Tools):
     """
     
     options = dict()
-    """Dictionary containing all the options of the option file and
-    others created during initialization needed by processing classes.
-
-    .. note:: Keywords used and related keyword in the option file:
-    
-        * object_name: OBJECT
-        
-        * filter_name: FILTER
-        
-        * bin_cam_1: BINCAM1
-        
-        * bin_cam_2: BINCAM2
-        
-        * step: SPESTEP
-        
-        * step_nb: SPESTNB
-        
-        * order: SPEORDR
-        
-        * exposure_time: SPEEXPT
-        
-        * dark_time: SPEDART
-        
-        * obs_date: OBSDATE
-        
-        * bad_frames: BAD_FRAMES
-        
-        * target_ra: TARGETR
-        
-        * target_dec: TARGETD
-        
-        * target_x: TARGETX
-        
-        * target_y: TARGETY
-        
-        * image_list_path_1: DIRCAM1
-          
-        * image_list_path_2: DIRCAM2
-          
-        * bias_path_1: DIRBIA1
-
-        * bias_path_2: DIRBIA2
-          
-        * dark_path_1: DIRDRK1
-
-        * dark_path_2: DIRDRK2
-          
-        * flat_path_1: DIRFLT1
-          
-        * flat_path_2: DIRFLT2
-          
-        * calib_path_1: DIRCAL1
-          
-        * calib_path_2: DIRCAL2
-          
-        * standard_path: STDPATH
-        
-        * phase_map_path: PHASEMAPS
-                  
-        * star_list_path_1: STARLIST1
-          
-        * star_list_path_2: STARLIST2
-          
-        * apodization_function: APOD
-        
-        * calibration_laser_map_path: CALIBMAP
-
-        * wavefront_map_path: WFMAP
-          
-        * try_catalogue: TRYCAT
-          
-        * wavenumber: WAVENUMBER
-
-        * spectral_calibration: WAVE_CALIB
-
-        * no_sky: NOSKY
-
-        * source_list_path: SOURCE_LIST_PATH
+    """Dictionary containing all the reduction parameters needed by
+    processing classes.
     """
+    
     tuning_parameters = dict()
     """Dictionary containg the tuning parameters of some methods
        called by ORBS. The dictionary must contains the full parameter
@@ -370,25 +171,17 @@ class Orbs(Tools):
           TUNE InterferogramMerger.find_alignment.BOX_SIZE_COEFF 7
     """
     
-    optionfile = None
-    """OptionFile instance"""
-
-    option_file_path = None
-    """Path to the option file"""
-
     targets = ['object', 'flat', 'standard', 'laser', 'extphase']
     """Possible target types"""
-    
-    target = None
-    """Choosen target to reduce"""
-    
-    def __init__(self, option_file_path, target,
+
+     
+    def __init__(self, job_file_path, target,
                  instrument=None, ncpus=None,
-                 overwrite=True, silent=False, fast_init=False,
+                 silent=False, fast_init=False,
                  logfile_path=None):
         """Initialize Orbs class.
 
-        :param option_file_path: Path to the option file.
+        :param job_file_path: Path to the job file.
 
         :param target: Target type to reduce. Used to define the
           reduction road map. Target may be 'object', 'flat',
@@ -401,10 +194,6 @@ class Orbs(Tools):
           processing. set to None gives the maximum number available
           (default None).  
 
-        :param overwrite: (Optional) If True, any existing FITS file
-          created by Orbs will be overwritten during the reduction
-          process (default True).
-
         :param silent: (Optional) If True no messages nor warnings are
           displayed by Orbs (useful for silent init).
 
@@ -412,26 +201,20 @@ class Orbs(Tools):
           checked. Gives access to Orbs variables (e.g. object dependant file
           paths). This mode is faster but less safe.
         """
-        def export_images(value, fast_init, option_key,
-                          mask_key, camera_index):
-            if os.path.isdir(value):
-                raise ValueError('A path to a directory cannot be given. Please give a path to a list of files.')
-            else:
-                self.options[option_key] = value
-
-            if fast_init: return
-
+        def export_images(option_key, mask_key=None):
             # export fits frames as an hdf5 cube
 
             # check if the hdf5 cube already
-            # exists. 
+            # exists.
+            if option_key not in self.options: return
+            
             export_path = (
                 self._get_project_dir()
                 + os.path.splitext(
                     os.path.split(
                         self.options[option_key])[1])[0]
                 + '.hdf5')
-            
+
             if not os.path.exists(export_path):
                 cube = FDCube(
                     self.options[option_key],
@@ -441,7 +224,6 @@ class Orbs(Tools):
                 
                 # create mask
                 if mask_key is not None:
-                    mask_key += '_{}'.format(camera_index)
                     if mask_key in self.options:
                         warnings.warn('Mask applied: {}'.format(self.options[mask_key]))
                         image_mask = orb.utils.io.read_fits(
@@ -449,38 +231,12 @@ class Orbs(Tools):
                     else: image_mask = None
                 else: image_mask = None
 
-                cube.export(export_path, mask=image_mask)
+                cube.export(export_path, mask=image_mask, params=self.options)
 
-            self.options[option_key + '.hdf5'] = export_path                         
+            self.options[option_key + '.hdf5'] = export_path
 
-        def store_folder_parameter(option_key, key, camera_index,
-                                   mask_key=None):
-            value = self.optionfile.get(key, str)
-            if value is None : return
 
-            if os.path.exists(value):
-                export_images(value, fast_init,
-                              option_key, mask_key,
-                              camera_index)
-
-            else: raise StandardError(
-                'Given path does not exist {}'.format(value))            
-
-        def store_option_parameter(option_key, key, cast, optional=True):
-            value = self.optionfile.get(key, cast)
-            if value is not None:
-                self.options[option_key] = value
-                
-            elif not optional:
-                raise StandardError('option {} must be set'.format(key))
-
-        self.option_file_path = option_file_path
         Tools.__init__(self, instrument=instrument, ncpus=ncpus, silent=silent)
-
-        if overwrite in [True, False]:
-            self.overwrite = bool(overwrite)
-        else:
-            raise ValueError('overwrite must be True or False')
         
         if not silent:
             # First, print ORBS version
@@ -500,45 +256,29 @@ class Orbs(Tools):
                 for line in conf_file:
                     logging.info(line[:-1])
  
-        # Read option file to get observation parameters
-        if not os.path.exists(option_file_path):
-            raise StandardError("Option file does not exists !")
-
+        # Read job file to get observation parameters
+        self.jobfile = JobFile(job_file_path, self.params.instrument)
+        
         # Print first the entire option file for logging
-        op_file = open(option_file_path)
         if not silent:
-            logging.info("Option file content :")
-            for line in op_file:
-                logging.info(line[:-1])
+            logging.info("Job file content: \n{}".format(self.jobfile.as_str()))
 
         # record some default options
+        self.options = dict()
         self.options["try_catalogue"] = False
         self.options['spectral_calibration'] = True
         self.options['wavenumber'] = False
         self.options['no_sky'] = False
+        self.options['apodization_function'] = None
+        
+        self.options.update(self.jobfile.get_params())
 
         ##########
-        ## Parse the option file to get reduction parameters
+        ## get the other parameters from the jobfile
         ##########
-        self.optionfile = OptionFile(option_file_path)
-
-        # In the case of LASER cube the parameters are set
-        # automatically
-        if target == 'laser': optional_keys = True
-        else:  optional_keys = False
-            
-        store_option_parameter('object_name', 'OBJECT', str,
-                               optional=optional_keys)
-        store_option_parameter('filter_name', 'FILTER', str,
-                               optional=optional_keys)
-        
-            
-        store_option_parameter('step', 'SPESTEP', float)
-        store_option_parameter('step_nb', 'SPESTNB', int)
-        store_option_parameter('order', 'SPEORDR', float)
-        
+                    
         # check step and order
-        if 'filter_name' in self.options and target != 'laser':
+        if target != 'laser':
             _step, _order = FilterFile(
                 self.options['filter_name']).get_observation_params()
             if int(self.options['order']) != int(_order):
@@ -547,43 +287,7 @@ class Orbs(Tools):
             if abs(self.options['step'] - float(_step))/float(_step) > 0.1:
                 raise StandardError('There is more than 10% difference between the step size in the option file ({}) and the step size recorded in the filter file ({})'.format(self.options['step'], _step))
                 
-        store_option_parameter('exposure_time', 'SPEEXPT', float)
-        store_option_parameter('dark_time', 'SPEDART', float)
-        store_option_parameter('obs_date', 'OBSDATE', str)
-        store_option_parameter('target_ra', 'TARGETR', str)
-        if 'target_ra' in self.options:
-            self.options['target_ra'] = orb.utils.astrometry.ra2deg(
-                self.options['target_ra'].split(':'))
-        store_option_parameter('target_dec', 'TARGETD', str)
-        if 'target_dec' in self.options:
-            self.options['target_dec'] = orb.utils.astrometry.dec2deg(
-                self.options['target_dec'].split(':'))
-        store_option_parameter('target_x', 'TARGETX', float)
-        store_option_parameter('target_y', 'TARGETY', float)
-        store_option_parameter('standard_path', 'STDPATH', str)
-        store_option_parameter('phase_maps_path', 'PHASEMAPS', str)
-        store_option_parameter('star_list_path_1', 'STARLIST1', str)
-        store_option_parameter('star_list_path_2', 'STARLIST2', str)
-        store_option_parameter('apodization_function', 'APOD', str)
-        store_option_parameter('calibration_laser_map_path', 'CALIBMAP', str)
-        store_option_parameter('wavefront_map_path', 'WFMAP', str)
         
-        store_option_parameter('try_catalogue', 'TRYCAT', bool)
-        store_option_parameter('wavenumber', 'WAVENUMBER', bool)
-        store_option_parameter('spectral_calibration', 'WAVE_CALIB', bool)
-        store_option_parameter('no_sky', 'NOSKY', bool)
-        store_option_parameter('source_list_path', 'SOURCE_LIST_PATH', str)
-        
-        # get image mask
-        store_option_parameter('object_mask_path_1', 'OBJMASK1', str)
-        store_option_parameter('object_mask_path_2', 'OBJMASK2', str)
-        store_option_parameter('std_mask_path_1', 'STDMASK1', str)
-        store_option_parameter('std_mask_path_2', 'STDMASK2', str)
-        
-        bad_frames = self.optionfile.get_bad_frames()
-        if bad_frames is not None:
-            self.options['bad_frames'] = bad_frames
-            
         # In the case of LASER cube the parameters are set
         # automatically
         if target == 'laser':
@@ -596,10 +300,10 @@ class Orbs(Tools):
                 
         # If a keyword is the same as a configuration keyword,
         # config option is changed
+        newconf = self.jobfile.get_config()
         for key in self.config.iterkeys():
-           if self.optionfile[key] is not None:
-               key_type = type(self.config[key])
-               self.config.reset(key, self.optionfile.get(key, key_type))
+           if key in newconf:
+               self.config.reset(key, newconf[key])
                if not silent:
                    warnings.warn("Configuration option %s changed to %s"%(key, self.config[key]))
 
@@ -615,44 +319,40 @@ class Orbs(Tools):
                     warnings.warn('Calibration laser wavelength (CALIB_NM_LASER) read from calibration laser map header: {}'.format(self.config['CALIB_NM_LASER']))
                
         # Get tuning parameters
-        self.tuning_parameters = self.optionfile.get_tuning_parameters()
-        for itune in self.tuning_parameters:
-            if not silent:
-                warnings.warn("Tuning parameter %s changed to %s"%(
-                    itune, self.tuning_parameters[itune]))
-
-        if (("object_name" not in self.options)
-            or ("filter_name" not in self.options)):
-            raise StandardError("The option file needs at least an object name (use keyword : OBJECT) and a filter name (use keyword : FILTER)")
-        else:
-            self.options["project_name"] = (self.options["object_name"] 
-                                            + "_" + self.options["filter_name"])
+        # self.tuning_parameters = self.optionfile.get_tuning_parameters()
+        # for itune in self.tuning_parameters:
+        #     if not silent:
+        #         warnings.warn("Tuning parameter %s changed to %s"%(
+        #             itune, self.tuning_parameters[itune]))
+        self.tuning_parameters = dict()
+        
+        self.options["project_name"] = (self.options["object_name"] 
+                                        + "_" + self.options["filter_name"])
 
         
         # get folders paths
         if not silent:
             logging.info('Reading data folders')
 
-        store_folder_parameter('image_list_path_1', 'DIRCAM1', 1,
-                               mask_key='object_mask_path')
-        store_folder_parameter('image_list_path_2', 'DIRCAM2', 2,
-                               mask_key='object_mask_path')    
-        store_folder_parameter('bias_path_1', 'DIRBIA1', 1)
-        store_folder_parameter('bias_path_2', 'DIRBIA2', 2)
-        store_folder_parameter('dark_path_1', 'DIRDRK1', 1)
-        store_folder_parameter('dark_path_2', 'DIRDRK2', 2)
-        if (('dark_path_2' in self.options or 'dark_path_1' in self.options)
-            and 'dark_time' not in self.options):
-            raise StandardError('Dark integration time must be set (SPEDART) if the path to a dark calibration files folder is given')
+        if not fast_init:
+            export_images('image_list_path_1', mask_key='object_mask_path_1')
+            export_images('image_list_path_2', mask_key='object_mask_path_2')
+            export_images('bias_path_1')
+            export_images('bias_path_2')
+            export_images('dark_path_1')
+            export_images('dark_path_2')
+        
+            if (('dark_path_2' in self.options or 'dark_path_1' in self.options)
+                and 'dark_time' not in self.options):
+                raise StandardError('Dark integration time must be set (SPEDART) if the path to a dark calibration files folder is given')
             
-        store_folder_parameter('flat_path_1', 'DIRFLT1', 1)
-        store_folder_parameter('flat_path_2', 'DIRFLT2', 2)
-        store_folder_parameter('calib_path_1', 'DIRCAL1', 1)
-        store_folder_parameter('calib_path_2', 'DIRCAL2', 2)
-        store_folder_parameter('standard_image_path_1', 'DIRSTD1', 1,
-                               mask_key='std_mask_path')
-        store_folder_parameter('standard_image_path_2', 'DIRSTD2', 2,
-                               mask_key='std_mask_path')
+            export_images('flat_path_1')
+            export_images('flat_path_2')
+            export_images('calib_path_1')
+            export_images('calib_path_2')
+            export_images('standard_image_path_1', mask_key='std_mask_path_1')
+            export_images('standard_image_path_2', mask_key='std_mask_path_2')
+        
         
         if target == 'laser':
             self.options['image_list_path_1'] = self.options['calib_path_1']
@@ -664,14 +364,8 @@ class Orbs(Tools):
                 self.options['image_list_path_2.hdf5'] = self.options[
                     'calib_path_2.hdf5']
 
-        if 'image_list_path_1' in self.options:
-            if fast_init:
-                cube1 = FDCube(self.options['image_list_path_1'],
-                               silent_init=True,
-                               instrument=self.instrument,
-                               no_sort=True, ncpus=self.ncpus,
-                               config=self.config)
-            else:
+        if not fast_init:
+            if 'image_list_path_1' in self.options:
                 cube1 = Cube(self.options['image_list_path_1.hdf5'],
                              instrument=self.instrument,
                              ncpus=self.ncpus,
@@ -680,19 +374,10 @@ class Orbs(Tools):
                              camera_index=1,
                              zpd_index=0)
                 self.options['bin_cam_1'] = int(cube1.params.binning)
+                dimz1 = cube1.dimz
 
-            
-            dimz1 = cube1.dimz
-            
-                    
-        if 'image_list_path_2' in self.options:
-            if fast_init:
-                cube2 = FDCube(self.options['image_list_path_2'],
-                               silent_init=True,
-                               instrument=self.instrument,
-                               no_sort=True, ncpus=self.ncpus,
-                               config=self.config)
-            else:
+
+            if 'image_list_path_2' in self.options:
                 cube2 = Cube(self.options['image_list_path_2.hdf5'],
                              instrument=self.instrument,
                              ncpus=self.ncpus,
@@ -701,35 +386,31 @@ class Orbs(Tools):
                              camera_index=2,
                              zpd_index=0)
                 self.options['bin_cam_2'] = int(cube2.params.binning)
-            
-            dimz2 = cube2.dimz
+                dimz2 = cube2.dimz
                                 
-        # Check step number, number of raw images
-        if (('image_list_path_1' in self.options)
-            and ('image_list_path_2' in self.options)):
-            
-            if dimz1 != dimz2:
-                raise StandardError('The number of images of CAM1 and CAM2 are not the same (%d != %d)'%(dimz1, dimz2))
-                
-            if self.options['step_nb'] < dimz1:
-                if not silent:
-                    warnings.warn('Step number option changed to {} because the number of steps ({}) of a full cube must be greater or equal to the number of images given for CAM1 and CAM2 ({})'.format(
-                    dimz1, self.options['step_nb'], dimz1))
-                self.options['step_nb'] = dimz1
+            # Check step number, number of raw images
+            if (('image_list_path_1' in self.options)
+                and ('image_list_path_2' in self.options)):
+
+                if dimz1 != dimz2:
+                    raise StandardError('The number of images of CAM1 and CAM2 are not the same (%d != %d)'%(dimz1, dimz2))
+
+                if self.options['step_nb'] < dimz1:
+                    if not silent:
+                        warnings.warn('Step number option changed to {} because the number of steps ({}) of a full cube must be greater or equal to the number of images given for CAM1 and CAM2 ({})'.format(
+                        dimz1, self.options['step_nb'], dimz1))
+                    self.options['step_nb'] = dimz1
 
         # get ZPD shift in SITELLE's case
         if self.config["INSTRUMENT_NAME"] == 'SITELLE' and not fast_init:
             
             try: # check if the zpd index has already been computed
                 zpd_index = int(orb.utils.io.read_fits(self._get_zpd_index_file_path()))
-            except IOError: 
-                cube_list = self.options['image_list_path_1']
-
-                cube1 = FDCube(cube_list,
-                               silent_init=True,
-                               instrument=self.instrument,
-                               no_sort=True, ncpus=self.ncpus)
-
+            except IOError:
+                cube1 = HDFCube(self.options['image_list_path_1'],
+                                silent_init=True,
+                                instrument=self.instrument,
+                                no_sort=True, ncpus=self.ncpus)
 
                 zpd_found = False
                 if target == 'laser':
@@ -755,11 +436,18 @@ class Orbs(Tools):
             self.options['zpd_index'] = zpd_index
             if not silent:
                 logging.info('ZPD index: {}'.format(
-                    self.options['zpd_index']))
+                    self.options['zpd_index']))                
             
             orb.utils.io.write_fits(self._get_zpd_index_file_path(),
                             np.array(self.options['zpd_index']),
                             overwrite=True)
+
+        # update parameters of the hdf cubes
+        if not fast_init: 
+            for ikey in self.options:
+                if '.hdf5' in ikey:
+                    icube = HDFCube(self.options[ikey])
+                    icube.set_params(self.options)
         
         # Init Indexer
         self.indexer = Indexer(data_prefix=self.options['object_name']
@@ -1035,6 +723,7 @@ class Orbs(Tools):
 
         :param camera_number: Camera number (can be either 1 or 2).
         """
+        print self.options, self.config
         if (camera_number == 1):
             if ("image_list_path_1" in self.options):
                 self.indexer.set_file_group('cam1')
@@ -1044,7 +733,6 @@ class Orbs(Tools):
                     config=self.config,
                     data_prefix=self._get_data_prefix(1),
                     project_header=self._get_project_fits_header(1),
-                    overwrite=self.overwrite,
                     tuning_parameters=self.tuning_parameters,
                     indexer=self.indexer,
                     instrument=self.instrument,
@@ -1060,7 +748,6 @@ class Orbs(Tools):
                     config=self.config,
                     data_prefix=self._get_data_prefix(2),
                     project_header=self._get_project_fits_header(2),
-                    overwrite=self.overwrite,
                     tuning_parameters=self.tuning_parameters,
                     indexer=self.indexer,
                     instrument=self.instrument,
@@ -1753,7 +1440,6 @@ class Orbs(Tools):
             project_header=self._get_project_fits_header(0),
             cube_A_project_header=self._get_project_fits_header(1),
             cube_B_project_header=self._get_project_fits_header(2),
-            overwrite=self.overwrite,
             tuning_parameters=self.tuning_parameters,
             indexer=self.indexer,
             instrument=self.instrument,
@@ -1819,7 +1505,6 @@ class Orbs(Tools):
             interf_cube_path_B=interf_cube_path_2,
             data_prefix=self._get_data_prefix(0),
             project_header=self._get_project_fits_header(0),
-            overwrite=self.overwrite,
             tuning_parameters=self.tuning_parameters,
             indexer=self.indexer,
             instrument=self.instrument,
@@ -1905,7 +1590,6 @@ class Orbs(Tools):
             calib_path, 
             data_prefix=self._get_data_prefix(camera_number),
             calibration_laser_header=self._get_calibration_laser_fits_header(),
-            overwrite=self.overwrite,
             tuning_parameters=self.tuning_parameters,
             indexer=self.indexer,
             instrument=self.instrument,
@@ -1977,7 +1661,6 @@ class Orbs(Tools):
             project_header = self._get_project_fits_header(
                 camera_number),
             calibration_laser_header=self._get_calibration_laser_fits_header(),
-            overwrite=self.overwrite,
             tuning_parameters=self.tuning_parameters,
             indexer=self.indexer,
             instrument=self.instrument,
@@ -2063,7 +1746,6 @@ class Orbs(Tools):
             config=self.config,
             silent_init=True,
             instrument=self.instrument,
-            overwrite=self.overwrite,
             tuning_parameters=self.tuning_parameters,
             indexer=self.indexer,
             project_header = self._get_project_fits_header(
@@ -2198,7 +1880,6 @@ class Orbs(Tools):
             project_header = self._get_project_fits_header(
                 camera_number),
             calibration_laser_header=self._get_calibration_laser_fits_header(),
-            overwrite=self.overwrite,
             tuning_parameters=self.tuning_parameters,
             indexer=self.indexer,
             instrument=self.instrument,
@@ -2316,8 +1997,8 @@ class Orbs(Tools):
             return_header=True)
         
         orb.utils.io.write_fits(self._get_calibration_laser_map_path(camera_number),
-                        map_data, fits_header=map_hdr,
-                        overwrite=self.overwrite)
+                                map_data, fits_header=map_hdr,
+                                overwrite=True)
 
 
     def export_flat_phase_map(self, camera_number):
@@ -2411,7 +2092,7 @@ class Orbs(Tools):
 
         
         spectrum.export(spectrum_path, header=spectrum_header,
-                        overwrite=self.overwrite, force_hdf5=True,
+                        force_hdf5=True,
                         deep_frame_path=deep_frame_path)
 
     def export_standard_spectrum(self, camera_number, phase_correction=True,
@@ -2853,356 +2534,11 @@ class Step(object):
         return outfiles
 
 
-##################################################
-#### CLASS JobFile ###############################
-##################################################
-class JobFile(OptionFile):
-    """This class is aimed to parse a SITELLE's job file (*.job) and
-    convert it to a classic option file (*.opt).
-    """
-
-    # special keywords that can be used mulitple times without being
-    # overriden.
-    protected_keys = ['OBS', 'FLAT', 'DARK', 'COMPARISON', 'STDIM']
-
-    # OptionFile params dict
-    option_file_params = dict()
-
-    # Header of the first file found, used to get observation
-    # parameters.
-    _first_hdr = None 
-
-    # If True input file is an object file, else it is an option file
-    _is_jobfile = False
-
-    # IF True target is a laser
-    _is_laser = False
-
-    # If True Init is fast, some checking is not done
-    _fast_init = False
-
-    # convertion dict between sitelle's file header keywords and
-    # optionf file keywords
-    convert_key = {
-        'SITSTEPS':'SPESTNB',
-        'OBJNAME':'OBJECT',
-        'SITORDER':'SPEORDR',
-        'EXPTIME':'SPEEXPT',
-        'DATE-OBS':'OBSDATE',
-        'TIME-OBS':'HOUR_UT',
-        'RA':'TARGETR',
-        'DEC':'TARGETD',
-        'FILTER': 'FILTER'}
-
-    def __init__(self, option_file_path, protected_keys=[], is_laser=False,
-                 fast_init=False, **kwargs):
-        """Initialize class
-
-        :param option_file_path: Path to the option file
-
-        :param protected_keys: (Optional) Add other protected keys to
-          the basic ones (default []).
-
-        :param is_laser: (Optional) If True target is a Laser (default
-          False)
-
-        :param fast_init: (Optional) If True conversion is fast and
-          some checking is not done but the result might be uncorrect
-          (default False).    
-
-        :param kwargs: Kwargs are :meth:`core.Tools` properties.    
-        """
-        OptionFile.__init__(self, option_file_path,
-                            protected_keys=protected_keys,
-                            **kwargs)
-
-                
-        if is_laser:
-            self._is_laser = True
-
-        if fast_init:
-            self._fast_init = True
-
-        if self.header_line is not None:
-            if 'SITELLE_JOB_FILE' in self.header_line:
-                self._is_jobfile = True
-
-        if self._is_jobfile:
-            # try to import orbdb
-            try:
-                from orbdb.core import OrbDB
-                self.db = OrbDB('sitelle', **kwargs)
-            except Exception, e:
-                warnings.warn('Orbdb import error: {}'.format(e))
-                self.db = None
-
-            ## get first object file
-            if 'OBS' in self.options:
-                hdu = orb.utils.io.read_fits(
-                    self.check_file_path(
-                        self.options['OBS']),
-                    return_hdu_only=True)
-                self._first_hdr = hdu[0].header
-            elif 'COMPARISON' in self.options:
-                hdu = orb.utils.io.read_fits(
-                    self.check_file_path(self.options['COMPARISON']),
-                    return_hdu_only=True)
-                self._first_hdr = hdu[0].header
-            else:
-                raise StandardError('Keywords OBS or COMPARISON must be at least in the job file.')
-
-            # check
-            if self._first_hdr['CCDBIN1'] != self._first_hdr['CCDBIN2']:
-                self.print_error(
-                    'CCD Binning appears to be different for both axes')
-
-
-    def check_file_path(self, file_path):
-        """Check if the file exists. If it does not exists look in the
-        database to find it's right path (orbdb must be installed and
-        the database must be up-to-date)
-
-        :param file_path: File path
-        """
-        # if the file path does not exist, try to find it with orbdb
-        if os.path.exists(file_path): return file_path
-        elif self.db is not None:
-            odom = os.path.splitext(os.path.split(file_path)[1])[0]
-    
-            self.db.cur.execute("SELECT fitsfilepath from files WHERE fitsfilepath LIKE '%{}%'".format(
-                odom))
-            rows_list = list()
-            for row in self.db.cur.fetchall():
-                row = [str(irow) for irow in row]
-                rows_list.append(row)
-                
-            if len(rows_list) == 0:
-                warnings.warn('File does not exist and was not found in the database')
-                return file_path
-            
-            if len(rows_list) > 1:
-                warnings.warn('Multiple files in the database found matching {}'.format(odom))
-                
-            return rows_list[0][0]
-        
-        else:
-            warnings.warn('File not found and database OrbDB could not be imported')
-            return file_path
-            
-
-    ## generate list of files
-    def _generate_file_list(self, key, ftype, chip_index):
-        """Generate a file list from the option file and write it in a file.
-
-        :param key: Base key of the files
-        
-        :param ftype: Type of list created ('object', 'dark', 'flat',
-          'calib')
-        
-        :param chip_index: SITELLE's chip index (1 or 2 for camera 1
-          or camera 2) :
-        """
-
-        # list is sorted in the job file order so the job file
-        # is assumed to give a sorted list of files
-        l = list()
-        for k in self.options:
-            if [''.join(i for i in k if not i.isdigit())][0] == key:
-                index_str = k[len(key):]
-                if len(index_str) > 0:
-                    index = int(index_str)
-                else:
-                    index = 1
-                l.append((self.options[k], index))
-        l = sorted(l, key=lambda ifile: ifile[1])
-        l = [ifile[0] for ifile in l]
-
-        fpath = '{}.{}.cam{}.list'.format(self.input_file_path, ftype, chip_index)
-        with open(fpath, 'w') as flist:
-            flist.write('# {} {}\n'.format('sitelle', chip_index))
-            progress = ProgressBar(len(l))
-            for i in range(len(l)):
-                progress.update(i, info='adding file: {}'.format(l[i]))
-                flist.write('{}\n'.format(self.check_file_path(l[i])))
-            progress.end()
-        return fpath
-
-    def is_jobfile(self):
-        """Return True if input file is a job file. False if it is an
-        option file."""
-        return bool(self._is_jobfile)
-
-    def is_laser(self):
-        """Return True if target is a laser"""
-        return bool(self._is_laser)
-
-
-    def _get_from_hdr(self, key, cast=str, optional=False):
-        """Return the value associated to a keyword in the header of
-        the first file loaded. Return None if keyword does not exist
-        or raise an exception.
-
-        :param key: Keyword
-
-        :param cast: (Optional) Cast function for the returned value
-          (default str).
-
-        :param optional: (Optional) if True return None if the keyword
-          does not exist. If False raise an exception (default False).
-        """
-        if key in self._first_hdr:
-            param = self._first_hdr[key]
-        else:
-            if optional: return None
-            else: raise StandardError(
-                'Keyword {} must be recorded in the header'.format(key))
-        
-        if cast is not bool:
-            return cast(param)
-        else:
-            return bool(int(param))
-        
-        
-    def convert2opt(self):
-        """Convert the job file to an option file"""
-
-        out_params = dict()
-        if not self._is_jobfile:
-            raise StandardError('File is already an option file and cannot be converted')
-            
-        output_file_path = os.path.split(self.input_file_path)[1] + '.opt'
-        self.option_file_params = dict() # parameters to write in the option file
-
-        # parse header for basic keywords
-        for key in self.convert_key:
-            if key in self._first_hdr:
-                self.option_file_params[self.convert_key[key]] = self._first_hdr[key]
-            elif key in self.options:
-                self.option_file_params[self.convert_key[key]] = self.options[key]
-            elif self.convert_key[key] in self.options:
-                self.option_file_params[self.convert_key[key]] = self.options[self.convert_key[key]]
-            else:
-                raise StandardError('Keyword {} must be in the header of the files or in the job file')
-        
-        # parse option file and replace duplicated key by the one in
-        # the option file (so that the option file as priority over
-        # the header)
-        for key in self.options:
-            if key in self.convert_key:
-                self.option_file_params[self.convert_key[key]] = self.options[key]
-            elif (''.join([i for i in key if not i.isdigit()])
-                  not in self.protected_keys):
-                self.option_file_params[key] = self.options[key]
-
-
-        # convert name
-        self.option_file_params['OBJECT'] = ''.join(
-            self.option_file_params['OBJECT'].strip().split())
-
-        # compute step size in nm
-        if not self.is_laser():
-            step_fringe = self._get_from_hdr('SITSTPSZ', cast=float)
-            fringe_sz = self._get_from_hdr('SITFRGNM', cast=float)
-            self.option_file_params['SPESTEP'] = step_fringe * fringe_sz
-        else:
-            self.option_file_params.pop('SPEORDR')
-
-        # get dark exposition time
-        if 'DARK' in self.options:
-            dark_hdr = to.read_fits(
-                self.options['DARK'], return_hdu_only=True)[0].header
-            self.option_file_params['SPEDART'] = dark_hdr['EXPTIME']
-            
-        # define target position in the frame
-        sec_cam1 =self._get_from_hdr('DSEC1')
-        sec_cam1 = sec_cam1[1:-1].split(',')
-        sec_cam1x = np.array(sec_cam1[0].split(':'), dtype=int)
-        sec_cam1y = np.array(sec_cam1[1].split(':'), dtype=int)
-
-        if 'TARGETX' not in self.options:
-            self.option_file_params['TARGETX'] = (
-                float(sec_cam1x[1]-sec_cam1x[0]) / 2.)
-            
-        if 'TARGETY' not in self.options:
-            self.option_file_params['TARGETY'] = (
-                float(sec_cam1y[1]-sec_cam1y[0]) / 2.)
-
-        # get calibration laser map path
-        if 'CALIBMAP' in self.options:
-            out_params['calibration_laser_map_path'] = self.options['CALIBMAP']
-       
-        elif not self.is_laser() and not self._fast_init:
-            raise StandardError('CALIBMAP keyword must be set')
-
-
-        # get standard spectrum params
-        if 'STDPATH' in self.option_file_params:
-            std_path = self.option_file_params['STDPATH']
-            if os.path.exists(std_path):
-                std_hdr = orb.utils.io.read_fits(
-                    std_path, return_hdu_only=True)[0].header
-                if 'OBJECT' in std_hdr:
-                    self.option_file_params['STDNAME'] = std_hdr['OBJECT']
-                else:
-                    raise StandardError('OBJECT key is not in standard file header ({})'.format(std_path))
-            else:
-                raise StandardError('Standard star file does not exist ({})'.format(std_path))
-
-        # get standard image list parames
-        if 'STDIM' in self.options:
-            std_path = self.check_file_path(self.options['STDIM'])
-            if os.path.exists(std_path):
-                std_hdr = orb.utils.io.read_fits(std_path, return_hdu_only=True)[0].header
-                if 'OBJECT' in std_hdr:
-                    self.option_file_params['STDNAME'] = ''.join(std_hdr['OBJECT'].strip().split())
-                else:
-                    raise StandardError('OBJECT key is not in standard file header ({})'.format(std_path))
-            else:
-                raise StandardError('Standard image file does not exist ({})'.format(std_path))
-
-        if 'OBS' in self.options: # target image list
-            self.option_file_params['DIRCAM1'] = self._generate_file_list(
-                'OBS', 'object', 1)
-            self.option_file_params['DIRCAM2'] = self._generate_file_list(
-                'OBS', 'object', 2)
-        if 'FLAT' in self.options: # flat image list
-            self.option_file_params['DIRFLT1'] = self._generate_file_list(
-                'FLAT', 'flat', 1)
-            self.option_file_params['DIRFLT2'] = self._generate_file_list(
-                'FLAT', 'flat', 2)
-        if 'DARK' in self.options: # dark image list
-            self.option_file_params['DIRDRK1'] = self._generate_file_list(
-                'DARK', 'dark', 1)
-            self.option_file_params['DIRDRK2'] = self._generate_file_list(
-                'DARK', 'dark', 2)
-        if 'COMPARISON' in self.options: # wavelength calibration file list
-            self.option_file_params['DIRCAL1'] = self._generate_file_list(
-                'COMPARISON', 'calib', 1)
-            self.option_file_params['DIRCAL2'] = self._generate_file_list(
-                'COMPARISON', 'calib', 2)
-        if 'STDIM' in self.options: # standard image list
-            self.option_file_params['DIRSTD1'] = self._generate_file_list(
-                'STDIM', 'stdim', 1)
-            self.option_file_params['DIRSTD2'] = self._generate_file_list(
-                'STDIM', 'stdim', 2)
-
-        with open(output_file_path, 'w') as f:
-            # create option file header
-            f.write('## ORBS Option file\n# Auto-generated from SITELLE job file: {}\n'.format(
-                self.input_file_path))
-            # write params in the option file           
-            for key in self.option_file_params:
-                f.write('{} {}\n'.format(key, self.option_file_params[key]))
-                
-        return output_file_path, out_params, 'sitelle_job_file'
-
         
 
 ##################################################
 #### CLASS JobsWalker ############################
 ##################################################
-
-    
 class JobsWalker():
 
     """Construct a database of all the job files found in a given folder
