@@ -92,62 +92,6 @@ class Orbs(Tools):
     """Dictionary containing all the options of the config file.  All
     those options can be changed for any particular reduction using
     the option file.
-
-    .. note:: Keywords used (The keywords of the configuration file
-       are the same)
-
-        * INIT_ANGLE: Rough angle between images of the cameras 1 and 2
-        
-        * INIT_DX: Rough disalignment along x axis between cameras 1
-          and 2 for a 1x1 binning
-          
-        * INIT_DY: Rough disalignment along y axis between cameras 1
-          and 2 for a 1x1 binning
-          
-        * FIELD_OF_VIEW_1: Size of the field of view of the camera 1 in
-          arc-minutes
-          
-        * FIELD_OF_VIEW_2: Size of the field of view of the camera 2 in
-          arc-minutes
-          
-        * PIX_SIZE_CAM1: Camera 1 pixel size in um
-
-        * PIX_SIZE_CAM2: Camera 2 pixel size in um
-        
-        * BALANCED_CAM: Number of the camera on the balanced port
-        
-        * CALIB_NM_LASER: Wavelength of the calibration laser in nm
-        
-        * CALIB_ORDER: Folding order of the calibration laser cube
-        
-        * CALIB_STEP_SIZE: Step size of the calibration laser cube
-        
-        * PHASE_FIT_DEG: Degree of the polynomial used to fit the phase
-        
-        * DETECT_STAR_NB: Number of star to use for alignment and photometry
-        
-        * INIT_FWHM: Rough estimate of the stars FWHM in arcseconds
-        
-        * PSF_PROFILE: PSF used to fit stars (can be gaussian of moffat)
-        
-        * MOFFAT_BETA: Default beta parameter for the Moffat PSF
-        
-        * DETECT_STACK: Number of frames to combine for star detection
-        
-        * OPTIM_DARK_CAM1: If set to 1 : run the optimization routine
-          to remove camera 1 dark. Set to 0 to avoid optimization routine
-          
-        * OPTIM_DARK_CAM2: If set to 1 : run the optimization routine
-          to remove camera 2 dark. Set to 0 to avoid optimization routine
-          
-        * DARK_ACTIVATION_ENERGY: Calibrated activation energy of the
-          dark frames. Used to correct for varying dark level of the
-          camera 2 of SpIOMM
-                    
-        * EXT_ILLUMINATION: If there is a chance for some light to
-          enter in one of the cameras and not the other this must be
-          set to 1. This way this external light can be tracked by the
-          merge process.
     """
     
     options = dict()
@@ -484,124 +428,6 @@ class Orbs(Tools):
         self.roadmap.attach('calibrate_spectrum',
                             self.calibrate_spectrum)
         
-    def _get_calibration_standard_fits_header(self):
-
-        if 'standard_path' in self.options:
-            std_path = self.options['standard_path']
-            std_name = self._get_standard_name(std_path)
-            hdr = list()
-            hdr.append(('COMMENT','',''))
-            hdr.append(('COMMENT','Calibration standard parameters',''))
-            hdr.append(('COMMENT','-------------------------------',''))
-            hdr.append(('COMMENT','',''))
-            hdr.append(('STDNAME', std_name,
-                        'Name of the standard star'))
-            std_path = os.path.basename(std_path)[
-                :orb.constants.FITS_CARD_MAX_STR_LENGTH]
-            hdr.append(('STDPATH', std_path,
-                        'Path to the standard star file'))
-            return hdr
-        else: return None
-            
-    def _get_calibration_laser_fits_header(self):
-        """Return the header corresponding to the calibration laser
-        that can be added to the created FITS files."""
-        hdr = list()
-        hdr.append(('COMMENT','',''))
-        hdr.append(('COMMENT','Calibration laser parameters',''))
-        hdr.append(('COMMENT','----------------------',''))
-        hdr.append(('COMMENT','',''))
-        hdr.append(('CALIBNM',self.config["CALIB_NM_LASER"],
-                    'Wavelength of the calibration laser in nm'))
-        hdr.append(('CALIBOR',self.config["CALIB_ORDER"],
-                    'Folding order of the calibration laser cube'))
-        hdr.append(('CALIBST',self.config["CALIB_STEP_SIZE"],
-                    'Step size of the calibration laser cube'))
-        return hdr
-
-    def _get_project_fits_header(self, camera_number=None):
-        """Return the header of the project that can be added to the
-        created FITS files.
-
-        :param camera_number: Number of the camera (can be 0, 1 or 2)
-        """
-        hdr = list()
-        hdr.append(('COMMENT','',''))
-        hdr.append(('COMMENT','ORBS',''))
-        hdr.append(('COMMENT','----',''))
-        hdr.append(('COMMENT','',''))
-        hdr.append(('ORBSVER', self.__version__, 'ORBS version'))
-        option_file_name = os.path.basename(self.option_file_path)[
-            :orb.constants.FITS_CARD_MAX_STR_LENGTH]
-        hdr.append(('OPTNAME', option_file_name,
-                    'Name of the option file'))
-        
-        hdr.append(('COMMENT','',''))
-        hdr.append(('COMMENT','Observation parameters',''))
-        hdr.append(('COMMENT','----------------------',''))
-        hdr.append(('COMMENT','',''))
-        if "object_name" in self.options:
-            hdr.append(('OBJECT', self.options["object_name"], 'Object Name'))
-        if "exposure_time" in self.options:
-            hdr.append(('EXPTIME', self.options["exposure_time"], 
-                        'Exposure time'))
-        if "filter_name" in self.options:
-            hdr.append(('FILTER', self.options["filter_name"], 
-                        'Name of filter used during the observation'))
-        if "obs_date" in self.options:
-            hdr.append(('DATE-OBS', self.options["obs_date"], 
-                        'Date of the observation'))
-        if "order" in self.options:
-            hdr.append(('ORDER', self.options["order"], 
-                        'Order of spectral folding'))
-        if "step" in self.options:
-            hdr.append(('STEP', self.options["step"], 
-                        'Step size in nm'))
-        if "step_nb" in self.options:
-            hdr.append(('STEPNB', self.options["step_nb"], 
-                        'Number of steps'))
-        if "target_ra" in self.options:
-            hdr.append(('TARGETR', orb.utils.astrometry.deg2ra(
-                self.options["target_ra"],
-                string=True),
-                        'Target Right Ascension'))
-        if "target_dec" in self.options:
-            hdr.append(('TARGETD', orb.utils.astrometry.deg2dec(
-                self.options["target_dec"],
-                string=True), 
-                        'Target Declination'))
-        if "target_x" in self.options:
-            hdr.append(('TARGETX', self.options["target_x"], 
-                        'Target estimated X coordinate'))
-        if "target_y" in self.options:
-            hdr.append(('TARGETY', self.options["target_y"], 
-                        'Target estimated Y coordinate'))
-
-        hdr.append(('COMMENT','',''))
-        hdr.append(('COMMENT','Image Description',''))
-        hdr.append(('COMMENT','-----------------',''))
-        hdr.append(('COMMENT','',''))
-        if camera_number is None:
-            if "camera_number" in self.options:
-                camera_number = self.options["camera_number"]
-        if camera_number is not None:
-            if camera_number != 0:
-                hdr.append(('CAMERA', "CAM%d"%camera_number, 
-                            'Camera number'))
-            else:
-                hdr.append(('CAMERA', "MERGED_DATA", 
-                            'Merged data from CAM1 and CAM2'))       
-        if camera_number is not None:
-            if ((camera_number == 1) 
-                or (camera_number == 0)):  
-                if "bin_cam_1" in self.options:
-                    hdr.append(('BINNING', self.options["bin_cam_1"], 
-                                'Binning of the camera'))
-            if camera_number == 2:  
-                if "bin_cam_2" in self.options:
-                    hdr.append(('BINNING', self.options["bin_cam_2"], 
-                                'Binning of the camera'))
-        return hdr
             
     def _get_project_dir(self):
         """Return the path to the project directory depending on 
@@ -723,7 +549,6 @@ class Orbs(Tools):
 
         :param camera_number: Camera number (can be either 1 or 2).
         """
-        print self.options, self.config
         if (camera_number == 1):
             if ("image_list_path_1" in self.options):
                 self.indexer.set_file_group('cam1')
@@ -732,7 +557,6 @@ class Orbs(Tools):
                     params=self.options,
                     config=self.config,
                     data_prefix=self._get_data_prefix(1),
-                    project_header=self._get_project_fits_header(1),
                     tuning_parameters=self.tuning_parameters,
                     indexer=self.indexer,
                     instrument=self.instrument,
@@ -747,7 +571,6 @@ class Orbs(Tools):
                     params=self.options,
                     config=self.config,
                     data_prefix=self._get_data_prefix(2),
-                    project_header=self._get_project_fits_header(2),
                     tuning_parameters=self.tuning_parameters,
                     indexer=self.indexer,
                     instrument=self.instrument,
@@ -1180,7 +1003,6 @@ class Orbs(Tools):
         .. seealso:: :meth:`process.RawData.create_alignment_vector`
         """        
         cube = self._init_raw_data_cube(camera_number)
-        
         perf = Performance(cube, "Alignment vector computation", camera_number,
                            instrument=self.instrument)
         
@@ -1437,9 +1259,6 @@ class Orbs(Tools):
             interf_cube_path_1, interf_cube_path_2,
             bin_A=bin_cam_1, bin_B=bin_cam_2,
             data_prefix=self._get_data_prefix(0),
-            project_header=self._get_project_fits_header(0),
-            cube_A_project_header=self._get_project_fits_header(1),
-            cube_B_project_header=self._get_project_fits_header(2),
             tuning_parameters=self.tuning_parameters,
             indexer=self.indexer,
             instrument=self.instrument,
@@ -1504,7 +1323,6 @@ class Orbs(Tools):
             interf_cube_path_A=interf_cube_path_1,
             interf_cube_path_B=interf_cube_path_2,
             data_prefix=self._get_data_prefix(0),
-            project_header=self._get_project_fits_header(0),
             tuning_parameters=self.tuning_parameters,
             indexer=self.indexer,
             instrument=self.instrument,
@@ -1589,7 +1407,6 @@ class Orbs(Tools):
         cube = CalibrationLaser(
             calib_path, 
             data_prefix=self._get_data_prefix(camera_number),
-            calibration_laser_header=self._get_calibration_laser_fits_header(),
             tuning_parameters=self.tuning_parameters,
             indexer=self.indexer,
             instrument=self.instrument,
@@ -1658,9 +1475,6 @@ class Orbs(Tools):
             params=self.options,
             config=self.config,        
             data_prefix=self._get_data_prefix(camera_number),
-            project_header = self._get_project_fits_header(
-                camera_number),
-            calibration_laser_header=self._get_calibration_laser_fits_header(),
             tuning_parameters=self.tuning_parameters,
             indexer=self.indexer,
             instrument=self.instrument,
@@ -1748,10 +1562,7 @@ class Orbs(Tools):
             instrument=self.instrument,
             tuning_parameters=self.tuning_parameters,
             indexer=self.indexer,
-            project_header = self._get_project_fits_header(
-                camera_number),
             data_prefix=self._get_data_prefix(camera_number),
-            calibration_laser_header=self._get_calibration_laser_fits_header(),
             ncpus=self.ncpus)
         
         perf = Performance(cube, "Phase map creation", camera_number,
@@ -1877,9 +1688,6 @@ class Orbs(Tools):
             params=self.options,
             config=self.config,
             data_prefix=self._get_data_prefix(camera_number),
-            project_header = self._get_project_fits_header(
-                camera_number),
-            calibration_laser_header=self._get_calibration_laser_fits_header(),
             tuning_parameters=self.tuning_parameters,
             indexer=self.indexer,
             instrument=self.instrument,
@@ -1971,7 +1779,6 @@ class Orbs(Tools):
                 flux_calibration_vector),
             flux_calibration_coeff=flux_calibration_coeff,
             wavenumber=self.options['wavenumber'],
-            standard_header = self._get_calibration_standard_fits_header(),
             spectral_calibration=self.options['spectral_calibration'],
             filter_correction=filter_correction)
         

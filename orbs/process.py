@@ -234,7 +234,7 @@ class CubeMask(object):
         self.bad_frames = list(bad_frames_list)
 
     def get_spectrum_mask(self, x, y):
-        """Return a mask along a spectrum taken a a given position
+        """Return a mask along a spectrum taken at a given position
         :param x: X position of the spectrum
         :param y: Y position of the spectrum
         """
@@ -283,27 +283,9 @@ class RawData(InterferogramCube):
         else:
             return self._data_path_hdr + "alignment_vector_err.fits"
 
-    def _get_alignment_vector_header(self, err=False):
-        """Return the header of the alignment vector.
-
-        :param err: (Optional) If True, the error vector header is
-          returned (default False).
-        """
-        if not err:
-            return (self._get_basic_header('Alignment vector')
-                    + self._project_header)
-        else:
-            return (self._get_basic_header('Alignment vector error')
-                    + self._project_header) 
-
     def _get_cr_map_cube_path(self):
         """Return the default path to a HDF5 cube of the cosmic rays."""
         return self._data_path_hdr + "cr_map.hdf5"
-
-    def _get_cr_map_frame_header(self):
-        """Return the header of the cosmic ray map."""
-        return (self._get_basic_header('Cosmic ray map')
-                + self._project_header)
     
     def _get_hp_map_path(self):
         """Return the default path to the hot pixels map."""
@@ -313,33 +295,13 @@ class RawData(InterferogramCube):
         """Return the default path to the deep frame."""
         return self._data_path_hdr + "deep_frame.fits"
 
-    def _get_deep_frame_header(self):
-        """Return the header of the deep frame."""
-        return (self._get_basic_header('Deep frame')
-                + self._project_header
-                + self._get_basic_frame_header(self.dimx, self.dimy))
-
     def _get_energy_map_path(self):
         """Return the default path to the energy map."""
         return self._data_path_hdr + "energy_map.fits"
 
-    def _get_energy_map_header(self):
-        """Return the header of the energy map."""
-        return (self._get_basic_header('Energy Map')
-                + self._project_header
-                + self._get_basic_frame_header(self.dimx, self.dimy))
-
-
     def _get_interfero_cube_path(self):
         """Return the default path to the interferogram HDF5 cube."""
         return self._data_path_hdr + "interferogram.hdf5"
-
-    def _get_interfero_frame_header(self):
-        """Return the header of an interferogram frame"""
-        return (self._get_basic_header('Interferogram frame')
-                + self._project_header
-                + self._get_basic_frame_header(self.dimx, self.dimy))
-
 
     def _get_master_path(self, kind):
         """Return the default path to a master frame.
@@ -348,16 +310,6 @@ class RawData(InterferogramCube):
           'flat')
         """
         return self._data_path_hdr + "master_%s.fits"%kind
-
-    def _get_master_header(self, kind):
-        """Return the header of a master frame.
-        
-        :param kind: Kind of master frame (e.g. : 'bias', 'dark',
-          'flat')
-        """
-        return (self._get_basic_header('Master %s'%kind)
-                + self._project_header
-                + self._get_basic_frame_header(self.dimx, self.dimy))
 
     def _load_bias(self, bias_list_path, return_temperature=False,
                    combine='average', reject='avsigclip'):
@@ -427,8 +379,8 @@ class RawData(InterferogramCube):
         
             
         orb.utils.io.write_fits(self._get_master_path('bias'),
-                        master_bias, overwrite=True,
-                        fits_header=self._get_master_header('Bias'))
+                                master_bias, overwrite=True,
+                                fits_header=self._get_master_header('Bias'))
         
         if return_temperature:
             return master_bias, bias_temp
@@ -2592,7 +2544,6 @@ class InterferogramMerger(Tools):
     _data_prefix = None
     instrument = None
     ncpus = None
-    _msg_class_hdr = None
     _data_path_hdr = None
     _project_header = None
     _wcs_header = None
