@@ -39,72 +39,14 @@ orbs_path = os.path.normpath(('%s'%os.sep).join(str(script_path[0]).split(os.sep
 sys.path.append(orbs_path)
 
 import orb
-from orb.core import Tools, Logger
 import orbs
-from orbs.orbs import Orbs, RoadMap, JobFile
+from orb.core import Tools, Logger
+from orbs.orbs import Orbs
+from orbs.core import RoadMap, JobFile, RecordFile
 
 import logging
 import warnings
 
-##############################################################
-##### CLASS RECORDFILE #######################################
-##############################################################
-
-class RecordFile(object):
-    """Manage a file where all the launched reductions are recorded.
-
-    This class is used for 'status', 'clean' and 'resume' operations
-    """
-
-    file_path = None
-    records = None
-    last_command = None
-    
-    def __init__(self, job_file_path):
-        """Init class
-
-        :param job_file_path: Path to the job file.
-        """
-        
-        self.file_path = job_file_path + '.rec'
-        # parse file
-        self.records = list()
-        if os.path.exists(self.file_path):
-            with open(self.file_path, 'r') as f:
-                for line in f:
-                    if 'last_command' in line:
-                        self.last_command = line.split()[1:]
-                    else:
-                        rec = line.split()
-                        if len(rec) != 3:
-                            raise Exception(
-                                'Bad formatted record file ({})'.format(
-                                    self.file_path))
-                    
-                        self.records.append({
-                            'instrument':rec[0],
-                            'target':rec[1],
-                            'cams':rec[2]})
-        
-    def update(self):
-        """update file on disk"""
-        with open(self.file_path, 'w') as f:
-            for record in self.records:
-                f.write('{} {} {}\n'.format(
-                    record['instrument'],
-                    record['target'],
-                    record['cams']))
-            f.write('last_command ' + ' '.join(self.last_command) + '\n')
-        
-    def add_record(self, mode, target, cams):
-        """Add a new record and update file on disk"""
-        record = {'instrument':mode,
-                  'target':target,
-                  'cams':cams}
-        if record not in self.records:
-            self.records.append(record)
-        self.update()
-    
 
 ##############################################################
 ##### MAIN FUNCTIONS #########################################
@@ -117,9 +59,10 @@ def get_to(args):
 def init_orbs(args, target, cams, silent=False, fast_init=False):
     # load job file and init Orbs class
     return Orbs(args.job_file_path, target,
-                instrument=args.instrument_mode, silent=silent,
-                fast_init=fast_init, ncpus=args.ncpus,
-                logfile_path=get_logfile_name(args))
+                instrument=args.instrument_mode,
+                fast_init=fast_init,
+                config={'NCPUS':args.ncpus},
+                silent=silent)
 
 def status(args):
     # log in record file
@@ -262,9 +205,9 @@ def start(args, resume=False):
     
     # record roadmap
     recfile = RecordFile(args.job_file_path)
-    recfile.add_record(args.instrument_mode, target, 0)
+    recfile.add_record(args.instrument_mode, target, 'full')
     
-    project = init_orbs(args, target, 0)
+    project = init_orbs(args, target, 'full')
 
     # get resume step if reduction must be resumed
     if resume:
@@ -306,7 +249,7 @@ def add_all_operations(instrument_parser, epilog):
     
     instrument_parser.add_argument(
         '--ncpus', dest='ncpus', action='store',
-        default=None,
+        default=0,
         type=int,
         help="Number of CPUs to use for parallel processing (default set in config file)")
 

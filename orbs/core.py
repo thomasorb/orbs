@@ -21,11 +21,16 @@
 ## along with ORBS.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
+import xml.etree.ElementTree
+import warnings
+
 import orb.utils.io
 import orb.utils.misc
 import numpy as np
 import orb.utils.astrometry
 import orb.core
+
+ORBS_DATA_PATH = os.path.join(os.path.split(__file__)[0], "data")
 
 ##################################################
 #### CLASS JobFile ###############################
@@ -260,3 +265,452 @@ class JobFile(object):
         
     def open(self):
         return open(self.path, 'r')
+
+
+##################################################
+#### CLASS RoadMap ###############################
+##################################################
+    
+class RoadMap(orb.core.Tools):
+    """Manage a reduction road map given a target and the camera to
+    use (camera 1, 2 or both cameras).
+
+    All steps are defined in a particular xml files in the data folder
+    of ORBS (:file:`orbs/data/roadmap.steps.xml`).
+
+    Each roadmap is defined by an xml file which can also be found in
+    orbs/data.
+
+    .. note:: The name of a roadmap file is defined as follows::
+
+         roadmap.[instrument].[target].[camera].xml
+
+       - *instrument* can be *spiomm* or *sitelle*
+       - *target* can be one of the special targets listed above or object
+         for the default target
+       - *camera* can be *full* for a process using both cameras; *single1*
+         or *single2* for a process using only the camera 1 or 2.
+
+
+    .. note:: RoadMap file syntax:
+    
+        .. code-block:: xml
+
+           <?xml version="1.0"?>
+           <steps>
+             <step name='compute_alignment_vector' cam='1'>
+               <arg value='1' type='int'></arg>
+             </step>
+
+             <step name='compute_alignment_vector' cam='2'>
+               <arg value='2' type='int'></arg>
+             </step>
+
+             <step name='compute_spectrum' cam='0'>
+               <arg value='0' type='int'></arg>
+               <kwarg name='phase_correction'></kwarg>
+               <kwarg name='apodization_function'></kwarg>
+             </step>
+           </steps>
+
+        * <step> Each step is defined by its **name** (which can be
+          found in :file:`orbs/data/roadmap.steps.xml`) and the camera
+          used (1, 2 or 0 for merged data).
+
+        * <arg> Every needed arguments can be passed by giving the
+          value and its type (see
+          :py:data:`orbs.orbs.RoadMap.types_dict`).
+
+        * <kwarg> optional arguments. They must be added to the step
+          definition if their value has to be passed from the calling
+          method (:py:meth:`orbs.orbs.Orbs.start_reduction`). Only the
+          optional arguments of
+          :py:meth:`orbs.orbs.Orbs.start_reduction` can thus be passed
+          as optional arguments of the step function.
+        
+
+        
+    """ 
+    road = None # the reduction road to follow
+    steps = None # all the possible reduction steps
+    indexer = None # an orb.Indexer instance
+
+    instrument = None # instrument name
+    target = None # target type
+    cams = None # camera used 
+
+    ROADMAP_STEPS_FILE_NAME = 'roadmap.steps.xml'
+    """Roadmap steps file name"""
+
+    def _str2bool(s):
+        """Convert a string to a boolean value.
+
+        String must be 'True','1' or 'False','0'.
+
+        :param s: string to convert.
+        """
+        if s.lower() in ("true", "1"): return True
+        elif s.lower() in ("false", "0"): return False
+        else: raise Exception(
+            "Boolean value must be 'True','1' or 'False','0'")
+
+
+    types_dict = { # map type to string definition in xml files
+        'int':int,
+        'str':str,
+        'float':float,
+        'bool':_str2bool}
+    """Dictionary of the defined arguments types"""
+    
+
+    def __init__(self, instrument, target, cams, indexer, **kwargs):
+        """Init class.
+
+        Load steps definitions and roadmap.
+
+        :param instrument: Instrument. Can be 'sitelle' or 'spiomm'
+        :param target: Target of the data to reduce
+        :param cams: Camera to use (cam be 'single1', 'single2' or 'full')
+        :param indexer: An orb.Indexer instance.
+        :param kwargs: Kwargs are :meth:`core.Tools` properties.
+        """
+        orb.core.Tools.__init__(self, **kwargs)
+        self.indexer = indexer
+        self.instrument = instrument
+        self.target = target
+
+        self.cams = cams
+
+        # load roadmap steps
+        roadmap_steps_path = os.path.join(
+            ORBS_DATA_PATH, self.ROADMAP_STEPS_FILE_NAME)
+        
+        steps =  xml.etree.ElementTree.parse(roadmap_steps_path).getroot()
+        
+        self.steps = dict()
+        for step in steps:
+            infiles = list()
+            infiles_xml = step.findall('infile')
+            for infile_xml in infiles_xml:
+                infiles.append(infile_xml.attrib['name'])
+            outfiles = list()
+            outfiles_xml = step.findall('outfile')
+            for outfile_xml in outfiles_xml:
+                outfiles.append(outfile_xml.attrib['name'])
+                
+            self.steps[step.attrib['name']] = Step(infiles,
+                                                   None,
+                                                   outfiles)
+
+        # load roadmap
+        roadmap_path = os.path.join(
+            ORBS_DATA_PATH, 'roadmap.{}.{}.{}.xml'.format(
+                instrument, target, cams))
+
+        if not os.path.exists(roadmap_path):
+            raise StandardError('Roadmap {} does not exist'.format(
+                roadmap_path))
+            
+        steps =  xml.etree.ElementTree.parse(roadmap_path).getroot()
+        
+        self.road = list()
+        for step in steps:
+            args_xml = step.findall('arg')
+            args = list()
+            for arg_xml in args_xml:
+                args.append(self.types_dict[arg_xml.attrib['type']](arg_xml.attrib['value']))
+
+            kwargs_xml = step.findall('kwarg')
+            kwargs = dict()
+            for kwarg_xml in kwargs_xml:
+                if 'value' in kwarg_xml.attrib:
+                    kwargs[kwarg_xml.attrib['name']] = self.types_dict[
+                        kwarg_xml.attrib['type']](kwarg_xml.attrib['value'])
+                else:
+                    kwargs[kwarg_xml.attrib['name']] = 'undef'
+                    
+            if step.attrib['name'] in self.steps:
+                self.road.append({'name':step.attrib['name'],
+                                  'cam':int(step.attrib['cam']),
+                                  'args':args, 'kwargs':kwargs,
+                                  'status':False})
+            else:
+                raise StandardError('Step {} found in {} not recorded in {}'.format(
+                    step.attrib['name'], os.path.split(roadmap_path)[1],
+                    os.path.split(roadmap_steps_path)[1]))
+
+        # check road (ony possible if an Indexer instance has been given)
+        self.check_road()
+
+    def attach(self, step_name, func):
+        """Attach a reduction function to a step.
+
+        :param step_name: Name of the step
+        :param func: function to attach
+        """
+        if step_name in self.steps:
+            self.steps[step_name].func = func
+        else:
+            raise StandardError('No step called {}'.format(step_name))
+
+    def check_road(self):
+        """Check the status of each step of the road."""
+        if self.indexer is None: return
+        
+        for istep in range(len(self.road)):
+            step = self.road[istep]
+            for outf in self.steps[step['name']].get_outfiles(step['cam']):
+                if outf in self.indexer.index:
+                    if os.path.exists(self.indexer[outf]):
+                        self.road[istep]['status'] = True
+
+    def get_road_len(self):
+        """Return the number of steps of the road"""    
+        return len(self.road)
+
+    def get_step_func(self, index):
+        """Return the function and the arguments for a particular step.
+
+        :param index: Index of of the step.
+
+        :return: (func, args, kwargs)
+        """
+        if index < self.get_road_len():
+            return (self.steps[self.road[index]['name']].func,
+                    self.road[index]['args'],
+                    self.road[index]['kwargs'])
+        else:
+            raise StandardError(
+                'Bad index number. Must be < {}'.format(self.get_road_len()))
+
+    def print_status(self):
+        """Print roadmap status"""
+        self.check_road()
+        
+        print 'Status of roadmap for {} {} {}'.format(self.instrument,
+                                                      self.target,
+                                                      self.cams)
+        index = 0
+        for step in self.road:
+            if step['status'] :
+                status = 'done'
+                color = orb.core.TextColor.OKGREEN
+            else:
+                status = 'not done'
+                color = orb.core.TextColor.KORED
+            
+            print color + '  {} - {} {}: {}'.format(index, step['name'], step['cam'], status) + orb.core.TextColor.END
+            index += 1
+
+    def get_steps_str(self, indent=0):
+        """Return a string describing the different steps and their index.
+        
+        :param indent: (Optional) Indentation of each line (default 0)
+        """
+        str = ''
+        istep = 0
+        for step in self.road:
+            step_name = step['name'].replace('_', ' ').capitalize()
+            
+            if step['cam'] == 0:
+                str += ' '*indent + '{}. {}\n'.format(istep, step_name)
+            else:
+                str += ' '*indent + '{}. {} ({})\n'.format(istep, step_name, step['cam'])
+            istep += 1
+        return str
+
+    def get_resume_step(self):
+        index = 0
+        for step in self.road:
+            if not step['status']: return index
+            index += 1
+        return index
+
+    
+##################################################
+#### CLASS Step ##################################
+##################################################
+class Step(object):
+    """Reduction step definition.
+
+    This class is used by :class:`orbs.orbs.RoadMap`.
+    """
+    def __init__(self, infiles, func, outfiles):
+        """Init class
+
+        :param infiles: a list of strings defining the input files.
+        
+        :param func: a function object attached to the reduction step.
+        
+        :param outfiles: a list of strings defining the output files.
+        """
+        self.infiles = infiles
+        self.func = func
+        self.outfiles = outfiles
+
+    def get_outfiles(self, cam):
+        """Return the complete output name of the file as it is
+        recorded in the indexer (see :py:class:`orb.core.Indexer`).
+
+        :param cam: camera used (can be 0,1 or 2)
+        """
+        outfiles = list()
+        if cam != 0:
+            for outf in self.outfiles:
+                outfiles.append('cam{}.{}'.format(cam, outf))
+        else:
+            for outf in self.outfiles:
+                outfiles.append('merged.{}'.format(outf))
+                
+        return outfiles
+
+
+        
+##################################################
+#### CLASS JobsWalker ############################
+##################################################
+class JobsWalker():
+
+    """Construct a database of all the job files found in a given folder
+    and its subfolders.
+    """
+    keys = ['OBJECT', 'SPESTNB', 'OBSDATE', 'STDPATH', 'TARGETR', 'DIRCAM1', 'DIRCAM2', 'TARGETD', 'SPEEXPT', 'CALIBMAP', 
+            'TARGETX', 'TARGETY', 'SPEORDR', 'DIRFLT1', 'DIRFLT2', 'SPESTEP', 'STDNAME', 'HOUR_UT', 'FILTER']
+    base_keys = ['OBJECT', 'SPESTNB', 'OBSDATE', 'SPEEXPT', 'FILTER', 'LASTRUN', 'PATH']
+    
+    def __init__(self, root_folders):
+        """Init class.
+
+        :param root_folders: A list of path to the folders where the
+          job files are to be found.
+        """
+        if not isinstance(root_folders, list):
+            raise TypeError('root_folders must be a list of folders where the job files (*.job) are to be found')
+        self.root_folders = list()
+        for irf in root_folders:
+            if not os.path.isdir(irf):
+                raise IOError('{} not found'.format(irf))
+            self.root_folders.append(irf)
+        self.update()
+        
+
+    def update(self):
+        """update the database. """
+        self.optfiles = list()
+        for irootf in self.root_folders:
+            for root, dirs, files in os.walk(irootf):
+                for file_ in files:
+                    if file_.endswith(".job"):
+                        ijobpath = os.path.join(root, file_)
+                        if os.path.exists(ijobpath + '.opt'):
+                            self.optfiles.append(ijobpath + '.opt')
+                        else:
+                            warnings.warn('{} does not have any corresponding opt file.'.format(ijobpath))
+
+        self.data = dict()
+        self.data['LASTRUN'] = list()
+        self.data['PATH'] = list()
+        for ioptpath in self.optfiles:
+            iof = orb.core.OptionFile(ioptpath)
+            for key in self.keys:
+                if key not in self.data:
+                    self.data[key] = list()
+                if key in iof.options:
+                    val = iof.options[key]
+                else:
+                    val = None
+                if key == 'OBSDATE':
+                    val = datetime.strptime(val, '%Y-%m-%d')
+                self.data[key].append(val)
+            if os.path.exists(ioptpath + '.log'):
+                self.data['LASTRUN'].append(datetime.fromtimestamp(
+                    os.path.getmtime(ioptpath + '.log')))
+            else:
+                self.data['LASTRUN'].append(None)
+            self.data['PATH'].append(ioptpath)
+            
+    def get_opt_files(self):
+        """Return a list of the option files found"""
+        return list(self.optfiles)
+    
+    def get_all_data(self):
+        """Return the whole content of the job files as a dict, which can be
+           directly passed to a pandas DataFrame.
+
+           .. code::
+             jw = JobWalker(['path1', 'path2'])
+             data = pd.DataFrame(jw.get_data()))
+        """
+        return dict(self.data)
+
+    def get_data(self):
+        """Return the content of the job files as a dict, which can be
+           directly passed to a pandas DataFrame.
+
+           .. code::
+             jw = JobWalker(['path1', 'path2'])
+             data = pd.DataFrame(jw.get_data()))
+        """
+        _data = dict()
+        for key in self.base_keys:
+            _data[key] = list(self.data[key])
+        return _data
+
+##############################################################
+##### CLASS RECORDFILE #######################################
+##############################################################
+class RecordFile(object):
+    """Manage a file where all the launched reductions are recorded.
+
+    This class is used for 'status', 'clean' and 'resume' operations
+    """
+
+    file_path = None
+    records = None
+    last_command = None
+    
+    def __init__(self, job_file_path):
+        """Init class
+
+        :param job_file_path: Path to the job file.
+        """
+        
+        self.file_path = job_file_path + '.rec'
+        # parse file
+        self.records = list()
+        if os.path.exists(self.file_path):
+            with open(self.file_path, 'r') as f:
+                for line in f:
+                    if 'last_command' in line:
+                        self.last_command = line.split()[1:]
+                    else:
+                        rec = line.split()
+                        if len(rec) != 3:
+                            raise Exception(
+                                'Bad formatted record file ({})'.format(
+                                    self.file_path))
+                    
+                        self.records.append({
+                            'instrument':rec[0],
+                            'target':rec[1],
+                            'cams':rec[2]})
+        
+    def update(self):
+        """update file on disk"""
+        with open(self.file_path, 'w') as f:
+            for record in self.records:
+                f.write('{} {} {}\n'.format(
+                    record['instrument'],
+                    record['target'],
+                    record['cams']))
+            f.write('last_command ' + ' '.join(self.last_command) + '\n')
+        
+    def add_record(self, mode, target, cams):
+        """Add a new record and update file on disk"""
+        record = {'instrument':mode,
+                  'target':target,
+                  'cams':cams}
+        if record not in self.records:
+            self.records.append(record)
+        self.update()
+    

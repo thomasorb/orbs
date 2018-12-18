@@ -39,7 +39,6 @@ import sys
 import traceback
 import scipy
 import numpy as np
-import xml.etree.ElementTree
 import logging
 import warnings
 import shutil
@@ -50,12 +49,12 @@ import bottleneck as bn
 
 
 from orb.core import Tools, Indexer, TextColor
-from orb.cube import FDCube, HDFCube, Cube
+from orb.cube import FDCube, HDFCube, Cube, RWHDFCube
 from orb.core import FilterFile, ProgressBar
 from process import RawData, InterferogramMerger, Interferogram
 from process import Spectrum, CalibrationLaser
 from process import CosmicRayDetector
-from core import JobFile
+from core import JobFile, RoadMap
 
 import orb.constants
 import orb.version
@@ -65,8 +64,6 @@ import orb.utils.stats
 import orb.utils.image
 import orb.utils.vector
 import orb.utils.io
-
-ORBS_DATA_PATH = os.path.join(os.path.split(__file__)[0], "data")
 
 ##################################################
 #### CLASS Orbs ##################################
@@ -120,9 +117,7 @@ class Orbs(Tools):
 
      
     def __init__(self, job_file_path, target,
-                 instrument=None, ncpus=None,
-                 silent=False, fast_init=False,
-                 logfile_path=None):
+                 fast_init=False, silent=False, **kwargs):
         """Initialize Orbs class.
 
         :param job_file_path: Path to the job file.
@@ -131,19 +126,15 @@ class Orbs(Tools):
           reduction road map. Target may be 'object', 'flat',
           'standard', 'laser' or 'extphase'.
 
-        :param instrument: (Optional) name of the instrument config to
-          load (default None).
+        :param silent: (Optional) If True, nothing is printed durint
+          init (default False)
     
-        :param ncpus: (Optional) Number of CPUs to use for parallel
-          processing. set to None gives the maximum number available
-          (default None).  
-
-        :param silent: (Optional) If True no messages nor warnings are
-          displayed by Orbs (useful for silent init).
-
         :param fast_init: (Optional) Fast init. Data files are not
           checked. Gives access to Orbs variables (e.g. object dependant file
           paths). This mode is faster but less safe.
+
+        :param kwargs: orb.core.Tools kwargs.
+
         """
         def export_images(option_key, mask_key=None):
             # export fits frames as an hdf5 cube
@@ -163,7 +154,6 @@ class Orbs(Tools):
                 cube = FDCube(
                     self.options[option_key],
                     silent_init=True, no_sort=False,
-                    ncpus=self.ncpus,
                     instrument=self.instrument)
                 
                 # create mask
@@ -176,12 +166,15 @@ class Orbs(Tools):
                 else: image_mask = None
 
                 cube.export(export_path, mask=image_mask, params=self.options)
+                self.newly_exported = True
 
             self.options[option_key + '.hdf5'] = export_path
 
 
-        Tools.__init__(self, instrument=instrument, ncpus=ncpus, silent=silent)
+        Tools.__init__(self, **kwargs)
         
+        self.newly_exported = False
+
         if not silent:
             # First, print ORBS version
             logging.info("ORBS version: %s"%self.__version__)
@@ -195,13 +188,13 @@ class Orbs(Tools):
             logging.info("Bottleneck version: %s"%bn.__version__)
 
             # Print the entire config file for log
-            with self.open_file(self._get_config_file_path(), 'r') as conf_file:
+            with orb.utils.io.open_file(self._get_config_file_path(), 'r') as conf_file:
                 logging.info("Configuration file content:")
                 for line in conf_file:
                     logging.info(line[:-1])
  
         # Read job file to get observation parameters
-        self.jobfile = JobFile(job_file_path, self.params.instrument)
+        self.jobfile = JobFile(job_file_path, self.instrument)
         
         # Print first the entire option file for logging
         if not silent:
@@ -312,7 +305,6 @@ class Orbs(Tools):
             if 'image_list_path_1' in self.options:
                 cube1 = Cube(self.options['image_list_path_1.hdf5'],
                              instrument=self.instrument,
-                             ncpus=self.ncpus,
                              params=self.options,
                              config=self.config,
                              camera_index=1,
@@ -324,7 +316,6 @@ class Orbs(Tools):
             if 'image_list_path_2' in self.options:
                 cube2 = Cube(self.options['image_list_path_2.hdf5'],
                              instrument=self.instrument,
-                             ncpus=self.ncpus,
                              params=self.options,
                              config=self.config,
                              camera_index=2,
@@ -350,11 +341,12 @@ class Orbs(Tools):
             
             try: # check if the zpd index has already been computed
                 zpd_index = int(orb.utils.io.read_fits(self._get_zpd_index_file_path()))
+                logging.info('ZPD index read from file')
             except IOError:
                 cube1 = HDFCube(self.options['image_list_path_1'],
                                 silent_init=True,
                                 instrument=self.instrument,
-                                no_sort=True, ncpus=self.ncpus)
+                                no_sort=True, )
 
                 zpd_found = False
                 if target == 'laser':
@@ -386,13 +378,13 @@ class Orbs(Tools):
                             np.array(self.options['zpd_index']),
                             overwrite=True)
 
-        # update parameters of the hdf cubes
-        if not fast_init: 
+        # update parameters of the newly exported hdf cubes
+        if not fast_init and self.newly_exported: 
             for ikey in self.options:
                 if '.hdf5' in ikey:
-                    icube = HDFCube(self.options[ikey])
-                    icube.set_params(self.options)
-        
+                        icube = RWHDFCube(self.options[ikey])
+                        icube.update_params(self.options)
+                            
         # Init Indexer
         self.indexer = Indexer(data_prefix=self.options['object_name']
                                + '_' + self.options['filter_name'] + '.',
@@ -560,7 +552,7 @@ class Orbs(Tools):
                     tuning_parameters=self.tuning_parameters,
                     indexer=self.indexer,
                     instrument=self.instrument,
-                    ncpus=self.ncpus)
+                    ncpus=self.config.NCPUS)
             else:
                 raise StandardError("No image list file for camera 1 given, please check option file")
         elif (camera_number == 2):
@@ -574,7 +566,7 @@ class Orbs(Tools):
                     tuning_parameters=self.tuning_parameters,
                     indexer=self.indexer,
                     instrument=self.instrument,
-                    ncpus=self.ncpus)
+                    ncpus=self.config.NCPUS)
             else:
                 raise StandardError("No image list file for camera 2 given, please check option file")
         else:
@@ -702,14 +694,14 @@ class Orbs(Tools):
         elif self.target == 'extphase':
             cube = self._init_raw_data_cube(1)
             star_list_path, mean_fwhm_pix = self.detect_stars(
-            cube, 0, return_fwhm_pix=True)
+                cube, 0, return_fwhm_pix=True)
             source_list = orb.utils.astrometry.load_star_list(star_list_path)
             
         else: # standard target
             source_list = list()
             if not 'source_list_path' in self.options:
                 raise StandardError('A list of sources must be given (option file keyword SOURCE_LIST_PATH)')
-            with self.open_file(self.options['source_list_path'], 'r') as f:
+            with orb.utils.io.open_file(self.options['source_list_path'], 'r') as f:
                 for line in f:
                     x,y = line.strip().split()[:2]
                     source_list.append([float(x),float(y)])
@@ -725,7 +717,7 @@ class Orbs(Tools):
         :param std_path: Path to the file containing the standard.    
         """
         if 'hdf5' in std_path:
-            cube = HDFCube(std_path, instrument=self.instrument, ncpus=self.ncpus)
+            cube = HDFCube(std_path, instrument=self.instrument, ncpus=self.config.NCPUS)
             hdr = cube.get_frame_header(0)
         else:
             hdr = orb.utils.io.read_fits(std_path, return_hdu_only=True)[0].header
@@ -780,7 +772,7 @@ class Orbs(Tools):
           that must be added to the bad frames vector (default None).
         """
         interf_cube = HDFCube(self._get_interfero_cube_path(camera_number),
-                              instrument=self.instrument, ncpus=self.ncpus)
+                              instrument=self.instrument, ncpus=self.config.NCPUS)
         bad_frames_vector = np.zeros(interf_cube.dimz)
         
         if camera_number == 0:
@@ -892,104 +884,6 @@ class Orbs(Tools):
         if self.target == 'standard': self.export_standard_spectrum(
             cam, auto_phase=True)
 
-    def detect_stars(self, cube, camera_number, 
-                     saturation_threshold=None, return_fwhm_pix=False,
-                     all_sources=False, realign=False, deep_frame=None):
-        """Detect stars in a cube and save the star list in a file.
-
-        This method is a simple wrapper around
-        :py:meth:`orb.astrometry.Astrometry.detect_stars`
-
-        If a path to a list of star is given in the option file
-        (keyword STARLIST1 or STARLIST2), no automatic detection is
-        done and the the given list is returned. In this case the mean
-        FWHM returned is the FWHM given in the configuration file.
-        
-        :param cube: an orbs.Cube instance
-        
-        :param min_star_number: Minimum number of star to detect
-
-        :param saturation_threshold: (Optional) Number of counts above
-          which the star can be considered as saturated. Low by
-          default because at the ZPD the intensity of a star can be
-          twice the intensity far from it. If None the default
-          configuration value SATURATION_THRESHOLD / 2 is used (default
-          None).
-
-        :param return_fwhm_pix: (Optional) If True, the returned fwhm
-          will be given in pixels instead of arcseconds (default
-          False).
-
-        :param all_sources: (Optional) If True, all point sources are
-          detected regardless of their FWHM (galaxies, HII regions,
-          filamentary knots and stars might be detected).
-
-        :param realign: (Optional) Realign frames with a
-          cross-correlation algorithm (default False). Much better if
-          used on a small number of frames.
-
-        :param deep_frame: (Optional) If a deep frame is passed it is
-          used directly instead of creating a new one.
-        
-        :return: Path to a star list, mean FWHM of stars in arcseconds.
-
-        .. seealso:: :py:meth:`orb.astrometry.Astrometry.detect_stars`
-        """
-        # check first if a star list has been passed to the option file
-        if ((camera_number == 1
-            or camera_number == 0)
-            and 'star_list_path_1' in self.options):
-            logging.info('Using external star list: %s'%self.options['star_list_path_1'])
-            star_list_path = self.options['star_list_path_1']
-            mean_fwhm = self.config['INIT_FWHM']
-            refit = True
-            
-        elif (camera_number == 2 and 'star_list_path_2' in self.options):
-            logging.info('Using external star list: %s'%self.options['star_list_path_2'])
-            star_list_path = self.options['star_list_path_2']
-            mean_fwhm = self.config['INIT_FWHM']
-            refit = True
-        else: refit = False
-
-        if refit:
-            logging.info('Fitting manual star list')
-            astrom = self._init_astrometry(cube, camera_number)
-            astrom.load_star_list(star_list_path)
-            fit_results = astrom.fit_stars_in_frame(0)
-            star_list = fit_results.get_star_list()
-            star_list_fit_path = star_list_path + '.fit'
-            with open(star_list_fit_path, 'w') as f:
-                for istar in range(np.array(star_list).shape[0]):
-                    f.write('{} {}\n'.format(
-                        star_list[istar, 0], star_list[istar, 1]))
-            star_list_path = star_list_fit_path
-            mean_fwhm = orb.utils.stats.robust_median(fit_results[:,'fwhm_arc'])
-            logging.info('Mean FWHM: {} arcsec'.format(mean_fwhm))
-            
-        
-        # else try to auto-detect stars
-        else:
-            if saturation_threshold is None:
-                saturation_threshold = self.config['SATURATION_THRESHOLD'] / 2.
-                
-            logging.info('Autodetecting stars')
-            astrom = self._init_astrometry(cube, camera_number)
-            astrom.deep_frame = deep_frame
-            if not all_sources:
-                star_list_path, mean_fwhm = astrom.detect_stars(
-                    min_star_number=self.config['DETECT_STAR_NB'],
-                    saturation_threshold=saturation_threshold,
-                    try_catalogue=self.options['try_catalogue'],
-                    realign=realign)
-            else:
-                star_list_path, mean_fwhm = astrom.detect_all_sources()
-                    
-            if return_fwhm_pix: mean_fwhm = astrom.arc2pix(mean_fwhm)
-            del astrom
-
-        return star_list_path, mean_fwhm
-
-
     def compute_alignment_vector(self, camera_number):
         """Run the computation of the alignment vector.
 
@@ -1006,8 +900,7 @@ class Orbs(Tools):
         perf = Performance(cube, "Alignment vector computation", camera_number,
                            instrument=self.instrument)
         
-        star_list_path, mean_fwhm_arc = self.detect_stars(
-            cube, camera_number)
+        star_list_path, _ = cube.detect_stars(min_star_number=self.config.DETECT_STAR_NB)
 
         cube.create_alignment_vector(
             star_list_path, 
@@ -1262,7 +1155,7 @@ class Orbs(Tools):
             tuning_parameters=self.tuning_parameters,
             indexer=self.indexer,
             instrument=self.instrument,
-            ncpus=self.ncpus,
+            ncpus=self.config.NCPUS,
             params=params,
             config=self.config)
 
@@ -1326,7 +1219,7 @@ class Orbs(Tools):
             tuning_parameters=self.tuning_parameters,
             indexer=self.indexer,
             instrument=self.instrument,
-            ncpus=self.ncpus,
+            ncpus=self.config.NCPUS,
             params=params,
             config=self.config)
         
@@ -1410,7 +1303,7 @@ class Orbs(Tools):
             tuning_parameters=self.tuning_parameters,
             indexer=self.indexer,
             instrument=self.instrument,
-            ncpus=self.ncpus)
+            ncpus=self.config.NCPUS)
         perf = Performance(cube, "Calibration laser map processing",
                            camera_number,
                            instrument=self.instrument)
@@ -1478,7 +1371,7 @@ class Orbs(Tools):
             tuning_parameters=self.tuning_parameters,
             indexer=self.indexer,
             instrument=self.instrument,
-            ncpus=self.ncpus)
+            ncpus=self.config.NCPUS)
         
         perf = Performance(cube, "Spectrum computation", camera_number,
                            instrument=self.instrument)
@@ -1563,7 +1456,7 @@ class Orbs(Tools):
             tuning_parameters=self.tuning_parameters,
             indexer=self.indexer,
             data_prefix=self._get_data_prefix(camera_number),
-            ncpus=self.ncpus)
+            ncpus=self.config.NCPUS)
         
         perf = Performance(cube, "Phase map creation", camera_number,
                            instrument=self.instrument)
@@ -1607,7 +1500,7 @@ class Orbs(Tools):
         logging.info('Registering standard image cube to find standard star position')
         
         # standard image registration to find std star
-        std_cube = HDFCube(std_path, ncpus=self.ncpus,
+        std_cube = HDFCube(std_path, ncpus=self.config.NCPUS,
                            instrument=self.instrument,
                            params=self.options,
                            config=self.config)
@@ -1691,7 +1584,7 @@ class Orbs(Tools):
             tuning_parameters=self.tuning_parameters,
             indexer=self.indexer,
             instrument=self.instrument,
-            ncpus=self.ncpus)
+            ncpus=self.config.NCPUS)
         
         perf = Performance(spectrum, "Spectrum calibration", camera_number,
                            instrument=self.instrument)
@@ -1845,7 +1738,7 @@ class Orbs(Tools):
                                                    camera_number)
         spectrum = HDFCube(spectrum_cube_path,
                            instrument=self.instrument,
-                           ncpus=self.ncpus,
+                           ncpus=self.config.NCPUS,
                            params=self.options,
                            config=self.config)
         spectrum_header = spectrum.get_cube_header()
@@ -2043,393 +1936,3 @@ class Performance(Tools):
                 'total-time': total_time,
                 'quad-nb': self._quad_nb}
         
-
-##################################################
-#### CLASS RoadMap ###############################
-##################################################
-    
-class RoadMap(Tools):
-    """Manage a reduction road map given a target and the camera to
-    use (camera 1, 2 or both cameras).
-
-    All steps are defined in a particular xml files in the data folder
-    of ORBS (:file:`orbs/data/roadmap.steps.xml`).
-
-    Each roadmap is defined by an xml file which can also be found in
-    orbs/data.
-
-    .. note:: The name of a roadmap file is defined as follows::
-
-         roadmap.[instrument].[target].[camera].xml
-
-       - *instrument* can be *spiomm* or *sitelle*
-       - *target* can be one of the special targets listed above or object
-         for the default target
-       - *camera* can be *full* for a process using both cameras; *single1*
-         or *single2* for a process using only the camera 1 or 2.
-
-
-    .. note:: RoadMap file syntax:
-    
-        .. code-block:: xml
-
-           <?xml version="1.0"?>
-           <steps>
-             <step name='compute_alignment_vector' cam='1'>
-               <arg value='1' type='int'></arg>
-             </step>
-
-             <step name='compute_alignment_vector' cam='2'>
-               <arg value='2' type='int'></arg>
-             </step>
-
-             <step name='compute_spectrum' cam='0'>
-               <arg value='0' type='int'></arg>
-               <kwarg name='phase_correction'></kwarg>
-               <kwarg name='apodization_function'></kwarg>
-             </step>
-           </steps>
-
-        * <step> Each step is defined by its **name** (which can be
-          found in :file:`orbs/data/roadmap.steps.xml`) and the camera
-          used (1, 2 or 0 for merged data).
-
-        * <arg> Every needed arguments can be passed by giving the
-          value and its type (see
-          :py:data:`orbs.orbs.RoadMap.types_dict`).
-
-        * <kwarg> optional arguments. They must be added to the step
-          definition if their value has to be passed from the calling
-          method (:py:meth:`orbs.orbs.Orbs.start_reduction`). Only the
-          optional arguments of
-          :py:meth:`orbs.orbs.Orbs.start_reduction` can thus be passed
-          as optional arguments of the step function.
-        
-
-        
-    """ 
-    road = None # the reduction road to follow
-    steps = None # all the possible reduction steps
-    indexer = None # an orb.Indexer instance
-
-    instrument = None # instrument name
-    target = None # target type
-    cams = None # camera used 
-
-    ROADMAP_STEPS_FILE_NAME = 'roadmap.steps.xml'
-    """Roadmap steps file name"""
-
-    def _str2bool(s):
-        """Convert a string to a boolean value.
-
-        String must be 'True','1' or 'False','0'.
-
-        :param s: string to convert.
-        """
-        if s.lower() in ("true", "1"): return True
-        elif s.lower() in ("false", "0"): return False
-        else: raise Exception(
-            "Boolean value must be 'True','1' or 'False','0'")
-
-
-    types_dict = { # map type to string definition in xml files
-        'int':int,
-        'str':str,
-        'float':float,
-        'bool':_str2bool}
-    """Dictionary of the defined arguments types"""
-    
-
-    def __init__(self, instrument, target, cams, indexer, **kwargs):
-        """Init class.
-
-        Load steps definitions and roadmap.
-
-        :param instrument: Instrument. Can be 'sitelle' or 'spiomm'
-        :param target: Target of the data to reduce
-        :param cams: Camera to use (cam be 'single1', 'single2' or 'full')
-        :param indexer: An orb.Indexer instance.
-        :param kwargs: Kwargs are :meth:`core.Tools` properties.
-        """
-        Tools.__init__(self, **kwargs)
-        self.indexer = indexer
-        self.instrument = instrument
-        self.target = target
-        self.cams = cams
-
-        # load roadmap steps
-        roadmap_steps_path = os.path.join(
-            ORBS_DATA_PATH, self.ROADMAP_STEPS_FILE_NAME)
-        
-        steps =  xml.etree.ElementTree.parse(roadmap_steps_path).getroot()
-        
-        self.steps = dict()
-        for step in steps:
-            infiles = list()
-            infiles_xml = step.findall('infile')
-            for infile_xml in infiles_xml:
-                infiles.append(infile_xml.attrib['name'])
-            outfiles = list()
-            outfiles_xml = step.findall('outfile')
-            for outfile_xml in outfiles_xml:
-                outfiles.append(outfile_xml.attrib['name'])
-                
-            self.steps[step.attrib['name']] = Step(infiles,
-                                                   None,
-                                                   outfiles)
-
-        # load roadmap
-        roadmap_path = os.path.join(
-            ORBS_DATA_PATH, 'roadmap.{}.{}.{}.xml'.format(
-                instrument, target, cams))
-
-        if not os.path.exists(roadmap_path):
-            raise StandardError('Roadmap {} does not exist'.format(
-                roadmap_path))
-            
-        steps =  xml.etree.ElementTree.parse(roadmap_path).getroot()
-        
-        self.road = list()
-        for step in steps:
-            args_xml = step.findall('arg')
-            args = list()
-            for arg_xml in args_xml:
-                args.append(self.types_dict[arg_xml.attrib['type']](arg_xml.attrib['value']))
-
-            kwargs_xml = step.findall('kwarg')
-            kwargs = dict()
-            for kwarg_xml in kwargs_xml:
-                if 'value' in kwarg_xml.attrib:
-                    kwargs[kwarg_xml.attrib['name']] = self.types_dict[
-                        kwarg_xml.attrib['type']](kwarg_xml.attrib['value'])
-                else:
-                    kwargs[kwarg_xml.attrib['name']] = 'undef'
-                    
-            if step.attrib['name'] in self.steps:
-                self.road.append({'name':step.attrib['name'],
-                                  'cam':int(step.attrib['cam']),
-                                  'args':args, 'kwargs':kwargs,
-                                  'status':False})
-            else:
-                raise StandardError('Step {} found in {} not recorded in {}'.format(
-                    step.attrib['name'], os.path.split(roadmap_path)[1],
-                    os.path.split(roadmap_steps_path)[1]))
-
-        # check road (ony possible if an Indexer instance has been given)
-        self.check_road()
-
-    def attach(self, step_name, func):
-        """Attach a reduction function to a step.
-
-        :param step_name: Name of the step
-        :param func: function to attach
-        """
-        if step_name in self.steps:
-            self.steps[step_name].func = func
-        else:
-            raise StandardError('No step called {}'.format(step_name))
-
-    def check_road(self):
-        """Check the status of each step of the road."""
-        if self.indexer is None: return
-        
-        for istep in range(len(self.road)):
-            step = self.road[istep]
-            for outf in self.steps[step['name']].get_outfiles(step['cam']):
-                if outf in self.indexer.index:
-                    if os.path.exists(self.indexer[outf]):
-                        self.road[istep]['status'] = True
-
-    def get_road_len(self):
-        """Return the number of steps of the road"""    
-        return len(self.road)
-
-    def get_step_func(self, index):
-        """Return the function and the arguments for a particular step.
-
-        :param index: Index of of the step.
-
-        :return: (func, args, kwargs)
-        """
-        if index < self.get_road_len():
-            return (self.steps[self.road[index]['name']].func,
-                    self.road[index]['args'],
-                    self.road[index]['kwargs'])
-        else:
-            raise StandardError(
-                'Bad index number. Must be < {}'.format(self.get_road_len()))
-
-    def print_status(self):
-        """Print roadmap status"""
-        self.check_road()
-        
-        print 'Status of roadmap for {} {} {}'.format(self.instrument,
-                                                      self.target,
-                                                      self.cams)
-        index = 0
-        for step in self.road:
-            if step['status'] :
-                status = 'done'
-                color = TextColor.OKGREEN
-            else:
-                status = 'not done'
-                color = TextColor.KORED
-            
-            print color + '  {} - {} {}: {}'.format(index, step['name'], step['cam'], status) + TextColor.END
-            index += 1
-
-    def get_steps_str(self, indent=0):
-        """Return a string describing the different steps and their index.
-        
-        :param indent: (Optional) Indentation of each line (default 0)
-        """
-        str = ''
-        istep = 0
-        for step in self.road:
-            step_name = step['name'].replace('_', ' ').capitalize()
-            
-            if step['cam'] == 0:
-                str += ' '*indent + '{}. {}\n'.format(istep, step_name)
-            else:
-                str += ' '*indent + '{}. {} ({})\n'.format(istep, step_name, step['cam'])
-            istep += 1
-        return str
-
-    def get_resume_step(self):
-        index = 0
-        for step in self.road:
-            if not step['status']: return index
-            index += 1
-        return index
-
-    
-##################################################
-#### CLASS Step ##################################
-##################################################
-class Step(object):
-    """Reduction step definition.
-
-    This class is used by :class:`orbs.orbs.RoadMap`.
-    """
-    def __init__(self, infiles, func, outfiles):
-        """Init class
-
-        :param infiles: a list of strings defining the input files.
-        
-        :param func: a function object attached to the reduction step.
-        
-        :param outfiles: a list of strings defining the output files.
-        """
-        self.infiles = infiles
-        self.func = func
-        self.outfiles = outfiles
-
-    def get_outfiles(self, cam):
-        """Return the complete output name of the file as it is
-        recorded in the indexer (see :py:class:`orb.core.Indexer`).
-
-        :param cam: camera used (can be 0,1 or 2)
-        """
-        outfiles = list()
-        if cam != 0:
-            for outf in self.outfiles:
-                outfiles.append('cam{}.{}'.format(cam, outf))
-        else:
-            for outf in self.outfiles:
-                outfiles.append('merged.{}'.format(outf))
-                
-        return outfiles
-
-
-        
-
-##################################################
-#### CLASS JobsWalker ############################
-##################################################
-class JobsWalker():
-
-    """Construct a database of all the job files found in a given folder
-    and its subfolders.
-    """
-    keys = ['OBJECT', 'SPESTNB', 'OBSDATE', 'STDPATH', 'TARGETR', 'DIRCAM1', 'DIRCAM2', 'TARGETD', 'SPEEXPT', 'CALIBMAP', 
-            'TARGETX', 'TARGETY', 'SPEORDR', 'DIRFLT1', 'DIRFLT2', 'SPESTEP', 'STDNAME', 'HOUR_UT', 'FILTER']
-    base_keys = ['OBJECT', 'SPESTNB', 'OBSDATE', 'SPEEXPT', 'FILTER', 'LASTRUN', 'PATH']
-    
-    def __init__(self, root_folders):
-        """Init class.
-
-        :param root_folders: A list of path to the folders where the
-          job files are to be found.
-        """
-        if not isinstance(root_folders, list):
-            raise TypeError('root_folders must be a list of folders where the job files (*.job) are to be found')
-        self.root_folders = list()
-        for irf in root_folders:
-            if not os.path.isdir(irf):
-                raise IOError('{} not found'.format(irf))
-            self.root_folders.append(irf)
-        self.update()
-        
-
-    def update(self):
-        """update the database. """
-        self.optfiles = list()
-        for irootf in self.root_folders:
-            for root, dirs, files in os.walk(irootf):
-                for file_ in files:
-                    if file_.endswith(".job"):
-                        ijobpath = os.path.join(root, file_)
-                        if os.path.exists(ijobpath + '.opt'):
-                            self.optfiles.append(ijobpath + '.opt')
-                        else:
-                            warnings.warn('{} does not have any corresponding opt file.'.format(ijobpath))
-
-        self.data = dict()
-        self.data['LASTRUN'] = list()
-        self.data['PATH'] = list()
-        for ioptpath in self.optfiles:
-            iof = orb.core.OptionFile(ioptpath)
-            for key in self.keys:
-                if key not in self.data:
-                    self.data[key] = list()
-                if key in iof.options:
-                    val = iof.options[key]
-                else:
-                    val = None
-                if key == 'OBSDATE':
-                    val = datetime.strptime(val, '%Y-%m-%d')
-                self.data[key].append(val)
-            if os.path.exists(ioptpath + '.log'):
-                self.data['LASTRUN'].append(datetime.fromtimestamp(
-                    os.path.getmtime(ioptpath + '.log')))
-            else:
-                self.data['LASTRUN'].append(None)
-            self.data['PATH'].append(ioptpath)
-            
-    def get_opt_files(self):
-        """Return a list of the option files found"""
-        return list(self.optfiles)
-    
-    def get_all_data(self):
-        """Return the whole content of the job files as a dict, which can be
-           directly passed to a pandas DataFrame.
-
-           .. code::
-             jw = JobWalker(['path1', 'path2'])
-             data = pd.DataFrame(jw.get_data()))
-        """
-        return dict(self.data)
-
-    def get_data(self):
-        """Return the content of the job files as a dict, which can be
-           directly passed to a pandas DataFrame.
-
-           .. code::
-             jw = JobWalker(['path1', 'path2'])
-             data = pd.DataFrame(jw.get_data()))
-        """
-        _data = dict()
-        for key in self.base_keys:
-            _data[key] = list(self.data[key])
-        return _data
-
