@@ -379,8 +379,7 @@ class RawData(InterferogramCube):
         
             
         orb.utils.io.write_fits(self._get_master_path('bias'),
-                                master_bias, overwrite=True,
-                                fits_header=self._get_master_header('Bias'))
+                                master_bias, fits_header=self.get_header())
         
         if return_temperature:
             return master_bias, bias_temp
@@ -463,9 +462,8 @@ class RawData(InterferogramCube):
                 dark_frames, combine=combine, reject=reject)
 
         # Write master dark
-        orb.utils.io.write_fits(self._get_master_path('dark'),
-                        master_dark, overwrite=True,
-                        fits_header=self._get_master_header('Dark'))
+        orb.utils.io.write_fits(self._get_master_path('dark'), master_dark,
+                                fits_header=self.get_header())
             
         if return_temperature:
             return master_dark, dark_temp
@@ -530,8 +528,7 @@ class RawData(InterferogramCube):
 
         # write master flat
         orb.utils.io.write_fits(self._get_master_path('flat'),
-                        master_flat, overwrite=True,
-                        fits_header=self._get_master_header('Flat'))
+                                master_flat, fits_header=self.get_header())
 
         return master_flat
             
@@ -578,14 +575,12 @@ class RawData(InterferogramCube):
            image.
         """
         logging.info("Creating alignment vector")
-        # init Astrometry class
-        astrom = self.get_astrometry(profile_name=profile_name)
-        astrom.load_star_list(star_list_path)
 
         # get alignment vectors
         (alignment_vector_x,
          alignment_vector_y,
-         alignment_error) = astrom.get_alignment_vectors(fit_cube=True)
+         alignment_error) = self.get_alignment_vectors(star_list_path)
+        
 
         self.alignment_vector = np.array([alignment_vector_x,
                                           alignment_vector_y]).T
@@ -593,15 +588,11 @@ class RawData(InterferogramCube):
         alignment_vector_path = self._get_alignment_vector_path()
         alignment_err_vector_path = self._get_alignment_vector_path(err=True)
         orb.utils.io.write_fits(alignment_vector_path, self.alignment_vector, 
-                        fits_header=
-                        self._get_alignment_vector_header(),
-                        overwrite=self.overwrite)
+                                fits_header=self.get_header())
         if self.indexer is not None:
             self.indexer['alignment_vector'] = alignment_vector_path
         orb.utils.io.write_fits(alignment_err_vector_path, np.array(alignment_error), 
-                        fits_header=
-                        self._get_alignment_vector_header(err=True),
-                        overwrite=self.overwrite)
+                        fits_header=self.get_header())
         if self.indexer is not None:
             self.indexer['alignment_err_vector'] = alignment_err_vector_path
     
@@ -674,8 +665,7 @@ class RawData(InterferogramCube):
             float(np.shape(np.nonzero(hp_map))[1])
             / (self.dimx * self.dimy) * 100.))
         orb.utils.io.write_fits(self._get_hp_map_path(), hp_map,
-                        fits_header=self._get_cr_map_frame_header(),
-                        overwrite=self.overwrite)
+                                fits_header=self.get_header())
 
     def get_noise_values(self, bias_path, dark_path,
                          combine='average', reject='avsigclip'):
@@ -1364,8 +1354,7 @@ class RawData(InterferogramCube):
 
         # creating output hdfcube
         out_cube = OutHDFCube(self._get_interfero_cube_path(),
-                              (self.dimx, self.dimy, z_max-z_min),
-                              overwrite=self.overwrite)
+                              (self.dimx, self.dimy, z_max-z_min))
         
         # Interferogram creation
         progress = ProgressBar(int((z_max - z_min) / ncpus_max))
@@ -1429,7 +1418,7 @@ class RawData(InterferogramCube):
                 out_cube.write_frame(
                     ik+ijob,
                     data=iframe,
-                    header=self._get_interfero_frame_header(),
+                    header=self.get_frame_header(ik+ijob),
                     mask=imask_frame,
                     record_stats=True)
 
@@ -1454,8 +1443,7 @@ class RawData(InterferogramCube):
         # # correct frames if nescessary by adding the same level to every frame
         # if np.min(zmedian) < 0.:
         #     out_cube = OutHDFCube(self._get_interfero_cube_path(),
-        #                           (self.dimx, self.dimy, z_max-z_min),
-        #                           overwrite=self.overwrite)
+        #                           (self.dimx, self.dimy, z_max-z_min))
             
         #     warnings.warn('Negative median level of some frames. Level of all frames is being added %f counts'%(corr_level))
         #     progress = ProgressBar(interf_cube.dimz)
@@ -1486,15 +1474,13 @@ class RawData(InterferogramCube):
         del interf_cube
         
         out_cube = OutHDFCube(self._get_interfero_cube_path(),
-                              (self.dimx, self.dimy, z_max-z_min),
-                              overwrite=self.overwrite)
+                              (self.dimx, self.dimy, z_max-z_min))
         
         # create energy map
         out_cube.append_energy_map(energy_map)
         orb.utils.io.write_fits(
             self._get_energy_map_path(), energy_map,
-            fits_header=self._get_energy_map_header(),
-            overwrite=True, silent=False)
+            fits_header=self.get_header())
         
         if self.indexer is not None:
             self.indexer['energy_map'] = self._get_energy_map_path()
@@ -1507,8 +1493,7 @@ class RawData(InterferogramCube):
         
         orb.utils.io.write_fits(
             self._get_deep_frame_path(), deep_frame,
-            fits_header=self._get_deep_frame_header(),
-            overwrite=True, silent=False)
+            fits_header=self.get_header())
         
         if self.indexer is not None:
             self.indexer['deep_frame'] = self._get_deep_frame_path()
@@ -1804,8 +1789,7 @@ class CalibrationLaser(InterferogramCube):
         # Write uncorrected calibration laser map to disk (in case the
         # correction does not work)
         orb.utils.io.write_fits(self._get_calibration_laser_map_path(), max_array,
-                        fits_header=self._get_calibration_laser_map_header(),
-                        overwrite=self.overwrite)
+                                fits_header=self.get_header())
 
         # Correct non-fitted values by interpolation
         ## max_array = orb.utils.image.correct_map2d(max_array, bad_value=np.nan)
@@ -1819,15 +1803,13 @@ class CalibrationLaser(InterferogramCube):
         # write fit params
         orb.utils.io.write_fits(
             self._get_calibration_laser_fitparams_path(), fitparams,
-            fits_header=self._get_calibration_laser_fitparams_header(),
-            overwrite=self.overwrite)
+            fits_header=self.get_header())
 
         # write ils_ratio
         ils_ratio = fitparams[:,:,3] / fwhm_guess
         orb.utils.io.write_fits(
             self._get_calibration_laser_ils_ratio_path(), ils_ratio,
-            fits_header=self._get_calibration_laser_ils_ratio_header(),
-            overwrite=self.overwrite)
+            fits_header=self.get_header())
 
         if self.indexer is not None:
             self.indexer['calibration_laser_map'] = (
@@ -2071,7 +2053,7 @@ class Interferogram(InterferogramCube):
         phase_cube = interf_cube.compute_phase()
         orb.utils.io.write_fits(
             self._get_binned_phase_cube_path(),
-            phase_cube, overwrite=self.overwrite)
+            phase_cube, fits_header=self.get_header())
 
         if self.indexer is not None:
             self.indexer['binned_phase_cube'] = (
@@ -2473,8 +2455,7 @@ class Interferogram(InterferogramCube):
         
         # write binned calib map
         orb.utils.io.write_fits(self._get_binned_calibration_laser_map_path(),
-                        calibration_laser_map,
-                        overwrite=self.overwrite)
+                                calibration_laser_map, fits_header=self.get_header())
         
         if self.indexer is not None:
             self.indexer['binned_calibration_laser_map'] = (
@@ -2494,7 +2475,7 @@ class Interferogram(InterferogramCube):
 
         # write binned interferogram cube
         orb.utils.io.write_fits(self._get_binned_interferogram_cube_path(),
-                        cube_bin, overwrite=True)
+                                cube_bin, fits_header=self.get_header())
         
         if self.indexer is not None:
             self.indexer['binned_interferogram_cube'] = (
@@ -2668,20 +2649,10 @@ class InterferogramMerger(Tools):
         """Return the path to the alignment parameters."""
         return self._data_path_hdr + "alignment_parameters.fits"
 
-    def _get_alignment_parameters_header(self):
-        """Return the header of the alignment parameters."""
-        return (self._get_basic_header('Alignment parameters')
-                + self._project_header)
     
-
     def _get_modulation_ratio_path(self):
         """Return the path to the modulation ratio."""
         return self._data_path_hdr + "modulation_ratio.fits"
-
-    def _get_modulation_ratio_header(self):
-        """Return the header of the modulation ratio."""
-        return (self._get_basic_header('Modulation ratio')
-                + self._project_header)
         
     def _get_energy_map_path(self):
         """Return the path to the energy map.
@@ -2690,13 +2661,6 @@ class InterferogramMerger(Tools):
         useful to check the alignement.
         """
         return self._data_path_hdr + "energy_map.fits"
-
-    def _get_energy_map_header(self):
-        """Return the header of the energy map."""
-        return (self._get_basic_header('Energy map')
-                + self._project_header
-                + self._get_basic_frame_header(
-                    self.cube_A.dimx, self.cube_A.dimy))
 
     def _get_stray_light_vector_path(self):
         """Return the path to the stray light vector.
@@ -2905,8 +2869,7 @@ class InterferogramMerger(Tools):
         orb.utils.io.write_fits(
             self._get_alignment_parameters_path(),
             alignment_parameters_array,
-            fits_header=self._get_alignment_parameters_header(),
-            overwrite=self.overwrite)
+            fits_header=self.get_header())
 
         if self.indexer is not None:
             self.indexer['alignment_parameters'] = self._get_alignment_parameters_path()
@@ -3157,18 +3120,14 @@ class InterferogramMerger(Tools):
         energy_map = energy_mapA * modulation_ratio + energy_mapB
         deep_frame = deep_frameA * modulation_ratio + deep_frameB
         
-        orb.utils.io.write_fits(self._get_energy_map_path(), energy_map, 
-                        fits_header=
-                        self._get_energy_map_header(),
-                        overwrite=self.overwrite)
+        orb.utils.io.write_fits(self._get_energy_map_path(), energy_map,
+                                fits_header=self.get_header())
 
         if self.indexer is not None:
             self.indexer['energy_map'] = self._get_energy_map_path()
 
-        orb.utils.io.write_fits(self._get_deep_frame_path(), deep_frame, 
-                        fits_header=
-                        self._get_deep_frame_header(),
-                        overwrite=self.overwrite)
+        orb.utils.io.write_fits(self._get_deep_frame_path(), deep_frame,
+                                fits_header=self.get_header())
 
         if self.indexer is not None:
             self.indexer['deep_frame'] = self._get_deep_frame_path()
@@ -3522,10 +3481,10 @@ class InterferogramMerger(Tools):
         # creating deep frames for cube A and B
         frameA = self.cube_A.get_mean_image()
         orb.utils.io.write_fits(self._get_mean_image_path('A'),
-                        frameA, overwrite=self.overwrite)
+                                frameA)
         frameB = self.cube_B.get_mean_image()
         orb.utils.io.write_fits(self._get_mean_image_path('B'),
-                        frameB, overwrite=self.overwrite)
+                                frameB)
         
         # fit stars on deep frames to get a better guess on position
         # and FWHM
@@ -3674,8 +3633,7 @@ class InterferogramMerger(Tools):
         orb.utils.io.write_fits(
             self._get_modulation_ratio_path(), 
             np.array([modulation_ratio]),
-            fits_header=self._get_modulation_ratio_header(),
-            overwrite=self.overwrite)
+            fits_header=self.get_header())
 
         if self.indexer is not None:
             self.indexer['modulation_ratio'] = self._get_modulation_ratio_path()
@@ -3800,8 +3758,7 @@ class InterferogramMerger(Tools):
         orb.utils.io.write_fits(
             self._get_transmission_vector_path(), 
             transmission_vector.reshape((transmission_vector.shape[0],1)),
-            fits_header=self._get_transmission_vector_header(),
-            overwrite=self.overwrite)
+            fits_header=self.get_header())
         if self.indexer is not None:
             self.indexer[
                 'transmission_vector'] = self._get_transmission_vector_path()
@@ -3810,8 +3767,7 @@ class InterferogramMerger(Tools):
             self._get_transmission_vector_path(err=True), 
             transmission_vector_err.reshape(
                 (transmission_vector_err.shape[0],1)),
-            fits_header=self._get_transmission_vector_header(err=True),
-            overwrite=self.overwrite)
+            fits_header=self.get_header())
         if self.indexer is not None:
             self.indexer['transmission_vector_err'] = (
                 self._get_transmission_vector_path(err=True))
@@ -3826,8 +3782,7 @@ class InterferogramMerger(Tools):
         orb.utils.io.write_fits(
             self._get_bad_frames_vector_path(), 
             bad_frames_vector,
-            fits_header=self._get_bad_frames_vector_header(),
-            overwrite=self.overwrite)
+            fits_header=self.get_header())
         
         if self.indexer is not None:
             self.indexer[
@@ -3873,8 +3828,7 @@ class InterferogramMerger(Tools):
         orb.utils.io.write_fits(
             self._get_ext_illumination_vector_path(), 
             ext_level_vector.reshape((ext_level_vector.shape[0],1)),
-            fits_header=self._get_ext_illumination_vector_header(),
-            overwrite=self.overwrite)
+            fits_header=self.get_header())
         if self.indexer is not None:
             self.indexer['ext_illumination_vector'] = (
                 self._get_ext_illumination_vector_path())
@@ -3989,8 +3943,7 @@ class InterferogramMerger(Tools):
             orb.utils.io.write_fits(
                 self._get_stray_light_vector_path(), 
                 stray_light_vector,
-                fits_header=self._get_stray_light_vector_header(),
-                overwrite=self.overwrite)
+                fits_header=self.get_header())
         
             if self.indexer is not None:
                 self.indexer['stray_light_vector'] = (
@@ -4011,18 +3964,15 @@ class InterferogramMerger(Tools):
         deep_frame = (flux_frame - np.nanmean(stray_light_vector))
         out_cube.append_deep_frame(deep_frame)
     
-        orb.utils.io.write_fits(self._get_energy_map_path(), energy_map, 
-                        fits_header=
-                        self._get_energy_map_header(),
-                        overwrite=self.overwrite)
+        orb.utils.io.write_fits(self._get_energy_map_path(), energy_map,
+                                fits_header=self.get_header())
 
         if self.indexer is not None:
             self.indexer['energy_map'] = self._get_energy_map_path()
 
         
-        orb.utils.io.write_fits(self._get_deep_frame_path(), deep_frame, 
-                        fits_header=self._get_deep_frame_header(),
-                        overwrite=self.overwrite)
+        orb.utils.io.write_fits(self._get_deep_frame_path(), deep_frame,
+                                fits_header=self.get_header())
 
         if self.indexer is not None:
             self.indexer['deep_frame'] = self._get_deep_frame_path()
@@ -4038,8 +3988,7 @@ class InterferogramMerger(Tools):
         calibration_stars_path = self._get_calibration_stars_path()
         orb.utils.io.write_fits(calibration_stars_path,
                         np.array(calib_stars_interf_list),
-                        fits_header=self._get_calibration_stars_header(),
-                        overwrite=self.overwrite)
+                        fits_header=self.get_header())
 
         if self.indexer is not None:
             self.indexer['calibration_stars'] = calibration_stars_path

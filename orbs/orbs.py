@@ -344,9 +344,8 @@ class Orbs(Tools):
                 logging.info('ZPD index read from file')
             except IOError:
                 cube1 = HDFCube(self.options['image_list_path_1'],
-                                silent_init=True,
                                 instrument=self.instrument,
-                                no_sort=True, )
+                                no_sort=True)
 
                 zpd_found = False
                 if target == 'laser':
@@ -549,10 +548,8 @@ class Orbs(Tools):
                     params=self.options,
                     config=self.config,
                     data_prefix=self._get_data_prefix(1),
-                    tuning_parameters=self.tuning_parameters,
                     indexer=self.indexer,
-                    instrument=self.instrument,
-                    ncpus=self.config.NCPUS)
+                    instrument=self.instrument)
             else:
                 raise StandardError("No image list file for camera 1 given, please check option file")
         elif (camera_number == 2):
@@ -563,10 +560,8 @@ class Orbs(Tools):
                     params=self.options,
                     config=self.config,
                     data_prefix=self._get_data_prefix(2),
-                    tuning_parameters=self.tuning_parameters,
                     indexer=self.indexer,
-                    instrument=self.instrument,
-                    ncpus=self.config.NCPUS)
+                    instrument=self.instrument)
             else:
                 raise StandardError("No image list file for camera 2 given, please check option file")
         else:
@@ -1131,8 +1126,8 @@ class Orbs(Tools):
         # detect stars in cube 1
         if not no_star:
             cube1 = self._init_raw_data_cube(1)
-            star_list_path_1, mean_fwhm_1_arc = self.detect_stars(
-                cube1, 0, saturation_threshold=self.config['SATURATION_THRESHOLD'])
+            star_list_path_1, mean_fwhm_1_arc = cube1.detect_stars(
+                saturation_threshold=self.config['SATURATION_THRESHOLD'])
             del cube1            
         else:
             star_list_path_1 = None
@@ -1152,10 +1147,8 @@ class Orbs(Tools):
             interf_cube_path_1, interf_cube_path_2,
             bin_A=bin_cam_1, bin_B=bin_cam_2,
             data_prefix=self._get_data_prefix(0),
-            tuning_parameters=self.tuning_parameters,
             indexer=self.indexer,
             instrument=self.instrument,
-            ncpus=self.config.NCPUS,
             params=params,
             config=self.config)
 
@@ -1216,10 +1209,8 @@ class Orbs(Tools):
             interf_cube_path_A=interf_cube_path_1,
             interf_cube_path_B=interf_cube_path_2,
             data_prefix=self._get_data_prefix(0),
-            tuning_parameters=self.tuning_parameters,
             indexer=self.indexer,
             instrument=self.instrument,
-            ncpus=self.config.NCPUS,
             params=params,
             config=self.config)
         
@@ -1300,10 +1291,8 @@ class Orbs(Tools):
         cube = CalibrationLaser(
             calib_path, 
             data_prefix=self._get_data_prefix(camera_number),
-            tuning_parameters=self.tuning_parameters,
             indexer=self.indexer,
-            instrument=self.instrument,
-            ncpus=self.config.NCPUS)
+            instrument=self.instrument)
         perf = Performance(cube, "Calibration laser map processing",
                            camera_number,
                            instrument=self.instrument)
@@ -1368,10 +1357,8 @@ class Orbs(Tools):
             params=self.options,
             config=self.config,        
             data_prefix=self._get_data_prefix(camera_number),
-            tuning_parameters=self.tuning_parameters,
             indexer=self.indexer,
-            instrument=self.instrument,
-            ncpus=self.config.NCPUS)
+            instrument=self.instrument)
         
         perf = Performance(cube, "Spectrum computation", camera_number,
                            instrument=self.instrument)
@@ -1451,12 +1438,9 @@ class Orbs(Tools):
             interfero_cube_path,
             params=self.options,
             config=self.config,
-            silent_init=True,
             instrument=self.instrument,
-            tuning_parameters=self.tuning_parameters,
             indexer=self.indexer,
-            data_prefix=self._get_data_prefix(camera_number),
-            ncpus=self.config.NCPUS)
+            data_prefix=self._get_data_prefix(camera_number))
         
         perf = Performance(cube, "Phase map creation", camera_number,
                            instrument=self.instrument)
@@ -1581,10 +1565,8 @@ class Orbs(Tools):
             params=self.options,
             config=self.config,
             data_prefix=self._get_data_prefix(camera_number),
-            tuning_parameters=self.tuning_parameters,
             indexer=self.indexer,
-            instrument=self.instrument,
-            ncpus=self.config.NCPUS)
+            instrument=self.instrument)
         
         perf = Performance(spectrum, "Spectrum calibration", camera_number,
                            instrument=self.instrument)
