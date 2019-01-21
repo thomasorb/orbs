@@ -374,8 +374,8 @@ class Orbs(Tools):
                     self.options['zpd_index']))                
             
             orb.utils.io.write_fits(self._get_zpd_index_file_path(),
-                            np.array(self.options['zpd_index']),
-                            overwrite=True)
+                                    np.array(self.options['zpd_index']),
+                                    overwrite=True)
 
         # update parameters of the newly exported hdf cubes
         if not fast_init and self.newly_exported: 

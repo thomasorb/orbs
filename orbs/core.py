@@ -140,8 +140,7 @@ class JobFile(object):
                     while ikey in self.raw_params:
                         index += 1
                         ikey = '{}{}'.format(key, index)
-                    
-                self.raw_params[ikey] = value
+                    self.raw_params[ikey] = value
 
         # parse raw_params
         for ikey in self.params_keys:
@@ -220,7 +219,8 @@ class JobFile(object):
         if 'STDPATH' in self.raw_params:
             self.params['standard_path'] = self.raw_params.pop('STDPATH')
             if not os.path.exists(self.params['standard_path']):
-                raise StandardError('Standard star file does not exist ({})'.format(std_path))
+                raise StandardError('Standard star file does not exist ({})'.format(
+                    self.params['standard_path']))
 
         # convert ra and dec
         if 'target_ra' in self.params:
