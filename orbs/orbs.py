@@ -155,7 +155,7 @@ class Orbs(Tools):
                     self.options[option_key],
                     silent_init=True, no_sort=False,
                     instrument=self.instrument)
-                
+                raise NotImplementedError('check that camera number is given at export and make sure that the parameter camera is passed to the exported cube')
                 # create mask
                 if mask_key is not None:
                     if mask_key in self.options:
@@ -587,40 +587,11 @@ class Orbs(Tools):
 
         .. seealso:: :py:class:`orb.astrometry.Astrometry`
         """
-
+        raise NotImplementedError('remove it please ;)')
         cube.params['camera_index'] = camera_number
 
         if 'target_x' in cube.params and 'target_y' in cube.params:
             
-            if camera_number == 2:
-                # get binning factor for each camera
-                if "bin_cam_1" in self.options: 
-                    bin_cam_1 = self.options["bin_cam_1"]
-                else:
-                    raise StandardError("No binning for the camera 1 given")
-
-                if "bin_cam_2" in self.options: 
-                    bin_cam_2 = self.options["bin_cam_2"]
-                else:
-                    raise StandardError("No binning for the camera 2 given")
-
-                # get initial shift
-                init_dx = self.config["INIT_DX"] / bin_cam_2
-                init_dy = self.config["INIT_DY"] / bin_cam_2
-                pix_size_1 = self.config["PIX_SIZE_CAM1"]
-                pix_size_2 = self.config["PIX_SIZE_CAM2"]
-                zoom = (pix_size_2 * bin_cam_2) / (pix_size_1 * bin_cam_1)
-                xrc = cube.dimx / 2.
-                yrc = cube.dimy / 2.
-                
-                target_x, target_y = orb.cutils.transform_A_to_B(
-                    cube.params.target_x, cube.params.target_y,
-                    init_dx, init_dy,
-                    self.config["INIT_ANGLE"],
-                    0., 0., xrc, yrc, zoom, zoom)
-                
-                cube.params['target_x'] = target_x
-                cube.params['target_y'] = target_y
                
                 
         wcs_rotation = self._get_wcs_rotation(camera_number)
@@ -635,6 +606,7 @@ class Orbs(Tools):
 
     def _get_wcs_rotation(self, camera_number):
         """Return wcs rotation parameter, given the camera number"""
+        raise NotImplementedError('remove me please ;)')
         if camera_number == 2:
             wcs_rotation = (self.config["WCS_ROTATION"]
                             - self.config["INIT_ANGLE"])
@@ -711,6 +683,7 @@ class Orbs(Tools):
 
         :param std_path: Path to the file containing the standard.    
         """
+        raise NotImplementedError('remove me please. at least if the file is a fits file')
         if 'hdf5' in std_path:
             cube = HDFCube(std_path, instrument=self.instrument, ncpus=self.config.NCPUS)
             hdr = cube.get_frame_header(0)
@@ -1474,6 +1447,7 @@ class Orbs(Tools):
         
         :return: star position as a tuple (x,y)
         """
+        raise NotImplementedError('most of it is now done in Image class find_object()')
         std_path = self.options['standard_image_path_{}.hdf5'.format(camera_number)]
         std_name = self._get_standard_name(std_path)
         if std_path is None:
