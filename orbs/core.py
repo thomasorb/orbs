@@ -23,6 +23,7 @@
 import os
 import xml.etree.ElementTree
 import warnings
+import fnmatch
 
 import orb.utils.io
 import orb.utils.misc
@@ -247,7 +248,7 @@ class JobFile(object):
                 self.config[ikey] = self.raw_params.pop(ikey)
                 
         if len(self.raw_params) > 0:
-            raise StandardError('Some parameters in the job file are not recognized: {}'.format(self.raw_params.keys()))
+            warnings.warn('Some parameters in the job file are not recognized: {}'.format(self.raw_params.keys()))
         
     def get_params(self):
         return orb.core.ROParams(self.params)
@@ -573,11 +574,7 @@ class JobsWalker():
 
     """Construct a database of all the job files found in a given folder
     and its subfolders.
-    """
-    keys = ['OBJECT', 'SPESTNB', 'OBSDATE', 'STDPATH', 'TARGETR', 'DIRCAM1', 'DIRCAM2', 'TARGETD', 'SPEEXPT', 'CALIBMAP', 
-            'TARGETX', 'TARGETY', 'SPEORDR', 'DIRFLT1', 'DIRFLT2', 'SPESTEP', 'STDNAME', 'HOUR_UT', 'FILTER']
-    base_keys = ['OBJECT', 'SPESTNB', 'OBSDATE', 'SPEEXPT', 'FILTER', 'LASTRUN', 'PATH']
-    
+    """    
     def __init__(self, root_folders):
         """Init class.
 
@@ -596,44 +593,64 @@ class JobsWalker():
 
     def update(self):
         """update the database. """
-        self.optfiles = list()
+        self.jobfiles = list()
         for irootf in self.root_folders:
             for root, dirs, files in os.walk(irootf):
                 for file_ in files:
                     if file_.endswith(".job"):
                         ijobpath = os.path.join(root, file_)
-                        if os.path.exists(ijobpath + '.opt'):
-                            self.optfiles.append(ijobpath + '.opt')
-                        else:
-                            warnings.warn('{} does not have any corresponding opt file.'.format(ijobpath))
-
+                        idir = os.path.split(ijobpath)[0]
+                        if os.path.isdir(idir):
+                            for ifile in os.listdir(idir):
+                                if fnmatch.fnmatch(ifile, os.path.split(file_)[1] + '*.log'):
+                                    self.jobfiles.append(ijobpath)
+                                else:
+                                    warnings.warn('{} does not have any corresponding log file.'.format(ijobpath))
         self.data = dict()
-        self.data['LASTRUN'] = list()
-        self.data['PATH'] = list()
-        for ioptpath in self.optfiles:
-            iof = orb.core.OptionFile(ioptpath)
-            for key in self.keys:
-                if key not in self.data:
-                    self.data[key] = list()
-                if key in iof.options:
-                    val = iof.options[key]
+        self.data['jobfile'] = list()
+        
+        for i in range(len(self.jobfiles)):
+            ijobfile = self.jobfiles[i]
+            try:
+                iparams = JobFile(ijobfile, 'sitelle').get_params()
+            except Exception, e:
+                warnings.warn('job file {} could not be read: {}'.format(ijobfile, e))
+                continue
+                
+            for param in iparams:
+                # update keys
+                if param not in self.data:
+                    if i > 0:
+                        self.data[param] = list([None]) * i
+                    else:
+                        self.data[param] = list()
+            for ikey in self.data:
+                if ikey == 'jobfile':
+                    self.data[ikey].append(ijobfile)            
+                elif ikey in iparams:
+                    self.data[ikey].append(iparams[ikey])
                 else:
-                    val = None
-                if key == 'OBSDATE':
-                    val = datetime.strptime(val, '%Y-%m-%d')
-                self.data[key].append(val)
-            if os.path.exists(ioptpath + '.log'):
-                self.data['LASTRUN'].append(datetime.fromtimestamp(
-                    os.path.getmtime(ioptpath + '.log')))
-            else:
-                self.data['LASTRUN'].append(None)
-            self.data['PATH'].append(ioptpath)
+                    self.data[ikey].append(None)
+
+        # append indexer
+        self.data['indexer'] = list()
+        for i in range(len(self.data['object_name'])):
+            basename = self.data['object_name'][i] + '_' + self.data['filter_name'][i]
+            basedir = os.path.split(self.data['jobfile'][i])[0]
+            ifiles = os.listdir(basedir)
+            indexer_found = False
+            for ifile in ifiles:
+                if fnmatch.fnmatch(ifile, basename + '*Indexer*'):
+                    self.data['indexer'].append(os.path.join(basedir, ifile))
+                    indexer_found = True
+            if not indexer_found:
+                self.data['indexer'].append(None)
             
-    def get_opt_files(self):
-        """Return a list of the option files found"""
-        return list(self.optfiles)
+    def get_job_files(self):
+        """Return a list of the job files found"""
+        return list(self.jobfiles)
     
-    def get_all_data(self):
+    def get_data(self):
         """Return the whole content of the job files as a dict, which can be
            directly passed to a pandas DataFrame.
 
@@ -643,18 +660,6 @@ class JobsWalker():
         """
         return dict(self.data)
 
-    def get_data(self):
-        """Return the content of the job files as a dict, which can be
-           directly passed to a pandas DataFrame.
-
-           .. code::
-             jw = JobWalker(['path1', 'path2'])
-             data = pd.DataFrame(jw.get_data()))
-        """
-        _data = dict()
-        for key in self.base_keys:
-            _data[key] = list(self.data[key])
-        return _data
 
 ##############################################################
 ##### CLASS RECORDFILE #######################################
