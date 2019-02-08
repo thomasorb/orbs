@@ -136,13 +136,14 @@ class Orbs(Tools):
         :param kwargs: orb.core.Tools kwargs.
 
         """
-        def export_images(option_key, mask_key=None):
+        def export_images(option_key, camera, mask_key=None):
             # export fits frames as an hdf5 cube
 
             # check if the hdf5 cube already
             # exists.
             if option_key not in self.options: return
-            
+
+            logging.info('exporting {}'.format(option_key))
             export_path = (
                 self._get_project_dir()
                 + os.path.splitext(
@@ -155,7 +156,7 @@ class Orbs(Tools):
                     self.options[option_key],
                     silent_init=True, no_sort=False,
                     instrument=self.instrument)
-                raise NotImplementedError('check that camera number is given at export and make sure that the parameter camera is passed to the exported cube')
+                
                 # create mask
                 if mask_key is not None:
                     if mask_key in self.options:
@@ -165,7 +166,9 @@ class Orbs(Tools):
                     else: image_mask = None
                 else: image_mask = None
 
-                cube.export(export_path, mask=image_mask, params=self.options)
+                export_params = dict(self.options)
+                export_params['camera'] = int(camera)
+                cube.export(export_path, mask=image_mask, params=export_params)
                 self.newly_exported = True
 
             self.options[option_key + '.hdf5'] = export_path
@@ -272,23 +275,23 @@ class Orbs(Tools):
             logging.info('Reading data folders')
 
         if not fast_init:
-            export_images('image_list_path_1', mask_key='object_mask_path_1')
-            export_images('image_list_path_2', mask_key='object_mask_path_2')
-            export_images('bias_path_1')
-            export_images('bias_path_2')
-            export_images('dark_path_1')
-            export_images('dark_path_2')
+            export_images('image_list_path_1', 1, mask_key='object_mask_path_1')
+            export_images('image_list_path_2', 2, mask_key='object_mask_path_2')
+            export_images('bias_path_1', 1)
+            export_images('bias_path_2', 2)
+            export_images('dark_path_1', 1)
+            export_images('dark_path_2', 2)
         
             if (('dark_path_2' in self.options or 'dark_path_1' in self.options)
                 and 'dark_time' not in self.options):
                 raise StandardError('Dark integration time must be set (SPEDART) if the path to a dark calibration files folder is given')
             
-            export_images('flat_path_1')
-            export_images('flat_path_2')
-            export_images('calib_path_1')
-            export_images('calib_path_2')
-            export_images('standard_image_path_1', mask_key='std_mask_path_1')
-            export_images('standard_image_path_2', mask_key='std_mask_path_2')
+            export_images('flat_path_1', 1)
+            export_images('flat_path_2', 2)
+            export_images('calib_path_1', 1)
+            export_images('calib_path_2', 2)
+            export_images('standard_image_path_1', 1, mask_key='std_mask_path_1')
+            export_images('standard_image_path_2', 2, mask_key='std_mask_path_2')
         
         
         if target == 'laser':
@@ -307,7 +310,7 @@ class Orbs(Tools):
                              instrument=self.instrument,
                              params=self.options,
                              config=self.config,
-                             camera_index=1,
+                             camera=1,
                              zpd_index=0)
                 self.options['bin_cam_1'] = int(cube1.params.binning)
                 dimz1 = cube1.dimz
@@ -318,7 +321,7 @@ class Orbs(Tools):
                              instrument=self.instrument,
                              params=self.options,
                              config=self.config,
-                             camera_index=2,
+                             camera=2,
                              zpd_index=0)
                 self.options['bin_cam_2'] = int(cube2.params.binning)
                 dimz2 = cube2.dimz
@@ -336,6 +339,7 @@ class Orbs(Tools):
                         dimz1, self.options['step_nb'], dimz1))
                     self.options['step_nb'] = dimz1
 
+        logging.info('looking for ZPD shift')
         # get ZPD shift in SITELLE's case
         if self.config["INSTRUMENT_NAME"] == 'SITELLE' and not fast_init:
             
@@ -377,12 +381,14 @@ class Orbs(Tools):
                                     np.array(self.options['zpd_index']),
                                     overwrite=True)
 
+        
         # update parameters of the newly exported hdf cubes
-        if not fast_init and self.newly_exported: 
+        if not fast_init and self.newly_exported:
+            logging.info('parameters update')
             for ikey in self.options:
                 if '.hdf5' in ikey:
-                        icube = RWHDFCube(self.options[ikey])
-                        icube.update_params(self.options)
+                    icube = RWHDFCube(self.options[ikey])
+                    icube.update_params(self.options)
                             
         # Init Indexer
         self.indexer = Indexer(data_prefix=self.options['object_name']
@@ -567,52 +573,54 @@ class Orbs(Tools):
         else:
             raise StandardError("Camera number must be either 1 or 2, please check 'camera_number' parameter")
             return None
+        
+        cube.params.reset('camera', camera_number)
         return cube
 
-    def _init_astrometry(self, cube, camera_number, standard_star=False):
-        """Init Astrometry class.
+    # def _init_astrometry(self, cube, camera_number, standard_star=False):
+    #     """Init Astrometry class.
 
-        The Astrometry class is used for star detection and star fitting
-        (position and photometry)
+    #     The Astrometry class is used for star detection and star fitting
+    #     (position and photometry)
         
-        :param cube: an orbs.Cube instance
+    #     :param cube: an orbs.Cube instance
 
-        :param camera_number: Camera number (can be 1, 2 or 0 
-          for merged data).
+    #     :param camera_number: Camera number (can be 1, 2 or 0 
+    #       for merged data).
 
-        :param standard_star: If True target x and y are derived fom
-          STD_X and STD_Y keywords in the option file.
+    #     :param standard_star: If True target x and y are derived fom
+    #       STD_X and STD_Y keywords in the option file.
         
-        :return: :py:class:`orb.astrometry.Astrometry` instance
+    #     :return: :py:class:`orb.astrometry.Astrometry` instance
 
-        .. seealso:: :py:class:`orb.astrometry.Astrometry`
-        """
-        raise NotImplementedError('remove it please ;)')
-        cube.params['camera_index'] = camera_number
+    #     .. seealso:: :py:class:`orb.astrometry.Astrometry`
+    #     """
+    #     raise NotImplementedError('remove it please ;)')
+    #     cube.params['camera'] = camera_number
 
-        if 'target_x' in cube.params and 'target_y' in cube.params:
+    #     if 'target_x' in cube.params and 'target_y' in cube.params:
             
                
                 
-        wcs_rotation = self._get_wcs_rotation(camera_number)
+    #     wcs_rotation = self._get_wcs_rotation(camera_number)
         
-        cube.params['wcs_rotation'] = wcs_rotation
+    #     cube.params['wcs_rotation'] = wcs_rotation
 
-        # load SIP file in ORB's data/ folder
-        sip = self.load_sip(self._get_sip_file_path(camera_number))
+    #     # load SIP file in ORB's data/ folder
+    #     sip = self.load_sip(self._get_sip_file_path(camera_number))
 
-        return cube.get_astrometry(sip=sip)
+    #     return cube.get_astrometry(sip=sip)
 
 
-    def _get_wcs_rotation(self, camera_number):
-        """Return wcs rotation parameter, given the camera number"""
-        raise NotImplementedError('remove me please ;)')
-        if camera_number == 2:
-            wcs_rotation = (self.config["WCS_ROTATION"]
-                            - self.config["INIT_ANGLE"])
-        else:
-            wcs_rotation = self.config["WCS_ROTATION"]
-        return wcs_rotation
+    # def _get_wcs_rotation(self, camera_number):
+    #     """Return wcs rotation parameter, given the camera number"""
+    #     raise NotImplementedError('remove me please ;)')
+    #     if camera_number == 2:
+    #         wcs_rotation = (self.config["WCS_ROTATION"]
+    #                         - self.config["INIT_ANGLE"])
+    #     else:
+    #         wcs_rotation = self.config["WCS_ROTATION"]
+    #     return wcs_rotation
         
 
     def _get_interfero_cube_path(self, camera_number, corrected=False):
@@ -906,17 +914,13 @@ class Orbs(Tools):
                 / float(self.config['FIELD_OF_VIEW_1'])
                 / 60.)
 
-    def compute_interferogram(self, camera_number, 
-                              z_range=[], combine='average', reject='avsigclip',
-                              flat_smooth_deg=0, no_corr=False):
+    def compute_interferogram(self, camera_number,
+                              no_corr=False):
         """Run the computation of the corrected interferogram from raw
            frames
 
         :param camera_number: Camera number (can be either 1 or 2).
           
-        :param z_range: (Optional) 1d array containing the index of
-          the frames to be computed.
-
         :param reject: (Optional) Rejection operation for master
           frames creation. Can be 'sigclip', 'avsigclip', 'minmax' or
           None (default 'avsigclip'). See
@@ -926,10 +930,6 @@ class Orbs(Tools):
           frames creation. Can be 'average' or 'median' (default
           'average'). See
           :py:meth:`process.RawData._create_master_frame`.
-
-        :param flat_smooth_deg: (Optional) If > 0 smooth the master
-          flat (help removing possible fringe pattern) (default
-          0). See :py:meth:`process.RawData._load_flat`.
          
         :param no_corr: (Optional) If True, no correction is made and
           the interferogram cube is just a copy of the raw cube
@@ -961,41 +961,32 @@ class Orbs(Tools):
 
         if camera_number == 1: 
             if "dark_path_1" in self.options:
-                dark_path = self.options["dark_path_1"]
+                dark_path = self.options["dark_path_1.hdf5"]
             else:
                 warnings.warn("No path to dark frames given, please check the option file.")
             if "bias_path_1" in self.options:
-                bias_path = self.options["bias_path_1"]
+                bias_path = self.options["bias_path_1.hdf5"]
             else:
                 warnings.warn("No path to bias frames given, please check the option file.")
             if "flat_path_1" in self.options:
-                flat_path = self.options["flat_path_1"]
+                flat_path = self.options["flat_path_1.hdf5"]
             else:
                 warnings.warn("No path to flat frames given, please check the option file.")
-
-            optimize_dark_coeff = self.config['OPTIM_DARK_CAM1']
-            
+    
         if camera_number == 2: 
             if "dark_path_2" in self.options:
-                dark_path = self.options["dark_path_2"]
+                dark_path = self.options["dark_path_2.hdf5"]
             else:
                 warnings.warn("No path to dark frames given, please check the option file.")
             if "bias_path_2" in self.options:
-                bias_path = self.options["bias_path_2"]
+                bias_path = self.options["bias_path_2.hdf5"]
             else:
                 warnings.warn("No path to bias frames given, please check the option file.")
             if "flat_path_2" in self.options:
-                flat_path = self.options["flat_path_2"]
+                flat_path = self.options["flat_path_2.hdf5"]
             else:
                 warnings.warn("No path to flat frames given, please check the option file.")
-
-            optimize_dark_coeff = self.config['OPTIM_DARK_CAM2']
         
-        if "bad_frames" in self.options:
-            bad_frames_vector = self.options["bad_frames"]
-        else:
-            bad_frames_vector = []
-
         if self.config["INSTRUMENT_NAME"] == 'SITELLE':
             if camera_number == 1:
                 cr_map_cube_path = self.indexer.get_path(
@@ -1006,15 +997,12 @@ class Orbs(Tools):
             logging.info('Cosmic ray map: {}'.format(
                 cr_map_cube_path))
         else:
-            cr_map_cube_path = None
+            raise NotImplementedError()
+            
         cube.correct(
             bias_path=bias_path, dark_path=dark_path, 
-            flat_path=flat_path, alignment_vector_path=None,
-            cr_map_cube_path=cr_map_cube_path,
-            bad_frames_vector=bad_frames_vector, 
-            optimize_dark_coeff=optimize_dark_coeff,
-            z_range=z_range, combine=combine, reject=reject,
-            flat_smooth_deg=flat_smooth_deg)
+            flat_path=flat_path, cr_map_cube_path=cr_map_cube_path)
+        
         perf_stats = perf.print_stats()
         del cube, perf
         return perf_stats
@@ -1113,9 +1101,7 @@ class Orbs(Tools):
         else:
             ComputingClass = InterferogramMerger
 
-        params = dict(self.options) 
-        params['wcs_rotation'] = self._get_wcs_rotation(0)
-
+        params = dict(self.options)
         cube = ComputingClass(
             interf_cube_path_1, interf_cube_path_2,
             bin_A=bin_cam_1, bin_B=bin_cam_2,
@@ -1128,9 +1114,7 @@ class Orbs(Tools):
         # find alignment coefficients
         
         if not no_star:
-            cube.find_alignment(
-                star_list_path_1,
-                combine_first_frames=raw)
+            cube.find_alignment(star_list_path_1, combine_first_frames=raw)
         else:
             if laser:
                 raise NotImplementedError('init_dx, init_dy and init_angle must be defined in find_laser_alignment itself')
@@ -1160,38 +1144,27 @@ class Orbs(Tools):
           function. (Default True).
          
         .. seealso:: :meth:`process.InterferogramMerger.merge`
-        """
-        
-        # detect stars
-        cube1 = self._init_raw_data_cube(1)
-        star_list_path_1, mean_fwhm_arc = self.detect_stars(
-            cube1, 1)
-        del cube1
-                    
-        # get frame list paths
+        """                    
+        # get cubes path
         interf_cube_path_1 = self.indexer.get_path(
             'cam1.interfero_cube', err=True)
         interf_cube_path_2 = self.indexer.get_path(
             'merged.transformed_interfero_cube', err=True)
         
         self.indexer.set_file_group('merged')
-        params = dict(self.options) 
-        params['wcs_rotation'] = self._get_wcs_rotation(0)
-
         cube = InterferogramMerger(
             interf_cube_path_A=interf_cube_path_1,
             interf_cube_path_B=interf_cube_path_2,
             data_prefix=self._get_data_prefix(0),
             indexer=self.indexer,
             instrument=self.instrument,
-            params=params,
+            params=self.options,
             config=self.config)
         
         perf = Performance(cube.cube_A, "Merging process", 1,
                            instrument=self.instrument)
 
-        cube.merge(star_list_path_1, 
-                   add_frameB=add_frameB, 
+        cube.merge(add_frameB=add_frameB, 
                    smooth_vector=smooth_vector,
                    compute_ext_light=(not self.options['no_sky']
                                       and self.config['EXT_ILLUMINATION']))
