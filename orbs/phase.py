@@ -253,7 +253,9 @@ class BinnedPhaseCube(orb.cube.Cube):
         
         phase_maps_path = self.get_phase_maps_path(suffix=suffix)
         with orb.utils.io.open_hdf5(phase_maps_path, 'w') as hdffile:
-            self.add_params_to_hdf_file(hdffile)
+            for ipar in self.params:
+                value = orb.utils.io.cast2hdf5(self.params[ipar])
+                hdffile.attrs[ipar] = value
             hdffile.create_dataset(
                 '/calibration_coeff_map',
                 data=self.get_calibration_coeff_map())
@@ -340,6 +342,7 @@ class PhaseMaps(orb.core.Tools):
             kwargs['instrument'] = f.attrs['instrument']
     
         orb.core.Tools.__init__(self, **kwargs)
+        self.params = orb.core.ROParams()
         
         self.overwrite = overwrite
         self.indexer = indexer
@@ -378,7 +381,7 @@ class PhaseMaps(orb.core.Tools):
 
             # add params
             for ikey in f.attrs.keys():
-                self.set_param(ikey, f.attrs[ikey])
+                self.params[ikey] = f.attrs[ikey]
 
             
         # detect binning

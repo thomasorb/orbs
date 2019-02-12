@@ -520,7 +520,7 @@ class RawData(orb.cube.InterferogramCube):
         logging.info("Interferogram computed")
 
         # Create deep frame        
-        deep_frame = out_cube.get_deep_frame()
+        deep_frame = out_cube.get_deep_frame().data
         out_cube.set_deep_frame(deep_frame)
         
         if np.nanmedian(deep_frame) < 0.:
@@ -846,11 +846,11 @@ class Interferogram(orb.cube.InterferogramCube):
 
     def _get_binned_phase_cube_path(self):
         """Return path to the binned phase cube."""
-        return self._data_path_hdr + "binned_phase_cube.fits"
+        return self._data_path_hdr + "binned_phase_cube.hdf5"
 
     def _get_binned_interferogram_cube_path(self):
         """Return path to the binned interferogram cube."""
-        return self._data_path_hdr + "binned_interferogram_cube.fits"
+        return self._data_path_hdr + "binned_interferogram_cube.hdf5"
 
     def _get_binned_calibration_laser_map_path(self):
         """Return path to the binned calibration laser map."""
@@ -998,25 +998,29 @@ class Interferogram(orb.cube.InterferogramCube):
         self.create_binned_interferogram_cube(binning)
 
         interf_cube = BinnedInterferogramCube(
-            orb.utils.io.read_fits(self._get_binned_interferogram_cube_path()),
-            self.params, instrument=self.instrument)
+            self._get_binned_interferogram_cube_path(), config=self.config,
+            params=self.params, instrument=self.instrument)
 
         phase_cube = interf_cube.compute_phase()
-        orb.utils.io.write_fits(
-            self._get_binned_phase_cube_path(),
-            phase_cube, fits_header=self.get_header())
+        out_cube = orb.cube.RWHDFCube(self._get_binned_phase_cube_path(),
+                                      shape=phase_cube.shape,
+                                      instrument=self.instrument,
+                                      config=self.config,
+                                      params=self.params,
+                                      reset=True)
+        out_cube[:,:,:] = phase_cube
+        del out_cube
 
         if self.indexer is not None:
             self.indexer['binned_phase_cube'] = (
                 self._get_binned_phase_cube_path())
 
         phase_cube = BinnedPhaseCube(
-            orb.utils.io.read_fits(self._get_binned_phase_cube_path()),
-            self.params, instrument=self.instrument,
+            self._get_binned_phase_cube_path(),
+            params=self.params, instrument=self.instrument, config=self.config,
             data_prefix=self._data_prefix)
 
         # compute phase maps iteratively
-        
         final_phase_maps_path = phase_cube.iterative_polyfit(
             poly_order, high_order_phase=high_order_phase)
 
@@ -1033,7 +1037,7 @@ class Interferogram(orb.cube.InterferogramCube):
                                       coeffs=coeffs)
         
         phase_cube_model = orb.utils.io.read_fits(self._get_phase_cube_model_path())
-        phase_cube_residual = orb.utils.io.read_fits(self._get_binned_phase_cube_path()) - phase_cube_model
+        phase_cube_residual = phase_cube[:,:,:] - phase_cube_model
 
         ## remove the median of the phase vector at each pixel
         fake_phase = phase_cube.get_phase(10, 10)
@@ -1417,14 +1421,20 @@ class Interferogram(orb.cube.InterferogramCube):
         """
         if binning > 1:
             cube_bin = self.get_binned_cube(binning)
-            
         else:
             cube_bin = self
             self._silent_load = True
-
+            
         # write binned interferogram cube
-        orb.utils.io.write_fits(self._get_binned_interferogram_cube_path(),
-                                cube_bin, fits_header=self.get_header())
+        out_cube = orb.cube.RWHDFCube(self._get_binned_interferogram_cube_path(),
+                                      shape=cube_bin.shape,
+                                      instrument=self.instrument,
+                                      config=self.config,
+                                      params=self.params,
+                                      reset=True)
+
+        out_cube[:,:,:] = cube_bin
+        del out_cube
         
         if self.indexer is not None:
             self.indexer['binned_interferogram_cube'] = (
@@ -1550,17 +1560,17 @@ class InterferogramMerger(orb.core.Tools):
        
         if interf_cube_path_A is not None:
             self.cube_A = orb.cube.Cube(interf_cube_path_A,
-                                        project_header=cube_A_project_header,
                                         instrument=self.instrument,
                                         config=self.config,
                                         params=self.params,
+                                        data_prefix=self._data_prefix,
                                         camera=1)
         if interf_cube_path_B is not None:
             self.cube_B = orb.cube.Cube(interf_cube_path_B,
-                                        project_header=cube_B_project_header,
                                         instrument=self.instrument,
                                         config=self.config,
                                         params=self.params,
+                                        data_prefix=self._data_prefix,
                                         camera=2)
 
         self.bin_A = self.cube_A.params.binning
@@ -1676,11 +1686,17 @@ class InterferogramMerger(orb.core.Tools):
         """Return the default path to the transformed interferogram frames."""
         return self._data_path_hdr + "transformed_cube_B.hdf5"
 
+    def _get_fit_results_path(self, camera):
+        """Return the default path to the fit results."""
+        return self._data_path_hdr + "fit_results.cam{}.hdf5".format(camera)
+
+    def _get_star_list_path(self, camera):
+        """Return the default path to the star list."""
+        return self._data_path_hdr + "star_list.cam{}.hdf5".format(camera)
 
     def get_header(self):
         """return self.params as a fits header"""
         return orb.utils.io.dict2header(dict(self.params))
-
     
     def find_alignment(self, star_list_path_A, 
                        combine_first_frames=False):
@@ -1715,8 +1731,8 @@ class InterferogramMerger(orb.core.Tools):
 
         # creating deep frames for cube A and B
         if not combine_first_frames:
-            frameA = self.cube_A.get_deep_frame()
-            frameB = self.cube_B.get_deep_frame()
+            frameA = self.cube_A.get_deep_frame().data
+            frameB = self.cube_B.get_deep_frame().data
         else:
             frameA = bn.nanmedian(self.cube_A[:,:,:N_FRAMES], axis=2)
             frameB = bn.nanmedian(self.cube_B[:,:,:N_FRAMES], axis=2)
@@ -1858,29 +1874,14 @@ class InterferogramMerger(orb.core.Tools):
         if self.indexer is not None:
             self.indexer['transformed_interfero_cube'] = self._get_transformed_interfero_cube_path()
 
-
-
-    def merge(self, add_frameB=True, smooth_vector=True,
-              compute_ext_light=True):
-
-        star_listA, fwhmA = self.cube_A.detect_stars()
-        photom_A = self.cube_A.fit_stars_in_cube(
-            star_listA, fix_fwhm=fix_fwhm, fix_height=False,
-            fix_aperture_size=True, multi_fit=True)
-        
-        quit()
-
-    def merge_old(self, star_list_path, 
+    def merge(self, 
               add_frameB=True, smooth_vector=True,
-              bad_frames_vector=[],
               compute_ext_light=True,
               aperture_photometry=True):
         
         """
         Merge the cube of the camera 1 and the transformed cube of the
         camera 2.
-
-        :param star_list_path: Path to a list of star positions.
 
         :param add_frameB: (Optional) Set it to False if B frame is
            too noisy to be added to the result. In this case frame B
@@ -1891,9 +1892,6 @@ class InterferogramMerger(orb.core.Tools):
            correction vector with a gaussian weighted moving average.
            Reduce the possible high frequency noise of the correction
            function. (Default True).
-
-        :param bad_frames_vector: (Optional) Contains the index of the
-          frames considered as bad(default []).
 
         :param compute_ext_light: (Optional) If True compute the
           external light vector. Make sure that there's enough 'sky'
@@ -1927,7 +1925,6 @@ class InterferogramMerger(orb.core.Tools):
                  Frame_{n,M} = \\frac{Frame_{n,1}
                  -Frame_{n,2}}{transmission vector[n]}
         """
-
         def _get_stray_light_coeff(frameA, frameB, transmission_factor,
                                    modulation_ratio, ext_level):
             """Return the stray light coefficient. This light comes
@@ -1963,8 +1960,7 @@ class InterferogramMerger(orb.core.Tools):
             
         def _create_merged_frame(frameA, frameB, transmission_factor,
                                  modulation_ratio, ext_level,
-                                 add_frameB, frameA_mask,
-                                 frameB_mask):
+                                 add_frameB):
             """Create the merged frame given the frames of both cubes
             and the correction factor.
 
@@ -1986,10 +1982,6 @@ class InterferogramMerger(orb.core.Tools):
             :param add_frameB: If False the frame B is not added. The
               resulting frame is thus the frame A divided by the
               transmission factor (generally not recommanded)
-
-            :param frameA_mask: Mask of the frame A.
-
-            :param frameB_mask: Mask of the frame B.
             """
             
             # Correcting for the variation of sky transmission
@@ -2012,22 +2004,13 @@ class InterferogramMerger(orb.core.Tools):
                     
                 flux_frame = cont_frame
                 
-                ## if np.any(frameA):
-                ##     result_frame = ((frameA - stray_light_coeff)
-                ##                     / transmission_factor) + ext_level
-                ## else:
-                ##     result_frame = frameA
-                ## flux_frame = result_frame
-
-            result_frame_mask = frameA_mask + frameB_mask
-            result_frame[np.nonzero(frameA == 0.)] = 0.
-            result_frame[np.nonzero(frameB == 0.)] = 0.
-            flux_frame[np.nonzero(frameA == 0.)] = 0.
-            flux_frame[np.nonzero(frameB == 0.)] = 0.
-            flux_frame[np.nonzero(np.isnan(flux_frame))] = 0.
-            flux_frame[np.nonzero(np.isinf(flux_frame))] = 0.
+            result_frame[np.nonzero(frameA == 0.)] = np.nan
+            result_frame[np.nonzero(frameB == 0.)] = np.nan
+            flux_frame[np.nonzero(frameA == 0.)] = np.nan
+            flux_frame[np.nonzero(frameB == 0.)] = np.nan
+            flux_frame[np.nonzero(np.isinf(flux_frame))] = np.nan
             
-            return result_frame, result_frame_mask, flux_frame
+            return result_frame, flux_frame
 
         def get_sky_level_vector(cube):
             """Create a vector containing the sky level evaluated in
@@ -2143,76 +2126,59 @@ class InterferogramMerger(orb.core.Tools):
         if aperture_photometry:
             logging.info('Star flux evaluated by aperture photometry')
             photometry_type = 'aperture_flux'
+            no_fit = True
         else:
             logging.info('Star flux evaluated from fit parameters')
             photometry_type = 'flux'
-
-        # creating deep frames for cube A and B
-        frameA = self.cube_A.get_mean_image()
-        orb.utils.io.write_fits(self._get_mean_image_path('A'),
-                                frameA)
-        frameB = self.cube_B.get_mean_image()
-        orb.utils.io.write_fits(self._get_mean_image_path('B'),
-                                frameB)
-        
-        # fit stars on deep frames to get a better guess on position
-        # and FWHM
-        mean_params_A = self.cube_A.get_astrometry(
-            data=frameA, star_list_path=star_list_path).fit_stars_in_frame(
-            0, precise_guess=True, local_background=local_background,
-            fix_fwhm=fix_fwhm, fix_height=False, save=False)
-        mean_params_B = self.cube_B.get_astrometry(
-            data=frameB, star_list_path=star_list_path).fit_stars_in_frame(
-            0, precise_guess=True, local_background=local_background,
-            fix_fwhm=fix_fwhm, fix_height=False, save=False)
-
-        star_list_A = mean_params_A.get_star_list()
-        star_list_B = mean_params_A.get_star_list()
-
-        fwhm_arc_A = orb.utils.stats.robust_mean(mean_params_A[:,'fwhm_arc'])
-        fwhm_arc_B = orb.utils.stats.robust_mean(mean_params_B[:,'fwhm_arc'])
-
-        logging.info(
-            'mean FWHM of the stars in camera 1: {} arc-seconds'.format(
-                fwhm_arc_A))
-        logging.info(
-            'mean FWHM of the stars in camera 2: {} arc-seconds'.format(
-                fwhm_arc_B))
-        
+            no_fit = False
 
         ## COMPUTING STARS PHOTOMETRY #############################
         logging.info("Computing stars photometry")
-        astrom_A = self.cube_A.get_astrometry(
-                              data_prefix=self._data_prefix + 'cam1.',
-                              check_mask=True)
-        astrom_A.reset_star_list(star_list_A)
-
-        astrom_B = self.cube_B.get_astrometry(
-                              data_prefix=self._data_prefix + 'cam2.',
-                              check_mask=True)
-        astrom_B.reset_star_list(star_list_B)
-
-        # Fit stars and get stars photometry
-        astrom_A.fit_stars_in_cube(local_background=local_background,
-                                   fix_fwhm=fix_fwhm,
-                                   fix_height=False,
-                                   fix_aperture_size=True,
-                                   multi_fit=True,
-                                   save=True)
-        astrom_B.fit_stars_in_cube(local_background=local_background,
-                                   fix_fwhm=fix_fwhm,
-                                   fix_height=False,
-                                   fix_aperture_size=True,
-                                   multi_fit=True,
-                                   save=True)
         
-        astrom_A.load_fit_results(astrom_A._get_fit_results_path())
-        astrom_B.load_fit_results(astrom_B._get_fit_results_path())
+        star_list_A, fwhm_A = self.cube_A.detect_stars(path=self._get_star_list_path(1))
+        star_list_B, fwhm_B = self.cube_B.detect_stars(path=self._get_star_list_path(2))
+            
+        fwhm_arc_A = np.nanmedian(star_list_A['fwhm_arc'])
+        logging.info(
+            'mean FWHM of the stars in camera 1: {} arc-seconds'.format(
+                fwhm_arc_A))
+        fwhm_arc_B = np.nanmedian(star_list_B['fwhm_arc'])
+        logging.info(
+            'mean FWHM of the stars in camera 2: {} arc-seconds'.format(
+                fwhm_arc_B))
 
-        photom_A = astrom_A.fit_results[:,:,photometry_type]
-        photom_B = astrom_B.fit_results[:,:,photometry_type]
+        astrom_A = self.cube_A.fit_stars_in_cube(
+            star_list_A, fix_fwhm=False, fix_height=False, no_fit=False,
+            fix_aperture_fwhm_pix=fwhm_A * 1.5, multi_fit=True)
+        orb.utils.io.save_dflist(astrom_A, self._get_fit_results_path(1))
 
+        astrom_B = self.cube_B.fit_stars_in_cube(
+            star_list_A, fix_fwhm=False, fix_height=False, no_fit=False,
+            fix_aperture_fwhm_pix=fwhm_B * 1.5, multi_fit=True)
+        orb.utils.io.save_dflist(astrom_B, self._get_fit_results_path(2))
+        
+        astrom_A = orb.utils.io.load_dflist(self._get_fit_results_path(1))
+        astrom_B = orb.utils.io.load_dflist(self._get_fit_results_path(2))
 
+        def get_photometry_array(photom, key):
+            _photom = list()
+            _len = None
+            for ik in photom:
+                if not ik.empty:
+                    _photom.append(ik[key].values)
+                    _len = len(_photom[-1])
+                else:
+                    _photom.append(None)
+            if _len is None: raise StandardError('photometry dataframe is empty')
+            for ik in range(len(_photom)):
+                if _photom[ik] is None:
+                    _photom[ik] = list([np.nan]) * _len
+                    
+            return np.array(_photom).T
+        
+        photom_A = get_photometry_array(astrom_A, key=photometry_type)
+        photom_B = get_photometry_array(astrom_B, key=photometry_type)
+        
         ## MODULATION RATIO #######################################
         # Calculating the mean modulation ratio (to correct for
         # difference of camera gain and transmission of the optical
@@ -2298,20 +2264,17 @@ class InterferogramMerger(orb.core.Tools):
             self.indexer['modulation_ratio'] = self._get_modulation_ratio_path()
 
         # PHOTOMETRY ON MERGED FRAMES #############################
-        astrom_merged = self.cube_B.get_astrometry(
-            data_prefix=self._data_prefix + 'merged.',
-            check_mask=False)
-        astrom_merged.reset_star_list(star_list_B)
-        
-        astrom_merged.fit_stars_in_cube(
-            local_background=local_background,
-            fix_aperture_size=True,
+        astrom_merged = self.cube_B.fit_stars_in_cube(
+            star_list_A, local_background=local_background,
+            fix_aperture_fwhm_pix=fwhm_B * 1.5, multi_fit=True,
             add_cube=[self.cube_A, modulation_ratio],
-            no_fit=True, save=True)
-        astrom_merged.load_fit_results(astrom_merged._get_fit_results_path())
-        photom_merged = astrom_merged.fit_results[:,:,photometry_type]
-        photom_merged_err = astrom_merged.fit_results[
-            :,:,photometry_type + '_err']
+            no_fit=no_fit)
+        orb.utils.io.save_dflist(astrom_merged, self._get_fit_results_path('M'))
+
+        astrom_merged = orb.utils.io.load_dflist(self._get_fit_results_path('M'))
+
+        photom_merged = get_photometry_array(astrom_merged, key=photometry_type)
+        photom_merged_err = get_photometry_array(astrom_merged, key=photometry_type + '_err')
 
         ## TRANSMISSION VECTOR ####################################
         logging.info("Computing transmission vector")
@@ -2321,7 +2284,8 @@ class InterferogramMerger(orb.core.Tools):
         trans_err_list = list()
         
         # normalization of the merged photometry vector
-        for istar in range(astrom_A.star_list.shape[0]):
+        chisq_A = get_photometry_array(astrom_A, key='reduced-chi-square')
+        for istar in range(star_list_A.shape[0]):
             if not np.all(np.isnan(photom_merged)):
                 trans = np.copy(photom_merged[istar,:])
                 trans_err = np.copy(photom_merged_err[istar,:])
@@ -2331,8 +2295,7 @@ class InterferogramMerger(orb.core.Tools):
                 trans_err /= trans_mean
                 transmission_vector_list.append(trans)
                 red_chisq = orb.utils.stats.robust_mean(
-                    orb.utils.stats.sigmacut(astrom_A.fit_results[
-                        istar, :, 'reduced-chi-square']))
+                    orb.utils.stats.sigmacut(chisq_A[istar, :]))
                 
                 trans_err_list.append(trans_err)
                 red_chisq_list.append(red_chisq)
@@ -2496,90 +2459,53 @@ class InterferogramMerger(orb.core.Tools):
         ## MERGE FRAMES ###########################################
         logging.info("Merging cubes")
         
-        # Init of the multiprocessing server
-        job_server, ncpus = self._init_pp_server()
-
-
         flux_frame = np.zeros((self.cube_A.dimx, self.cube_A.dimy),
                               dtype=float)
-        flux_frame_nb = 0
         flux_vector = np.zeros(self.cube_A.dimz, dtype=float)
-        result_frames = np.empty((self.cube_A.dimx, self.cube_A.dimy, ncpus),
-                                 dtype=float)
-        result_mask_frames = np.empty((self.cube_A.dimx, self.cube_A.dimy,
-                                       ncpus), dtype=float)
-        framesA_mask = np.empty((self.cube_A.dimx, self.cube_A.dimy,
-                                 ncpus), dtype=float)
-        framesB_mask = np.empty((self.cube_A.dimx, self.cube_A.dimy,
-                                 ncpus), dtype=float)
 
-        out_cube = OutHDFCube(self._get_merged_interfero_cube_path(),
-                              shape=(self.cube_A.dimx,
-                                     self.cube_A.dimy,
-                                     self.cube_A.dimz),
-                              overwrite=self.overwrite)
+        out_cube = orb.cube.RWHDFCube(self._get_merged_interfero_cube_path(),
+                                      shape=(self.cube_A.dimx,
+                                             self.cube_A.dimy,
+                                             self.cube_A.dimz),
+                                      instrument=self.instrument,
+                                      config=self.config,
+                                      params=self.params,
+                                      reset=True)
+
         
-        ncpus_max = ncpus
-        progress = orb.core.ProgressBar(int(self.cube_A.dimz/ncpus_max))
+        progress = orb.core.ProgressBar(self.cube_A.dimz)
         header = self.get_header()
+
+        NFRAMES = 30
         
-        for ik in range(0, self.cube_A.dimz, ncpus):
+        for ik in range(0, self.cube_A.dimz, NFRAMES):
             # no more jobs than frames to compute
-            if (ik + ncpus >= self.cube_A.dimz):
-                ncpus = self.cube_A.dimz - ik
+            if (ik + NFRAMES >= self.cube_A.dimz):
+                NFRAMES = self.cube_A.dimz - ik
 
-            if (self.cube_A._mask_exists
-                and self.cube_A._mask_exists):
-                for ijob in range(ncpus):
-                    framesA_mask[:,:,ijob] = self.cube_A.get_data_frame(
-                        ik + ijob, mask=True)
-                    framesB_mask[:,:,ijob] = self.cube_B.get_data_frame(
-                        ik + ijob, mask=True)
-            else:
-                framesA_mask.fill(0.)
-                framesB_mask.fill(0.)
-            
-            # compute merged frames
-            
-            jobs = [(ijob, job_server.submit(
-                _create_merged_frame, 
-                args=(self.cube_A.get_data_frame(ik + ijob),
-                      self.cube_B.get_data_frame(ik + ijob), 
-                      transmission_vector[ik + ijob],
-                      modulation_ratio,
-                      ext_level_vector[ik + ijob],
-                      add_frameB,
-                      framesA_mask[:,:,ijob],
-                      framesB_mask[:,:,ijob]),
-                modules=("import logging",
-                         "numpy as np",)))
-                    for ijob in range(ncpus)]
-                
-            for ijob, job in jobs:
-                (result_frames[:,:,ijob],
-                 result_mask_frames[:,:,ijob],
-                 flux_frame_temp) = job()
-                
-                if np.any(flux_frame_temp != 0.):
-                    flux_frame += flux_frame_temp
-                    flux_frame_nb += 1
-                    flux_vector[ik + ijob] = orb.utils.stats.robust_median(
-                        flux_frame_temp)
-                else:
-                    flux_vector[ik + ijob] = np.nan
-             
-            for ijob in range(ncpus):
-                out_cube.write_frame(
-                    ik + ijob,
-                    data=result_frames[:,:,ijob],
-                    header=header,
-                    mask=result_mask_frames[:,:,ijob],
-                    record_stats=True)
+            progress.update(int(ik), info="loading: " + str(ik))
+            frames_A = self.cube_A[:,:,ik:ik+NFRAMES]
+            frames_B = self.cube_B[:,:,ik:ik+NFRAMES]
 
-            progress.update(int(ik/ncpus_max), info="frame : " + str(ik))
-        self._close_pp_server(job_server)
+            progress.update(int(ik), info="merging: " + str(ik))
+            result_frames, flux_frames = _create_merged_frame(
+                frames_A, frames_B,
+                transmission_vector[ik:ik+NFRAMES],
+                modulation_ratio,
+                ext_level_vector[ik:ik+NFRAMES],
+                add_frameB)                
+
+            flux_frame += np.nansum(flux_frames, axis=2)
+            
+            for ijob in range(NFRAMES):
+                flux_vector[ik + ijob] = orb.utils.stats.robust_median(
+                    flux_frames[:,:,ijob])
+
+            progress.update(int(ik), info="writing: " + str(ik))
+            out_cube[:,:,ik:ik+NFRAMES] = result_frames
+
+            
         progress.end()
-        flux_frame /= flux_frame_nb
 
         if self.indexer is not None:
             self.indexer['merged_interfero_cube'] = (
@@ -2617,17 +2543,9 @@ class InterferogramMerger(orb.core.Tools):
                                     instrument=self.instrument,
                                     config=self.config,
                                     params=self.params)
-        energy_map = merged_cube.get_interf_energy_map()
-        out_cube.append_energy_map(energy_map)
-        deep_frame = (flux_frame - np.nanmean(stray_light_vector))
-        out_cube.append_deep_frame(deep_frame)
+        deep_frame = (flux_frame - np.nansum(stray_light_vector))
+        out_cube.set_deep_frame(deep_frame)
     
-        orb.utils.io.write_fits(self._get_energy_map_path(), energy_map,
-                                fits_header=self.get_header())
-
-        if self.indexer is not None:
-            self.indexer['energy_map'] = self._get_energy_map_path()
-
         
         orb.utils.io.write_fits(self._get_deep_frame_path(), deep_frame,
                                 fits_header=self.get_header())
@@ -2639,20 +2557,19 @@ class InterferogramMerger(orb.core.Tools):
         # SAVE CALIBRATION STARS INTERFEROGRAMS
         logging.info("Saving corrected calibration stars interferograms")
         calib_stars_interf_list = list()
-        for istar in range(astrom_A.star_list.shape[0]):
+        for istar in range(star_list_A.shape[0]):
             calib_stars_interf_list.append(
                 (((photom_B[istar,:]/modulation_ratio) - photom_A[istar,:])
                  / transmission_vector) - ext_level_vector)
         calibration_stars_path = self._get_calibration_stars_path()
         orb.utils.io.write_fits(calibration_stars_path,
-                        np.array(calib_stars_interf_list),
-                        fits_header=self.get_header())
+                                np.array(calib_stars_interf_list),
+                                fits_header=self.get_header())
 
         if self.indexer is not None:
             self.indexer['calibration_stars'] = calibration_stars_path
             
         logging.info("Cubes merged")
-        out_cube.close()
         del out_cube
 
 
