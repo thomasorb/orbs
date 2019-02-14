@@ -47,7 +47,8 @@ import orb.astrometry
 import orb.utils.astrometry
 import orb.constants
 
-from phase import BinnedInterferogramCube, BinnedPhaseCube, PhaseMaps
+from phase import BinnedInterferogramCube, BinnedPhaseCube
+
 
 import bottleneck as bn
 
@@ -1029,7 +1030,7 @@ class Interferogram(orb.cube.InterferogramCube):
             self.indexer['phase_maps'] = final_phase_maps_path
 
         # compute high order phase
-        phasemaps = PhaseMaps(final_phase_maps_path)
+        phasemaps = orb.fft.PhaseMaps(final_phase_maps_path)
         phasemaps.modelize()
 
         coeffs = [None] * 2 + [0] * (poly_order - 1)
@@ -1208,7 +1209,7 @@ class Interferogram(orb.cube.InterferogramCube):
 
         if phase_correction:
             # get phase
-            phase_maps = PhaseMaps(phase_maps_path)
+            phase_maps = orb.fft.PhaseMaps(phase_maps_path)
             phase_maps.modelize() # phase maps model is computed in place
             logging.info('Phase maps file: {}'.format(phase_maps_path))
             if high_order_phase_path is not None:
@@ -2701,8 +2702,20 @@ class CosmicRayDetector(InterferogramMerger):
         job_server, ncpus = self._init_pp_server()
         ncpus_max = ncpus
 
-        cr_mapA = np.zeros((self.cube_A.dimx, self.cube_A.dimy, self.cube_A.dimz), dtype=np.bool)
-        cr_mapB = np.zeros((self.cube_B.dimx, self.cube_B.dimy, self.cube_B.dimz), dtype=np.bool)
+        out_cubeA = orb.cube.RWHDFCube(self._get_cr_map_cube_path(1),
+                                       shape=(self.cube_A.dimx, self.cube_A.dimy, self.cube_A.dimz),
+                                       instrument=self.instrument,
+                                       config=self.config,
+                                       params=self.params,
+                                       reset=True)
+        out_cubeB = orb.cube.RWHDFCube(self._get_cr_map_cube_path(2),
+                                       shape=(self.cube_B.dimx, self.cube_B.dimy, self.cube_B.dimz),
+                                       instrument=self.instrument,
+                                       config=self.config,
+                                       params=self.params,
+                                       reset=True)
+
+
         
         progress = orb.core.ProgressBar(int(self.cube_A.dimz/ncpus_max))
         for ik in range(0, self.cube_A.dimz, ncpus):
@@ -2713,9 +2726,11 @@ class CosmicRayDetector(InterferogramMerger):
                 ncpus = self.cube_A.dimz - ik
 
             progress.update(int(ik/ncpus_max), info="loading ({})".format(ik))
-            framesA = self.cube_A[:,:,ik:ik+ncpus]
-            framesB_init = self.cube_B[:,:,ik:ik+ncpus]
+            framesA = self.cube_A[:,:,ik:ik+ncpus].astype(np.float32)
+            framesB_init = self.cube_B[:,:,ik:ik+ncpus].astype(np.float32)
             framesB = np.empty_like(framesA)
+            cr_mapA = np.empty_like(framesA, dtype=bool)
+            cr_mapB = np.empty_like(framesA, dtype=bool)
             
             # transform frames of camera B to align them with those of camera A
             progress.update(int(ik/ncpus_max), info="aligning ({})".format(ik))
@@ -2742,7 +2757,6 @@ class CosmicRayDetector(InterferogramMerger):
             framesM = framesA + framesB # ok for SITELLE, not for SpIOMM
             framesM -= np.nanmean(np.nanmean(framesM, axis=0), axis=0)
             framesM += BIAS
-            
             frameref = bn.nanmedian(framesM, axis=2)
 
             # detect CRS
@@ -2771,50 +2785,37 @@ class CosmicRayDetector(InterferogramMerger):
                     for ijob in range(ncpus)]
             
             for ijob, job in jobs:
-                cr_mapA[:,:,ik+ijob], cr_mapB[:,:,ik+ijob] = job()
+                cr_mapA[:,:,ijob], cr_mapB[:,:,ijob] = job()
+
+            progress.update(int(ik/ncpus_max), info="writing ({})".format(ik))
+            out_cubeA[:,:,ik:ik+cr_mapA.shape[2]] = cr_mapA.astype(bool)
+            out_cubeB[:,:,ik:ik+cr_mapB.shape[2]] = cr_mapB.astype(bool)
+            
                 
         self._close_pp_server(job_server)   
         progress.end()  
         
         # check to remove over detected pixels (stars)
-        cr_mapA_deep = np.sum(cr_mapA, axis=2)
-        cr_mapB_deep = np.sum(cr_mapB, axis=2)
+        cr_mapA_deep = np.sum(out_cubeA[:,:,:], axis=2)
+        cr_mapB_deep = np.sum(out_cubeB[:,:,:], axis=2)
 
         badpixA = np.nonzero(cr_mapA_deep > MAX_CRS)
         badpixB = np.nonzero(cr_mapB_deep > MAX_CRS)
 
         if len(badpixA[0]) > 0:
-            cr_mapA[badpixA[0], badpixA[1], :] = 0
+            out_cubeA[badpixA[0], badpixA[1], :] = 0
             logging.info('{} pixels with too much detections cleaned in camera 1'.format(
                 len(badpixA[0])))
         if len(badpixB[0]) > 0:
-            cr_mapB[badpixB[0], badpixB[1], :] = 0
+            out_cubeB[badpixB[0], badpixB[1], :] = 0
             logging.info('{} pixels with too much detections cleaned in camera 2'.format(
                 len(badpixB[0])))
         
         
         logging.info('Final number of contaminated pixels in camera 1: {}'.format(
-            np.sum(cr_mapA)))
+            np.sum(out_cubeA[:,:,:])))
         logging.info('Final number of contaminated pixels in camera 2: {}'.format(
-            np.sum(cr_mapB)))
-
-        logging.info('Writing cube A')
-        out_cubeA = orb.cube.RWHDFCube(self._get_cr_map_cube_path(1),
-                                       shape=cr_mapA.shape,
-                                       instrument=self.instrument,
-                                       config=self.config,
-                                       params=self.params,
-                                       reset=True)
-        out_cubeA[:] = cr_mapA.astype(np.bool_)
-
-        logging.info('Writing cube B')
-        out_cubeB = orb.cube.RWHDFCube(self._get_cr_map_cube_path(2),
-                                       shape=cr_mapB.shape,
-                                       instrument=self.instrument,
-                                       config=self.config,
-                                       params=self.params,
-                                       reset=True)
-        out_cubeB[:] = cr_mapB.astype(np.bool_)
+            np.sum(out_cubeB[:,:,:])))
         
         del out_cubeA
         del out_cubeB

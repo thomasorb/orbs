@@ -347,7 +347,7 @@ class Orbs(Tools):
                 zpd_index = int(orb.utils.io.read_fits(self._get_zpd_index_file_path()))
                 logging.info('ZPD index read from file')
             except IOError:
-                cube1 = HDFCube(self.options['image_list_path_1'],
+                cube1 = HDFCube(self.options['image_list_path_1.hdf5'],
                                 instrument=self.instrument,
                                 no_sort=True)
 
@@ -1087,8 +1087,7 @@ class Orbs(Tools):
         # detect stars in cube 1
         if not no_star:
             cube1 = self._init_raw_data_cube(1)
-            star_list_path_1, mean_fwhm_1_arc = cube1.detect_stars(
-                saturation_threshold=self.config['SATURATION_THRESHOLD'])
+            star_list_path_1, mean_fwhm_1_arc = cube1.detect_stars()
             del cube1            
         else:
             star_list_path_1 = None
