@@ -2699,102 +2699,102 @@ class CosmicRayDetector(InterferogramMerger):
         alignment_vector_1 = orb.utils.io.read_fits(alignment_vector_path_1)
         star_list = orb.utils.astrometry.load_star_list(star_list_path)
         
-        # job_server, ncpus = self._init_pp_server()
-        # ncpus_max = ncpus
+        job_server, ncpus = self._init_pp_server()
+        ncpus_max = ncpus
 
-        # out_cubeA = orb.cube.RWHDFCube(self._get_cr_map_cube_path(1),
-        #                                shape=(self.cube_A.dimx, self.cube_A.dimy, self.cube_A.dimz),
-        #                                instrument=self.instrument,
-        #                                config=self.config,
-        #                                params=self.params,
-        #                                reset=True)
-        # out_cubeB = orb.cube.RWHDFCube(self._get_cr_map_cube_path(2),
-        #                                shape=(self.cube_B.dimx, self.cube_B.dimy, self.cube_B.dimz),
-        #                                instrument=self.instrument,
-        #                                config=self.config,
-        #                                params=self.params,
-        #                                reset=True)
+        out_cubeA = orb.cube.RWHDFCube(self._get_cr_map_cube_path(1),
+                                       shape=(self.cube_A.dimx, self.cube_A.dimy, self.cube_A.dimz),
+                                       instrument=self.instrument,
+                                       config=self.config,
+                                       params=self.params,
+                                       reset=True)
+        out_cubeB = orb.cube.RWHDFCube(self._get_cr_map_cube_path(2),
+                                       shape=(self.cube_B.dimx, self.cube_B.dimy, self.cube_B.dimz),
+                                       instrument=self.instrument,
+                                       config=self.config,
+                                       params=self.params,
+                                       reset=True)
         
-        # progress = orb.core.ProgressBar(int(self.cube_A.dimz/ncpus_max))
-        # for ik in range(0, self.cube_A.dimz, ncpus):
-        #     progress.update(int(ik/ncpus_max), info="starting ({})".format(ik))
+        progress = orb.core.ProgressBar(int(self.cube_A.dimz/ncpus_max))
+        for ik in range(0, self.cube_A.dimz, ncpus):
+            progress.update(int(ik/ncpus_max), info="starting ({})".format(ik))
             
-        #     # no more jobs than frames to compute
-        #     if (ik + ncpus >= self.cube_A.dimz):
-        #         ncpus = self.cube_A.dimz - ik
+            # no more jobs than frames to compute
+            if (ik + ncpus >= self.cube_A.dimz):
+                ncpus = self.cube_A.dimz - ik
 
-        #     progress.update(int(ik/ncpus_max), info="loading ({})".format(ik))
-        #     framesA = self.cube_A[:,:,ik:ik+ncpus].astype(np.float32)
-        #     framesB_init = self.cube_B[:,:,ik:ik+ncpus].astype(np.float32)
-        #     framesB = np.empty_like(framesA)
-        #     cr_mapA = np.empty_like(framesA, dtype=bool)
-        #     cr_mapB = np.empty_like(framesA, dtype=bool)
+            progress.update(int(ik/ncpus_max), info="loading ({})".format(ik))
+            framesA = self.cube_A[:,:,ik:ik+ncpus].astype(np.float32)
+            framesB_init = self.cube_B[:,:,ik:ik+ncpus].astype(np.float32)
+            framesB = np.empty_like(framesA)
+            cr_mapA = np.empty_like(framesA, dtype=bool)
+            cr_mapB = np.empty_like(framesA, dtype=bool)
             
-        #     # transform frames of camera B to align them with those of camera A
-        #     progress.update(int(ik/ncpus_max), info="aligning ({})".format(ik))
+            # transform frames of camera B to align them with those of camera A
+            progress.update(int(ik/ncpus_max), info="aligning ({})".format(ik))
             
-        #     jobs = [(ijob, job_server.submit(
-        #         orb.utils.image.transform_frame, 
-        #         args=(framesB_init[:,:,ijob],
-        #               0, self.cube_A.dimx, 
-        #               0, self.cube_A.dimy, 
-        #               [self.dx - alignment_vector_1[ik+ijob, 0],
-        #                self.dy - alignment_vector_1[ik+ijob, 1],
-        #                self.dr, self.da, self.db],
-        #               self.rc, self.zoom_factor, 1),
-        #         modules=("import logging",
-        #                  "import numpy as np", 
-        #                  "from scipy import ndimage",
-        #                  "import orb.cutils"))) 
-        #             for ijob in range(ncpus)]
+            jobs = [(ijob, job_server.submit(
+                orb.utils.image.transform_frame, 
+                args=(framesB_init[:,:,ijob],
+                      0, self.cube_A.dimx, 
+                      0, self.cube_A.dimy, 
+                      [self.dx - alignment_vector_1[ik+ijob, 0],
+                       self.dy - alignment_vector_1[ik+ijob, 1],
+                       self.dr, self.da, self.db],
+                      self.rc, self.zoom_factor, 1),
+                modules=("import logging",
+                         "import numpy as np", 
+                         "from scipy import ndimage",
+                         "import orb.cutils"))) 
+                    for ijob in range(ncpus)]
 
-        #     for ijob, job in jobs:
-        #         framesB[:,:,ijob] = job()
+            for ijob, job in jobs:
+                framesB[:,:,ijob] = job()
             
                 
-        #     framesM = framesA + framesB # ok for SITELLE, not for SpIOMM
-        #     framesM -= np.nanmean(np.nanmean(framesM, axis=0), axis=0)
-        #     framesM += BIAS
-        #     frameref = bn.nanmedian(framesM, axis=2)
+            framesM = framesA + framesB # ok for SITELLE, not for SpIOMM
+            framesM -= np.nanmean(np.nanmean(framesM, axis=0), axis=0)
+            framesM += BIAS
+            frameref = bn.nanmedian(framesM, axis=2)
 
-        #     # detect CRS
-        #     progress.update(int(ik/ncpus_max), info="detecting ({})".format(ik))
+            # detect CRS
+            progress.update(int(ik/ncpus_max), info="detecting ({})".format(ik))
             
-        #     jobs = [(ijob, job_server.submit(
-        #         detect_crs_in_frame, 
-        #         args=(framesA[:,:,ijob],
-        #               framesB_init[:,:,ijob],
-        #               framesM[:,:,ijob],
-        #               frameref,
-        #               [self.dx - alignment_vector_1[ik+ijob, 0],
-        #                self.dy - alignment_vector_1[ik+ijob, 1],
-        #                self.dr, self.da, self.db,
-        #                self.rc[0], self.rc[1],
-        #                self.zoom_factor, self.zoom_factor],
-        #               star_list, fwhm_pix,
-        #               alignment_vector_1[ik+ijob, 0],
-        #               alignment_vector_1[ik+ijob, 1]),
-        #         modules=("import logging",
-        #                  "import numpy as np", 
-        #                  "import orb.cutils",
-        #                  "import orb.utils.image",
-        #                  "import orb.utils.stats",
-        #                  "import warnings"))) 
-        #             for ijob in range(ncpus)]
+            jobs = [(ijob, job_server.submit(
+                detect_crs_in_frame, 
+                args=(framesA[:,:,ijob],
+                      framesB_init[:,:,ijob],
+                      framesM[:,:,ijob],
+                      frameref,
+                      [self.dx - alignment_vector_1[ik+ijob, 0],
+                       self.dy - alignment_vector_1[ik+ijob, 1],
+                       self.dr, self.da, self.db,
+                       self.rc[0], self.rc[1],
+                       self.zoom_factor, self.zoom_factor],
+                      star_list, fwhm_pix,
+                      alignment_vector_1[ik+ijob, 0],
+                      alignment_vector_1[ik+ijob, 1]),
+                modules=("import logging",
+                         "import numpy as np", 
+                         "import orb.cutils",
+                         "import orb.utils.image",
+                         "import orb.utils.stats",
+                         "import warnings"))) 
+                    for ijob in range(ncpus)]
             
-        #     for ijob, job in jobs:
-        #         cr_mapA[:,:,ijob], cr_mapB[:,:,ijob] = job()
+            for ijob, job in jobs:
+                cr_mapA[:,:,ijob], cr_mapB[:,:,ijob] = job()
 
-        #     progress.update(int(ik/ncpus_max), info="writing ({})".format(ik))
-        #     out_cubeA[:,:,ik:ik+cr_mapA.shape[2]] = cr_mapA.astype(bool)
-        #     out_cubeB[:,:,ik:ik+cr_mapB.shape[2]] = cr_mapB.astype(bool)
+            progress.update(int(ik/ncpus_max), info="writing ({})".format(ik))
+            out_cubeA[:,:,ik:ik+cr_mapA.shape[2]] = cr_mapA.astype(bool)
+            out_cubeB[:,:,ik:ik+cr_mapB.shape[2]] = cr_mapB.astype(bool)
             
                 
-        # self._close_pp_server(job_server)   
-        # progress.end()
+        self._close_pp_server(job_server)   
+        progress.end()
 
-        # del out_cubeA
-        # del out_cubeB
+        del out_cubeA
+        del out_cubeB
 
 
         if self.indexer is not None:
