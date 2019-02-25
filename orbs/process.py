@@ -2817,11 +2817,13 @@ class CosmicRayDetector(InterferogramMerger):
         badpixB = np.nonzero(cr_mapB_deep > MAX_CRS)
 
         if len(badpixA[0]) > 0:
-            out_cubeA[badpixA[0], badpixA[1], :] = 0
+            for i in range(len(badpixA[0])):
+                out_cubeA[badpixA[0][i], badpixA[1][i], :] = 0
             logging.info('{} pixels with too much detections cleaned in camera 1'.format(
                 len(badpixA[0])))
         if len(badpixB[0]) > 0:
-            out_cubeB[badpixB[0], badpixB[1], :] = 0
+            for i in range(len(badpixB[0])):
+                out_cubeB[badpixB[0][i], badpixB[1][i], :] = 0
             logging.info('{} pixels with too much detections cleaned in camera 2'.format(
                 len(badpixB[0])))
         
