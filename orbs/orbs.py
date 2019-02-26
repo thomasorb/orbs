@@ -1278,9 +1278,7 @@ class Orbs(Tools):
 
         .. seealso:: :meth:`process.Interferogram.compute_spectrum`
         .. seealso:: :meth:`orb.utils.transform_interferogram`
-        """
-        if phase_cube: phase_correction = False
-        
+        """        
         # get cube path
         cube_path = self._get_interfero_cube_path(
             camera_number, corrected=True)
@@ -1339,7 +1337,6 @@ class Orbs(Tools):
             phase_correction=phase_correction,
             wave_calibration=wave_calibration,
             window_type=apodization_function,
-            phase_cube=phase_cube,
             phase_maps_path=phase_maps_path,
             high_order_phase_path=high_order_phase_path,
             balanced=balanced,

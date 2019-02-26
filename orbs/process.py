@@ -991,7 +991,8 @@ class Interferogram(orb.cube.InterferogramCube):
         logging.info('Computing phase maps up to order {}'.format(poly_order))        
 
         if high_order_phase_path is not None:
-            high_order_phase = orb.fft.Phase(high_order_phase_path, None)
+            high_order_phase = orb.fft.Phase(
+                high_order_phase_path, axis=None, params=self.params)
             logging.info('High order phase file loaded: {}'.format(high_order_phase_path))
         else:
             high_order_phase = None
@@ -1213,7 +1214,7 @@ class Interferogram(orb.cube.InterferogramCube):
             phase_maps.modelize() # phase maps model is computed in place
             logging.info('Phase maps file: {}'.format(phase_maps_path))
             if high_order_phase_path is not None:
-                high_order_phase = orb.fft.Phase(high_order_phase_path, None)
+                high_order_phase = orb.fft.Phase(high_order_phase_path, None, params=self.params)
                 logging.info('High order phase file loaded: {}'.format(high_order_phase_path))
                 high_order_phase_data = np.copy(high_order_phase.data)
                 high_order_phase_axis = np.copy(high_order_phase.axis.data)
@@ -1295,13 +1296,13 @@ class Interferogram(orb.cube.InterferogramCube):
         logging.info("Wavenumber output: {}".format(wavenumber))
         if not wavenumber: raise NotImplementedError('Wavelength computation not implemented')
         
-        out_cube = OutHDFQuadCube(
+        out_cube = orb.cube.RWHDFCube(
             self._get_spectrum_cube_path(phase=phase_cube),
-            (self.dimx, self.dimy, self.dimz),
-            self.config.QUAD_NB,
-            overwrite=self.overwrite)
-
-        out_cube.append_header(pyfits.Header(self.get_header()))
+            shape=(self.dimx, self.dimy, self.dimz),
+            instrument=self.instrument,
+            config=self.config,
+            params=self.params,
+            reset=True)
         
         def get_phase_maps_cols(phase_maps, _x, _y_min, _y_max):            
             # create phase column
@@ -1313,11 +1314,14 @@ class Interferogram(orb.cube.InterferogramCube):
         
         for iquad in range(0, self.config.QUAD_NB):
             x_min, x_max, y_min, y_max = self.get_quadrant_dims(iquad)
+            logging.info('loading quad {}/{}'.format(iquad + 1, self.config.QUAD_NB))
             iquad_data = self.get_data(x_min, x_max, 
                                        y_min, y_max, 
                                        0, self.dimz)
+            
             iquad_data = iquad_data.astype(np.complex128)
-            ## iquad_data = np.empty((x_max-x_min, y_max-y_min,self.dimz), dtype=float)
+
+            logging.info('processing quad {}/{}'.format(iquad + 1, self.config.QUAD_NB))
             # multi-processing server init
             job_server, ncpus = self._init_pp_server()
             progress = orb.core.ProgressBar(x_max - x_min)
@@ -1356,7 +1360,7 @@ class Interferogram(orb.cube.InterferogramCube):
                     logging.debug({'probe2 time: {}'.format(np.median(times['probe2']))})
                 
                 progress.update(ii, info="Quad %d/%d column : %d"%(
-                        iquad+1L, self.config.QUAD_NB, ii))
+                    iquad+1L, self.config.QUAD_NB, ii))
             self._close_pp_server(job_server)
             progress.end()
             
@@ -1364,14 +1368,10 @@ class Interferogram(orb.cube.InterferogramCube):
             logging.info('Writing quad {}/{} to disk'.format(
                 iquad+1, self.config.QUAD_NB))
             write_start_time = time.time()
-            out_cube.write_quad(
-                iquad, data=iquad_data,
-                force_float32=False, force_complex64=True)
+            out_cube[x_min:x_max, y_min:y_max,:] = iquad_data
             logging.info('Quad {}/{} written in {:.2f} s'.format(
                 iquad+1, self.config.QUAD_NB, time.time() - write_start_time))
-            
-            
-        out_cube.close()
+                        
         del out_cube
             
         # Create indexer key
