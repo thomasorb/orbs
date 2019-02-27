@@ -1833,7 +1833,7 @@ class InterferogramMerger(orb.core.Tools):
                                       instrument=self.instrument,
                                       config=self.config,
                                       params=self.params,
-                                      reset=True)
+                                      reset=True, camera=1)
         
         progress = orb.core.ProgressBar(self.cube_A.dimz)
         
@@ -2471,7 +2471,7 @@ class InterferogramMerger(orb.core.Tools):
                                       instrument=self.instrument,
                                       config=self.config,
                                       params=self.params,
-                                      reset=True)
+                                      reset=True, camera=0)
 
         
         progress = orb.core.ProgressBar(self.cube_A.dimz)
@@ -2707,13 +2707,13 @@ class CosmicRayDetector(InterferogramMerger):
                                        instrument=self.instrument,
                                        config=self.config,
                                        params=self.params,
-                                       reset=True)
+                                       reset=True, camera=1)
         out_cubeB = orb.cube.RWHDFCube(self._get_cr_map_cube_path(2),
                                        shape=(self.cube_B.dimx, self.cube_B.dimy, self.cube_B.dimz),
                                        instrument=self.instrument,
                                        config=self.config,
                                        params=self.params,
-                                       reset=True)
+                                       reset=True, camera=2)
         
         progress = orb.core.ProgressBar(int(self.cube_A.dimz/ncpus_max))
         for ik in range(0, self.cube_A.dimz, ncpus):
@@ -2762,10 +2762,10 @@ class CosmicRayDetector(InterferogramMerger):
             
             jobs = [(ijob, job_server.submit(
                 detect_crs_in_frame, 
-                args=(framesA[:,:,ijob],
-                      framesB_init[:,:,ijob],
-                      framesM[:,:,ijob],
-                      frameref,
+                args=(framesA[:,:,ijob].astype(np.float64),
+                      framesB_init[:,:,ijob].astype(np.float64),
+                      framesM[:,:,ijob].astype(np.float64),
+                      frameref.astype(np.float64),
                       [self.dx - alignment_vector_1[ik+ijob, 0],
                        self.dy - alignment_vector_1[ik+ijob, 1],
                        self.dr, self.da, self.db,
