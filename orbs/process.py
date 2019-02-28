@@ -1875,14 +1875,12 @@ class InterferogramMerger(orb.core.Tools):
         if self.indexer is not None:
             self.indexer['transformed_interfero_cube'] = self._get_transformed_interfero_cube_path()
 
-    def merge(self, 
-              add_frameB=True, smooth_vector=True,
-              compute_ext_light=True,
-              aperture_photometry=True):
-        
-        """
-        Merge the cube of the camera 1 and the transformed cube of the
-        camera 2.
+    def compute_correction_vectors(self,
+                                   smooth_vector=True,
+                                   compute_ext_light=True,
+                                   aperture_photometry=True):
+        """Compute the correction vectors used during the merging process (see
+merge() method).
 
         :param add_frameB: (Optional) Set it to False if B frame is
            too noisy to be added to the result. In this case frame B
@@ -1903,28 +1901,6 @@ class InterferogramMerger(orb.core.Tools):
           is computed by aperture photometry. Else, The flux is
           evaluated given the fit parameters (default True).
 
-        .. note:: The merging process goes throught 3 steps:
-
-           1. Compute external illumination vector: This vector
-              records the external illumination difference between
-              both cameras (e.g. if one camera get some diffused light
-              from the sky while the other is well isolated). This
-              vector is used to correct interferograms.
-        
-           2. Compute transmission vector: the transmission vector is
-              computed from star photometry (2D gaussian or moffat
-              fitting. See
-              :py:meth:`orb.astrometry.Astrometry.fit_stars_in_cube`) of
-              both frames from camera 1 and camera 2 (frames must
-              therefore be aligned).
-
-           3. Cube merging using for each frame (nth) of the cube the
-              formula:
-              
-              .. math::
-
-                 Frame_{n,M} = \\frac{Frame_{n,1}
-                 -Frame_{n,2}}{transmission vector[n]}
         """
         def _get_stray_light_coeff(frameA, frameB, transmission_factor,
                                    modulation_ratio, ext_level):
@@ -1959,60 +1935,6 @@ class InterferogramMerger(orb.core.Tools):
                 
             return stray_light_coeff
             
-        def _create_merged_frame(frameA, frameB, transmission_factor,
-                                 modulation_ratio, ext_level,
-                                 add_frameB):
-            """Create the merged frame given the frames of both cubes
-            and the correction factor.
-
-            :param frameA: Frame of the camera 1
-            
-            :param frameB: Frame of the camera 2
-            
-            :param transmission_factor: Correction factor for the sky
-              variation of transmission
-
-            :param modulation_ratio: The ratio of modulation between
-              the two cameras. It depends on the gain and the quantum
-              efficiency of the CCD.
-
-            :param ext_level: Level of light coming from an external
-              source in the camera B but not in the camera A (if level
-              is negative, the stray light is thus in the camera A)
-              
-            :param add_frameB: If False the frame B is not added. The
-              resulting frame is thus the frame A divided by the
-              transmission factor (generally not recommanded)
-            """
-            
-            # Correcting for the variation of sky transmission
-            if add_frameB:
-                result_frame = ((((frameB / modulation_ratio) - frameA)
-                                 / transmission_factor) - ext_level)
-                
-                flux_frame = ((((frameB / modulation_ratio) + frameA)
-                                 / transmission_factor) - ext_level)
-            else: # frame B is not added
-                if np.any(frameA):
-                    cont_frame = ((frameB / modulation_ratio) + frameA
-                                  - ext_level) / 2.
-                    
-                    result_frame = ((frameA - np.nanmean(cont_frame))
-                                    / transmission_factor)
-                else:
-                    result_frame = frameA
-                    cont_frame = frameA
-                    
-                flux_frame = cont_frame
-                
-            result_frame[np.nonzero(frameA == 0.)] = np.nan
-            result_frame[np.nonzero(frameB == 0.)] = np.nan
-            flux_frame[np.nonzero(frameA == 0.)] = np.nan
-            flux_frame[np.nonzero(frameB == 0.)] = np.nan
-            flux_frame[np.nonzero(np.isinf(flux_frame))] = np.nan
-            
-            return result_frame, flux_frame
-
         def get_sky_level_vector(cube):
             """Create a vector containing the sky level evaluated in
             each frame of a cube
@@ -2058,6 +1980,7 @@ class InterferogramMerger(orb.core.Tools):
             cube._close_pp_server(job_server)
             
             return median_vector
+
 
         SMOOTH_DEG = 0 # number of pixels used on each side to
                        # smooth the transmission vector
@@ -2455,11 +2378,124 @@ class InterferogramMerger(orb.core.Tools):
         if self.indexer is not None:
             self.indexer['ext_illumination_vector'] = (
                 self._get_ext_illumination_vector_path())
+
+
+        # SAVE CALIBRATION STARS INTERFEROGRAMS
+        logging.info("Saving corrected calibration stars interferograms")
+        calib_stars_interf_list = list()
+        for istar in range(star_list_A.shape[0]):
+            calib_stars_interf_list.append(
+                (((photom_B[istar,:]/modulation_ratio) - photom_A[istar,:])
+                 / transmission_vector) - ext_level_vector)
+        calibration_stars_path = self._get_calibration_stars_path()
+        orb.utils.io.write_fits(calibration_stars_path,
+                                np.array(calib_stars_interf_list),
+                                fits_header=self.get_header())
+
+        if self.indexer is not None:
+            self.indexer['calibration_stars'] = calibration_stars_path
+        quit()    
+
+
         
+    def merge(self, add_frameB=True):
+
+        """Merge the cube of the camera 1 and the transformed cube of the
+        camera 2.
+
+        correction vectors must have computed with
+        compute_correction_vectors() method.
+
+
+        .. note:: The merging process goes throught 3 steps:
+
+           1. Compute external illumination vector: This vector
+              records the external illumination difference between
+              both cameras (e.g. if one camera get some diffused light
+              from the sky while the other is well isolated). This
+              vector is used to correct interferograms.
+        
+           2. Compute transmission vector: the transmission vector is
+              computed from star photometry (2D gaussian or moffat
+              fitting. See
+              :py:meth:`orb.astrometry.Astrometry.fit_stars_in_cube`) of
+              both frames from camera 1 and camera 2 (frames must
+              therefore be aligned).
+
+           3. Cube merging using for each frame (nth) of the cube the
+              formula:
+              
+              .. math::
+
+                 Frame_{n,M} = \\frac{Frame_{n,1}
+                 -Frame_{n,2}}{transmission vector[n]}
+
+        """
+        def _create_merged_frame(frameA, frameB, transmission_factor,
+                                 modulation_ratio, ext_level,
+                                 add_frameB):
+            """Create the merged frame given the frames of both cubes
+            and the correction factor.
+
+            :param frameA: Frame of the camera 1
+            
+            :param frameB: Frame of the camera 2
+            
+            :param transmission_factor: Correction factor for the sky
+              variation of transmission
+
+            :param modulation_ratio: The ratio of modulation between
+              the two cameras. It depends on the gain and the quantum
+              efficiency of the CCD.
+
+            :param ext_level: Level of light coming from an external
+              source in the camera B but not in the camera A (if level
+              is negative, the stray light is thus in the camera A)
+              
+            :param add_frameB: If False the frame B is not added. The
+              resulting frame is thus the frame A divided by the
+              transmission factor (generally not recommanded)
+            """
+            
+            # Correcting for the variation of sky transmission
+            if add_frameB:
+                result_frame = ((((frameB / modulation_ratio) - frameA)
+                                 / transmission_factor) - ext_level)
+                
+                flux_frame = ((((frameB / modulation_ratio) + frameA)
+                                 / transmission_factor) - ext_level)
+            else: # frame B is not added
+                if np.any(frameA):
+                    cont_frame = ((frameB / modulation_ratio) + frameA
+                                  - ext_level) / 2.
+                    
+                    result_frame = ((frameA - np.nanmean(cont_frame))
+                                    / transmission_factor)
+                else:
+                    result_frame = frameA
+                    cont_frame = frameA
+                    
+                flux_frame = cont_frame
+                
+            result_frame[np.nonzero(frameA == 0.)] = np.nan
+            result_frame[np.nonzero(frameB == 0.)] = np.nan
+            flux_frame[np.nonzero(frameA == 0.)] = np.nan
+            flux_frame[np.nonzero(frameB == 0.)] = np.nan
+            flux_frame[np.nonzero(np.isinf(flux_frame))] = np.nan
+            
+            return result_frame, flux_frame        
 
         ## MERGE FRAMES ###########################################
         logging.info("Merging cubes")
-        
+
+        transmission_vector = orb.utils.io.read_fits(self._get_transmission_vector_path())
+        modulation_ratio = orb.utils.io.read_fits(self._get_modulation_ratio_path())
+        if os.path.exists(self._get_ext_illumination_vector_path()):
+            ext_level_vector = orb.utils.io.read_fits(
+                self._get_ext_illumination_vector_path())
+        else:
+            ext_level_vector = np.zeros(self.cube_A.dimz, dtype=float)
+            
         flux_frame = np.zeros((self.cube_A.dimx, self.cube_A.dimy),
                               dtype=float)
         flux_vector = np.zeros(self.cube_A.dimz, dtype=float)
@@ -2554,22 +2590,6 @@ class InterferogramMerger(orb.core.Tools):
         if self.indexer is not None:
             self.indexer['deep_frame'] = self._get_deep_frame_path()
 
-
-        # SAVE CALIBRATION STARS INTERFEROGRAMS
-        logging.info("Saving corrected calibration stars interferograms")
-        calib_stars_interf_list = list()
-        for istar in range(star_list_A.shape[0]):
-            calib_stars_interf_list.append(
-                (((photom_B[istar,:]/modulation_ratio) - photom_A[istar,:])
-                 / transmission_vector) - ext_level_vector)
-        calibration_stars_path = self._get_calibration_stars_path()
-        orb.utils.io.write_fits(calibration_stars_path,
-                                np.array(calib_stars_interf_list),
-                                fits_header=self.get_header())
-
-        if self.indexer is not None:
-            self.indexer['calibration_stars'] = calibration_stars_path
-            
         logging.info("Cubes merged")
         del out_cube
 
