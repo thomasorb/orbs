@@ -2782,10 +2782,10 @@ class CosmicRayDetector(InterferogramMerger):
             
             jobs = [(ijob, job_server.submit(
                 detect_crs_in_frame, 
-                args=(framesA[:,:,ijob].astype(np.float64),
-                      framesB_init[:,:,ijob].astype(np.float64),
-                      framesM[:,:,ijob].astype(np.float64),
-                      frameref.astype(np.float64),
+                args=(framesA[:,:,ijob].astype(np.float32),
+                      framesB_init[:,:,ijob].astype(np.float32),
+                      framesM[:,:,ijob].astype(np.float32),
+                      frameref.astype(np.float32),
                       [self.dx - alignment_vector_1[ik+ijob, 0],
                        self.dy - alignment_vector_1[ik+ijob, 1],
                        self.dr, self.da, self.db,
