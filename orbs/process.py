@@ -992,7 +992,7 @@ class Interferogram(orb.cube.InterferogramCube):
 
         if high_order_phase_path is not None:
             high_order_phase = orb.fft.Phase(
-                high_order_phase_path, axis=None, params=self.params)
+                high_order_phase_path, axis=None)
             logging.info('High order phase file loaded: {}'.format(high_order_phase_path))
         else:
             high_order_phase = None

@@ -166,7 +166,7 @@ class BinnedPhaseCube(orb.cube.Cube):
                 icoeffs = tuple([icoeff[ij] for icoeff in incoeffs_col])
                 _phase = orb.fft.Phase(col[ij,:], base_axis, params)
                 if _ho_phase is not None:
-                    _phase.subtract(_ho_phase)
+                    _phase = _phase.subtract(_ho_phase)
                 try:
                     outcoeffs_col[ij,:], outcoeffs_err_col[ij,:] = _phase.polyfit(
                         deg, coeffs=icoeffs, return_coeffs=True)
@@ -215,7 +215,7 @@ class BinnedPhaseCube(orb.cube.Cube):
         coeffs_err_cube.fill(np.nan)
             
         base_axis = np.copy(self.get_base_axis().data)
-
+        
         job_server, ncpus = self._init_pp_server()
         progress = orb.core.ProgressBar(self.dimx)
         
@@ -228,9 +228,9 @@ class BinnedPhaseCube(orb.cube.Cube):
 
             jobs = [(ijob, job_server.submit(
                 fit_phase_in_column, 
-                args=(np.copy(self[:,ii+ijob,:]),
+                args=(np.copy(self[ii+ijob,:,:]),
                       polydeg,
-                      [icoeff[:,ii+ijob] for icoeff in coeffs],
+                      [icoeff[ii+ijob,:] for icoeff in coeffs],
                       self.params.convert(), np.copy(base_axis),
                       high_order_phase_proj),
                 modules=("import logging",
@@ -241,7 +241,7 @@ class BinnedPhaseCube(orb.cube.Cube):
                     for ijob in range(ncpus)]
 
             for ijob, job in jobs:
-                coeffs_cube[:,ii+ijob,:], coeffs_err_cube[:,ii+ijob,:] = job() 
+                coeffs_cube[ii+ijob,:,:], coeffs_err_cube[ii+ijob,:,:] = job() 
         progress.end()
         self._close_pp_server(job_server)
 
