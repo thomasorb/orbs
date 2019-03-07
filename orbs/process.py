@@ -2394,7 +2394,6 @@ merge() method).
 
         if self.indexer is not None:
             self.indexer['calibration_stars'] = calibration_stars_path
-        quit()    
 
 
         
