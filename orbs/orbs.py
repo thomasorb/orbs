@@ -314,6 +314,7 @@ class Orbs(Tools):
                              zpd_index=0)
                 self.options['bin_cam_1'] = int(cube1.params.binning)
                 dimz1 = cube1.dimz
+                del cube1
 
 
             if 'image_list_path_2' in self.options:
@@ -325,6 +326,7 @@ class Orbs(Tools):
                              zpd_index=0)
                 self.options['bin_cam_2'] = int(cube2.params.binning)
                 dimz2 = cube2.dimz
+                del cube2
                                 
             # Check step number, number of raw images
             if (('image_list_path_1' in self.options)
@@ -371,6 +373,7 @@ class Orbs(Tools):
                             zpd_found = True
                             break
                     if not zpd_found: raise StandardError('zpd index could not be found')
+                del cube1
                 
             self.options['zpd_index'] = zpd_index
             if not silent:
@@ -381,6 +384,24 @@ class Orbs(Tools):
                                     np.array(self.options['zpd_index']),
                                     overwrite=True)
 
+        if not fast_init:
+            if not silent:
+                logging.info('loading airmass')
+            try: # check if the airmass as already been computed
+                airmass = orb.utils.io.read_fits(self._get_airmass_file_path())
+                logging.info('airmass read from file')
+            except IOError:
+                cube1 = Cube(self.options['image_list_path_1.hdf5'],
+                             instrument=self.instrument,
+                             zpd_index=self.options['zpd_index'])
+                airmass = cube1.get_airmass()
+                orb.utils.io.write_fits(self._get_airmass_file_path(),
+                                        np.array(airmass), overwrite=True)
+                self.options['airmass'] = airmass
+                self.newly_exported = True
+                del cube1
+
+
         
         # update parameters of the newly exported hdf cubes
         if not fast_init and self.newly_exported:
@@ -389,6 +410,7 @@ class Orbs(Tools):
                 if '.hdf5' in ikey:
                     icube = RWHDFCube(self.options[ikey])
                     icube.update_params(self.options)
+                    del icube
                             
         # Init Indexer
         self.indexer = Indexer(data_prefix=self.options['object_name']
@@ -487,6 +509,11 @@ class Orbs(Tools):
         """Return path to the zpd index file.        
         """
         return self._get_root_data_path_hdr(1) + 'zpd_index.fits'
+
+    def _get_airmass_file_path(self):
+        """Return path to the zpd index file.        
+        """
+        return self._get_root_data_path_hdr(1) + 'airmass.fits'
 
     def _get_calibration_laser_map_path(self, camera_number):
         """Return path to the calibration laser map from a flat cube.
@@ -1500,9 +1527,9 @@ class Orbs(Tools):
             if iopt not in self.options:
                 raise Exception('{} must be in the options'.format(iopt))
         
-        
         self.indexer.set_file_group(camera_number)
-        
+
+
         spectrum = Spectrum(
             self.indexer.get_path(
                 'spectrum_cube', camera_number),
@@ -1511,16 +1538,27 @@ class Orbs(Tools):
             data_prefix=self._get_data_prefix(camera_number),
             indexer=self.indexer,
             instrument=self.instrument)
-        
+
         perf = Performance(spectrum, "Spectrum calibration", camera_number,
                            instrument=self.instrument)
 
+        spectrum.copy_param('standard_image_path_1.hdf5', 'standard_image_path')
+        
+        std_im = spectrum.get_standard_image()
+        #std_im.register()
+        
+        #std_im.writeto('test.hdf5')
+        std_im = orb.image.StandardImage('test.hdf5')
+        spectrum.compute_flambda(std_im=std_im)
+        
         ################
         ## del self.options['standard_image_path_1.hdf5']
         ## del self.options['standard_path']
         ## target_ra = None
         ################
 
+        
+        quit()
         # Get WCS
         if (self.options['target_ra'] is None or self.options['target_dec'] is None
             or self.options['target_x'] is None or self.options['target_y'] is None):
