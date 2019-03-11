@@ -505,15 +505,38 @@ class Orbs(Tools):
         return ('.' + os.sep + self.options['object_name']
                 + '_' +  self.options['filter_name'] + '.' + cam + '.')
 
+    def _get_file_folder_path_hdr(self, camera_number):
+        """Return path to the file folder to where reduction files are stored.
+        """
+        return ('.' + os.sep + self.options['object_name'] + '_'
+                + self.options['filter_name'] + os.sep
+                + os.path.split(self._get_root_data_path_hdr(camera_number))[1])
+
     def _get_zpd_index_file_path(self):
         """Return path to the zpd index file.        
         """
-        return self._get_root_data_path_hdr(1) + 'zpd_index.fits'
+        return self._get_file_folder_path_hdr(1) + 'zpd_index.fits'
 
     def _get_airmass_file_path(self):
-        """Return path to the zpd index file.        
+        """Return path to the airmass file.        
         """
-        return self._get_root_data_path_hdr(1) + 'airmass.fits'
+        return self._get_file_folder_path_hdr(1) + 'airmass.fits'
+
+    def _get_flambda_file_path(self):
+        """Return path to flambda calibration
+        """
+        return self._get_file_folder_path_hdr(1) + 'flambda.hdf5'
+
+    def _get_wcs_deep_frame_path(self):
+        """Return path to the registered deep frame
+        """
+        return self._get_file_folder_path_hdr(1) + 'wcs_deep_frame.hdf5'
+
+    def _get_wcs_standard_image_path(self):
+        """Return path to the registered standard image
+        """
+        return self._get_file_folder_path_hdr(1) + 'wcs_standard_image.hdf5'
+
 
     def _get_calibration_laser_map_path(self, camera_number):
         """Return path to the calibration laser map from a flat cube.
@@ -604,51 +627,6 @@ class Orbs(Tools):
         cube.params.reset('camera', camera_number)
         return cube
 
-    # def _init_astrometry(self, cube, camera_number, standard_star=False):
-    #     """Init Astrometry class.
-
-    #     The Astrometry class is used for star detection and star fitting
-    #     (position and photometry)
-        
-    #     :param cube: an orbs.Cube instance
-
-    #     :param camera_number: Camera number (can be 1, 2 or 0 
-    #       for merged data).
-
-    #     :param standard_star: If True target x and y are derived fom
-    #       STD_X and STD_Y keywords in the option file.
-        
-    #     :return: :py:class:`orb.astrometry.Astrometry` instance
-
-    #     .. seealso:: :py:class:`orb.astrometry.Astrometry`
-    #     """
-    #     raise NotImplementedError('remove it please ;)')
-    #     cube.params['camera'] = camera_number
-
-    #     if 'target_x' in cube.params and 'target_y' in cube.params:
-            
-               
-                
-    #     wcs_rotation = self._get_wcs_rotation(camera_number)
-        
-    #     cube.params['wcs_rotation'] = wcs_rotation
-
-    #     # load SIP file in ORB's data/ folder
-    #     sip = self.load_sip(self._get_sip_file_path(camera_number))
-
-    #     return cube.get_astrometry(sip=sip)
-
-
-    # def _get_wcs_rotation(self, camera_number):
-    #     """Return wcs rotation parameter, given the camera number"""
-    #     raise NotImplementedError('remove me please ;)')
-    #     if camera_number == 2:
-    #         wcs_rotation = (self.config["WCS_ROTATION"]
-    #                         - self.config["INIT_ANGLE"])
-    #     else:
-    #         wcs_rotation = self.config["WCS_ROTATION"]
-    #     return wcs_rotation
-        
 
     def _get_interfero_cube_path(self, camera_number, corrected=False):
         """Return the path to the interferogram cube for each camera
@@ -1437,71 +1415,46 @@ class Orbs(Tools):
         del perf
         return perf_stats                
 
-    def _find_standard_star(self, camera_number):
-        """Register cube to find standard star position
-
-        :param camera_number: Camera number (can be 1 or 2)
-        
-        :return: star position as a tuple (x,y)
+    def _compute_flambda(self, spectrum):
+        """Compute flambda calibration
         """
-        raise NotImplementedError('most of it is now done in Image class find_object()')
-        std_path = self.options['standard_image_path_{}.hdf5'.format(camera_number)]
-        std_name = self._get_standard_name(std_path)
-        if std_path is None:
-            
-            warnings.warn("Standard related options were not given")
-            return None, None, None
-            
-        logging.info('Registering standard image cube to find standard star position')
+        if 'standard_image_path_1.hdf5' in self.options:
+            spectrum.params.reset('standard_image_path', self.options['standard_image_path_1.hdf5'])
         
-        # standard image registration to find std star
-        std_cube = HDFCube(std_path, ncpus=self.config.NCPUS,
-                           instrument=self.instrument,
-                           params=self.options,
-                           config=self.config)
-        std_astrom = self._init_astrometry(std_cube, camera_number)
-        std_hdr = std_cube.get_frame_header(0) 
-        std_ra, std_dec, std_pm_ra, std_pm_dec = self._get_standard_radec(
-            std_name, return_pm=True)
-        std_yr_obs = float(std_hdr['DATE-OBS'].split('-')[0])
-        pm_orig_yr = 2000 # radec are considered to be J2000
-        # compute ra/dec with proper motion
-        std_ra, std_dec = orb.utils.astrometry.compute_radec_pm(
-            std_ra, std_dec, std_pm_ra, std_pm_dec,
-            std_yr_obs - pm_orig_yr)
-        std_ra_str = '{:.0f}:{:.0f}:{:.3f}'.format(
-            *orb.utils.astrometry.deg2ra(std_ra))
-        std_dec_str = '{:.0f}:{:.0f}:{:.3f}'.format(
-            *orb.utils.astrometry.deg2dec(std_dec))
-        logging.info('Standard star {} RA/DEC: {} ({:.3f}) {} ({:.3f}) (corrected for proper motion)'.format(
-            std_name,
-            std_ra_str, std_ra,
-            std_dec_str, std_dec))
+        logging.info('computing flambda calibration')
+        std_im = spectrum.get_standard_image()
+        std_im.register()
+        std_im.writeto(self._get_wcs_standard_image_path())
+        std_im = orb.photometry.StandardImage(
+            self._get_wcs_standard_image_path())
+        flambda = spectrum.compute_flambda(std_im=std_im)
+        flambda.writeto(self._get_flambda_file_path())
+
+
+    def _compute_wcs(self, camera_number):
+        """Register deep frame and compute wcs
+        """
+        if (self.options['target_ra'] is None or self.options['target_dec'] is None
+            or self.options['target_x'] is None or self.options['target_y'] is None):
+            warnings.warn("wcs options are missing. wcs correction cannot be done.")
+            return
         
-        # telescope center position is used to register std frame
-        std_astrom.target_ra = std_hdr['RA_DEG']
-        std_astrom.target_dec = std_hdr['DEC_DEG']
-        std_astrom.target_x = std_cube.dimx / 2.
-        std_astrom.target_y = std_cube.dimy / 2.
+        logging.info('registering deep frame')
+        deep_frame_path = self.indexer.get_path(
+            'deep_frame', camera_number)
+        deep_frame = orb.image.Image(deep_frame_path, instrument=self.instrument,
+                                     params=self.options)
         try:
-            # register std frame
-            std_correct_wcs = std_astrom.register(
-                full_deep_frame=True, realign=False)
-            # get std_x and std_y
-            std_x, std_y = std_correct_wcs.wcs_world2pix(std_ra, std_dec, 0)
-
-            logging.info('Standard star found at X/Y: {} {}'.format(
-                std_x, std_y))
-
+            deep_frame.register()
         except Exception, e:
             exc_info = sys.exc_info()
-            warnings.warn('Error during standard image registration')
+            warnings.warn('Error during WCS computation, check WCS parameters in the option file: {}'.format(e))
             traceback.print_exception(*exc_info)
             del exc_info
-            std_x = None ; std_y = None
+            correct_wcs = None
+        deep_frame.writeto(self._get_wcs_deep_frame_path())
             
-        return std_x, std_y, std_astrom.fwhm_pix
-        
+
     def calibrate_spectrum(self, camera_number, cam1_scale=False,
                            no_star=False, filter_correction=True,
                            wcs_calibration=True):
@@ -1529,7 +1482,6 @@ class Orbs(Tools):
         
         self.indexer.set_file_group(camera_number)
 
-
         spectrum = Spectrum(
             self.indexer.get_path(
                 'spectrum_cube', camera_number),
@@ -1542,102 +1494,20 @@ class Orbs(Tools):
         perf = Performance(spectrum, "Spectrum calibration", camera_number,
                            instrument=self.instrument)
 
-        spectrum.copy_param('standard_image_path_1.hdf5', 'standard_image_path')
+        # compute flambda
+        self._compute_flambda(spectrum)
         
-        std_im = spectrum.get_standard_image()
-        #std_im.register()
-        
-        #std_im.writeto('test.hdf5')
-        std_im = orb.image.StandardImage('test.hdf5')
-        spectrum.compute_flambda(std_im=std_im)
-        
-        ################
-        ## del self.options['standard_image_path_1.hdf5']
-        ## del self.options['standard_path']
-        ## target_ra = None
-        ################
-
-        
-        quit()
         # Get WCS
-        if (self.options['target_ra'] is None or self.options['target_dec'] is None
-            or self.options['target_x'] is None or self.options['target_y'] is None):
-            warnings.warn("Some WCS options were not given. WCS correction cannot be done.")
-            correct_wcs = None
-        elif no_star:
-            warnings.warn("No-star reduction: no WCS calibration.")
-            correct_wcs = None
-        elif not wcs_calibration:
-            warnings.warn('No WCS calibration')
-            correct_wcs = None
+        deep_frame = None
+        if not no_star or not wcs_calibration:
+            self._compute_wcs(camera_number)
         else:
-            astrom = self._init_astrometry(spectrum, camera_number)
-            deep_frame_path = self.indexer.get_path(
-                'deep_frame', camera_number)
-            astrom.set_deep_frame(deep_frame_path)
+            warnings.warn("no wcs calibration.")
 
-            try:
-                correct_wcs = astrom.register(
-                    full_deep_frame=True,
-                    compute_distortion=True)
-                
-            except Exception, e:
-                exc_info = sys.exc_info()
-                warnings.warn('Error during WCS computation, check WCS parameters in the option file: {}'.format(e))
-                traceback.print_exception(*exc_info)
-                del exc_info
-                correct_wcs = None
-
-
-        # Get flux calibration vector
-        (flux_calibration_axis,
-         flux_calibration_vector) = (None, None)
-
-        if 'standard_path' in self.options:
-            std_path = self.options['standard_path']
-            std_name = self._get_standard_name(std_path)
-            (flux_calibration_axis,
-             flux_calibration_vector) = spectrum.get_flux_calibration_vector(
-                std_path, std_name)
-        else:
-            warnings.warn("Standard related options were not given or the name of the filter is unknown. Flux calibration vector cannot be computed")
-
-        # Get flux calibraton coeff
-        flux_calibration_coeff = None
-        if 'standard_image_path_1.hdf5' in self.options:
-            
-            std_path = self.options['standard_image_path_1.hdf5']
-            std_name = self._get_standard_name(std_path)
-
-            # find the real star position
-            std_x1, std_y1, fwhm_pix1 = self._find_standard_star(1)
-            std_x2, std_y2, fwhm_pix2 = self._find_standard_star(2)
-            ## std_x1, std_y1 = (1099.417, 1034.814)
-            ## std_x2, std_y2 = (1102.676, 1027.210)
-            ## fwhm_pix1 = 4
-            
-            if std_x1 is not None and std_x2 is not None:
-                flux_calibration_coeff = spectrum.get_flux_calibration_coeff(
-                    self.options['standard_image_path_1.hdf5'],
-                    self.options['standard_image_path_2.hdf5'],
-                    std_name,
-                    (std_x1, std_y1),
-                    (std_x2, std_y2),
-                    fwhm_pix1)
-    
-        else:
-            warnings.warn("Standard related options were not given or the name of the filter is unknown. Flux calibration coeff cannot be computed")
-            
         # Calibration
         spectrum.calibrate(
-            correct_wcs=correct_wcs,
-            flux_calibration_vector=(
-                flux_calibration_axis,
-                flux_calibration_vector),
-            flux_calibration_coeff=flux_calibration_coeff,
-            wavenumber=self.options['wavenumber'],
-            spectral_calibration=self.options['spectral_calibration'],
-            filter_correction=filter_correction)
+            self._get_flambda_file_path(),
+            self._get_wcs_deep_frame_path())
         
         perf_stats = perf.print_stats()
         del perf, spectrum

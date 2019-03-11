@@ -1329,7 +1329,10 @@ class Interferogram(orb.cube.InterferogramCube):
                 # no more jobs than columns
                 if (ii + ncpus >= x_max - x_min): 
                     ncpus = x_max - x_min - ii
-              
+
+                progress.update(ii, info="Quad %d/%d column : %d"%(
+                    iquad+1L, self.config.QUAD_NB, ii))
+            
                 # jobs creation
                 jobs = [(ijob, job_server.submit(
                     _compute_spectrum_in_column,
@@ -1359,8 +1362,6 @@ class Interferogram(orb.cube.InterferogramCube):
                     logging.debug({'probe1 time: {}'.format(np.median(times['probe1']))})
                     logging.debug({'probe2 time: {}'.format(np.median(times['probe2']))})
                 
-                progress.update(ii, info="Quad %d/%d column : %d"%(
-                    iquad+1L, self.config.QUAD_NB, ii))
             self._close_pp_server(job_server)
             progress.end()
             
@@ -2869,430 +2870,98 @@ class Spectrum(orb.cube.SpectralCube):
     
     :param spectrum_cube_path: Path to the spectrum cube
     """
-
-    def _get_stars_coords_path(self):
-        """Return path to the list of stars coordinates used to correct WCS"""
-        return self._data_path_hdr + "stars_coords"
-
-    def _get_modulation_efficiency_map_path(self, imag=False):
-        """Return path to the modulation efficiency map.
-
-        :param imag: (Optional) True for imaginary part of the
-          modulation efficiency (default False)."""
-        if not imag:
-            return self._data_path_hdr + "modulation_efficiency_map.real.fits"
-        else:
-            return self._data_path_hdr + "modulation_efficiency_map.imag.fits"
-
     def _get_calibrated_spectrum_cube_path(self):
         """Return the default path to a calibrated spectral cube."""
         return self._data_path_hdr + "calibrated_spectrum.hdf5"
 
-    def _update_hdr_wcs(self, hdr, wcs_hdr):
-        """Update a header with WCS parameters
-
-        :param hdr: A pyfits.Header() instance
-
-        :param wcs_header: A pyfits.Header() instance containing the
-          new WCS parameters.
-        """
-        hdr.extend(wcs_hdr, strip=True,
-                   update=True, end=True)
-
-        # delete unused keywords created by pywcs
-        if 'RESTFRQ' in hdr:
-            del hdr['RESTFRQ']
-        if 'RESTWAV' in hdr:
-            del hdr['RESTWAV']
-        if 'LONPOLE' in hdr:
-            del hdr['LONPOLE']
-        if 'LATPOLE' in hdr:
-            del hdr['LATPOLE']
-        return hdr
         
-    def calibrate(self,
-                  correct_wcs=None,
-                  flux_calibration_vector=None,
-                  flux_calibration_coeff=None,
-                  wavenumber=False, standard_header=None,
-                  spectral_calibration=True, filter_correction=True):
+    def calibrate(self, flambda_path=None, deep_frame_path=None):
         
-        """Calibrate spectrum cube: correct for filter transmission
-        function, correct WCS parameters and flux calibration.
-
-        :param spectral_calibration (Optional): If True, the ouput
-          spectral cube will be calibrated in
-          wavelength/wavenumber. Note that in this case the spectrum
-          must be interpolated. Else no spectral calibration is done:
-          the channel position of a given wavelength/wavenumber
-          changes with its position in the field (default True).
-
-        :param filter_correction: (Optional) If True spectra are
-          corrected for the filter transmission.
-                 
-        :param correct_wcs: (Optional) Must be a pywcs.WCS
-          instance. If not None header of the corrected spectrum
-          cube is updated with the new WCS.
-
-        :param flux_calibration_vector: (Optional) Tuple (cm1_axis,
-          vector). Must be a vector calibrated in erg/cm^2/A as the
-          one given by
-          :py:meth:`process.Spectrum.get_flux_calibration_vector`. Each
-          spectrum will be multiplied by this vector to be flux
-          calibrated (default None).
-
-        :param flux_calibration_coeff: (Optional) If given flux
-          calibration vector is adjusted to fit the mean calibration
-          coeff. If no flux calibration vector is given, this flux
-          calibration coefficient is used as a flat flux calibration
-          vector (default None).
-    
-        :param wavenumber: (Optional) If True, the spectrum is
-          considered to be in wavenumber. If False it is considered to
-          be in wavelength (default False).    
-
-        :param standard_header: (Optional) Header for the standard
-          star used for flux calibration. This header part will be
-          appended to the FITS header.
-
-        .. note:: The filter file used must have two colums separated
-          by a space character. The first column contains the
-          wavelength axis in nm. The second column contains the
-          transmission coefficients. Comments are preceded with a #.
-          Filter edges can be specified using the keywords :
-          FILTER_MIN and FILTER_MAX::
-
-            ## ORBS filter file 
-            # Author: Thomas Martin <thomas.martin.1@ulaval.ca>
-            # Filter name : SpIOMM_R
-            # Wavelength in nm | Transmission percentage
-            # FILTER_MIN 648
-            # FILTER_MAX 678
-            1000 0.001201585284
-            999.7999878 0.009733387269
-            999.5999756 -0.0004460749624
-            999.4000244 0.01378122438
-            999.2000122 0.002538740868
-
+        """Create a calibrated spectrum cube.
         """
         
-        def _calibrate_spectrum_column(spectrum_col, filter_function,
-                                       filter_min, filter_max,
-                                       flux_calibration_function,
+        def _calibrate_spectrum_column(spectrum_col, 
                                        calibration_laser_col, nm_laser,
-                                       wavenumber,
-                                       spectral_calibration,
-                                       base_axis_correction_coeff,
-                                       output_sz_coeff, params):
-            """
+                                       base_axis, params, flambda):
             
-            """            
-            INTERP_POWER = 30 * output_sz_coeff
-            ZP_LENGTH = orb.utils.fft.next_power_of_two(
-                spectrum_col.shape[1] * INTERP_POWER)
+            QUALITY = 30
+
+            if flambda is None: flambda = 1.
 
             spectrum_col[np.nonzero(np.isnan(spectrum_col))] = 0.
 
-            result_col = np.empty((spectrum_col.shape[0],
-                                   spectrum_col.shape[1]
-                                   * output_sz_coeff))
+            result_col = np.empty_like(spectrum_col)
             result_col.fill(np.nan)
-
-            # converting to flux (ADU/s)
-            spectrum_col /= params['exposure_time'] * spectrum_col.shape[1]
-
-            if wavenumber:
-                axis_proj = orb.utils.spectrum.create_cm1_axis(
-                    spectrum_col.shape[1] * output_sz_coeff,
-                    params['step'],
-                    params['order'],
-                    corr=base_axis_correction_coeff).astype(float)
-            else:
-                axis_proj = orb.utils.spectrum.create_nm_axis(
-                    spectrum_col.shape[1] * output_sz_coeff, params['step'],
-                    params['order'], corr=base_axis_correction_coeff).astype(float)
 
             for icol in range(spectrum_col.shape[0]):
 
-                corr = calibration_laser_col[icol]/nm_laser
-                if np.isnan(corr):
-                    result_col[icol,:] = np.nan
-                    continue
+                icorr = calibration_laser_col[icol]/nm_laser
 
-                # converting to ADU/s/A
-                axis_corr_cm1_lowres = orb.utils.spectrum.create_cm1_axis(
+                iaxis = orb.utils.spectrum.create_cm1_axis(
                     spectrum_col.shape[1],
                     params['step'],
                     params['order'],
-                    corr=corr).astype(float)
+                    corr=icorr).astype(float)
                 
-                ispectrum = spectrum_col[icol,:]
+                ispectrum = orb.fft.Spectrum(
+                    spectrum_col[icol,:], axis=iaxis, params=params)
 
-                ispectrum = orb.utils.photometry.convert_cm1_flux2fluxdensity(
-                    ispectrum, axis_corr_cm1_lowres)
-
-                # pure fft interpolation of the input spectrum
-                # (i.e. perfect interpolation as long as the imaginary
-                # part is given)
-                if ((spectral_calibration or not wavenumber)
-                    or output_sz_coeff != 1):
-                    interf_complex = np.fft.ifft(ispectrum)
-
-                    zp_interf = np.zeros(ZP_LENGTH, dtype=complex)
-                    center = interf_complex.shape[0]/2
-                    zp_interf[:center] = interf_complex[:center]
-                    zp_interf[
-                        -center-int(interf_complex.shape[0]&1):] = interf_complex[
-                        -center-int(interf_complex.shape[0]&1):]
-                    interf_complex = np.copy(zp_interf)
-                    spectrum_highres = np.fft.fft(interf_complex).real
-                else:
-                    spectrum_highres = np.copy(ispectrum)
-
+                result_col[icol,:] = ispectrum.interpolate(
+                    base_axis, quality=QUALITY).data * flambda
                 
-                # remember : output from 'compute spectrum' step is
-                # always in cm-1
-                if wavenumber:
-                    axis_corr = orb.utils.spectrum.create_cm1_axis(
-                        spectrum_highres.shape[0],
-                        params['step'],
-                        params['order'],
-                        corr=corr).astype(float)
-                else:
-                    axis_corr = orb.utils.spectrum.create_nm_axis_ireg(
-                        spectrum_highres.shape[0],
-                        params['step'],
-                        params['order'],
-                        corr=corr).astype(float)
-
-                # filter function and flux calibration function are
-                # projected
-                if filter_function is not None:
-                    filter_corr = filter_function(axis_corr)
-                    # filter correction is made only between filter
-                    # edges to conserve the filter shape
-                    if wavenumber:
-                        filter_min_pix, filter_max_pix = orb.cutils.fast_w2pix(
-                            np.array([filter_min, filter_max], dtype=float),
-                            axis_corr[0], axis_corr[1]-axis_corr[0])
-                    else:
-                        filter_min_pix, filter_max_pix = orb.utils.spectrum.nm2pix(
-                            axis_corr, np.array([filter_min, filter_max], dtype=float))
-                    # filter_min_pix and max_pix are not used anymore
-                    # because filter function is prepared before. Can
-                    # be reused to put nans.
-                    spectrum_highres /= filter_corr
-                    
-                if flux_calibration_function is not None:
-                    flux_corr = flux_calibration_function(axis_corr)
-                    spectrum_highres *= flux_corr
-
-                # replacing nans by zeros before interpolation
-                nans = np.nonzero(np.isnan(spectrum_highres))
-                spectrum_highres[nans] = 0.
-
-                # spectrum projection onto its output axis (if output
-                # in nm or calibrated)
-                if spectral_calibration or not wavenumber:
-                    result_col[icol,:] = (
-                        orb.utils.vector.interpolate_axis(
-                            spectrum_highres, axis_proj, 1,
-                            old_axis=axis_corr))
-                    
-                else:
-                    result_col[icol,:] = spectrum_highres
-
-            return result_col.real
-
-        OUTPUT_SZ_COEFF = 1
-
-        
-        if filter_correction:
-            raise StandardError("Filter correction is not stable please don't use it")
-
-        # get correction coeff at the center of the field (required to
-        # project the spectral cube at the center of the field instead
-        # of projecting it on the interferometer axis)
-        if spectral_calibration:
-            base_axis_correction_coeff = self.get_calibration_coeff_map()[
-                int(self.dimx/2), int(self.dimy/2)]
-        else:
-            base_axis_correction_coeff = 1.
-        
-        
-        # Get filter parameters
-        FILTER_STEP_NB = 4000
-        FILTER_RANGE_THRESHOLD = 0.97
-        filter_vector, filter_min_pix, filter_max_pix = (
-            orb.core.FilterFile(self.params.filter_name).get_filter_function(
-                self.params.step, self.params.order,
-                FILTER_STEP_NB, wavenumber=wavenumber,
-                corr=base_axis_correction_coeff))
-        filter_min_pix = np.nanmin(np.arange(FILTER_STEP_NB)[
-            filter_vector >  FILTER_RANGE_THRESHOLD * np.nanmax(filter_vector)])
-        filter_max_pix = np.nanmax(np.arange(FILTER_STEP_NB)[
-            filter_vector >  FILTER_RANGE_THRESHOLD * np.nanmax(filter_vector)])
-        
-        if filter_min_pix < 0: filter_min_pix = 0
-        if filter_max_pix > FILTER_STEP_NB: filter_max_pix = FILTER_STEP_NB - 1
-
-        if not wavenumber:
-            filter_axis = orb.utils.spectrum.create_nm_axis(
-                FILTER_STEP_NB, self.params.step, self.params.order)
-        else:
-            filter_axis = orb.utils.spectrum.create_cm1_axis(
-                FILTER_STEP_NB, self.params.step, self.params.order)
-
-        # prepare filter vector (smooth edges)
-        filter_vector[:filter_min_pix] = 1.
-        filter_vector[filter_max_pix:] = 1.
-        filter_vector[
-            filter_min_pix:filter_max_pix] /= np.nanmean(filter_vector[
-            filter_min_pix:filter_max_pix])
-        smooth_coeff = np.zeros_like(filter_vector)
-        smooth_coeff[int(filter_min_pix)] = 1.
-        smooth_coeff[int(filter_max_pix)] = 1.
-        smooth_coeff = orb.utils.vector.smooth(
-            smooth_coeff, deg=0.1*FILTER_STEP_NB, kind='cos_conv')
-        smooth_coeff /= np.nanmax(smooth_coeff)
-        filter_vector_smooth = orb.utils.vector.smooth(
-            filter_vector, deg=0.1*FILTER_STEP_NB, kind='gaussian')
-        
-        filter_vector = ((1. - smooth_coeff) * filter_vector
-                         + smooth_coeff * filter_vector_smooth)
-        filter_function = interpolate.UnivariateSpline(
-            filter_axis, filter_vector, s=0, k=1)
-        filter_min = filter_axis[filter_min_pix]
-        filter_max = filter_axis[filter_max_pix]
-
-        # Get modulation efficiency
-        modulation_efficiency = orb.core.FilterFile(
-            self.params.filter_name).get_modulation_efficiency()
-
-        logging.info('Modulation efficiency: {}'.format(
-            modulation_efficiency))
-        
-        # Get flux calibration function
-        if flux_calibration_vector[0] is not None:
-            (flux_calibration_axis,
-             flux_calibration_vector) = flux_calibration_vector
-                       
-            if not wavenumber:
-                flux_calibration_axis = orb.utils.spectrum.cm12nm(
-                    flux_calibration_axis)[::-1]
-                flux_calibration_vector = flux_calibration_vector[::-1]
                 
-            flux_calibration_function = interpolate.UnivariateSpline(
-                flux_calibration_axis, flux_calibration_vector, s=0, k=1)
-    
-            # adjust flux calibration vector with flux calibration coeff
-            if flux_calibration_coeff is not None:
-                mean_flux_calib_vector = orb.utils.photometry.compute_mean_star_flux(
-                    flux_calibration_function(filter_axis.astype(float)),
-                    filter_vector)
-                logging.info('Mean flux calib vector before adjustment with flux calibration coeff: {} erg/cm2/ADU'.format(mean_flux_calib_vector))
-                # ME must be taken into account only when using the
-                # flux calibration coeff derived from std images
-                flux_calibration_coeff /= modulation_efficiency
-                logging.info('Flux calibration coeff (corrected for modulation efficiency {}): {} erg/cm2/ADU'.format(modulation_efficiency, flux_calibration_coeff))
-                flux_calibration_vector /=  mean_flux_calib_vector
-                flux_calibration_vector *= flux_calibration_coeff
-                flux_calibration_function = interpolate.UnivariateSpline(
-                    flux_calibration_axis, flux_calibration_vector, s=0, k=3)
+            return result_col
 
-        # Calibrate with coeff derived from std images
-        elif flux_calibration_coeff is not None:
-            # ME must be taken into account only when using the flux
-            # calibration coeff derived from std images
-            flux_calibration_coeff /= modulation_efficiency
-            logging.info('Flux calibration coeff (corrected for modulation efficiency {}): {} erg/cm2/ADU'.format(modulation_efficiency, flux_calibration_coeff))
-            flux_calibration_function = interpolate.UnivariateSpline(
-                filter_axis,
-                np.ones_like(filter_axis, dtype=float)
-                * flux_calibration_coeff, s=0, k=3)
-        else:
-            flux_calibration_function = None
 
-        # Get FFT parameters
-        header = self.get_cube_header()
-        if 'APODIZ' in header:
-            apodization_function = header['APODIZ']
-        else:
-            apodization_function = 'None'
-                            
-        # set filter function to None if no filter correction
-        if not filter_correction:
-            filter_function = None
-            filter_min = None
-            filter_max = None
+        logging.info("Calibrating cube")
+ 
+        base_axis = self.get_base_axis()
 
-        logging.info("Calibrating spectra")
-        
-        if filter_correction:
-            logging.info("Filter correction")
-        else:
-            warnings.warn("No filter correction")
-
-        if spectral_calibration:
-            logging.info("Spectral calibration")
-        else:
-            warnings.warn("No spectral calibration")
-        
-        if flux_calibration_vector is not None:
-            logging.info("Flux calibration")
-        else:
-            warnings.warn("No flux calibration")
-            
-        if correct_wcs is not None:
-            logging.info("WCS correction")
-        else:
-            warnings.warn("No WCS correction")
-
-        # control energy in the imaginary part ratio
-        ## deep_frame_spectrum = self.get_mean_image()
-        ## imag_energy = orb.utils.stats.sigmacut(
-        ##     deep_frame_spectrum.imag/deep_frame_spectrum.real, sigma=2.5)
-        ## logging.info("Median energy ratio imaginary/real: {:.2f} [std {:.3f}] %".format(np.nanmedian(imag_energy)*100., np.nanstd(imag_energy)*100.))
-               
-        out_cube = OutHDFQuadCube(
+        out_cube = orb.cube.RWHDFCube(
             self._get_calibrated_spectrum_cube_path(),
-            (self.dimx, self.dimy, self.dimz * OUTPUT_SZ_COEFF),
-            self.config.QUAD_NB,
+            shape=(self.dimx, self.dimy, self.dimz),
+            instrument=self.instrument,
+            config=self.config,
+            params=self.params,
             reset=True)
-        
+
+        # set deep frame and wcs
+        if deep_frame_path is not None:
+            deep_frame = orb.image.Image(deep_frame_path)
+            out_cube.set_deep_frame(deep_frame.data)
+            out_cube.set_params(deep_frame.params)
+
+        if flambda_path is not None:
+            flambda = orb.core.Cm1Vector1d(flambda_path).project(base_axis).data
+            out_cube.set_param('flambda', flambda)
+        else:
+            flamba = None
+
+        out_cube.set_param('wavelength_calibration', True)
+        out_cube.set_param('wavetype', 'WAVENUMBER')
+        out_cube.set_param('axis_corr', self.get_axis_corr())
+        out_cube.set_param('apodization', 1)
+        out_cube.set_param('nm_laser', self.config.CALIB_NM_LASER)
+
         # Init of the multiprocessing server    
         for iquad in range(0, self.config.QUAD_NB):
             (x_min, x_max, 
              y_min, y_max) = self.get_quadrant_dims(iquad)
             
-            iquad_data = np.empty((x_max - x_min,
-                                   y_max - y_min,
-                                   self.dimz * OUTPUT_SZ_COEFF),
-                                  dtype=float)
-            iquad_data[:,:,:self.dimz] = self.get_data(x_min, x_max, 
-                                                       y_min, y_max, 
-                                                       0, self.dimz)
+            iquad_data = self.get_data(x_min, x_max, 
+                                       y_min, y_max, 
+                                       0, self.dimz)
+            
             iquad_calibration_laser_map = self.get_calibration_laser_map()[
                 x_min:x_max, y_min:y_max]
+
+            logging.info('processing quad {}/{}'.format(iquad + 1, self.config.QUAD_NB))
             job_server, ncpus = self._init_pp_server()
-            ncpus_max = int(ncpus)
-            progress = orb.core.ProgressBar(int((x_max-x_min)/ncpus_max))
-
-            # ii = 0 ## np.int((x_max-x_min)/2) #### DEBUG
-            # testit = _calibrate_spectrum_column(iquad_data[ii,:,:self.dimz],
-            #                                     filter_function,
-            #                                     filter_min, filter_max,
-            #                                     flux_calibration_function,
-            #                                     exposure_time,
-            #                                     iquad_calibration_laser_map[ii,:],
-            #                                     nm_laser, step, order, wavenumber,
-            #                                     spectral_calibration,
-            #                                     base_axis_correction_coeff,
-            #                                     OUTPUT_SZ_COEFF)
-
+            progress = orb.core.ProgressBar(x_max - x_min)
+            
             for ii in range(0, x_max-x_min, ncpus):
-                progress.update(int(ii/ncpus_max), 
-                                info="quad : %d, column : %d"%(iquad + 1, ii))
+                progress.update(ii, info="Quad %d/%d column : %d"%(
+                    iquad+1L, self.config.QUAD_NB, ii))
                 
                 # no more jobs than frames to compute
                 if (ii + ncpus >= x_max-x_min):
@@ -3303,22 +2972,15 @@ class Spectrum(orb.cube.SpectralCube):
                     _calibrate_spectrum_column, 
                     args=(
                         iquad_data[ii+ijob,:,:self.dimz], 
-                        filter_function,
-                        filter_min, filter_max,
-                        flux_calibration_function,
                         iquad_calibration_laser_map[ii+ijob,:],
                         self.config.CALIB_NM_LASER,
-                        wavenumber,
-                        spectral_calibration,
-                        base_axis_correction_coeff,
-                        OUTPUT_SZ_COEFF,
-                        self.params.convert()),
+                        base_axis.data,
+                        self.params.convert(),
+                        flambda),
                     modules=("import logging",
                              "import numpy as np",
                              "import orb.utils.spectrum",
-                             "import orb.utils.vector",
-                             "import orb.utils.fft",
-                             "import orb.utils.photometry"))) 
+                             "import orb.fft"))) 
                         for ijob in range(ncpus)]
 
                 for ijob, job in jobs:
@@ -3332,301 +2994,14 @@ class Spectrum(orb.cube.SpectralCube):
             logging.info('Writing quad {}/{} to disk'.format(
                 iquad+1, self.config.QUAD_NB))
             write_start_time = time.time()
-            out_cube.write_quad(iquad, data=iquad_data.real)
-            ### out_cube.write_quad(iquad, data=iquad_data, force_float32=False, force_complex64=True) ### DEBUG
+            out_cube[x_min:x_max, y_min:y_max,:] = iquad_data
             logging.info('Quad {}/{} written in {:.2f} s'.format(
                 iquad+1, self.config.QUAD_NB, time.time() - write_start_time))
+                        
+        del out_cube            
             
-        
-        ### update header
-        if wavenumber:
-            axis = orb.utils.spectrum.create_nm_axis(
-                self.dimz, self.params.step, self.params.order,
-                corr=base_axis_correction_coeff)
-        else:
-            axis = orb.utils.spectrum.create_cm1_axis(
-                self.dimz, self.params.step, self.params.order,
-                corr=base_axis_correction_coeff)
-
-        # update standard header
-        if standard_header is not None:
-            if flux_calibration_vector is not None:
-                standard_header.append((
-                    'FLAMBDA',
-                    np.nanmean(flux_calibration_vector),
-                    'mean energy/ADU [erg/cm^2/A/ADU]'))
-
-        hdr = self.get_header()
-        
-        hdr.append(('AXISCORR',
-                    base_axis_correction_coeff,
-                    'Spectral axis correction coeff'))
-        
-        new_hdr = pyfits.PrimaryHDU(
-            np.empty((self.dimx, self.dimy),
-                     dtype=float).transpose()).header
-        new_hdr.extend(hdr, strip=True, update=True, end=True)
-        if correct_wcs is not None:
-            hdr = self._update_hdr_wcs(
-                new_hdr, correct_wcs.to_header(relax=True))
-        else:
-            hdr = new_hdr
-
-        ## hdr.set('PC1_1', after='CROTA2')
-        ## hdr.set('PC1_2', after='PC1_1')
-        ## hdr.set('PC2_1', after='PC1_2')
-        ## hdr.set('PC2_2', after='PC2_1')
-        ## hdr.set('WCSAXES', before='CTYPE1')
-        
-        # Create Standard header
-        if standard_header is not None:
-            hdr.extend(standard_header, strip=False, update=False, end=True)
-                    
-        # Create flux header
-        flux_hdr = list()
-        flux_hdr.append(('COMMENT','',''))
-        flux_hdr.append(('COMMENT','Flux',''))
-        flux_hdr.append(('COMMENT','----',''))
-        flux_hdr.append(('COMMENT','',''))
-        if flux_calibration_vector is not None:
-            flux_hdr.append(('BUNIT','FLUX','Flux unit [erg/cm^2/s/A]'))
-        else:
-            flux_hdr.append(('BUNIT','UNCALIB','Uncalibrated Flux'))
-            
-        hdr.extend(flux_hdr, strip=False, update=False, end=True)
-
-        out_cube.append_header(hdr)
-    
         if self.indexer is not None:
             self.indexer['calibrated_spectrum_cube'] = (
                 self._get_calibrated_spectrum_cube_path())
 
 
-    def get_flux_calibration_coeff(self,
-                                   std_image_cube_path_1,
-                                   std_image_cube_path_2,
-                                   std_name,
-                                   std_pos_1, std_pos_2,
-                                   fwhm_pix):
-        """Return flux calibration coefficient in [erg/cm2/s/A]/ADU
-        from a set of images.
-    
-        :param std_spectrum_path_1: Path to the standard image list
-    
-        :param std_spectrum_path_2: Path to the standard image list
-
-        :param std_name: Name of the standard
-
-        :param std_pos_1: X,Y Position of the standard star.in camera 1
-
-        :param std_pos_2: X,Y Position of the standard star.in camera 2
-
-        :param fwhm_pix: Rough FWHM size in pixels.
-
-        .. note:: This calibration coefficient must be used with non
-          filter-corrected data
-
-        .. warning:: This calibration coeff cannot take Modulation
-            Efficiency into account. A more representative calibration
-            coefficient would be divided by the modulation
-            efficiency. This coefficient must thus be used on spectral
-            data already normalized to an ME of 100%
-        """
-        def _get_std_position(im, box_size, x, y):
-            (x_min, x_max,
-             y_min, y_max) = orb.utils.image.get_box_coords(
-                x, y, box_size,
-                0, im.shape[0],
-                0, im.shape[1])
-            box = im[x_min:x_max,
-                     y_min:y_max]
-
-            x, y = np.unravel_index(
-                np.argmax(box), box.shape)
-            x += x_min
-            y += y_min
-            return x, y
-
-        def _get_photometry(im, x, y, fwhm_pix, exp_time):
-            photom = orb.utils.astrometry.multi_aperture_photometry(
-                im, [[x, y]], fwhm_pix)[0]
-
-            std_flux = photom['aperture_flux'] / exp_time # ADU/s
-            std_flux_err = photom['aperture_flux_err'] / exp_time # ADU/s
-            return std_flux, std_flux_err
-        
-        
-        BOX_SIZE = int(8 * fwhm_pix) + 1
-        STEP_NB = 500
-        ERROR_FLUX_COEFF = 1.5
-        
-        logging.info('Computing flux calibration coeff')
-        logging.info('Standard Name: %s'%std_name) 
-        logging.info('Standard image cube 1 path:{}'.format(
-            std_image_cube_path_1))
-        logging.info('Standard image cube 2 path:{}'.format(
-            std_image_cube_path_2))
-
-        ## Compute standard flux in erg/cm2/s/A
-
-        # compute correction coeff from angle at center of the frame
-        corr = self.get_calibration_coeff_map()[int(self.dimx/2), int(self.dimy/2)]
-        
-        # Get standard spectrum in erg/cm^2/s/A
-        std = Standard(std_name,
-                       instrument=self.instrument,
-                       ncpus=self.ncpus)
-        th_spectrum_axis, th_spectrum = std.get_spectrum(
-            self.params.step, self.params.order, STEP_NB,
-            wavenumber=False, corr=corr)
-
-        # get filter function
-        (filter_function,
-         filter_min_pix, filter_max_pix) = (
-            orb.core.FilterFile(self.params.filter_name).get_filter_function(
-                self.params.step, self.params.order, STEP_NB,
-                wavenumber=False, corr=corr))
-
-
-        raise NotImplementedError('should be reconsidered, calculation must not be done here and user should use orb.photometry directly')
-        # convert it to erg/cm2/s by summing all the photons
-        std_th_flux = th_spectrum * filter_function / np.nanmax(filter_function)
-        std_th_flux = np.diff(th_spectrum_axis) * 10. * std_th_flux[:-1]
-        std_th_flux = np.nansum(std_th_flux)
-
-        ## std_th_flux = orb.utils.photometry.compute_mean_star_flux(
-        ##     th_spectrum, filter_function)
-
-
-        # compute simulated flux
-        std_sim_flux = std.compute_star_flux_in_frame(
-            self.params.step, self.params.order, self.params.filter_name, 1, corr=corr)
-
-        logging.info('Simulated star flux in one camera: {} ADU/s'.format(
-            std_sim_flux))
-
-        ## Compute photometry in real images
-        std_x1, std_y1 = std_pos_1
-        std_x2, std_y2 = std_pos_2
-        
-        cube1 = orb.cube.Cube(std_image_cube_path_1)
-        std_hdr = cube1.get_frame_header(0)
-        cube2 = orb.cube.Cube(std_image_cube_path_2)
-    
-        if 'EXPTIME' in std_hdr:
-            std_exp_time = std_hdr['EXPTIME']
-        else: raise StandardError('Integration time (EXPTIME) keyword must be present in the header of the standard image {}'.format(cube1.image_list[0]))
-        logging.info('Standard integration time: {}s'.format(std_exp_time))
-        
-        if cube1.dimz == 1:
-            warnings.warn('standard image list contains only one file')
-            master_im1 = np.copy(cube1[:,:,0])
-            master_im2 = np.copy(cube2[:,:,0])
-        else:
-            #raise StandardError('standard images must be realigned first (to be implemented)')
-            cube1_r = orb.utils.astrometry.realign_images(cube1[:,:,:])
-            cube2_r = orb.utils.astrometry.realign_images(cube2[:,:,:])
-            
-            master_im1 = orb.utils.image.pp_create_master_frame(
-                cube1_r[:,:,:], ncpus=self.config.NCPUS)
-            master_im2 = orb.utils.image.pp_create_master_frame(
-                cube2_r[:,:,:], ncpus=self.config.NCPUS)
-
-            #orb.utils.io.write_fits('master1.fits', master_im1, overwrite=True)
-            #orb.utils.io.write_fits('master2.fits', master_im2, overwrite=True)
-            
-
-        # find star around std_x1, std_y1:
-        std_x1, std_y1 =_get_std_position(
-            master_im1, BOX_SIZE, std_x1, std_y1)
-        # find star around std_x2, std_y2:
-        std_x2, std_y2 =_get_std_position(
-            master_im2, BOX_SIZE, std_x2, std_y2)
-    
-        # photometry
-        std_flux1, std_flux_err1 = _get_photometry(
-            master_im1, std_x1, std_y1, fwhm_pix, std_exp_time)
-        logging.info('Aperture flux of the standard star in camera 1 is {} [+/-{}] ADU/s'.format(std_flux1, std_flux_err1))
-
-        std_flux2, std_flux_err2 = _get_photometry(
-            master_im2, std_x2, std_y2, fwhm_pix, std_exp_time)
-        logging.info('Aperture flux of the standard star in camera 2 is {} [+/-{}] ADU/s'.format(std_flux2, std_flux_err2))
-
-        logging.info('Ratio of real flux/ simulated flux for camera 1: {}'.format(
-            std_flux1 / std_sim_flux))
-        logging.info('Ratio of real flux/ simulated flux for camera 2: {}'.format(
-            std_flux2 / std_sim_flux))
-
-
-        ## New test compares sum of fluxes in both cameras to twice the simulated flux in one camera without modulation
-        flux_ratio = 2*std_sim_flux/(std_flux1+std_flux2)
-        if (flux_ratio > ERROR_FLUX_COEFF):
-            raise StandardError('Measured flux is too low compared to simulated flux. There must be a problem. Check standard image files.')
- 
-        coeff = std_th_flux / (std_flux1 + std_flux2) # erg/cm2/ADU
-        
-        logging.info('Flux calibration coeff: {} ergs/cm2/ADU'.format(coeff))
-
-        return coeff
-        
-    def get_flux_calibration_vector(self, std_spectrum_path, std_name):
-        """
-        Return a flux calibration vector in [erg/cm^2]/ADU on the range
-        corresponding to the observation parameters of the spectrum to
-        be calibrated.
-
-        The spectrum to be calibrated can then be simply multiplied by
-        the returned vector to be converted in [erg/cm^2]
-
-        :param std_spectrum_path: Path to the standard spectrum
-
-        :param std_name: Name of the standard
-
-        .. note:: Standard spectrum must not be corrected for the
-          filter.
-
-        .. warning:: This flux calibration vector is computed from a
-          spectrum which has a given modulation efficiency. It must be
-          normalized to a modulation efficiency of 100% via the
-          calibration coefficient computed from standard images.
-        """
-        logging.info('Computing flux calibration vector')
-        logging.info('Standard Name: %s'%std_name)
-        logging.info('Standard spectrum path: %s'%std_spectrum_path)
-
-        # Get real spectrum
-        re_spectrum_data, hdr = orb.utils.io.read_fits(
-            std_spectrum_path, return_header=True)
-        re_spectrum = re_spectrum_data[:,0]
-
-        if len(re_spectrum.shape) > 1:
-            raise StandardError(
-                'Bad standard shape. Standard spectrum must be a 1D vector !')
-            
-        # Standard observation parameters
-        std_step = hdr['STEP']
-        std_order = hdr['ORDER']
-        std_exp_time = hdr['EXPTIME']
-        std_corr = hdr['AXCORR0']
-        
-        # Get standard spectrum in erg/cm^2/s/A
-        std = Standard(std_name, instrument=self.instrument,
-                       ncpus=self.ncpus)
-        th_spectrum_axis, th_spectrum = std.get_spectrum(
-            std_step, std_order,
-            re_spectrum.shape[0], wavenumber=True,
-            corr=std_corr)
-
-        # get filter bandpass
-        (filter_function,
-         filter_min_pix, filter_max_pix) = (
-            orb.core.FilterFile(self.params.filter_name).get_filter_function(
-                std_step, std_order, re_spectrum.shape[0],
-                corr=std_corr, wavenumber=True))
-        
-        return orb.utils.photometry.compute_flux_calibration_vector(
-            re_spectrum, th_spectrum,
-            std_step, std_order, std_exp_time,
-            std_corr, 
-            filter_min_pix, filter_max_pix)
-        
