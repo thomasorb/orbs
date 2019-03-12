@@ -1294,7 +1294,7 @@ class Interferogram(orb.cube.InterferogramCube):
         logging.info("Folding order: %f"%self.params.order)
         logging.info("Step size: %f"%self.params.step)
         logging.info("Wavenumber output: {}".format(wavenumber))
-        if not wavenumber: raise NotImplementedError('Wavelength computation not implemented')
+        if not wavenumber: raise NotImplementedError('Wavenumber computation not implemented')
         
         out_cube = orb.cube.RWHDFCube(
             self._get_spectrum_cube_path(phase=phase_cube),
@@ -2937,7 +2937,7 @@ class Spectrum(orb.cube.SpectralCube):
         else:
             flamba = None
 
-        out_cube.set_param('wavelength_calibration', True)
+        out_cube.set_param('wavenumber_calibration', True)
         out_cube.set_param('wavetype', 'WAVENUMBER')
         out_cube.set_param('axis_corr', self.get_axis_corr())
         out_cube.set_param('apodization', 1)
