@@ -111,7 +111,7 @@ class JobFile(object):
 
             fpath = self.file_folder + os.sep + '{}.{}.cam{}.list'.format(
                 self.path, ftype, chip_index)
-            with open(fpath, 'w') as flist:
+            with orb.utils.io.open_file(fpath, 'w') as flist:
                 flist.write('# {} {}\n'.format('sitelle', chip_index))
                 for i in range(len(l)):
                     flist.write('{}\n'.format(l[i]))
@@ -268,7 +268,7 @@ class JobFile(object):
         return _str
         
     def open(self):
-        return open(self.path, 'r')
+        return orb.utils.io.open_file(self.path, 'r')
 
 
 ##################################################
@@ -687,7 +687,7 @@ class RecordFile(object):
         # parse file
         self.records = list()
         if os.path.exists(self.file_path):
-            with open(self.file_path, 'r') as f:
+            with orb.utils.io.open_file(self.file_path, 'r') as f:
                 for line in f:
                     if 'last_command' in line:
                         self.last_command = line.split()[1:]
@@ -705,7 +705,7 @@ class RecordFile(object):
         
     def update(self):
         """update file on disk"""
-        with open(self.file_path, 'w') as f:
+        with orb.utils.io.open_file(self.file_path, 'w') as f:
             for record in self.records:
                 f.write('{} {} {}\n'.format(
                     record['instrument'],

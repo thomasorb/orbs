@@ -546,32 +546,15 @@ class Orbs(Tools):
         return (self._get_root_data_path_hdr(camera_number)
                 + 'calibration_laser_map.fits')
     
-    def _get_calibrated_spectrum_cube_path(self, camera_number, apod,
-                                           wavenumber=False,
-                                           spectral_calibration=True):
+    def _get_calibrated_spectrum_cube_path(self, camera_number):
         """Return path to the calibrated spectrum cube resulting of the
         reduction process.
         
         :param camera_number: Camera number (must be 1, 2 or 0 for
           merged data).
-
-        :param apod: Apodization function name to be added to the
-          path.
-
-        :param wavenumber: (Optional) If True the spectral axis of the
-          cube is considered to be a wavenumber axis. If False it is
-          considered to be a wavelength axis (default False).
-
-        :param spectral_calibration: (Optional) If True the cube is
-          calibrated in wavelength/wavenumber (default True).
         """
-        if wavenumber: wave_type = 'cm1'
-        else: wave_type = 'nm'
-        if spectral_calibration: calib = ''
-        else: calib = '.uncalib'
-            
         return (self._get_root_data_path_hdr(camera_number)
-                + wave_type + '.' + apod + calib + '.hdf5')
+                + 'cm1.1.0.hdf5')
 
     def _get_standard_spectrum_path(self, camera_number):
         """Return path to the standard star spectrum
@@ -1557,7 +1540,7 @@ class Orbs(Tools):
         exported_path = ('.' + os.sep + os.path.split(high_order_phase_path)[-1])
 
         shutil.copyfile(high_order_phase_path, exported_path)
-        logging.info('High order phase file exported at {}'.format(exported_path))
+        logging.info('High order phase file exported to {}'.format(exported_path))
 
     def export_calibrated_spectrum_cube(self, camera_number):
         """Extract a calibrated spectrum cube from the 'frame-divided'
@@ -1567,67 +1550,20 @@ class Orbs(Tools):
         :param camera_number: Camera number (must be 1, 2 or 0 for
           merged data).
         """
-        logging.info('Writing calibrated spectrum cube to disk')            
-        spectrum_cube_path = self.indexer.get_path('calibrated_spectrum_cube',
-                                                   camera_number)
-        spectrum = HDFCube(spectrum_cube_path,
-                           instrument=self.instrument,
-                           ncpus=self.config.NCPUS,
-                           params=self.options,
-                           config=self.config)
-        spectrum_header = spectrum.get_cube_header()
+        link_path = self._get_calibrated_spectrum_cube_path(camera_number)
+        real_path = self.indexer.get_path(
+            'calibrated_spectrum_cube', file_group=camera_number)
 
-        if 'wavenumber' in self.options:
-            wavenumber = self.options['wavenumber']
-        else:
-            wavenumber = False
-
-        if not wavenumber:
-            axis = orb.utils.spectrum.create_nm_axis(
-                spectrum.dimz,
-                spectrum_header['STEP'],
-                spectrum_header['ORDER'],
-                corr=spectrum_header['AXISCORR'])
-        else:
-            axis = orb.utils.spectrum.create_cm1_axis(
-                spectrum.dimz,
-                spectrum_header['STEP'],
-                spectrum_header['ORDER'],
-                corr=spectrum_header['AXISCORR'])
+        logging.info('Exporting calibrated spectrum')
         
-        spectrum_header.extend(
-            self._get_basic_spectrum_cube_header(
-                axis, wavenumber=wavenumber),
-            strip=True, update=False, end=True)
+        if os.path.exists(link_path):
+            os.remove(link_path)
+            
+        shutil.copyfile(real_path, link_path)
+        logging.info('Calibrated spectrum cube exprted to {}'.format(link_path))
         
-        spectrum_header.set('FILETYPE', 'Calibrated Spectrum Cube')
-
-        # get zpd index
-        if 'zpd_index' in self.options:
-            zpd_index = self.options['zpd_index']
-        else:
-            raise StandardError('zpd_index must be known')
         
-        spectrum_header.set('ZPDINDEX', zpd_index)
 
-        spectrum_header.set('WAVCALIB', self.options['spectral_calibration'])
-
-        # set calib laser nm
-        spectrum_header.set('CALIBNM', self.config['CALIB_NM_LASER'])
-
-        # get apodization
-        apod = spectrum_header['APODIZ']
-        spectrum_path = self._get_calibrated_spectrum_cube_path(
-            camera_number, apod, wavenumber=wavenumber,
-            spectral_calibration=self.options['spectral_calibration'])
-
-        # get deep frame path
-        deep_frame_path = self.indexer.get_path('deep_frame', camera_number)
-
-        
-        spectrum.export(spectrum_path, header=spectrum_header,
-                        force_hdf5=True,
-                        deep_frame_path=deep_frame_path)
 
     def export_standard_spectrum(self, camera_number, phase_correction=True,
                                  aperture_photometry=True,
