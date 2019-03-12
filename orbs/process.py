@@ -2089,7 +2089,10 @@ merge() method).
             _photom = list()
             _len = None
             for ik in photom:
-                if not ik.empty:
+                is_empty = False
+                if ik is None: is_empty = True
+                elif ik.empty: is_empty = True
+                if not is_empty:
                     _photom.append(ik[key].values)
                     _len = len(_photom[-1])
                 else:
