@@ -198,7 +198,7 @@ class Orbs(Tools):
  
         # Read job file to get observation parameters
         self.jobfile = JobFile(job_file_path, self.instrument)
-        
+
         # Print first the entire option file for logging
         if not silent:
             logging.info("Job file content: \n{}".format(self.jobfile.as_str()))
@@ -264,7 +264,13 @@ class Orbs(Tools):
         #     if not silent:
         #         warnings.warn("Tuning parameter %s changed to %s"%(
         #             itune, self.tuning_parameters[itune]))
-        self.tuning_parameters = dict()
+        self.tuning_parameters = dict(self.jobfile.raw_params)
+        for itune in self.tuning_parameters:
+            if not silent:
+                warnings.warn("Tuning parameter %s changed to %s"%(
+                    itune, self.tuning_parameters[itune]))
+        self.config.update(self.tuning_parameters)
+        
         
         self.options["project_name"] = (self.options["object_name"] 
                                         + "_" + self.options["filter_name"])
