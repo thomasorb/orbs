@@ -2886,7 +2886,9 @@ class Spectrum(orb.cube.SpectralCube):
         def _calibrate_spectrum_column(spectrum_col, 
                                        calibration_laser_col, nm_laser,
                                        base_axis, params, flambda):
-            
+            import time
+            times = dict()
+            start_time = time.time()
             QUALITY = 30
 
             if flambda is None: flambda = 1.
@@ -2895,9 +2897,11 @@ class Spectrum(orb.cube.SpectralCube):
 
             result_col = np.empty_like(spectrum_col)
             result_col.fill(np.nan)
+            times['load_time'] = time.time() - start_time
 
+            loop_times = list()
             for icol in range(spectrum_col.shape[0]):
-
+                start_time = time.time()
                 icorr = calibration_laser_col[icol]/nm_laser
 
                 iaxis = orb.utils.spectrum.create_cm1_axis(
@@ -2911,9 +2915,10 @@ class Spectrum(orb.cube.SpectralCube):
 
                 result_col[icol,:] = ispectrum.interpolate(
                     base_axis, quality=QUALITY).data * flambda
+                loop_times.append(time.time() - start_time)
+            times['loop_time'] = np.median(loop_times)
                 
-                
-            return result_col
+            return result_col, times
 
 
         logging.info("Calibrating cube")
@@ -2988,7 +2993,8 @@ class Spectrum(orb.cube.SpectralCube):
 
                 for ijob, job in jobs:
                     # corrected data comes in place of original data
-                    iquad_data[ii+ijob,:,:] = job()
+                    iquad_data[ii+ijob,:,:], times = job()
+                    logging.debug('timing: {}, {}'.format(times['load_time'], times['loop_time']))
 
             self._close_pp_server(job_server)
             progress.end()
