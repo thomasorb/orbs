@@ -109,8 +109,8 @@ class JobFile(object):
             l = sorted(l, key=lambda ifile: ifile[1])
             l = [ifile[0] for ifile in l]
 
-            fpath = self.file_folder + os.sep + '{}.{}.cam{}.list'.format(
-                self.path, ftype, chip_index)
+            fpath = self.rootpath + os.sep + self.file_folder + os.sep + '{}.{}.cam{}.list'.format(
+                self.pathprefix, ftype, chip_index)
             with orb.utils.io.open_file(fpath, 'w') as flist:
                 flist.write('# {} {}\n'.format('sitelle', chip_index))
                 for i in range(len(l)):
@@ -118,7 +118,9 @@ class JobFile(object):
             return fpath
 
         
-        self.path = path
+        self.path = os.path.abspath(path)
+        self.rootpath = os.path.split(self.path)[0]
+        self.pathprefix = os.path.split(self.path)[1]
         self.raw_params = dict()
         for key in self.file_keys:
             self.raw_params[key] = list()
@@ -182,7 +184,7 @@ class JobFile(object):
         self.params['object_name'] = ''.join(
             self.params['object_name'].strip().split())
 
-        self.file_folder = '.' + os.sep + self.params['object_name'] + '_' + self.params['filter_name']
+        self.file_folder = self.params['object_name'] + '_' + self.params['filter_name']
 
         # compute step size in nm
         if not is_laser:

@@ -1405,11 +1405,17 @@ class Orbs(Tools):
             spectrum.params.reset('standard_image_path', self.options['standard_image_path_1.hdf5'])
         
         logging.info('computing flambda calibration')
-        std_im = spectrum.get_standard_image()
-        std_im.register()
-        std_im.writeto(self._get_wcs_standard_image_path())
-        std_im = orb.photometry.StandardImage(
-            self._get_wcs_standard_image_path())
+        try:
+            std_im = spectrum.get_standard_image()
+            std_im.register()
+            std_im.writeto(self._get_wcs_standard_image_path())
+            std_im = orb.photometry.StandardImage(
+                self._get_wcs_standard_image_path())
+        except StandardError, e:
+            warnings.warn('no standard image can be created')
+            logging.debug(e)
+            std_im = None
+            
         flambda = spectrum.compute_flambda(std_im=std_im)
         flambda.writeto(self._get_flambda_file_path())
 
