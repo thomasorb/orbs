@@ -2912,10 +2912,10 @@ class Spectrum(orb.cube.SpectralCube):
                 
                 ispectrum = orb.fft.Spectrum(
                     spectrum_col[icol,:], axis=iaxis, params=params)
-
                 result_col[icol,:] = ispectrum.interpolate(
                     base_axis, quality=QUALITY).data * flambda
                 loop_times.append(time.time() - start_time)
+                
             times['loop_time'] = np.median(loop_times)
                 
             return result_col, times
@@ -2951,7 +2951,13 @@ class Spectrum(orb.cube.SpectralCube):
         out_cube.set_param('apodization', 1)
         out_cube.set_param('nm_laser', self.config.CALIB_NM_LASER)
 
-        # Init of the multiprocessing server    
+        # Init of the multiprocessing server
+        _params = self.params.convert()
+        params = dict()
+        for ikey in _params:
+            if ikey in ['step', 'order', 'calib_coeff', 'filter_name']:
+                params[ikey] = _params[ikey]
+
         for iquad in range(0, self.config.QUAD_NB):
             (x_min, x_max, 
              y_min, y_max) = self.get_quadrant_dims(iquad)
@@ -2966,7 +2972,7 @@ class Spectrum(orb.cube.SpectralCube):
             logging.info('processing quad {}/{}'.format(iquad + 1, self.config.QUAD_NB))
             job_server, ncpus = self._init_pp_server()
             progress = orb.core.ProgressBar(x_max - x_min)
-            
+                                
             for ii in range(0, x_max-x_min, ncpus):
                 progress.update(ii, info="Quad %d/%d column : %d"%(
                     iquad+1L, self.config.QUAD_NB, ii))
@@ -2982,8 +2988,7 @@ class Spectrum(orb.cube.SpectralCube):
                         iquad_data[ii+ijob,:,:self.dimz], 
                         iquad_calibration_laser_map[ii+ijob,:],
                         self.config.CALIB_NM_LASER,
-                        base_axis.data,
-                        self.params.convert(),
+                        base_axis.data, params,
                         flambda),
                     modules=("import logging",
                              "import numpy as np",
