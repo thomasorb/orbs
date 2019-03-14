@@ -1490,12 +1490,12 @@ class Orbs(Tools):
                            instrument=self.instrument)
 
         # compute flambda
-        #self._compute_flambda(spectrum)
+        self._compute_flambda(spectrum)
         
         # Get WCS
         deep_frame = None
         if not no_star or not wcs_calibration:
-            pass#self._compute_wcs(camera_number)
+            self._compute_wcs(camera_number)
         else:
             warnings.warn("no wcs calibration.")
 

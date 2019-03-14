@@ -2886,9 +2886,7 @@ class Spectrum(orb.cube.SpectralCube):
         def _calibrate_spectrum_column(spectrum_col, 
                                        calibration_laser_col, nm_laser,
                                        base_axis, params, flambda):
-            import time
             times = dict()
-            start_time = time.time()
             QUALITY = 30
 
             if flambda is None: flambda = 1.
@@ -2897,11 +2895,9 @@ class Spectrum(orb.cube.SpectralCube):
 
             result_col = np.empty_like(spectrum_col)
             result_col.fill(np.nan)
-            times['load_time'] = time.time() - start_time
 
             loop_times = list()
             for icol in range(spectrum_col.shape[0]):
-                time0 = time.time()
                 icorr = calibration_laser_col[icol]/nm_laser
 
                 iaxis = orb.utils.spectrum.create_cm1_axis(
@@ -2909,20 +2905,18 @@ class Spectrum(orb.cube.SpectralCube):
                     params['step'],
                     params['order'],
                     corr=icorr).astype(float)
-                time1 = time.time()
                 ispectrum = orb.fft.Spectrum(
                     spectrum_col[icol,:], axis=iaxis, params=params)
-                time2 = time.time()
-                result_col[icol,:] = ispectrum.interpolate(
-                    base_axis, quality=QUALITY).data * flambda
-                time3 = time.time()
-                loop_times.append([time3-time0, time3-time2, time2-time1, time1-time0])
+                ires, itimes = ispectrum.interpolate(
+                    base_axis, quality=QUALITY, timing=True)
+                result_col[icol,:] = ires.data * flambda
+                loop_times.append(itimes)
 
             loop_times = np.array(loop_times)
             times['loop_time_median'] = np.median(loop_times[:,0])
             times['loop_time_min'] = np.min(loop_times[:,0])
             times['loop_time_max'] = np.max(loop_times[:,0])
-            times['loop_breaks'] = np.median(loop_times, axis=0)
+            times['loop_breaks'] = np.median(loop_times[:,1:], axis=0)
                 
             return result_col, times
 
@@ -3005,8 +2999,7 @@ class Spectrum(orb.cube.SpectralCube):
                 for ijob, job in jobs:
                     # corrected data comes in place of original data
                     iquad_data[ii+ijob,:,:], times = job()
-                    logging.debug('timing: {:.2e}, {:.2e} ({:.2e}, {:.2e})|{}'.format(
-                        times['load_time'],
+                    logging.debug('timing: {:.2e}({:.2e},{:.2e})|{}'.format(
                         times['loop_time_median'],
                         times['loop_time_min'],
                         times['loop_time_max'],
