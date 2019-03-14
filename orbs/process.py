@@ -2901,7 +2901,7 @@ class Spectrum(orb.cube.SpectralCube):
 
             loop_times = list()
             for icol in range(spectrum_col.shape[0]):
-                start_time = time.time()
+                time0 = time.time()
                 icorr = calibration_laser_col[icol]/nm_laser
 
                 iaxis = orb.utils.spectrum.create_cm1_axis(
@@ -2909,14 +2909,20 @@ class Spectrum(orb.cube.SpectralCube):
                     params['step'],
                     params['order'],
                     corr=icorr).astype(float)
-                
+                time1 = time.time()
                 ispectrum = orb.fft.Spectrum(
                     spectrum_col[icol,:], axis=iaxis, params=params)
+                time2 = time.time()
                 result_col[icol,:] = ispectrum.interpolate(
                     base_axis, quality=QUALITY).data * flambda
-                loop_times.append(time.time() - start_time)
-                
-            times['loop_time'] = np.median(loop_times)
+                time3 = time.time()
+                loop_times.append([time3-time0, time3-time2, time2-time1, time1-time0])
+
+            loop_times = np.array(loop_times)
+            times['loop_time_median'] = np.median(loop_times[:,0])
+            times['loop_time_min'] = np.min(loop_times[:,0])
+            times['loop_time_max'] = np.max(loop_times[:,0])
+            times['loop_breaks'] = np.median(loop_times, axis=0)
                 
             return result_col, times
 
@@ -2999,8 +3005,13 @@ class Spectrum(orb.cube.SpectralCube):
                 for ijob, job in jobs:
                     # corrected data comes in place of original data
                     iquad_data[ii+ijob,:,:], times = job()
-                    logging.debug('timing: {}, {}'.format(times['load_time'], times['loop_time']))
-
+                    logging.debug('timing: {:.2e}, {:.2e} ({:.2e}, {:.2e})|{}'.format(
+                        times['load_time'],
+                        times['loop_time_median'],
+                        times['loop_time_min'],
+                        times['loop_time_max'],
+                        times['loop_breaks']))
+                    
             self._close_pp_server(job_server)
             progress.end()
 
