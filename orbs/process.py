@@ -2543,8 +2543,7 @@ merge() method).
 
             progress.update(int(ik), info="writing: " + str(ik))
             out_cube[:,:,ik:ik+NFRAMES] = result_frames
-
-            
+  
         progress.end()
 
         if self.indexer is not None:
@@ -2552,7 +2551,7 @@ merge() method).
                 self._get_merged_interfero_cube_path())
         
 
-        # ENERGY MAP & DEEP FRAME
+        # DEEP FRAME
         # Before being added deep frames of cam1 and cam2 must be
         # scaled to keep the same amount of photons/ADU from one
         # reduction to another. It is here scaled relatively to frameB
@@ -2583,10 +2582,11 @@ merge() method).
                                     instrument=self.instrument,
                                     config=self.config,
                                     params=self.params)
-        deep_frame = (flux_frame - np.nansum(stray_light_vector))
-        out_cube.set_deep_frame(deep_frame)
-    
         
+        mean_gain = (self.config['CAM1_GAIN'] + self.config['CAM2_GAIN'])/2.
+        deep_frame = (flux_frame - np.nansum(stray_light_vector)) / mean_gain
+        out_cube.set_deep_frame(deep_frame)
+            
         orb.utils.io.write_fits(self._get_deep_frame_path(), deep_frame,
                                 fits_header=self.get_header())
 
