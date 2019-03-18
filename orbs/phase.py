@@ -48,7 +48,11 @@ import gvar
 #################################################
 class BinnedInterferogramCube(orb.cube.InterferogramCube):
 
-    def compute_phase(self):
+    def compute_phase(self, path):
+        """Compute binned phase cube
+
+        :param path: path of the output binned phase cube.
+        """
 
         def compute_phase_in_column(col, calib_col, zpd_index, params, base_axis):
             warnings.simplefilter('ignore', RuntimeWarning)
@@ -66,8 +70,8 @@ class BinnedInterferogramCube(orb.cube.InterferogramCube):
                 interf.subtract_mean()
                 interf = interf.symmetric()
                 spectrum = interf.transform()
-                if isinstance(spectrum, orb.fft.Spectrum):
-                    spectrum = spectrum.interpolate(base_axis, quality=10)                    
+                if isinstance(spectrum, orb.fft.Spectrum): # test if transform ok
+                    spectrum = spectrum.interpolate(base_axis, quality=10)
                     phase_col[ij,:] = np.copy(spectrum.get_phase().data)
             return phase_col
 
@@ -85,11 +89,10 @@ class BinnedInterferogramCube(orb.cube.InterferogramCube):
                 if ii + ncpus >= self.dimx:
                     ncpus = self.dimx - ii
 
-
                 jobs = [(ijob, job_server.submit(
                     compute_phase_in_column, 
-                    args=(self[:,ii+ijob,:],
-                          calib_map[:,ii+ijob],
+                    args=(self[ii+ijob,:,:],
+                          calib_map[ii+ijob,:],
                           self.params.zpd_index,
                           self.params.convert(),
                           base_axis),
@@ -100,12 +103,25 @@ class BinnedInterferogramCube(orb.cube.InterferogramCube):
                         for ijob in range(ncpus)]
 
                 for ijob, job in jobs:
-                    # filtered data is written in place of non filtered data
-                    phase_cube[:,ii+ijob,:] = job() 
+                    # new data is written in place of old data
+                    phase_cube[ii+ijob,:,:] = job()
+                    
         progress.end()
         self._close_pp_server(job_server)
-    
-        return phase_cube
+
+        out_cube = orb.cube.RWHDFCube(
+            path,
+            shape=self.shape,
+            instrument=self.instrument,
+            config=self.config,
+            params=self.params,
+            reset=True)
+        
+        out_cube[:,:,:] = phase_cube
+        
+        del out_cube
+
+        return path
 
  
 #################################################

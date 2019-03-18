@@ -1003,15 +1003,7 @@ class Interferogram(orb.cube.InterferogramCube):
             self._get_binned_interferogram_cube_path(), config=self.config,
             params=self.params, instrument=self.instrument)
 
-        phase_cube = interf_cube.compute_phase()
-        out_cube = orb.cube.RWHDFCube(self._get_binned_phase_cube_path(),
-                                      shape=phase_cube.shape,
-                                      instrument=self.instrument,
-                                      config=self.config,
-                                      params=self.params,
-                                      reset=True)
-        out_cube[:,:,:] = phase_cube
-        del out_cube
+        interf_cube.compute_phase(self._get_binned_phase_cube_path())
 
         if self.indexer is not None:
             self.indexer['binned_phase_cube'] = (
@@ -1187,7 +1179,7 @@ class Interferogram(orb.cube.InterferogramCube):
                 iphase = Phase(phase_maps_col[ij,:],
                                axis=phase_maps_axis,
                                params=phase_maps_params)
-                iphase.add(ho_phase)
+                iphase = iphase.add(ho_phase)
 
                 if phase_correction:
                     ispectrum.correct_phase(iphase)
@@ -1274,7 +1266,7 @@ class Interferogram(orb.cube.InterferogramCube):
             mean_spectrum = mean_interf.get_spectrum()
             
             mean_phase = phase_maps.get_phase(self.dimx/2, self.dimy/2, unbin=True)
-            mean_phase.add(high_order_phase)
+            mean_phase = mean_phase.add(high_order_phase)
             mean_spectrum.correct_phase(mean_phase)
                         
             if np.nanmean(mean_spectrum.data.real) < 0:
