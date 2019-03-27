@@ -43,7 +43,6 @@ import orb.utils.io
 import orb.cutils
 import orb.fit
 
-import orb.astrometry
 import orb.utils.astrometry
 import orb.constants
 
@@ -339,9 +338,7 @@ class RawData(orb.cube.InterferogramCube):
           information about a list of stars.
 
         :param profile_name: (Optional) PSF profile for star
-          fitting. Can be 'moffat' or 'gaussian'. See:
-          :py:class:`orb.astrometry.Astrometry` (default 'gaussian').
-    
+          fitting. Can be 'moffat' or 'gaussian'.     
         :param min_coeff: (Optional) The minimum proportion of stars
             correctly fitted to assume a good enough calculated
             disalignment (default 0.3).   
@@ -442,6 +439,7 @@ class RawData(orb.cube.InterferogramCube):
                                         params=self.params)
             logging.info("Loaded cosmic ray map: {}".format(cr_map_cube_path))
         else:
+            cr_map_cube = None
             warnings.warn("No cosmic ray map loaded")
 
 
@@ -487,8 +485,14 @@ class RawData(orb.cube.InterferogramCube):
             progress.update(ik, info="loading " + str(ik))
 
             frames = self[:,:,ik:ik+ncpus]
-            cr_frames = cr_map_cube[:,:,ik:ik+ncpus].astype(np.bool)
-            
+            if cr_map_cube is not None:
+                cr_frames_data = cr_map_cube[:,:,ik:ik+ncpus].astype(np.bool)
+                cr_frames = list()
+                for ijob in range(ncpus):
+                    cr_frames.append(cr_frames_data[:,:,ijob])
+            else:
+                cr_frames = [None] * ncpus
+                
 
             jobs = [(ijob, job_server.submit(
                 detrend,
@@ -500,7 +504,7 @@ class RawData(orb.cube.InterferogramCube):
                       master_dark,
                       master_flat,
                       alignment_vector[ik+ijob,:],
-                      cr_frames[:,:,ijob]),
+                      cr_frames[ijob]),
                 modules=(
                     "import orb.image",))) 
                     for ijob in range(ncpus)]
@@ -1702,8 +1706,6 @@ class InterferogramMerger(orb.core.Tools):
         
         :param combine_first_frames: If True, only the fist frames are
           combined to compute alignement parameters (default False).
-
-        .. seealso:: py:meth:`orb.astrometry.Aligner.compute_alignment_parameters`
         """
         # High pass filtering of the frames
         HPFILTER = int(self._get_tuning_parameter('HPFILTER', 0))
@@ -2412,8 +2414,7 @@ merge() method).
         
            2. Compute transmission vector: the transmission vector is
               computed from star photometry (2D gaussian or moffat
-              fitting. See
-              :py:meth:`orb.astrometry.Astrometry.fit_stars_in_cube`) of
+              fitting) of
               both frames from camera 1 and camera 2 (frames must
               therefore be aligned).
 
