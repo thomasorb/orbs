@@ -1746,7 +1746,9 @@ class InterferogramMerger(orb.core.Tools):
                                  config=self.config, data_prefix=self._data_prefix,
                                  params=self.params, camera=2)
 
-        
+        frameA.writeto('frameA.hdf5')
+        frameB.writeto('frameB.hdf5')
+        quit()
         XYSTEP_SIZE = 0.5 # Pixel step size of the search range
 
         ANGLE_STEPS = 10 # Angle steps for brute force guess
@@ -1755,20 +1757,20 @@ class InterferogramMerger(orb.core.Tools):
 
         def get_ranges(xystep_size, angle_range, angle_steps, range_coeff):
             # define the ranges in x and y for the rough optimization
-            x_range_len = range_coeff * float(image2.dimx)
+            x_range_len = range_coeff * float(frameB.dimx)
 
             x_hrange = np.arange(xystep_size, x_range_len/2, xystep_size)
             x_range = np.hstack((-x_hrange[::-1], 0, x_hrange))
             
             r_range = np.linspace(-angle_range/2.,
                                   angle_range/2.,
-                                  angle_steps) + coeffs.dr
+                                  angle_steps)
 
             return x_range, r_range
 
         xy_range1, r_range1 = get_ranges(
-            4.*XYSTEP_SIZE, ANGLE_RANGE,
-            ANGLE_STEPS/2, RANGE_COEFF*10)
+            2.*XYSTEP_SIZE, ANGLE_RANGE,
+            ANGLE_STEPS/2, RANGE_COEFF*5)
         xy_range2, r_range2 = get_ranges(
             XYSTEP_SIZE, ANGLE_RANGE,
             ANGLE_STEPS, RANGE_COEFF)
@@ -1780,7 +1782,7 @@ class InterferogramMerger(orb.core.Tools):
             star_list1=star_list_path_A,
             fwhm_arc=self.config.INIT_FWHM,
             correct_distortion=False,
-            coeffs=self.get_initial_alignment_parameters())
+            coeffs=[self.dx, self.dy, self.dr, self.da, self.db, self.zoom_factor])
 
         [self.dx, self.dy, self.dr, self.da, self.db] = result['coeffs']
         self.rc = result['rc']
