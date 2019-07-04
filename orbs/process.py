@@ -1746,9 +1746,6 @@ class InterferogramMerger(orb.core.Tools):
                                  config=self.config, data_prefix=self._data_prefix,
                                  params=self.params, camera=2)
 
-        frameA.writeto('frameA.hdf5')
-        frameB.writeto('frameB.hdf5')
-        quit()
         XYSTEP_SIZE = 0.5 # Pixel step size of the search range
 
         ANGLE_STEPS = 10 # Angle steps for brute force guess
@@ -2743,7 +2740,6 @@ class CosmicRayDetector(InterferogramMerger):
            
 
         BIAS = 100000
-        MAX_CRS = 3 # Max nb of cosmic rays in one pixels
         
         alignment_vector_1 = orb.utils.io.read_fits(alignment_vector_path_1)
         star_list = orb.utils.astrometry.load_star_list(star_list_path)
@@ -2854,6 +2850,12 @@ class CosmicRayDetector(InterferogramMerger):
             self.indexer['cr_map_cube_2'] = (
                 self._get_cr_map_cube_path(2))
 
+        
+    def clean_cosmic_ray_maps(self):
+        """Clean maps computed with self.create_cosmic_ray_maps()
+        """
+        
+        MAX_CRS = 3 # Max nb of cosmic rays in one pixels
 
         out_cubeA = orb.cube.RWHDFCube(self._get_cr_map_cube_path(1), camera=1)
         out_cubeB = orb.cube.RWHDFCube(self._get_cr_map_cube_path(2), camera=2)
@@ -2866,13 +2868,26 @@ class CosmicRayDetector(InterferogramMerger):
         badpixB = np.nonzero(cr_mapB_deep > MAX_CRS)
 
         if len(badpixA[0]) > 0:
+            logging.info('{} pixels with too much detections detected in camera 1 ({} percent)'.format(
+                len(badpixA[0]), len(badpixA[0]) / float(self.cube_A.dimx * self.cube_A.dimy)))
+            
+            progress = orb.core.ProgressBar(len(badpixA[0]))
             for i in range(len(badpixA[0])):
+                progress.update(i+1, 'correcting {}/{} pixels'.format(i+1, len(badpixA[0])))
                 out_cubeA[badpixA[0][i], badpixA[1][i], :] = 0
+            progress.end()
             logging.info('{} pixels with too much detections cleaned in camera 1'.format(
                 len(badpixA[0])))
+            
         if len(badpixB[0]) > 0:
+            logging.info('{} pixels with too much detections detected in camera 2 ({} percent)'.format(
+                len(badpixB[0]), len(badpixB[0]) / float(self.cube_B.dimx * self.cube_B.dimy)))
+            
+            progress = orb.core.ProgressBar(len(badpixB[0]))
             for i in range(len(badpixB[0])):
+                progress.update(i+1, 'correcting {}/{} pixels'.format(i+1, len(badpixB[0])))
                 out_cubeB[badpixB[0][i], badpixB[1][i], :] = 0
+            progress.end()
             logging.info('{} pixels with too much detections cleaned in camera 2'.format(
                 len(badpixB[0])))
         

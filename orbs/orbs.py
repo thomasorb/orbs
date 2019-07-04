@@ -895,8 +895,10 @@ class Orbs(Tools):
 
         alignment_vector_path_1 = self.indexer['cam1.alignment_vector']
 
-        cube.create_cosmic_ray_maps(alignment_vector_path_1, star_list_path,
-                                    self._get_init_fwhm_pix())
+        #cube.create_cosmic_ray_maps(alignment_vector_path_1, star_list_path,
+        #                            self._get_init_fwhm_pix())
+
+        cube.clean_cosmic_ray_maps()
         perf_stats = perf.print_stats()
         del cube, perf
         return perf_stats
