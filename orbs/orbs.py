@@ -885,18 +885,14 @@ class Orbs(Tools):
         
         .. seealso:: :meth:`process.CosmicRayDetector.create_cosmic_ray_maps`
         """
-        cube, star_list_path = self.compute_alignment_parameters(
-            no_star=False, raw=True,
-            return_star_list=True)
+        cube = self.compute_alignment_parameters(
+            no_star=False, raw=True)
 
         perf = Performance(
             cube.cube_A, "Cosmic ray map computation", 0,
             instrument=self.instrument)
 
         alignment_vector_path_1 = self.indexer['cam1.alignment_vector']
-
-        #cube.create_cosmic_ray_maps(alignment_vector_path_1, star_list_path,
-        #                            self._get_init_fwhm_pix())
 
         cube.clean_cosmic_ray_maps()
         perf_stats = perf.print_stats()
@@ -1036,8 +1032,7 @@ class Orbs(Tools):
         del cube, perf
         return perf_stats
 
-    def compute_alignment_parameters(self, no_star=False, raw=False,
-                                     return_star_list=False, laser=False):
+    def compute_alignment_parameters(self, no_star=False, raw=False, laser=False):
         """Compute alignement parameters between cubes and return a
         :py:class:`process.InterferogramMerger instance`.
 
@@ -1045,10 +1040,6 @@ class Orbs(Tools):
           transformation is made using the default alignment
           parameters (recorded in the configuration file :
           'data/config.orb') (default False).
-
-        :param return_star_list: (Optional) If True, the star list
-          used is returned with the cube. This option is incompatible
-          with no_star option (default False).
     
         :param laser: (Optional) If the cube is a laser source, the
           frames can be aligned with a brute force algorithm (default
@@ -1057,10 +1048,7 @@ class Orbs(Tools):
         .. seealso:: :py:meth:`process.InterferogramMerger.find_alignment`
         """
         if laser: no_star = True
-
-        if no_star and return_star_list:
-            raise StandardError('return_star_list is incompatible with no_star')
-        
+       
         # get binning factor for each camera
         if "bin_cam_1" in self.options: 
             bin_cam_1 = self.options["bin_cam_1"]
@@ -1079,14 +1067,6 @@ class Orbs(Tools):
         else:
             interf_cube_path_1 = self.indexer['cam1.interfero_cube']
             interf_cube_path_2 = self.indexer['cam2.interfero_cube']
-
-        # detect stars in cube 1
-        if not no_star:
-            cube1 = self._init_raw_data_cube(1)
-            star_list_path_1, mean_fwhm_1_arc = cube1.detect_stars()
-            del cube1            
-        else:
-            star_list_path_1 = None
             
 
         # Init InterferogramMerger class
@@ -1109,7 +1089,7 @@ class Orbs(Tools):
         # find alignment coefficients
         
         if not no_star:
-            cube.find_alignment(star_list_path_1, combine_first_frames=raw)
+            cube.compute_alignment_parameters(combine_first_frames=raw)
         else:
             if laser:
                 raise NotImplementedError('init_dx, init_dy and init_angle must be defined in find_laser_alignment itself')
@@ -1119,10 +1099,7 @@ class Orbs(Tools):
             logging.info("Alignment parameters: {} {} {} {} {}".format(
                 cube.dx, cube.dy, cube.dr, cube.da, cube.db))
 
-        if return_star_list:
-            return cube, star_list_path_1
-        else:
-            return cube
+        return cube
                 
     def merge_interferograms(self, add_frameB=True, smooth_vector=True):
         

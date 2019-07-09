@@ -1696,13 +1696,12 @@ class InterferogramMerger(orb.core.Tools):
         """return self.params as a fits header"""
         return orb.utils.io.dict2header(dict(self.params))
     
-    def find_alignment(self, star_list_path_A, 
-                       combine_first_frames=False):
+    def compute_alignment_parameters(self, combine_first_frames=False):
         """
         Return the alignment coefficients to align the cube of the
         camera 2 on the cube of the camera 1
 
-        :param star_list_path_A: Path to a list of star for the camera A
+        :param star_list_path_B: Path to a list of star for camera B
         
         :param combine_first_frames: If True, only the fist frames are
           combined to compute alignement parameters (default False).
@@ -1772,11 +1771,10 @@ class InterferogramMerger(orb.core.Tools):
             XYSTEP_SIZE, ANGLE_RANGE,
             ANGLE_STEPS, RANGE_COEFF)
 
-        result = frameA.compute_alignment_parameters(
-            frameB,
+        result = frameB.compute_alignment_parameters(
+            frameA,
             xy_range=(xy_range1, xy_range2),
             r_range=(r_range1, r_range2),
-            star_list1=star_list_path_A,
             fwhm_arc=self.config.INIT_FWHM,
             correct_distortion=False,
             coeffs=[self.dx, self.dy, self.dr, self.da, self.db, self.zoom_factor])
