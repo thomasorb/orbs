@@ -1,0 +1,7 @@
+<?xml version="1.0"?>
+<graphs>
+  <graph>
+    <file name='cam1.alignment_vector'></file>
+    <args title='Alignement vector' xlabel='step' ylabel='alignement'></args>
+  </graph>
+</graphs>
