@@ -2598,12 +2598,7 @@ merge() method).
                 np.nanmean(stray_light_vector)))
         else:
             stray_light_vector = np.zeros_like(flux_vector)
-       
-        merged_cube = orb.cube.Cube(self._get_merged_interfero_cube_path(),
-                                    instrument=self.instrument,
-                                    config=self.config,
-                                    params=self.params)
-        
+               
         mean_gain = (self.config['CAM1_GAIN'] + self.config['CAM2_GAIN'])/2.
         deep_frame = (flux_frame - np.nansum(stray_light_vector)) / mean_gain
         out_cube.set_deep_frame(deep_frame)

@@ -43,7 +43,7 @@ import orbs
 from orb.core import Tools, Logger
 from orbs.orbs import Orbs
 from orbs.core import RoadMap, JobFile, RecordFile
-
+import orbs.report
 import logging
 import warnings
 
@@ -76,6 +76,10 @@ def status(args):
                      project.indexer)
         rm.print_status()
 
+def report(args):
+    # make a report
+    reporter = orbs.report.Reporter(args.job_file_path, args.instrument_mode)
+        
 def resume(args, parser):
     recfile = RecordFile(args.job_file_path)
     if len(recfile.records) < 1:
@@ -316,7 +320,9 @@ def add_all_operations(instrument_parser, epilog):
     parser_clean = subparsers.add_parser('clean', help='Clean all the temporary files. Final products are not removed.')
 
     parser_status = subparsers.add_parser('status', help='Print the status of the reduction process.')
-        
+
+    parser_report = subparsers.add_parser('report', help='Make a precise report.')
+    
 ########################################################################
 ##################### MAIN #############################################
 ########################################################################
@@ -409,6 +415,10 @@ if __name__ == "__main__":
     if args.subparser_name == 'status':
         logging.info("Status %s"%args.job_file_path.strip())
         status(args)
+
+    if args.subparser_name == 'report':
+        logging.info("Report %s"%args.job_file_path.strip())
+        report(args)
         
     if args.subparser_name == 'resume':
         logging.info("Resume %s"%args.job_file_path.strip())

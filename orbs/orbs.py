@@ -1136,10 +1136,10 @@ class Orbs(Tools):
         perf = Performance(cube.cube_A, "Merging process", 1,
                            instrument=self.instrument)
 
-        cube.compute_correction_vectors(
-            smooth_vector=smooth_vector,
-            compute_ext_light=(not self.options['no_sky']
-                               and self.config['EXT_ILLUMINATION']))
+        # cube.compute_correction_vectors(
+        #     smooth_vector=smooth_vector,
+        #     compute_ext_light=(not self.options['no_sky']
+        #                        and self.config['EXT_ILLUMINATION']))
         cube.merge(add_frameB=add_frameB)
         
         perf_stats = perf.print_stats()
@@ -1281,13 +1281,14 @@ class Orbs(Tools):
                            instrument=self.instrument)
         
         balanced = self._is_balanced(camera_number)
-        
+
         if apodization_function is None:
             if 'apodization_function' in self.options:
                 apodization_function = self.options['apodization_function']
-            else:
-                apodization_function = 1.0
-
+        
+        if apodization_function is None: # keep it here, apodization function may still be None
+            apodization_function = 1.0
+        
         if apodization_function not in self._APODIZATION_FUNCTIONS:
             try:
                 apodization_function = float(apodization_function)
