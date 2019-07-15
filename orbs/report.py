@@ -53,7 +53,7 @@ class Reporter(object):
         
         
         for igraph in graphs:
-            
+            pass
         #     infiles = list()
         #     infiles_xml = step.findall('infile')
         #     for infile_xml in infiles_xml:

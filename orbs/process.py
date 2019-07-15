@@ -1132,10 +1132,11 @@ class Interferogram(orb.cube.InterferogramCube):
         """
 
         def _compute_spectrum_in_column(params, calibration_coeff_map_column,
-                                        data, window_type,
+                                        data,
+                                        window_type,
                                         phase_correction,
                                         wave_calibration,
-                                        phase_maps_col,
+                                        #phase_maps_col,
                                         phase_maps_axis,
                                         phase_maps_params,
                                         high_order_phase_data,
@@ -1145,57 +1146,57 @@ class Interferogram(orb.cube.InterferogramCube):
                                         wavenumber): # nm computation not implemented
             """Compute spectrum in one column. Used to parallelize the
             process"""
-            from orb.fft import Interferogram, Phase
-            import logging
-            import orb.utils.log
-            import time
-            orb.utils.log.setup_socket_logging()
-            dimz = data.shape[1]
-            spectrum_column = np.zeros_like(data, dtype=complex)
-            ho_phase = Phase(high_order_phase_data,
-                             axis=high_order_phase_axis,
-                             params=params)
+            # from orb.fft import Interferogram, Phase
+            # import logging
+            # import orb.utils.log
+            # import time
+            # orb.utils.log.setup_socket_logging()
+            # dimz = data.shape[1]
+            # spectrum_column = np.zeros_like(data, dtype=complex)
+            # ho_phase = Phase(high_order_phase_data,
+            #                  axis=high_order_phase_axis,
+            #                  params=params)
 
-            times = {'loop':list(), 'probe1':list(), 'probe2':list()}
-            for ij in range(data.shape[0]):
-                itime = dict()
-                stime = time.time()
+            #times = {'loop':list(), 'probe1':list(), 'probe2':list()}
+            # for ij in range(data.shape[0]):
+            #     itime = dict()
+            #     stime = time.time()
             
-                # throw out interferograms with less than half non-zero values
-                # (zero values are considered as bad points : cosmic rays, bad
-                # frames etc.)
-                iinterf_data = np.copy(data[ij,:])
-                iinterf_data[np.nonzero(np.isnan(iinterf_data))] = 0.
+            #     # throw out interferograms with less than half non-zero values
+            #     # (zero values are considered as bad points : cosmic rays, bad
+            #     # frames etc.)
+            #     iinterf_data = np.copy(data[ij,:])
+            #     iinterf_data[np.nonzero(np.isnan(iinterf_data))] = 0.
                 
-                if len(np.nonzero(iinterf_data)[0]) < dimz/2.:
-                    continue
+            #     if len(np.nonzero(iinterf_data)[0]) < dimz/2.:
+            #         continue
 
-                icalib_coeff = calibration_coeff_map_column[ij]
+            #     icalib_coeff = calibration_coeff_map_column[ij]
 
-                times['probe1'].append(time.time()-stime)
-                iinterf = Interferogram(
-                    iinterf_data, params=params,
-                    calib_coeff=icalib_coeff)
+            #     times['probe1'].append(time.time()-stime)
+            #     iinterf = Interferogram(
+            #         iinterf_data, params=params,
+            #         calib_coeff=icalib_coeff)
 
-                times['probe2'].append(time.time()-stime)
-                ispectrum = iinterf.get_spectrum()
+            #     times['probe2'].append(time.time()-stime)
+            #     ispectrum = iinterf.get_spectrum()
 
-                iphase = Phase(phase_maps_col[ij,:],
-                               axis=phase_maps_axis,
-                               params=phase_maps_params)
-                iphase = iphase.add(ho_phase)
+            #     iphase = Phase(phase_maps_col[ij,:],
+            #                    axis=phase_maps_axis,
+            #                    params=phase_maps_params)
+            #     iphase = iphase.add(ho_phase)
 
-                if phase_correction:
-                    ispectrum.correct_phase(iphase)
-                    spectrum_column[ij,:] = ispectrum.data
-                else:
-                    spectrum_column[ij,:] = ispectrum.get_amplitude()
+            #     if phase_correction:
+            #         ispectrum.correct_phase(iphase)
+            #         spectrum_column[ij,:] = ispectrum.data
+            #     else:
+            #         spectrum_column[ij,:] = ispectrum.get_amplitude()
 
-                times['loop'].append(time.time()-stime)
-            if np.nansum(spectrum_column) == 0:
-                logging.debug('Whole column filled with zeroes')
-                
-            return spectrum_column, times
+            #     times['loop'].append(time.time()-stime)
+            # if np.nansum(spectrum_column) == 0:
+            #     logging.debug('Whole column filled with zeroes')
+
+            return None#spectrum_column, times
 
             
         if not phase_cube:
@@ -1292,13 +1293,6 @@ class Interferogram(orb.cube.InterferogramCube):
         logging.info("Wavenumber output: {}".format(wavenumber))
         if not wavenumber: raise NotImplementedError('Wavenumber computation not implemented')
         
-        out_cube = orb.cube.RWHDFCube(
-            self._get_spectrum_cube_path(phase=phase_cube),
-            shape=(self.dimx, self.dimy, self.dimz),
-            instrument=self.instrument,
-            config=self.config,
-            params=self.params,
-            reset=True)
         
         def get_phase_maps_cols(phase_maps, _x, _y_min, _y_max):            
             # create phase column
@@ -1307,6 +1301,14 @@ class Interferogram(orb.cube.InterferogramCube):
                 phase_maps_cols[ij, :] = phase_maps.get_phase(_x, _y_min + ij, unbin=True).data
 
             return phase_maps_cols
+
+        out_cube = orb.cube.RWHDFCube(
+            self._get_spectrum_cube_path(phase=phase_cube),
+            shape=(self.dimx, self.dimy, self.dimz),
+            instrument=self.instrument,
+            config=self.config,
+            params=self.params,
+            reset=True)                
         
         for iquad in range(0, self.config.QUAD_NB):
             x_min, x_max, y_min, y_max = self.get_quadrant_dims(iquad)
@@ -1316,7 +1318,8 @@ class Interferogram(orb.cube.InterferogramCube):
                                        0, self.dimz)
             
             iquad_data = iquad_data.astype(np.complex128)
-
+            logging.info('memory size of a quad {} Gb'.format(iquad_data.nbytes / 1e9))
+            
             logging.info('processing quad {}/{}'.format(iquad + 1, self.config.QUAD_NB))
             # multi-processing server init
             job_server, ncpus = self._init_pp_server()
@@ -1335,11 +1338,11 @@ class Interferogram(orb.cube.InterferogramCube):
                     args=(self.params.convert(),  
                           self.get_calibration_coeff_map()[x_min + ii + ijob,
                                                            y_min:y_max], 
-                          iquad_data[ii+ijob,:,:].real,
+                          iquad_data[ii+ijob,:,:],
                           window_type, 
                           phase_correction, wave_calibration,
-                          get_phase_maps_cols(
-                              phase_maps, x_min + ii + ijob, y_min, y_max),
+                          #get_phase_maps_cols(
+                          #    phase_maps, x_min + ii + ijob, y_min, y_max),
                           phase_maps.axis,
                           phase_maps.params.convert(),
                           high_order_phase_data,
@@ -1353,10 +1356,12 @@ class Interferogram(orb.cube.InterferogramCube):
                 for ijob, job in jobs:
                     # spectrum comes in place of the interferograms
                     # to avoid using too much memory
-                    iquad_data[ii+ijob,:,:], times = job()
-                    logging.debug({'looping time: {}'.format(np.median(times['loop']))})
-                    logging.debug({'probe1 time: {}'.format(np.median(times['probe1']))})
-                    logging.debug({'probe2 time: {}'.format(np.median(times['probe2']))})
+                    job()
+                    
+                    #iquad_data[ii+ijob,:,:], times = job()
+                    #logging.debug({'looping time: {}'.format(np.median(times['loop']))})
+                    #logging.debug({'probe1 time: {}'.format(np.median(times['probe1']))})
+                    #logging.debug({'probe2 time: {}'.format(np.median(times['probe2']))})
                 
             self._close_pp_server(job_server)
             progress.end()
@@ -1365,6 +1370,9 @@ class Interferogram(orb.cube.InterferogramCube):
             logging.info('Writing quad {}/{} to disk'.format(
                 iquad+1, self.config.QUAD_NB))
             write_start_time = time.time()
+            #out_cube = orb.cube.RWHDFCube(
+            #    self._get_spectrum_cube_path(phase=phase_cube), reset=False)
+
             out_cube[x_min:x_max, y_min:y_max,:] = iquad_data
             logging.info('Quad {}/{} written in {:.2f} s'.format(
                 iquad+1, self.config.QUAD_NB, time.time() - write_start_time))
