@@ -29,9 +29,18 @@ import xml.etree.ElementTree
 import core
 import os
 
+
+class Graph(object):
+
+
+    def __init__(self, params):
+
+        params.get()
+
 class Reporter(object):
 
     def __init__(self, job_file_path, instrument):
+
 
         self.orbs = orbs.Orbs(
             job_file_path, 'object', instrument=instrument,
@@ -40,12 +49,11 @@ class Reporter(object):
         
         #print self.orbs.indexer
         graphs = xml.etree.ElementTree.parse(
-            os.path.join(core.ORBS_DATA_PATH, 'report.xml')).getroot()
+            os.path.join(core.ORBS_DATA_PATH, 'report.xml')).findall('graph')
         
-        self.graphs = dict()
-        for graph in graphs:
-            for i in graph.findall('file'):
-                for j in i: print j
+        
+        for igraph in graphs:
+            
         #     infiles = list()
         #     infiles_xml = step.findall('infile')
         #     for infile_xml in infiles_xml:
@@ -64,8 +72,6 @@ class Reporter(object):
 
     def get_data_path(self, filename):
         return self.get_temp_folder_path() + filename
-
-    
 
     def check(self):
         pass
