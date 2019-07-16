@@ -322,6 +322,11 @@ def add_all_operations(instrument_parser, epilog):
     parser_status = subparsers.add_parser('status', help='Print the status of the reduction process.')
 
     parser_report = subparsers.add_parser('report', help='Make a precise report.')
+    parser_report.add_argument(
+        '--debug', dest='debug', action='store_true',
+        default=False,
+        help="Turn on debug mode (logging messages displayed on screen are more informative)")
+
     
 ########################################################################
 ##################### MAIN #############################################

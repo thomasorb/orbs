@@ -1,5 +1,38 @@
 <?xml version="1.0"?>
 <graphs>
-  <graph name='cam1.alignment_vector' title='CAM2 Alignement vector' xlabel='step' ylabel='alignement'></graph>
-  <graph name='cam2.alignment_vector' title='CAM1 Alignement vector' xlabel='step' ylabel='alignement'></graph>
+
+  <graph type='part' title='Alignment'></graph>
+
+  <graph type='vector' name='cam1.alignment_vector' title='cam1 alignment vector' xlabel='step' ylabel='disalignement (pixels)'></graph>
+  <graph type='vector' name='cam1.alignment_err_vector' title='cam1 alignment vector err' xlabel='step' ylabel='disalignement (pixels)'></graph>
+  <graph type='vector' name='cam2.alignment_vector' title='cam2 alignment vector' xlabel='step' ylabel='disalignement (pixels)'></graph>
+  <graph type='vector' name='cam2.alignment_err_vector' title='cam2 alignment vector err' xlabel='step' ylabel='disalignement (pixels)'></graph>
+  
+  <graph type='image' name='cam1.deep_frame' title='cam1 deep frame' xlabel='x (pixels)' ylabel='y (pixels)'></graph>
+  <graph type='image' name='cam1.deep_frame' title='cam1 deep frame zoom' xlabel='x (pixels)' ylabel='y (pixels)' xmin='500' xmax='1000' ymin='500' ymax='1000'></graph>
+  <graph type='image' name='cam2.deep_frame' title='cam2 deep frame' xlabel='x (pixels)' ylabel='y (pixels)'></graph>
+  <graph type='image' name='cam2.deep_frame' title='cam2 deep frame zoom' xlabel='x (pixels)' ylabel='y (pixels)' xmin='500' xmax='1000' ymin='500' ymax='1000'></graph>
+
+  
+  <graph type='part' title='Merge'></graph>
+
+  <graph type='image' name='merged.deep_frame' title='merged deep frame' xlabel='x (pixels)' ylabel='y (pixels)'></graph>
+  <graph type='image' name='merged.deep_frame' title='merged deep frame zoom' xlabel='x (pixels)' ylabel='y (pixels)' xmin='500' xmax='1000' ymin='500' ymax='1000'></graph>
+
+   <graph type='text' name='merged.alignment_parameters' title='alignment parameters'></graph>
+   <graph type='text' name='merged.modulation_ratio' title='merged modulation ratio'></graph>
+   
+   <graph type='vector' name='merged.transmission_vector' title='merged transmission vector' xlabel='step' ylabel='transmission'></graph>
+   <graph type='vector' name='merged.transmission_vector_err' title='merged transmission vector err' xlabel='step' ylabel='transmission'></graph>
+
+   <graph type='vector' name='merged.stray_light_vector' title='merged stray light vector' xlabel='step' ylabel='counts'></graph>
+   <graph type='vector' name='merged.ext_illumination_vector' title='merged ext illumination' xlabel='step' ylabel='counts'></graph>
+
+   <graph type='part' title='Phase'></graph>
+
+  <graph type='phase' name='merged.phase_maps' title='phase order 0' xlabel='x (pixels)' ylabel='y (pixels)' model='False'></graph>
+  <graph type='phase' name='merged.phase_maps' title='phase order 0 model' xlabel='x (pixels)' ylabel='y (pixels)' model='True'></graph>
+   
+  
+   
 </graphs>
