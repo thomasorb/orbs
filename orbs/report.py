@@ -180,9 +180,7 @@ class Reporter(object):
                     self.pdf.ln(20)
                     
                 
-                
-
-        self.pdf.output('test.pdf', 'F')
+        self.pdf.output('{}_{}.report.pdf'.format(self.orbs.options['object_name'], self.orbs.options['filter_name']), 'F')
 
         #     infiles = list()
         #     infiles_xml = step.findall('infile')
