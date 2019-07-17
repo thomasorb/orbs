@@ -184,6 +184,10 @@ def start(args, resume=False):
         warnings.warn(
             "No WCS calibration")
 
+    if args.noflux:
+        warnings.warn(
+            "No flux calibration")
+
     if args.flat:
         logging.info(
             "Only the phase map will be computed. No spectrum computation !")
@@ -224,7 +228,8 @@ def start(args, resume=False):
             apodization_function=args.apodization_function,
             start_step=args.start_step,
             filter_correction=not args.nofilter,
-            wcs_calibration=not args.nowcs)
+            wcs_calibration=not args.nowcs,
+            flux_calibration=not args.noflux)
        
     except BaseException, e:
         exc_type, exc_value, exc_traceback = sys.exc_info()
@@ -313,6 +318,11 @@ def add_all_operations(instrument_parser, epilog):
                                action='store_true',
                                default=False,
                                help='No WCS calibration of the spectral cube')
+
+    group_special.add_argument('--noflux', dest='noflux',
+                               action='store_true',
+                               default=False,
+                               help='No flux calibration of the spectral cube')
 
 
     parser_resume = subparsers.add_parser('resume', help='Resume reduction process from the last completed step.')

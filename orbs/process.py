@@ -2996,7 +2996,8 @@ class Spectrum(orb.cube.SpectralCube):
         out_cube.set_param('axis_corr', self.get_axis_corr())
         out_cube.set_param('apodization', 1)
         out_cube.set_param('nm_laser', self.config.CALIB_NM_LASER)
-
+        
+        quit()
         # Init of the multiprocessing server
         _params = self.params.convert()
         params = dict()

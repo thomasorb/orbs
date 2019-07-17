@@ -769,7 +769,7 @@ class Orbs(Tools):
                         alt_merge=False,
                         save_as_quads=False,
                         add_frameB=True, filter_correction=True,
-                        wcs_calibration=True):
+                        wcs_calibration=True, flux_calibration=True):
         
         """Run the whole reduction process for two cameras using
         default options 
@@ -807,8 +807,11 @@ class Orbs(Tools):
         :param filter_correction: (Optional) If True, spectral cube is
           corrected for filter during calibration step (default True).
 
-        :param wcs_calibration: (Optional) If True, WCS calibratio is
-          intented during calibration step (default True).
+        :param wcs_calibration: (Optional) If True, WCS calibration is
+          done at calibration step (default True).
+
+        :param flux_calibration: (Optional) If True, flux calibration is
+          done at calibration step (default True).
         """
         # save passed kwargs
         local_kwargs = locals()
@@ -835,7 +838,7 @@ class Orbs(Tools):
                     # launch process step        
                     logging.info('run {}({}, {})'.format(
                         f.__name__, str(args), str(kwargs)))
-                    
+
                     f(*args, **kwargs_dict)
                     
             else: raise StandardError("No function attached to step '{}'".format(
@@ -1432,7 +1435,7 @@ class Orbs(Tools):
 
     def calibrate_spectrum(self, camera_number, cam1_scale=False,
                            no_star=False, filter_correction=True,
-                           wcs_calibration=True):
+                           wcs_calibration=True, flux_calibration=True):
         
         """Calibrate spectrum cube and correct WCS.
 
@@ -1470,11 +1473,14 @@ class Orbs(Tools):
                            instrument=self.instrument)
 
         # compute flambda
-        self._compute_flambda(spectrum)
+        if flux_calibration:
+            self._compute_flambda(spectrum)
+        else:
+            warnings.warn("no flux calibration.")
         
         # Get WCS
         deep_frame = None
-        if not no_star or not wcs_calibration:
+        if not no_star and wcs_calibration:
             self._compute_wcs(camera_number)
         else:
             warnings.warn("no wcs calibration.")

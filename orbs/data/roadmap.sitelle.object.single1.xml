@@ -38,6 +38,7 @@
     <arg value='1' type='int'></arg>
     <kwarg name='filter_correction'></kwarg>
     <kwarg name='wcs_calibration'></kwarg>
+    <kwarg name='flux_calibration'></kwarg>
   </step>
 
 </steps>
