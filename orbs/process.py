@@ -2996,7 +2996,6 @@ class Spectrum(orb.cube.SpectralCube):
         out_cube.set_param('axis_corr', self.get_axis_corr())
         out_cube.set_param('apodization', 1)
         out_cube.set_param('nm_laser', self.config.CALIB_NM_LASER)
-
         out_cube.set_calibration_laser_map(self.get_calibration_laser_map())
         if phase_maps_path is not None:
             try:
@@ -3004,7 +3003,6 @@ class Spectrum(orb.cube.SpectralCube):
             except Exception, e:
                 warnings.warn('phase maps could not be opened: {}'.format(e))
             else:
-                print 'yep'
                 out_cube.set_phase_maps(phase_maps)
 
         if standard_image_path is not None:
@@ -3013,7 +3011,6 @@ class Spectrum(orb.cube.SpectralCube):
             except Exception, e:
                 warnings.warn('standard image could not be opened: {}'.format(e))
             else:
-                print 'yep im'
                 out_cube.set_standard_image(std_im)
 
                 

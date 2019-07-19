@@ -1396,15 +1396,17 @@ class Orbs(Tools):
         logging.info('computing flambda calibration')
         try:
             std_im = spectrum.get_standard_image()
+            std_im.writeto(self._get_wcs_standard_image_path())
+            # image must be reopened for the correct wcs parameters to be loaded
+            std_im = orb.image.Image(self._get_wcs_standard_image_path())
             std_im.register()
             std_im.writeto(self._get_wcs_standard_image_path())
             std_im = orb.photometry.StandardImage(
                 self._get_wcs_standard_image_path())
         except StandardError, e:
-            warnings.warn('no standard image can be created')
-            logging.debug(e)
+            warnings.warn('no standard image can be created: {}'.format(e))
             std_im = None
-            
+        
         flambda = spectrum.compute_flambda(std_im=std_im)
         flambda.writeto(self._get_flambda_file_path())
 
@@ -1488,7 +1490,10 @@ class Orbs(Tools):
         # Calibration
         spectrum.calibrate(
             self._get_flambda_file_path(),
-            self._get_wcs_deep_frame_path())
+            self._get_wcs_deep_frame_path(),
+            self.indexer.get_path(
+                'phase_maps', file_group=camera_number),
+            self._get_wcs_standard_image_path())
         
         perf_stats = perf.print_stats()
         del perf, spectrum
