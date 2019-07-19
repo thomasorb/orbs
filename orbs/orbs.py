@@ -528,11 +528,6 @@ class Orbs(Tools):
         """
         return self._get_file_folder_path_hdr(1) + 'airmass.fits'
 
-    def _get_flambda_file_path(self):
-        """Return path to flambda calibration
-        """
-        return self._get_file_folder_path_hdr(1) + 'flambda.hdf5'
-
     def _get_wcs_deep_frame_path(self):
         """Return path to the registered deep frame
         """
@@ -1387,13 +1382,13 @@ class Orbs(Tools):
         del perf
         return perf_stats                
 
-    def _compute_flambda(self, spectrum):
-        """Compute flambda calibration
+    def _get_standard_image(self, spectrum):
+        """register standard image
         """
         if 'standard_image_path_1.hdf5' in self.options:
             spectrum.params.reset('standard_image_path', self.options['standard_image_path_1.hdf5'])
         
-        logging.info('computing flambda calibration')
+        logging.info('registering standard image')
         try:
             std_im = spectrum.get_standard_image()
             std_im.writeto(self._get_wcs_standard_image_path())
@@ -1401,16 +1396,12 @@ class Orbs(Tools):
             std_im = orb.image.Image(self._get_wcs_standard_image_path())
             std_im.register()
             std_im.writeto(self._get_wcs_standard_image_path())
-            std_im = orb.photometry.StandardImage(
-                self._get_wcs_standard_image_path())
+            return self._get_wcs_standard_image_path()
+        
         except StandardError, e:
             warnings.warn('no standard image can be created: {}'.format(e))
-            std_im = None
+            return None
         
-        flambda = spectrum.compute_flambda(std_im=std_im)
-        flambda.writeto(self._get_flambda_file_path())
-
-
     def _compute_wcs(self, camera_number):
         """Register deep frame and compute wcs
         """
@@ -1475,8 +1466,9 @@ class Orbs(Tools):
                            instrument=self.instrument)
 
         # compute flambda
+        std_im_path = None
         if flux_calibration:
-            self._compute_flambda(spectrum)
+            std_im_path = self._get_standard_image(spectrum)
         else:
             warnings.warn("no flux calibration.")
         
@@ -1489,11 +1481,10 @@ class Orbs(Tools):
 
         # Calibration
         spectrum.calibrate(
-            self._get_flambda_file_path(),
             self._get_wcs_deep_frame_path(),
             self.indexer.get_path(
                 'phase_maps', file_group=camera_number),
-            self._get_wcs_standard_image_path())
+            std_im_path)
         
         perf_stats = perf.print_stats()
         del perf, spectrum

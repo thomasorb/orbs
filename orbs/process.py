@@ -42,6 +42,7 @@ import orb.utils.photometry
 import orb.utils.io
 import orb.cutils
 import orb.fit
+import orb.photometry
 
 import orb.utils.astrometry
 import orb.constants
@@ -2924,18 +2925,17 @@ class Spectrum(orb.cube.SpectralCube):
         return self._data_path_hdr + "calibrated_spectrum.hdf5"
 
         
-    def calibrate(self, flambda_path=None, deep_frame_path=None, phase_maps_path=None, standard_image_path=None):
+    def calibrate(self, deep_frame_path=None, phase_maps_path=None,
+                  standard_image_path=None):
         
         """Create a calibrated spectrum cube.
         """
         
         def _calibrate_spectrum_column(spectrum_col, 
                                        calibration_laser_col, nm_laser,
-                                       base_axis, params, flambda):
+                                       base_axis, params):
             times = dict()
             QUALITY = 30
-
-            if flambda is None: flambda = 1.
 
             spectrum_col[np.nonzero(np.isnan(spectrum_col))] = 0.
 
@@ -2955,7 +2955,7 @@ class Spectrum(orb.cube.SpectralCube):
                     spectrum_col[icol,:], axis=iaxis, params=params)
                 ires, itimes = ispectrum.interpolate(
                     base_axis, quality=QUALITY, timing=True)
-                result_col[icol,:] = ires.data * flambda
+                result_col[icol,:] = ires.data
                 loop_times.append(itimes)
 
             loop_times = np.array(loop_times)
@@ -2985,12 +2985,7 @@ class Spectrum(orb.cube.SpectralCube):
             out_cube.set_deep_frame(deep_frame.data)
             out_cube.set_params(deep_frame.params)
 
-        if flambda_path is not None:
-            flambda = orb.core.Cm1Vector1d(flambda_path).project(base_axis).data
-            out_cube.set_param('flambda', flambda)
-        else:
-            flamba = None
-
+        
         out_cube.set_param('wavenumber_calibration', True)
         out_cube.set_param('wavetype', 'WAVENUMBER')
         out_cube.set_param('axis_corr', self.get_axis_corr())
@@ -3005,15 +3000,27 @@ class Spectrum(orb.cube.SpectralCube):
             else:
                 out_cube.set_phase_maps(phase_maps)
 
+        std_im = None
         if standard_image_path is not None:
             try:
-                std_im = orb.image.Image(standard_image_path)
+                std_im = orb.photometry.StandardImage(standard_image_path)
             except Exception, e:
                 warnings.warn('standard image could not be opened: {}'.format(e))
             else:
                 out_cube.set_standard_image(std_im)
 
-                
+        try:
+            std_sp = self.get_standard_spectrum() # get standard spectrum from 'standard_path'
+        except Exception, e:
+            warnings.warn('standard spectrum could not be opened {}'.format(e))
+            std_sp = None
+        else:
+            # set it as as a dataset so that it goes with the output cube
+            out_cube.set_standard_spectrum(std_sp)
+
+        flambda = self.compute_flambda(std_im=std_im, std_sp=std_sp)
+        out_cube.set_param('flambda', flambda.project(self.get_base_axis()).data)
+            
         # Init of the multiprocessing server
         _params = self.params.convert()
         params = dict()
@@ -3051,8 +3058,7 @@ class Spectrum(orb.cube.SpectralCube):
                         iquad_data[ii+ijob,:,:self.dimz], 
                         iquad_calibration_laser_map[ii+ijob,:],
                         self.config.CALIB_NM_LASER,
-                        base_axis.data, params,
-                        flambda),
+                        base_axis.data, params),
                     modules=("import logging",
                              "import numpy as np",
                              "import orb.utils.spectrum",
