@@ -37,6 +37,7 @@ setup(
         '': ['*~', '*.so', '*.pyc'],
         'orbs':['*~', '*.so', '*.pyc', '*.c']},
     platforms='any',
+    scripts = ['scripts/orbs',],
     classifiers = [
         'Programming Language :: Python',
         'Programming Language :: Cython',
