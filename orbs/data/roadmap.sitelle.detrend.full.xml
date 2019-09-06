@@ -1,14 +1,6 @@
 <?xml version="1.0"?>
 <steps>
 
-  <step name='compute_alignment_vector' cam='1'>
-    <arg value='1' type='int'></arg>
-  </step>
-
-  <step name='compute_alignment_vector' cam='2'>
-    <arg value='2' type='int'></arg>
-  </step>
-
   <step name='compute_interferogram' cam='1'>
     <arg value='1' type='int'></arg>
   </step>
