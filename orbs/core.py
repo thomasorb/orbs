@@ -161,10 +161,15 @@ class JobFile(object):
             header_key = 'COMPARISON'
         else:
             raise StandardError('Keywords OBS or COMPARISON must be at least in the job file.')
-        
-        self.header = orb.utils.io.read_fits(
-            self.raw_params[header_key][0],
-            return_hdu_only=True)[0].header
+
+        try:
+            self.header = orb.utils.io.read_fits(
+                self.raw_params[header_key][0],
+                return_hdu_only=True)[0].header
+        except IOError:
+            warnings.warn('File {} could not be opened!'.format(self.raw_params[header_key][0]))
+            self.header = None
+            return
 
         # check header
         if self.header['CCDBIN1'] != self.header['CCDBIN2']:
@@ -256,9 +261,11 @@ class JobFile(object):
             warnings.warn('Some parameters in the job file are not recognized: {}'.format(self.raw_params.keys()))
         
     def get_params(self):
+        self.check_validity()
         return orb.core.ROParams(self.params)
 
     def get_config(self):
+        self.check_validity()
         return orb.core.ROParams(self.config)
         
     def as_str(self):
@@ -271,6 +278,13 @@ class JobFile(object):
         
     def open(self):
         return orb.utils.io.open_file(self.path, 'r')
+
+    def is_valid(self):
+        if self.header is not None: return True
+        return False
+
+    def check_validity(self):
+        if not self.is_valid(): raise StandardError('JobFile invalid. One or more file could not be opened properly.')
 
 
 ##################################################

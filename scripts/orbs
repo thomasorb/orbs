@@ -32,6 +32,7 @@ import argparse
 from argparse import ArgumentParser
 import numpy as np
 import shutil
+import subprocess
 
 # Defining the path to ORBS module from script location
 script_path = os.path.dirname(os.path.realpath(__file__)).split()
@@ -87,6 +88,7 @@ def resume(args, parser):
     args = parser.parse_args(recfile.last_command)
     start(args, resume=True)
 
+
 def clean(args):
     def remove(path):
         if os.path.exists(path):
@@ -111,7 +113,29 @@ def clean(args):
 
     logging.info('Working directory clean')
 
+def data(jobfile):
+    print jobfile.raw_params.keys()
+    files = jobfile.raw_params['OBS']
+    to_download = list()
+    for ifile in files:
+        if os.path.exists(ifile): continue
+        to_download.append(os.path.splitext(os.path.split(ifile)[1])[0])
 
+    if len(to_download) > 0:
+        for ifile in to_download:
+            command = 'cadc-data get -v -z CFHT {}'.format(ifile)
+            print '> downloading {} (command: {})'.format(ifile, command)
+            result = subprocess.call(command, shell=True)
+            if result != 0: warnings.warn('{} could not be downloaded'.format(ifile))
+            else:
+                command = 'funpack {}'.format(ifile + '.fits.fz')
+                print '> uncompressing {} (command: {})'.format(ifile, command)
+                result = subprocess.call(command, shell=True)
+                if result != 0: warnings.warn("{} could not be uncompressed (do you have funpack installed, if not try 'sudo apt install libcfitsio-bin')".format(ifile))
+                else:
+                    print '> removing compressed file {}'.format(ifile + '.fits.fz')
+                    os.remove(ifile + '.fits.fz')
+                        
 def get_logfile_name(args):
      return os.path.basename(args.job_file_path) + '.log'
 
@@ -329,6 +353,9 @@ def add_all_operations(instrument_parser, epilog):
 
     parser_clean = subparsers.add_parser('clean', help='Clean all the temporary files. Final products are not removed.')
 
+    parser_data = subparsers.add_parser('data', help='Check if data needed in job file exists and download it if necessary from CADC servers.')
+
+
     parser_status = subparsers.add_parser('status', help='Print the status of the reduction process.')
 
     parser_report = subparsers.add_parser('report', help='Make a precise report.')
@@ -400,7 +427,11 @@ if __name__ == "__main__":
 
     # Read job file (check for file integrity)
     jobfile = JobFile(args.job_file_path, args.instrument_mode, is_laser=is_laser)
-    out_params = jobfile.get_params()
+
+    if jobfile.is_valid():
+        out_params = jobfile.get_params()
+    else:
+        out_params = list()
 
     # start and config logging
     try:
@@ -418,6 +449,7 @@ if __name__ == "__main__":
     ###################
     
     if args.subparser_name == 'start':
+        jobfile.check_validity()
         logging.info("Start %s"%args.job_file_path.strip())
         # record last command
         recfile = RecordFile(args.job_file_path)
@@ -428,20 +460,28 @@ if __name__ == "__main__":
         start(args)
         
     if args.subparser_name == 'status':
+        jobfile.check_validity()
         logging.info("Status %s"%args.job_file_path.strip())
         status(args)
 
     if args.subparser_name == 'report':
+        jobfile.check_validity()
         logging.info("Report %s"%args.job_file_path.strip())
         report(args)
         
     if args.subparser_name == 'resume':
+        jobfile.check_validity()
         logging.info("Resume %s"%args.job_file_path.strip())
         resume(args, parser)
 
     if args.subparser_name == 'clean':
         logging.info("Clean %s"%args.job_file_path.strip())
         clean(args)
+
+    if args.subparser_name == 'data':
+        logging.info("Data %s"%args.job_file_path.strip())
+        data(jobfile)
+
 
         
 
