@@ -32,7 +32,7 @@ import argparse
 from argparse import ArgumentParser
 import numpy as np
 import shutil
-import subprocess
+import shlex, subprocess32
 
 # Defining the path to ORBS module from script location
 script_path = os.path.dirname(os.path.realpath(__file__)).split()
@@ -113,28 +113,58 @@ def clean(args):
 
     logging.info('Working directory clean')
 
-def data(jobfile):
+def get_data(jobfile, args):
     print jobfile.raw_params.keys()
-    files = jobfile.raw_params['OBS']
+    files = list()
+    for ipath in ['OBS', 'STDIM', 'FLAT']:
+        files += jobfile.raw_params[ipath]
     to_download = list()
     for ifile in files:
         if os.path.exists(ifile): continue
         to_download.append(os.path.splitext(os.path.split(ifile)[1])[0])
 
     if len(to_download) > 0:
+        error_files = list()
         for ifile in to_download:
+            if os.path.exists(ifile + '.fits'):
+                print 'file {} already downloaded'.format(ifile + '.fits')
+                continue
+
             command = 'cadc-data get -v -z CFHT {}'.format(ifile)
+
+            # downloading
             print '> downloading {} (command: {})'.format(ifile, command)
-            result = subprocess.call(command, shell=True)
-            if result != 0: warnings.warn('{} could not be downloaded'.format(ifile))
-            else:
-                command = 'funpack {}'.format(ifile + '.fits.fz')
-                print '> uncompressing {} (command: {})'.format(ifile, command)
-                result = subprocess.call(command, shell=True)
-                if result != 0: warnings.warn("{} could not be uncompressed (do you have funpack installed, if not try 'sudo apt install libcfitsio-bin')".format(ifile))
-                else:
-                    print '> removing compressed file {}'.format(ifile + '.fits.fz')
-                    os.remove(ifile + '.fits.fz')
+            try:
+                p = subprocess32.run(shlex.split(command), timeout=10)
+            except subprocess32.TimeoutExpired:
+                print 'timeout expired'
+                continue
+            
+            if p.returncode != 0:
+                warnings.warn('{} could not be downloaded'.format(ifile))
+                error_files.append(ifile)
+                continue
+
+            # uncompressing
+            command = 'funpack {}'.format(ifile + '.fits.fz')
+            print '> uncompressing {} (command: {})'.format(ifile, command)
+            p = subprocess32.run(shlex.split(command))
+            if p.returncode != 0:
+                warnings.warn("{} could not be uncompressed (do you have funpack installed, if not try 'sudo apt install libcfitsio-bin')".format(ifile))
+                error_files.append(ifile)
+                continue
+            
+            # deleting compressed file
+            print '> removing compressed file {}'.format(ifile + '.fits.fz')
+            os.remove(ifile + '.fits.fz')
+            
+            print '----------------'
+            
+        if len(error_files) > 0:
+            print 'some files could not be downloaded (timeout ?).'
+            for ifile in error_files:
+                print '   {}'.format(ifile)
+            print 'Please repeat the same command to try again.'
                         
 def get_logfile_name(args):
      return os.path.basename(args.job_file_path) + '.log'
@@ -353,7 +383,8 @@ def add_all_operations(instrument_parser, epilog):
 
     parser_clean = subparsers.add_parser('clean', help='Clean all the temporary files. Final products are not removed.')
 
-    parser_data = subparsers.add_parser('data', help='Check if data needed in job file exists and download it if necessary from CADC servers.')
+    parser_get_data = subparsers.add_parser('get-data', help='Check if data needed in job file exists and download it if necessary from CADC servers.')
+
 
 
     parser_status = subparsers.add_parser('status', help='Print the status of the reduction process.')
@@ -478,9 +509,9 @@ if __name__ == "__main__":
         logging.info("Clean %s"%args.job_file_path.strip())
         clean(args)
 
-    if args.subparser_name == 'data':
-        logging.info("Data %s"%args.job_file_path.strip())
-        data(jobfile)
+    if args.subparser_name == 'get-data':
+        logging.info("Get Data %s"%args.job_file_path.strip())
+        get_data(jobfile, args)
 
 
         

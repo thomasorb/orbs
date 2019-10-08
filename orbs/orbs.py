@@ -253,8 +253,8 @@ class Orbs(Tools):
             calib_hdu = orb.utils.io.read_fits(
                 self.options['calibration_laser_map_path'],
                 return_hdu_only=True)
-            if 'CALIBNM' in calib_hdu[0].header:
-                self.config['CALIB_NM_LASER'] = calib_hdu[0].header['CALIBNM']
+            if 'CALIBNM' in calib_hdu.header:
+                self.config['CALIB_NM_LASER'] = calib_hdu.header['CALIBNM']
                 if not silent:
                     warnings.warn('Calibration laser wavelength (CALIB_NM_LASER) read from calibration laser map header: {}'.format(self.config['CALIB_NM_LASER']))
                
@@ -685,7 +685,7 @@ class Orbs(Tools):
             cube = HDFCube(std_path, instrument=self.instrument, ncpus=self.config.NCPUS)
             hdr = cube.get_frame_header(0)
         else:
-            hdr = orb.utils.io.read_fits(std_path, return_hdu_only=True)[0].header
+            hdr = orb.utils.io.read_fits(std_path, return_hdu_only=True).header
         return ''.join(hdr['OBJECT'].strip().split()).upper()
         
    

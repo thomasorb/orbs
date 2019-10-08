@@ -165,12 +165,13 @@ class JobFile(object):
         try:
             self.header = orb.utils.io.read_fits(
                 self.raw_params[header_key][0],
-                return_hdu_only=True)[0].header
+                return_hdu_only=True).header
+            
         except IOError:
             warnings.warn('File {} could not be opened!'.format(self.raw_params[header_key][0]))
             self.header = None
             return
-
+        
         # check header
         if self.header['CCDBIN1'] != self.header['CCDBIN2']:
             self.print_error(
@@ -202,7 +203,7 @@ class JobFile(object):
         # get dark exposition time
         if len(self.raw_params['DARK']) > 0:
             dark_hdr = to.read_fits(
-                self.raw_params['DARK'][0], return_hdu_only=True)[0].header
+                self.raw_params['DARK'][0], return_hdu_only=True).header
             self.params['dark_time'] = float(dark_hdr['EXPTIME'])
 
         # define target position in the frame
