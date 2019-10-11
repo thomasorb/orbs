@@ -3002,7 +3002,7 @@ class Spectrum(orb.cube.SpectralCube):
         std_im = None
         if standard_image_path is not None:
             try:
-                std_im = orb.photometry.StandardImage(standard_image_path)
+                std_im = orb.image.StandardImage(standard_image_path)
             except Exception, e:
                 warnings.warn('standard image could not be opened: {}'.format(e))
             else:
