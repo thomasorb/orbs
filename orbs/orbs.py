@@ -892,6 +892,10 @@ class Orbs(Tools):
 
         alignment_vector_path_1 = self.indexer['cam1.alignment_vector']
 
+        star_list_path, fwhm_pix = cube.cube_A.detect_stars(
+            min_star_number=self.config.DETECT_STAR_NB)
+
+        cube.create_cosmic_ray_maps(alignment_vector_path_1, star_list_path, fwhm_pix)
         cube.clean_cosmic_ray_maps()
         perf_stats = perf.print_stats()
         del cube, perf
@@ -1085,9 +1089,17 @@ class Orbs(Tools):
             config=self.config)
 
         # find alignment coefficients
-        
         if not no_star:
-            cube.compute_alignment_parameters(combine_first_frames=raw)
+            if self.indexer['merged.alignment_parameters'] is not None:
+                if os.path.exists(self.indexer['merged.alignment_parameters']):
+                    warnings.warn('alignment parameters already computed from a previous reduction process. Computation will not be done again. To force computation please remove {}'.format(self.indexer['merged.alignment_parameters']))
+                    alignment_parameters = orb.utils.io.read_fits(
+                        self.indexer['merged.alignment_parameters'])
+                    cube.dx, cube.dy, cube.dr, cube.da, cube.db = alignment_parameters[:5]
+                    cube.rc = alignment_parameters[5:7]
+                    cube.zoom_factor = alignment_parameters[7:9]
+            else:
+                cube.compute_alignment_parameters(combine_first_frames=raw)
         else:
             if laser:
                 raise NotImplementedError('init_dx, init_dy and init_angle must be defined in find_laser_alignment itself')

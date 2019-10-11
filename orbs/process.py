@@ -2740,7 +2740,6 @@ class CosmicRayDetector(InterferogramMerger):
             fcr_mapB = orb.cutils.check_cosmic_rays_neighbourhood(
                 frameB, fcr_mapB,
                 DETECT_NEI_BOX_SIZE, DETECT_NEI_COEFF)
-            #print 'B', len(np.nonzero(fcr_mapB)[0])
 
             return fcr_mapA, fcr_mapB
            
@@ -2821,7 +2820,7 @@ class CosmicRayDetector(InterferogramMerger):
                        self.dy - alignment_vector_1[ik+ijob, 1],
                        self.dr, self.da, self.db,
                        self.rc[0], self.rc[1],
-                       self.zoom_factor, self.zoom_factor],
+                       self.zoom_factor[0], self.zoom_factor[1]],
                       star_list, fwhm_pix,
                       alignment_vector_1[ik+ijob, 0],
                       alignment_vector_1[ik+ijob, 1]),
