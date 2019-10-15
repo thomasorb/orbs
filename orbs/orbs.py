@@ -1146,10 +1146,10 @@ class Orbs(Tools):
         perf = Performance(cube.cube_A, "Merging process", 1,
                            instrument=self.instrument)
 
-        # cube.compute_correction_vectors(
-        #     smooth_vector=smooth_vector,
-        #     compute_ext_light=(not self.options['no_sky']
-        #                        and self.config['EXT_ILLUMINATION']))
+        cube.compute_correction_vectors(
+            smooth_vector=smooth_vector,
+            compute_ext_light=(not self.options['no_sky']
+                               and self.config['EXT_ILLUMINATION']))
         cube.merge(add_frameB=add_frameB)
         
         perf_stats = perf.print_stats()
