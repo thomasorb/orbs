@@ -2959,10 +2959,16 @@ class Spectrum(orb.cube.SpectralCube):
                     loop_times.append(itimes)
 
             loop_times = np.array(loop_times)
-            times['loop_time_median'] = np.median(loop_times[:,0])
-            times['loop_time_min'] = np.min(loop_times[:,0])
-            times['loop_time_max'] = np.max(loop_times[:,0])
-            times['loop_breaks'] = np.median(loop_times[:,1:], axis=0)
+            try:
+                times['loop_time_median'] = np.median(loop_times[:,0])
+                times['loop_time_min'] = np.min(loop_times[:,0])
+                times['loop_time_max'] = np.max(loop_times[:,0])
+                times['loop_breaks'] = np.median(loop_times[:,1:], axis=0)
+            except StandardError:
+                times['loop_time_median'] = np.nan
+                times['loop_time_min'] = np.nan
+                times['loop_time_max'] = np.nan
+                times['loop_breaks'] = np.nan
                 
             return result_col, times
 
