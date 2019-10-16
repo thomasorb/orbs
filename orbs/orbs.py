@@ -1417,6 +1417,10 @@ class Orbs(Tools):
     def _compute_wcs(self, camera_number):
         """Register deep frame and compute wcs
         """
+        if os.path.exists(self._get_wcs_deep_frame_path()):
+            warnings.warn('WCS has already been computed and will be used as is. To force WCS computation delete {}'.format(self._get_wcs_deep_frame_path()))
+            return
+        
         if (self.options['target_ra'] is None or self.options['target_dec'] is None
             or self.options['target_x'] is None or self.options['target_y'] is None):
             warnings.warn("wcs options are missing. wcs correction cannot be done.")

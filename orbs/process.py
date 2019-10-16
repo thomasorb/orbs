@@ -2955,7 +2955,8 @@ class Spectrum(orb.cube.SpectralCube):
                 ires, itimes = ispectrum.interpolate(
                     base_axis, quality=QUALITY, timing=True)
                 result_col[icol,:] = ires.data
-                loop_times.append(itimes)
+                if times is not None:
+                    loop_times.append(itimes)
 
             loop_times = np.array(loop_times)
             times['loop_time_median'] = np.median(loop_times[:,0])
