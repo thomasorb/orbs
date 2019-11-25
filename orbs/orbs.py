@@ -29,7 +29,7 @@ process.py
 __author__ = "Thomas Martin"
 __licence__ = "Thomas Martin (thomas.martin.1@ulaval.ca)"                      
 __docformat__ = 'reStructuredText'
-import version
+from . import version
 __version__ = version.__version__
 
 import os
@@ -51,10 +51,10 @@ import bottleneck as bn
 from orb.core import Tools, Indexer, TextColor
 from orb.cube import FDCube, HDFCube, Cube, RWHDFCube
 from orb.core import FilterFile, ProgressBar
-from process import RawData, InterferogramMerger, Interferogram
-from process import Spectrum, CalibrationLaser
-from process import CosmicRayDetector
-from core import JobFile, RoadMap
+from .process import RawData, InterferogramMerger, Interferogram
+from .process import Spectrum, CalibrationLaser
+from .process import CosmicRayDetector
+from .core import JobFile, RoadMap
 
 import orb.constants
 import orb.version
@@ -225,7 +225,7 @@ class Orbs(Tools):
                 warnings.warn('Bad order. Option file tells {} while filter file tells {}. Order parameter replaced by {}'.format(int(self.options['order']), _order, _order))
                 self.options['order'] = _order
             if abs(self.options['step'] - float(_step))/float(_step) > 0.1:
-                raise StandardError('There is more than 10% difference between the step size in the option file ({}) and the step size recorded in the filter file ({})'.format(self.options['step'], _step))
+                raise Exception('There is more than 10% difference between the step size in the option file ({}) and the step size recorded in the filter file ({})'.format(self.options['step'], _step))
                 
         
         # In the case of LASER cube the parameters are set
@@ -241,7 +241,7 @@ class Orbs(Tools):
         # If a keyword is the same as a configuration keyword,
         # config option is changed
         newconf = self.jobfile.get_config()
-        for key in self.config.iterkeys():
+        for key in self.config.keys():
            if key in newconf:
                self.config.reset(key, newconf[key])
                if not silent:
@@ -290,7 +290,7 @@ class Orbs(Tools):
         
             if (('dark_path_2' in self.options or 'dark_path_1' in self.options)
                 and 'dark_time' not in self.options):
-                raise StandardError('Dark integration time must be set (SPEDART) if the path to a dark calibration files folder is given')
+                raise Exception('Dark integration time must be set (SPEDART) if the path to a dark calibration files folder is given')
             
             export_images('flat_path_1', 1)
             export_images('flat_path_2', 2)
@@ -339,7 +339,7 @@ class Orbs(Tools):
                 and ('image_list_path_2' in self.options)):
 
                 if dimz1 != dimz2:
-                    raise StandardError('The number of images of CAM1 and CAM2 are not the same (%d != %d)'%(dimz1, dimz2))
+                    raise Exception('The number of images of CAM1 and CAM2 are not the same (%d != %d)'%(dimz1, dimz2))
 
                 if self.options['step_nb'] < dimz1:
                     if not silent:
@@ -378,7 +378,7 @@ class Orbs(Tools):
                             zpd_index = ik
                             zpd_found = True
                             break
-                    if not zpd_found: raise StandardError('zpd index could not be found')
+                    if not zpd_found: raise Exception('zpd index could not be found')
                 del cube1
                 
             self.options['zpd_index'] = zpd_index
@@ -428,7 +428,7 @@ class Orbs(Tools):
         if target in self.targets:
             self.target = target
         else:
-            raise StandardError('Unknown target type: target must be in {}'.format(self.targets))
+            raise Exception('Unknown target type: target must be in {}'.format(self.targets))
 
         self.roadmap = RoadMap(
             self.config["INSTRUMENT_NAME"].lower(), target, 'full', self.indexer)
@@ -506,7 +506,7 @@ class Orbs(Tools):
         if camera_number == 1: cam = 'cam1'
         elif camera_number == 2: cam = 'cam2'
         elif camera_number == 0: cam = 'merged'
-        else: raise StandardError('Camera number must be 0, 1, or 2')
+        else: raise Exception('Camera number must be 0, 1, or 2')
         
         return ('.' + os.sep + self.options['object_name']
                 + '_' +  self.options['filter_name'] + '.' + cam + '.')
@@ -591,7 +591,7 @@ class Orbs(Tools):
                     indexer=self.indexer,
                     instrument=self.instrument)
             else:
-                raise StandardError("No image list file for camera 1 given, please check option file")
+                raise Exception("No image list file for camera 1 given, please check option file")
         elif (camera_number == 2):
             if ("image_list_path_2" in self.options):
                 self.indexer.set_file_group('cam2')
@@ -603,9 +603,9 @@ class Orbs(Tools):
                     indexer=self.indexer,
                     instrument=self.instrument)
             else:
-                raise StandardError("No image list file for camera 2 given, please check option file")
+                raise Exception("No image list file for camera 2 given, please check option file")
         else:
-            raise StandardError("Camera number must be either 1 or 2, please check 'camera_number' parameter")
+            raise Exception("Camera number must be either 1 or 2, please check 'camera_number' parameter")
             return None
         
         cube.params.reset('camera', camera_number)
@@ -632,7 +632,7 @@ class Orbs(Tools):
                 return self.indexer.get_path('cam2.corr_interfero_cube', err=True)
             else:
                 return self.indexer.get_path('cam2.interfero_cube', err=True)
-        else: raise StandardError('Camera number must be 0, 1 or 2')
+        else: raise Exception('Camera number must be 0, 1 or 2')
 
 
     def _get_phase_fit_order(self):
@@ -664,7 +664,7 @@ class Orbs(Tools):
         else: # standard target
             source_list = list()
             if not 'source_list_path' in self.options:
-                raise StandardError('A list of sources must be given (option file keyword SOURCE_LIST_PATH)')
+                raise Exception('A list of sources must be given (option file keyword SOURCE_LIST_PATH)')
             with orb.utils.io.open_file(self.options['source_list_path'], 'r') as f:
                 for line in f:
                     x,y = line.strip().split()[:2]
@@ -705,7 +705,7 @@ class Orbs(Tools):
         elif (camera_number == 0):
             balanced = True
         else:
-            raise StandardError(
+            raise Exception(
                 "Please choose a correct camera number : 0, 1 or 2")
         return balanced
 
@@ -754,7 +754,7 @@ class Orbs(Tools):
                     bad_frames_list, interf_cube.dimz)
                 bad_frames_vector[bad_frames_list] = 1
             else:
-                raise StandardError('Bad indexes in the bad frame list')
+                raise Exception('Bad indexes in the bad frame list')
     
         return bad_frames_vector
 
@@ -825,7 +825,7 @@ class Orbs(Tools):
                             if kwarg in local_kwargs:
                                 kwargs_dict[kwarg] = local_kwargs[kwarg]
                             else:
-                                raise StandardError(
+                                raise Exception(
                                     'kwarg {} not defined'.format(kwarg))
                         else:
                             kwargs_dict[kwarg] = kwargs[kwarg]
@@ -836,7 +836,7 @@ class Orbs(Tools):
 
                     f(*args, **kwargs_dict)
                     
-            else: raise StandardError("No function attached to step '{}'".format(
+            else: raise Exception("No function attached to step '{}'".format(
                 self.roadmap.road[istep]['name']))
 
 
@@ -1055,12 +1055,12 @@ class Orbs(Tools):
         if "bin_cam_1" in self.options: 
             bin_cam_1 = self.options["bin_cam_1"]
         else:
-            raise StandardError("No binning for the camera 1 given")
+            raise Exception("No binning for the camera 1 given")
 
         if "bin_cam_2" in self.options: 
             bin_cam_2 = self.options["bin_cam_2"]
         else:
-            raise StandardError("No binning for the camera 2 given")
+            raise Exception("No binning for the camera 2 given")
 
         # get interferograms frames paths
         if raw:
@@ -1185,17 +1185,17 @@ class Orbs(Tools):
             if "calib_path_1" in self.options: 
                 calib_path = self.options["calib_path_1.hdf5"]
             else: 
-                raise StandardError("No path to the calibration laser files list given, check the option file")
+                raise Exception("No path to the calibration laser files list given, check the option file")
         elif camera_number == 2:
             if "calib_path_2" in self.options: 
                 calib_path = self.options["calib_path_2.hdf5"]
             else: 
-                raise StandardError("No path to the calibration laser files list given, check the option file")
+                raise Exception("No path to the calibration laser files list given, check the option file")
         elif camera_number == 0:
             calib_path = self._get_interfero_cube_path(
                 camera_number, corrected=True)
         else:
-            raise StandardError("Camera number must be either 1, 2 or 0")
+            raise Exception("Camera number must be either 1, 2 or 0")
 
         if self.target == 'laser':
             ## order = self.options['order']
@@ -1303,7 +1303,7 @@ class Orbs(Tools):
             try:
                 apodization_function = float(apodization_function)
             except ValueError:
-                raise StandardError("Unrecognized apodization function. Please try a float or " + str(self._APODIZATION_FUNCTIONS))
+                raise Exception("Unrecognized apodization function. Please try a float or " + str(self._APODIZATION_FUNCTIONS))
             
         # wavenumber option
         wavenumber = True # output always in cm-1 (calibration step
@@ -1410,7 +1410,7 @@ class Orbs(Tools):
             std_im.writeto(self._get_wcs_standard_image_path())
             return self._get_wcs_standard_image_path()
         
-        except StandardError, e:
+        except Exception as e:
             warnings.warn('no standard image can be created: {}'.format(e))
             return None
         
@@ -1433,7 +1433,7 @@ class Orbs(Tools):
                                      params=self.options)
         try:
             deep_frame.register()
-        except Exception, e:
+        except Exception as e:
             exc_info = sys.exc_info()
             warnings.warn('Error during WCS computation, check WCS parameters in the option file: {}'.format(e))
             traceback.print_exception(*exc_info)

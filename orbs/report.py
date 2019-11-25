@@ -21,12 +21,12 @@
 ## along with ORBS.  If not, see <http://www.gnu.org/licenses/>.
 
 
-import orbs
+from . import orbs
 import pylab as pl
 from fpdf import FPDF
 import shutil
 import xml.etree.ElementTree
-import core
+from . import core
 import os
 import orb.utils.io
 import logging
@@ -49,7 +49,7 @@ class Graph(object):
                 xmin, xmax, ymin, ymax = self.getp(('xmin', 'xmax', 'ymin', 'ymax'), cast=int)
                 pl.xlim((xmin, xmax))
                 pl.ylim((ymin, ymax))
-            except Exception, e:
+            except Exception as e:
                 logging.debug('error in getting xlim, ylim parameters: {}'.format(e))
 
         self.params = params
@@ -117,10 +117,10 @@ class Graph(object):
             keys = (keys, )
         allp = list()
         for ikey in keys: 
-            if ikey in self.params.keys():
+            if ikey in list(self.params.keys()):
                 allp.append(cast(self.params.get(ikey)))
             else:
-                raise StandardError('no such parameter {}'.format(ikey))
+                raise Exception('no such parameter {}'.format(ikey))
         if len(allp) == 1:
             allp = allp[0]
         return allp
@@ -171,7 +171,7 @@ class Reporter(object):
                     igraph = Graph(igraphxml, self.orbs.indexer)
                     ipath = igraph.savefig(self.get_temp_folder_path())
                     self.pdf.image(ipath, None, None, self.GRAPHWIDTH)
-                except Exception, e:
+                except Exception as e:
                     warnings.warn('graph {} not generated: {}'.format(igraphxml.get('name'), e))
                     self.pdf.set_font('arial', '', 15)
                     self.pdf.cell(0, 12, igraphxml.get('name') + ' NOT GENERATED !!!', 1, 0, 'L')

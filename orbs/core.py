@@ -160,7 +160,7 @@ class JobFile(object):
         elif len(self.raw_params['COMPARISON']):
             header_key = 'COMPARISON'
         else:
-            raise StandardError('Keywords OBS or COMPARISON must be at least in the job file.')
+            raise Exception('Keywords OBS or COMPARISON must be at least in the job file.')
 
         try:
             self.header = orb.utils.io.read_fits(
@@ -182,7 +182,7 @@ class JobFile(object):
             hdr_key = self.header_keys[ikey][0]
             hdr_cast = self.header_keys[ikey][1]
             if hdr_key not in self.header:
-                raise StandardError('malformed header. {} keyword should be present'.format(hdr_key))
+                raise Exception('malformed header. {} keyword should be present'.format(hdr_key))
             self.params[ikey] = hdr_cast(self.header[hdr_key])
 
 
@@ -225,13 +225,13 @@ class JobFile(object):
             self.params['calibration_laser_map_path'] = self.raw_params.pop('CALIBMAP')
        
         elif not is_laser:
-            raise StandardError('CALIBMAP keyword must be set')
+            raise Exception('CALIBMAP keyword must be set')
 
         # get standard spectrum params
         if 'STDPATH' in self.raw_params:
             self.params['standard_path'] = self.raw_params.pop('STDPATH')
             if not os.path.exists(self.params['standard_path']):
-                raise StandardError('Standard star file does not exist ({})'.format(
+                raise Exception('Standard star file does not exist ({})'.format(
                     self.params['standard_path']))
 
         # convert ra and dec
@@ -259,7 +259,7 @@ class JobFile(object):
                 self.config[ikey] = self.raw_params.pop(ikey)
                 
         if len(self.raw_params) > 0:
-            warnings.warn('Some parameters in the job file are not recognized: {}'.format(self.raw_params.keys()))
+            warnings.warn('Some parameters in the job file are not recognized: {}'.format(list(self.raw_params.keys())))
         
     def get_params(self):
         self.check_validity()
@@ -285,7 +285,7 @@ class JobFile(object):
         return False
 
     def check_validity(self):
-        if not self.is_valid(): raise StandardError('JobFile invalid. One or more file could not be opened properly.')
+        if not self.is_valid(): raise Exception('JobFile invalid. One or more file could not be opened properly.')
 
 
 ##################################################
@@ -429,7 +429,7 @@ class RoadMap(orb.core.Tools):
                 instrument, target, cams))
 
         if not os.path.exists(roadmap_path):
-            raise StandardError('Roadmap {} does not exist'.format(
+            raise Exception('Roadmap {} does not exist'.format(
                 roadmap_path))
             
         steps =  xml.etree.ElementTree.parse(roadmap_path).getroot()
@@ -456,7 +456,7 @@ class RoadMap(orb.core.Tools):
                                   'args':args, 'kwargs':kwargs,
                                   'status':False})
             else:
-                raise StandardError('Step {} found in {} not recorded in {}'.format(
+                raise Exception('Step {} found in {} not recorded in {}'.format(
                     step.attrib['name'], os.path.split(roadmap_path)[1],
                     os.path.split(roadmap_steps_path)[1]))
 
@@ -472,7 +472,7 @@ class RoadMap(orb.core.Tools):
         if step_name in self.steps:
             self.steps[step_name].func = func
         else:
-            raise StandardError('No step called {}'.format(step_name))
+            raise Exception('No step called {}'.format(step_name))
 
     def check_road(self):
         """Check the status of each step of the road."""
@@ -501,16 +501,16 @@ class RoadMap(orb.core.Tools):
                     self.road[index]['args'],
                     self.road[index]['kwargs'])
         else:
-            raise StandardError(
+            raise Exception(
                 'Bad index number. Must be < {}'.format(self.get_road_len()))
 
     def print_status(self):
         """Print roadmap status"""
         self.check_road()
         
-        print 'Status of roadmap for {} {} {}'.format(self.instrument,
+        print('Status of roadmap for {} {} {}'.format(self.instrument,
                                                       self.target,
-                                                      self.cams)
+                                                      self.cams))
         index = 0
         for step in self.road:
             if step['status'] :
@@ -520,7 +520,7 @@ class RoadMap(orb.core.Tools):
                 status = 'not done'
                 color = orb.core.TextColor.KORED
             
-            print color + '  {} - {} {}: {}'.format(index, step['name'], step['cam'], status) + orb.core.TextColor.END
+            print(color + '  {} - {} {}: {}'.format(index, step['name'], step['cam'], status) + orb.core.TextColor.END)
             index += 1
 
     def get_steps_str(self, indent=0):
@@ -633,7 +633,7 @@ class JobsWalker():
             ijobfile = self.jobfiles[i]
             try:
                 iparams = JobFile(ijobfile, 'sitelle').get_params()
-            except Exception, e:
+            except Exception as e:
                 warnings.warn('job file {} could not be read: {}'.format(ijobfile, e))
                 continue
                 

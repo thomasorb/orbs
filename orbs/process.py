@@ -27,7 +27,7 @@ The Process module contains all the processing classes of ORBS.
 __author__ = "Thomas Martin"
 __licence__ = "Thomas Martin (thomas.martin.1@ulaval.ca)"                      
 __docformat__ = 'reStructuredText'
-import version
+from . import version
 __version__ = version.__version__
 
 import orb.core
@@ -47,7 +47,7 @@ import orb.photometry
 import orb.utils.astrometry
 import orb.constants
 
-from phase import BinnedInterferogramCube, BinnedPhaseCube
+from .phase import BinnedInterferogramCube, BinnedPhaseCube
 
 
 import bottleneck as bn
@@ -104,7 +104,7 @@ class CubeMask(object):
 
         :param index: frame index
         """
-        if index not in range(self.dimz): raise ValueError('invalid frame index')
+        if index not in list(range(self.dimz)): raise ValueError('invalid frame index')
 
         if self.cr_byframe[index] is not None:
             return self.cr_byframe[index]
@@ -158,7 +158,7 @@ class CubeMask(object):
 
         :param bad_pix_list: list of bad pixels as returne by numpy.nonzero
         """
-        if index not in range(self.dimz): raise ValueError('invalid frame index')
+        if index not in list(range(self.dimz)): raise ValueError('invalid frame index')
         maskf = self._get_empty_frame()
 
         # load previous bad pixels
@@ -320,7 +320,7 @@ class RawData(orb.cube.InterferogramCube):
                 logging.info("Alignment vector loaded")
                 return alignment_vector
             else:
-                raise StandardError("Alignment vector dimensions are not compatible")
+                raise Exception("Alignment vector dimensions are not compatible")
                 return None
         else:
             warnings.warn("Alignment vector not loaded")
@@ -650,7 +650,7 @@ class CalibrationLaser(orb.cube.InterferogramCube):
                 range_min = max_index - BORDER
                 if (range_min < 0):
                     range_min = 0
-                range_max = max_index + BORDER + 1L
+                range_max = max_index + BORDER + 1
                 if (range_max >= len(spectrum_vector)):
                     range_max = len(spectrum_vector) - 1
 
@@ -778,7 +778,7 @@ class CalibrationLaser(orb.cube.InterferogramCube):
                          iquad_data[ii+ijob,:,:]) = job()
                         
                 progress.update(ii, info="quad %d/%d, column : %d"%(
-                    iquad+1L, self.config.QUAD_NB, ii))
+                    iquad+1, self.config.QUAD_NB, ii))
             self._close_pp_server(job_server)
             progress.end()
 
@@ -1337,7 +1337,7 @@ class Interferogram(orb.cube.InterferogramCube):
                     ncpus = x_max - x_min - ii
 
                 progress.update(ii, info="Quad %d/%d column : %d"%(
-                    iquad+1L, self.config.QUAD_NB, ii))
+                    iquad+1, self.config.QUAD_NB, ii))
             
                 # jobs creation
                 jobs = [(ijob, job_server.submit(
@@ -2132,7 +2132,7 @@ merge() method).
                     _len = len(_photom[-1])
                 else:
                     _photom.append(None)
-            if _len is None: raise StandardError('photometry dataframe is empty')
+            if _len is None: raise Exception('photometry dataframe is empty')
             for ik in range(len(_photom)):
                 if _photom[ik] is None:
                     _photom[ik] = list([np.nan]) * _len
@@ -2276,7 +2276,7 @@ merge() method).
         transmission_vector_list_err = temp_list_trans_err
 
         if len(transmission_vector_list) <  MIN_STAR_NUMBER:
-            raise StandardError("Too much stars have been rejected. The transmission vector cannot be computed !")
+            raise Exception("Too much stars have been rejected. The transmission vector cannot be computed !")
 
         logging.info(
             "Transmission vector will be computed using %d stars"%len(
@@ -2964,7 +2964,7 @@ class Spectrum(orb.cube.SpectralCube):
                 times['loop_time_min'] = np.min(loop_times[:,0])
                 times['loop_time_max'] = np.max(loop_times[:,0])
                 times['loop_breaks'] = np.median(loop_times[:,1:], axis=0)
-            except StandardError:
+            except Exception:
                 times['loop_time_median'] = np.nan
                 times['loop_time_min'] = np.nan
                 times['loop_time_max'] = np.nan
@@ -3001,7 +3001,7 @@ class Spectrum(orb.cube.SpectralCube):
         if phase_maps_path is not None:
             try:
                 phase_maps = orb.fft.PhaseMaps(phase_maps_path)
-            except Exception, e:
+            except Exception as e:
                 warnings.warn('phase maps could not be opened: {}'.format(e))
             else:
                 out_cube.set_phase_maps(phase_maps)
@@ -3010,14 +3010,14 @@ class Spectrum(orb.cube.SpectralCube):
         if standard_image_path is not None:
             try:
                 std_im = orb.image.StandardImage(standard_image_path)
-            except Exception, e:
+            except Exception as e:
                 warnings.warn('standard image could not be opened: {}'.format(e))
             else:
                 out_cube.set_standard_image(std_im)
 
         try:
             std_sp = self.get_standard_spectrum() # get standard spectrum from 'standard_path'
-        except Exception, e:
+        except Exception as e:
             warnings.warn('standard spectrum could not be opened {}'.format(e))
             std_sp = None
         else:
@@ -3051,7 +3051,7 @@ class Spectrum(orb.cube.SpectralCube):
                                 
             for ii in range(0, x_max-x_min, ncpus):
                 progress.update(ii, info="Quad %d/%d column : %d"%(
-                    iquad+1L, self.config.QUAD_NB, ii))
+                    iquad+1, self.config.QUAD_NB, ii))
                 
                 # no more jobs than frames to compute
                 if (ii + ncpus >= x_max-x_min):
