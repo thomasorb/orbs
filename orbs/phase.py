@@ -29,8 +29,6 @@ Phase processing is generally made on small binned cubes
 __author__ = "Thomas Martin"
 __licence__ = "Thomas Martin (thomas.martin.1@ulaval.ca)"                      
 __docformat__ = 'reStructuredText'
-from . import version
-__version__ = version.__version__
 
 import numpy as np
 import logging

@@ -32,7 +32,7 @@ import argparse
 from argparse import ArgumentParser
 import numpy as np
 import shutil
-import shlex, subprocess32
+import shlex, subprocess
 
 # Defining the path to ORBS module from script location
 script_path = os.path.dirname(os.path.realpath(__file__)).split()
@@ -69,7 +69,7 @@ def status(args):
     # log in record file
     recfile = RecordFile(args.job_file_path)
     if len(recfile.records) < 1:
-        raise StandardError('No reduction process started')
+        raise Exception('No reduction process started')
     for record in recfile.records:
         project = init_orbs(args, record['target'], record['cams'], silent=True,
                             fast_init=True)
@@ -84,7 +84,7 @@ def report(args):
 def resume(args, parser):
     recfile = RecordFile(args.job_file_path)
     if len(recfile.records) < 1:
-        raise StandardError('No reduction process to resume')
+        raise Exception('No reduction process to resume')
     args = parser.parse_args(recfile.last_command)
     start(args, resume=True)
 
@@ -114,7 +114,7 @@ def clean(args):
     logging.info('Working directory clean')
 
 def get_data(jobfile, args):
-    print jobfile.raw_params.keys()
+    print(list(jobfile.raw_params.keys()))
     files = list()
     for ipath in ['OBS', 'STDIM', 'FLAT']:
         files += jobfile.raw_params[ipath]
@@ -127,17 +127,17 @@ def get_data(jobfile, args):
         error_files = list()
         for ifile in to_download:
             if os.path.exists(ifile + '.fits'):
-                print 'file {} already downloaded'.format(ifile + '.fits')
+                print('file {} already downloaded'.format(ifile + '.fits'))
                 continue
 
             command = 'cadc-data get -v -z CFHT {}'.format(ifile)
 
             # downloading
-            print '> downloading {} (command: {})'.format(ifile, command)
+            print('> downloading {} (command: {})'.format(ifile, command))
             try:
-                p = subprocess32.run(shlex.split(command), timeout=10)
-            except subprocess32.TimeoutExpired:
-                print 'timeout expired'
+                p = subprocess.run(shlex.split(command), timeout=10)
+            except subprocess.TimeoutExpired:
+                print('timeout expired')
                 continue
             
             if p.returncode != 0:
@@ -147,24 +147,24 @@ def get_data(jobfile, args):
 
             # uncompressing
             command = 'funpack {}'.format(ifile + '.fits.fz')
-            print '> uncompressing {} (command: {})'.format(ifile, command)
-            p = subprocess32.run(shlex.split(command))
+            print('> uncompressing {} (command: {})'.format(ifile, command))
+            p = subprocess.run(shlex.split(command))
             if p.returncode != 0:
                 warnings.warn("{} could not be uncompressed (do you have funpack installed, if not try 'sudo apt install libcfitsio-bin')".format(ifile))
                 error_files.append(ifile)
                 continue
             
             # deleting compressed file
-            print '> removing compressed file {}'.format(ifile + '.fits.fz')
+            print('> removing compressed file {}'.format(ifile + '.fits.fz'))
             os.remove(ifile + '.fits.fz')
             
-            print '----------------'
+            print('----------------')
             
         if len(error_files) > 0:
-            print 'some files could not be downloaded (timeout ?).'
+            print('some files could not be downloaded (timeout ?).')
             for ifile in error_files:
-                print '   {}'.format(ifile)
-            print 'Please repeat the same command to try again.'
+                print('   {}'.format(ifile))
+            print('Please repeat the same command to try again.')
                         
 def get_logfile_name(args):
      return os.path.basename(args.job_file_path) + '.log'
@@ -188,7 +188,7 @@ def start(args, resume=False):
 
     # special targets are mutually exclusive
     if np.sum([args.flat, args.standard, args.laser, args.extphase]) > 1:
-        raise StandardError("only one special target (flat, standard, laser, extphase) can be choosen")
+        raise Exception("only one special target (flat, standard, laser, extphase) can be choosen")
         sys.exit(2)
     if args.flat: target = 'flat'
     elif args.standard: target = 'standard'
@@ -203,15 +203,15 @@ def start(args, resume=False):
 
         if project_fast_init.roadmap.get_resume_step() > 0:
             project_fast_init.roadmap.print_status()
-            print 'Part of the process has already been done. Do you want to resume it instead of starting it again from the beginning [y/n] ?'
+            print('Part of the process has already been done. Do you want to resume it instead of starting it again from the beginning [y/n] ?')
 
             answer_ok = False
             while not answer_ok:
-                s = raw_input(' > ')
+                s = input(' > ')
                 if s in ['y', 'n']:
                     answer_ok = True
                     if s == 'y': resume = True
-                else: print "Please answer 'y' or 'n'"
+                else: print("Please answer 'y' or 'n'")
         
 
     ########################
@@ -285,7 +285,7 @@ def start(args, resume=False):
             wcs_calibration=not args.nowcs,
             flux_calibration=not args.noflux)
        
-    except BaseException, e:
+    except BaseException as e:
         exc_type, exc_value, exc_traceback = sys.exc_info()
         traceback.print_exception(exc_type, exc_value, exc_traceback,
                                   limit=10, file=sys.stdout)
@@ -419,8 +419,6 @@ if __name__ == "__main__":
     # define main parser
     parser = ArgumentParser(
         prog='orbs',
-        version=('ORBS-version: {}, ORB-version: {}'.format(
-            orbs.version.__version__, orb.core.__version__)),
         formatter_class=argparse.RawDescriptionHelpFormatter,
         description="Run the whole reduction process.")
 

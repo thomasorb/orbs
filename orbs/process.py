@@ -27,8 +27,6 @@ The Process module contains all the processing classes of ORBS.
 __author__ = "Thomas Martin"
 __licence__ = "Thomas Martin (thomas.martin.1@ulaval.ca)"                      
 __docformat__ = 'reStructuredText'
-from . import version
-__version__ = version.__version__
 
 import orb.core
 import orb.cube

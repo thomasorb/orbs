@@ -27,10 +27,11 @@ process.py
 """
 
 __author__ = "Thomas Martin"
-__licence__ = "Thomas Martin (thomas.martin.1@ulaval.ca)"                      
+__licence__ = "Thomas Martin (thomas.martin.1@ulaval.ca)"
 __docformat__ = 'reStructuredText'
-from . import version
-__version__ = version.__version__
+import orbs.version
+__version__ = orbs.version.__version__
+
 
 import os
 import time
@@ -47,7 +48,6 @@ import astropy
 import pp
 import bottleneck as bn
 
-
 from orb.core import Tools, Indexer, TextColor
 from orb.cube import FDCube, HDFCube, Cube, RWHDFCube
 from orb.core import FilterFile, ProgressBar
@@ -57,7 +57,6 @@ from .process import CosmicRayDetector
 from .core import JobFile, RoadMap
 
 import orb.constants
-import orb.version
 import orb.utils.spectrum
 import orb.utils.fft
 import orb.utils.stats
@@ -78,7 +77,7 @@ class Orbs(Tools):
     containing all the parameters needed to run a reduction.
     """
 
-    __version__ = None # imported from __version__ given in the core module
+    __version__ = orbs.version.__version__ # imported from __version__ given in the core module
     
     _APODIZATION_FUNCTIONS = ['learner95']
     """Apodization functions that recognized by ORBS. Any float > 1 is
@@ -352,9 +351,15 @@ class Orbs(Tools):
         if self.config["INSTRUMENT_NAME"] == 'SITELLE' and not fast_init:
             
             try: # check if the zpd index has already been computed
-                zpd_index = int(orb.utils.io.read_fits(self._get_zpd_index_file_path()))
+                zpd_file_path = self._get_zpd_index_file_path()
+                zpd_index = orb.utils.io.read_fits(zpd_file_path)
+                zpd_index = int(zpd_index)
                 logging.info('ZPD index read from file')
-            except IOError:
+            except Exception:
+                warnings.warn('ZPD file could not be opened')
+                zpd_index = None
+            
+            if zpd_index is None:
                 cube1 = HDFCube(self.options['image_list_path_1.hdf5'],
                                 instrument=self.instrument,
                                 no_sort=True)
