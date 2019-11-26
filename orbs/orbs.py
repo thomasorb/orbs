@@ -45,7 +45,6 @@ import warnings
 import shutil
 from datetime import datetime
 import astropy
-import pp
 import bottleneck as bn
 
 from orb.core import Tools, Indexer, TextColor
@@ -186,7 +185,6 @@ class Orbs(Tools):
             logging.info("Numpy version: %s"%np.__version__)
             logging.info("Scipy version: %s"%scipy.__version__)
             logging.info("Astropy version: %s"%astropy.__version__)
-            logging.info("Parallel Python version: %s"%pp.version)
             logging.info("Bottleneck version: %s"%bn.__version__)
 
             # Print the entire config file for log
