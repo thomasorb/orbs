@@ -198,7 +198,7 @@ class JobFile(object):
             fringe_sz = float(self.header['SITFRGNM'])
             self.params['step'] = step_fringe * fringe_sz
         else:
-            self.params.pop['order']
+            self.params.pop('order')
 
         # get dark exposition time
         if len(self.raw_params['DARK']) > 0:
@@ -225,7 +225,8 @@ class JobFile(object):
             self.params['calibration_laser_map_path'] = self.raw_params.pop('CALIBMAP')
        
         elif not is_laser:
-            raise Exception('CALIBMAP keyword must be set')
+            if not len(self.raw_params['COMPARISON']):
+                raise Exception('CALIBMAP keyword must be set')
 
         # get standard spectrum params
         if 'STDPATH' in self.raw_params:

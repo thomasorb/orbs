@@ -245,7 +245,7 @@ class Orbs(Tools):
                    warnings.warn("Configuration option %s changed to %s"%(key, self.config[key]))
 
         # Calibration laser wavelength is changed if the calibration
-        # laser map gives a new calibration laser wavelentgh
+        # laser map gives a new calibration laser wavelength
         if target != 'laser':
             calib_hdu = orb.utils.io.read_fits(
                 self.options['calibration_laser_map_path'],
@@ -433,8 +433,10 @@ class Orbs(Tools):
         else:
             raise Exception('Unknown target type: target must be in {}'.format(self.targets))
 
+        cams = 'full'
+        if target == 'laser': cams = 'single1'
         self.roadmap = RoadMap(
-            self.config["INSTRUMENT_NAME"].lower(), target, 'full', self.indexer)
+            self.config["INSTRUMENT_NAME"].lower(), target, cams, self.indexer)
 
         # attach methods to roadmap steps
         self.roadmap.attach('compute_alignment_vector',
@@ -1160,8 +1162,7 @@ class Orbs(Tools):
         return perf_stats
 
     def compute_calibration_laser_map(self, camera_number,
-                                      get_calibration_laser_spectrum=False,
-                                      fast=True):
+                                      get_calibration_laser_spectrum=False):
         """Run the computation of the calibration laser map from the
         calibration laser cube. This map is used to correct for the
         off-axis shift in wavelength.
@@ -1171,10 +1172,6 @@ class Orbs(Tools):
         :param get_calibration_laser_spectrum: (Optional) If True
           output the computed calibration laser spectrum cube for
           checking purpose (Default False)
-
-        :param fast: (Optional) If False a sinc^2 is fitted so the fit
-          is better but the procedure becomes slower. If True a
-          gaussian is fitted (default True).
           
         .. seealso:: :meth:`process.CalibrationLaser.create_calibration_laser_map`
         """
@@ -1200,21 +1197,14 @@ class Orbs(Tools):
         else:
             raise Exception("Camera number must be either 1, 2 or 0")
 
-        if self.target == 'laser':
-            ## order = self.options['order']
-            ## step = self.options['step']
-            # Step and order forced to config to avoid bad headers bug
-            order = self.config["CALIB_ORDER"]
-            step = self.config["CALIB_STEP_SIZE"]
-            if (order != self.options['order']
-                or step != self.options['step']):
-                warnings.warn('Recorded STEP and ORDER in the option file are not the same as defined in the configuration file')
+        # Step and order forced to config to avoid bad headers bug
+        order = self.config["CALIB_ORDER"]
+        step = self.config["CALIB_STEP_SIZE"]
+        self.options['step'] = step
+        self.options['order'] = order
             
-        else:
-            order = self.config["CALIB_ORDER"]
-            step = self.config["CALIB_STEP_SIZE"]
-            
-        logging.info('Calibration laser observation parameters: step={}, order={}'.format(step, order))
+        logging.info('Calibration laser observation parameters: step={}, order={}'.format(
+            self.options['step'], self.options['order']))
             
         self.options["camera_number"] = camera_number
         
@@ -1223,16 +1213,16 @@ class Orbs(Tools):
         cube = CalibrationLaser(
             calib_path, 
             data_prefix=self._get_data_prefix(camera_number),
+            params=self.options,
             indexer=self.indexer,
+            config=self.config,
             instrument=self.instrument)
         perf = Performance(cube, "Calibration laser map processing",
                            camera_number,
                            instrument=self.instrument)
 
         cube.create_calibration_laser_map(
-            order=order, step=step, 
-            get_calibration_laser_spectrum=get_calibration_laser_spectrum,
-            fast=fast)
+            get_calibration_laser_spectrum=get_calibration_laser_spectrum)
         
         perf_stats = perf.print_stats()
         del cube, perf

@@ -57,7 +57,7 @@ def get_to(args):
     to = Tools(instrument=args.instrument_mode)
     return to
 
-def init_orbs(args, target, cams, silent=False, fast_init=False):
+def init_orbs(args, target, silent=False, fast_init=False):
     # load job file and init Orbs class
     return Orbs(args.job_file_path, target,
                 instrument=args.instrument_mode,
@@ -68,11 +68,14 @@ def init_orbs(args, target, cams, silent=False, fast_init=False):
 def status(args):
     # log in record file
     recfile = RecordFile(args.job_file_path)
+    print(recfile.records)
+    print(recfile.file_path)
     if len(recfile.records) < 1:
         raise Exception('No reduction process started')
     for record in recfile.records:
-        project = init_orbs(args, record['target'], record['cams'], silent=True,
+        project = init_orbs(args, record['target'], silent=True,
                             fast_init=True)
+        print(record['cams'])
         rm = RoadMap(record['instrument'], record['target'], record['cams'],
                      project.indexer)
         rm.print_status()
@@ -178,7 +181,6 @@ def start(args, resume=False):
     
     start_time = time.time()
     target = 'object'
-    cams = 'full'
 
     to = get_to(args)
 
@@ -192,14 +194,16 @@ def start(args, resume=False):
         sys.exit(2)
     if args.flat: target = 'flat'
     elif args.standard: target = 'standard'
-    elif args.laser: target = 'laser'
+    elif args.laser:
+        target = 'laser'
+        camera = 'single1'
     elif args.extphase: target = 'extphase'
 
-
+    
     # check first if reduction can be resumed
     if not resume and args.start_step == 0:
         project_fast_init = init_orbs(
-            args, target, 0, fast_init=True, silent=True)
+            args, target, fast_init=True, silent=True)
 
         if project_fast_init.roadmap.get_resume_step() > 0:
             project_fast_init.roadmap.print_status()
@@ -267,9 +271,11 @@ def start(args, resume=False):
     
     # record roadmap
     recfile = RecordFile(args.job_file_path)
-    recfile.add_record(args.instrument_mode, target, 'full')
+    cams = 'full'
+    if target == 'laser': cams = 'single1'
+    recfile.add_record(args.instrument_mode, target, cams)
     
-    project = init_orbs(args, target, 'full')
+    project = init_orbs(args, target)
 
     # get resume step if reduction must be resumed
     if resume:

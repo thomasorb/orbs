@@ -592,9 +592,7 @@ class CalibrationLaser(orb.cube.InterferogramCube):
         HDF5 cube."""
         return self._data_path_hdr + "calibration_laser_cube.hdf5"
 
-    def create_calibration_laser_map(self, order=30, step=9765,
-                                     get_calibration_laser_spectrum=False,
-                                     fast=True):
+    def create_calibration_laser_map(self, get_calibration_laser_spectrum=False):
         """ Create the calibration laser map.
 
         Compute the spectral cube from the calibration laser cube and
@@ -602,26 +600,18 @@ class CalibrationLaser(orb.cube.InterferogramCube):
         position of the emission line for each pixel of the image
         plane (x/y axes).
 
-        :param order: (Optional) Folding order
-        :param step: (Optional) Step size in nm
-        
         :param get_calibration_laser_spectrum: (Optional) If True return the
           calibration laser spectrum
-
-        :param fast: (Optional) If False a sinc^2 is fitted so the fit
-          is better but the procedure becomes slower. If True a
-          gaussian is fitted (default True).
         """
-        def _find_max_in_column(column_data, step, order, cm1_axis_min,
-                                cm1_axis_step,
-                                get_calibration_laser_spectrum, fast,
+        def _find_max_in_column(column_data, params,
+                                get_calibration_laser_spectrum,
                                 fwhm_guess, fwhm_guess_cm1):
 
 
             """Return the fitted central position of the emission line"""
             dimy = column_data.shape[0]
             dimz = column_data.shape[1]
-            BORDER = int(0.3 * dimz) + 1
+            BORDER = int(0.1 * dimz) + 1
             max_array_column = np.empty((dimy), dtype=float)
             fitparams_column = np.empty((dimy, 10), dtype=float)
             max_array_column.fill(np.nan)
@@ -634,56 +624,51 @@ class CalibrationLaser(orb.cube.InterferogramCube):
                 if np.all(np.isnan(column_data[ij,:])): continue
                 column_data[ij,np.isnan(column_data[ij,:])] = 0.
 
-                raise NotImplementedError('new fft transform must be used')
+                
+                #raise NotImplementedError('new fft transform must be used')
                 ## zpv = orb.utils.fft.transform_interferogram(
                 ##     column_data[ij,:], 1, 1, step, order,
                 ##     '2.0', 0, phase_correction=False,
                 ##     wavenumber=True, return_zp_vector=True)
-                spectrum_vector = np.abs(np.fft.fft(zpv)[:zpv.shape[0]/2])
-                if (int(order) & 1):
-                    spectrum_vector = spectrum_vector[::-1]
-                    
+                ## spectrum_vector = np.abs(np.fft.fft(zpv)[:zpv.shape[0]/2])
+                ## if (int(order) & 1):
+                ##    spectrum_vector = spectrum_vector[::-1]
+                iinterf = orb.fft.Interferogram(
+                    column_data[ij,:], params=params,
+                    calib_coeff=1., calib_coeff_orig=1., nm_laser=1.,
+                    apodization='2.0')
+                iinterf.subtract_mean(inplace=True)
+                iinterf.apodize(2., inplace=True)
+                ispectrum = iinterf.get_spectrum()
+                del iinterf
+                ispectrum.data = np.abs(ispectrum.data)
+                
                 # defining window
-                max_index = np.argmax(spectrum_vector)
+                max_index = np.argmax(ispectrum.data)
                 range_min = max_index - BORDER
                 if (range_min < 0):
                     range_min = 0
                 range_max = max_index + BORDER + 1
-                if (range_max >= len(spectrum_vector)):
-                    range_max = len(spectrum_vector) - 1
+                if (range_max >= len(ispectrum.data) - 1):
+                    range_max = len(ispectrum.data) - 2
 
-                if (not np.any(np.isnan(spectrum_vector))
+                signal_range_cm1 = [ispectrum.axis.convert(range_min),
+                                    ispectrum.axis.convert(range_max)]
+                if (not np.any(np.isnan(ispectrum.data))
                     and (max_index > 3*fwhm_guess)
                     and (max_index < dimz - 3*fwhm_guess)):
-                    # gaussian fit (fast)
-                    if fast:
-                        fitp = orb.fit.fit_lines_in_vector(
-                            spectrum_vector, [max_index],
-                            fmodel='gaussian',
-                            fwhm_guess=fwhm_guess,
-                            poly_order=0,
-                            signal_range=[range_min, range_max],
-                            cont_guess=[0.], no_error=True)
-
-                        ## fitp = {'lines-params':[[0,1,max_index,1]],
-                        ##         'lines-params-err':[[0,0,0,0]]}
-                    # or sinc2 fit (slow)
-                    else:
-                        raise Exception("Very bad, please don't use it")
-                        fitp = orb.fit.fit_lines_in_vector(
-                            spectrum_vector, [max_index], fmodel='sinc2',
-                            fwhm_guess=fwhm_guess,
-                            poly_order=0,
-                            signal_range=[range_min, range_max],
-                            cont_guess=[0.], no_error=True)
+                    iline = ispectrum.axis.convert(max_index)
+                    fitp = ispectrum.fit([iline], fmodel='gaussian',
+                                         nofilter=True,
+                                         fwhm_def=('free',),
+                                         poly_order=0, signal_range=signal_range_cm1)
+                    del ispectrum
+                    
                 else:
                     fitp = []
-                    
+
                 if (fitp != []):
-                    max_index_fit = fitp['lines_params'][0][2]
-                    max_array_column[ij] = 1. / orb.cutils.fast_pix2w(
-                        np.array([max_index_fit], dtype=float),
-                        cm1_axis_min, cm1_axis_step) * 1e7
+                    max_array_column[ij] = fitp['lines_params'][0][2]
                     if 'lines_params_err' in fitp:
                         fitparams_column[ij,:] = np.array(
                             list(fitp['lines_params'][0])
@@ -695,58 +680,65 @@ class CalibrationLaser(orb.cube.InterferogramCube):
                     max_array_column[ij] = np.nan
                     fitparams_column[ij,:].fill(np.nan)
 
+                del fitp
+                
                 # check if fit range is large enough
                 fwhm_median = np.median(fitparams_column[:,3])
                 if fwhm_median is not np.nan:
                     if (range_max - range_min) < 5. * fwhm_median:
                         import warnings
                         warnings.warn('fit range is not large enough: median fwhm ({}) > 5xrange ({})'.format(fwhm_median, range_max - range_min))
-                    
+
+            del column_data
+                
             if not get_calibration_laser_spectrum:
                 return max_array_column, fitparams_column
             else:
                 return max_array_column, fitparams_column, column_spectrum
 
         logging.info("Computing calibration laser map")
-
-        order = float(order)
-        step = float(step)
-
-        # create the fft axis in cm1
-        cm1_axis_min = orb.cutils.get_cm1_axis_min(self.dimz, step, order)
-        cm1_axis_step = orb.cutils.get_cm1_axis_step(self.dimz, step)
-    
         # guess fwhm
         fwhm_guess = orb.utils.spectrum.compute_line_fwhm_pix(
             oversampling_ratio=2.)
         fwhm_guess_cm1 = orb.utils.spectrum.compute_line_fwhm(
-            self.dimz/2, step, order, wavenumber=True)
+            self.dimz/2, self.params.step, self.params.order, wavenumber=True)
         
         logging.info('FWHM guess: {} pixels, {} cm-1'.format(
             fwhm_guess,
             fwhm_guess_cm1))
 
-        out_cube = OutHDFQuadCube(
-            self._get_calibration_laser_spectrum_cube_path(),
-            (self.dimx, self.dimy, self.dimz),
-            self.config.QUAD_NB,
-            reset=True)
-
+        if get_calibration_laser_spectrum:
+            out_cube = orb.cube.RWHDFCube(
+                self._get_calibration_laser_spectrum_cube_path(),
+                shape=(self.dimx, self.dimy, self.dimz),
+                instrument=self.instrument,
+                config=self.config,
+                params=self.params,
+                reset=True)
+            del out_cube
+        
         fitparams = np.empty((self.dimx, self.dimy, 10), dtype=float)
         fitparams.fill(np.nan)
         max_array = np.empty((self.dimx, self.dimy), dtype=float)
         max_array.fill(np.nan)
+        params = self.params.convert()
+
+        # init multiprocessing server
+        ncpus = orb.utils.parallel.get_ncpus(ncpus=int(self.config.NCPUS))
+        logging.info('parallel process will use {} CPUs'.format(ncpus))
         
         for iquad in range(self.config.QUAD_NB):
             x_min, x_max, y_min, y_max = self.get_quadrant_dims(iquad)
             iquad_data = self.get_data(x_min, x_max, 
                                        y_min, y_max, 
                                        0, self.dimz)
-            # init multiprocessing server
-            job_server, ncpus = self._init_pp_server()
 
             progress = orb.core.ProgressBar(x_max - x_min)
             for ii in range(0, x_max - x_min, ncpus):
+                
+                # init multiprocessing server
+                job_server, _ = self._init_pp_server(silent=True)
+
                 # create no more jobs than work to do
                 if (ii + ncpus >= x_max - x_min): 
                     ncpus = x_max - x_min - ii
@@ -754,8 +746,8 @@ class CalibrationLaser(orb.cube.InterferogramCube):
                 jobs = [(ijob, job_server.submit(
                     _find_max_in_column, 
                     args=(iquad_data[ii+ijob,:,:],
-                          step, order, cm1_axis_min, cm1_axis_step,
-                          get_calibration_laser_spectrum, fast,
+                          params,
+                          get_calibration_laser_spectrum, 
                           fwhm_guess, fwhm_guess_cm1),
                     modules=("import logging",
                              "numpy as np",
@@ -777,7 +769,8 @@ class CalibrationLaser(orb.cube.InterferogramCube):
                         
                 progress.update(ii, info="quad %d/%d, column : %d"%(
                     iquad+1, self.config.QUAD_NB, ii))
-            self._close_pp_server(job_server)
+                
+                self._close_pp_server(job_server)
             progress.end()
 
             if get_calibration_laser_spectrum:
@@ -785,13 +778,17 @@ class CalibrationLaser(orb.cube.InterferogramCube):
                 logging.info('Writing quad {}/{} to disk'.format(
                     iquad+1, self.config.QUAD_NB))
                 write_start_time = time.time()
-                out_cube.write_quad(iquad, data=iquad_data)
+                out_cube = orb.cube.RWHDFCube(
+                    self._get_calibration_laser_spectrum_cube_path(),
+                    reset=False)
+
+                out_cube[x_min:x_max, y_min:y_max,:] = iquad_data
                 logging.info('Quad {}/{} written in {:.2f} s'.format(
                     iquad+1, self.config.QUAD_NB, time.time() - write_start_time))
             
 
-        out_cube.close()
-        del out_cube
+                out_cube.close()
+                del out_cube
 
         # Write uncorrected calibration laser map to disk (in case the
         # correction does not work)
