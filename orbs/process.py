@@ -604,7 +604,6 @@ class CalibrationLaser(orb.cube.InterferogramCube):
           calibration laser spectrum
         """
         def _find_max_in_column(column_data, params,
-                                get_calibration_laser_spectrum,
                                 fwhm_guess, fwhm_guess_cm1):
 
 
@@ -640,6 +639,7 @@ class CalibrationLaser(orb.cube.InterferogramCube):
                 iinterf.subtract_mean(inplace=True)
                 iinterf.apodize(2., inplace=True)
                 ispectrum = iinterf.get_spectrum()
+                ispectrum.err = None
                 del iinterf
                 ispectrum.data = np.abs(ispectrum.data)
                 
@@ -658,10 +658,11 @@ class CalibrationLaser(orb.cube.InterferogramCube):
                     and (max_index > 3*fwhm_guess)
                     and (max_index < dimz - 3*fwhm_guess)):
                     iline = ispectrum.axis.convert(max_index)
-                    fitp = ispectrum.fit([iline], fmodel='gaussian',
-                                         nofilter=True,
-                                         fwhm_def=('free',),
-                                         poly_order=0, signal_range=signal_range_cm1)
+                    # fitp = ispectrum.fit([iline], fmodel='gaussian',
+                    #                      nofilter=True,
+                    #                      fwhm_def=('free',),
+                    #                      poly_order=0, signal_range=signal_range_cm1)
+                    fitp = []
                     del ispectrum
                     
                 else:
@@ -691,11 +692,8 @@ class CalibrationLaser(orb.cube.InterferogramCube):
 
             del column_data
                 
-            if not get_calibration_laser_spectrum:
-                return max_array_column, fitparams_column
-            else:
-                return max_array_column, fitparams_column, column_spectrum
-
+            return max_array_column, fitparams_column
+            
         logging.info("Computing calibration laser map")
         # guess fwhm
         fwhm_guess = orb.utils.spectrum.compute_line_fwhm_pix(
@@ -706,89 +704,48 @@ class CalibrationLaser(orb.cube.InterferogramCube):
         logging.info('FWHM guess: {} pixels, {} cm-1'.format(
             fwhm_guess,
             fwhm_guess_cm1))
-
-        if get_calibration_laser_spectrum:
-            out_cube = orb.cube.RWHDFCube(
-                self._get_calibration_laser_spectrum_cube_path(),
-                shape=(self.dimx, self.dimy, self.dimz),
-                instrument=self.instrument,
-                config=self.config,
-                params=self.params,
-                reset=True)
-            del out_cube
         
         fitparams = np.empty((self.dimx, self.dimy, 10), dtype=float)
         fitparams.fill(np.nan)
         max_array = np.empty((self.dimx, self.dimy), dtype=float)
         max_array.fill(np.nan)
         params = self.params.convert()
-
-        # init multiprocessing server
-        ncpus = orb.utils.parallel.get_ncpus(ncpus=int(self.config.NCPUS))
-        logging.info('parallel process will use {} CPUs'.format(ncpus))
         
         for iquad in range(self.config.QUAD_NB):
             x_min, x_max, y_min, y_max = self.get_quadrant_dims(iquad)
             iquad_data = self.get_data(x_min, x_max, 
                                        y_min, y_max, 
                                        0, self.dimz)
+            # init multiprocessing server
+            job_server, ncpus = self._init_pp_server()
 
             progress = orb.core.ProgressBar(x_max - x_min)
             for ii in range(0, x_max - x_min, ncpus):
                 
-                # init multiprocessing server
-                job_server, _ = self._init_pp_server(silent=True)
-
                 # create no more jobs than work to do
                 if (ii + ncpus >= x_max - x_min): 
                     ncpus = x_max - x_min - ii
+
+                progress.update(ii, info="quad %d/%d, column : %d"%(
+                    iquad+1, self.config.QUAD_NB, ii))
+                
                 # create jobs
                 jobs = [(ijob, job_server.submit(
                     _find_max_in_column, 
                     args=(iquad_data[ii+ijob,:,:],
                           params,
-                          get_calibration_laser_spectrum, 
-                          fwhm_guess, fwhm_guess_cm1),
-                    modules=("import logging",
-                             "numpy as np",
-                             "math",
-                             "import orb.utils.fft",
-                             "import orb.cutils",
-                             "import orb.fit"))) 
+                          fwhm_guess, fwhm_guess_cm1))) 
                         for ijob in range(ncpus)]
 
                 # execute jobs
                 for ijob, job in jobs:
-                    if not get_calibration_laser_spectrum:
-                        (max_array[x_min + ii + ijob, y_min:y_max],
-                         fitparams[x_min + ii + ijob, y_min:y_max,:]) = job()
-                    else:
-                        (max_array[x_min + ii + ijob, y_min:y_max],
-                         fitparams[x_min + ii + ijob, y_min:y_max,:],
-                         iquad_data[ii+ijob,:,:]) = job()
+                    (max_array[x_min + ii + ijob, y_min:y_max],
+                     fitparams[x_min + ii + ijob, y_min:y_max,:]) = job()
                         
-                progress.update(ii, info="quad %d/%d, column : %d"%(
-                    iquad+1, self.config.QUAD_NB, ii))
                 
                 self._close_pp_server(job_server)
             progress.end()
 
-            if get_calibration_laser_spectrum:
-                # save data
-                logging.info('Writing quad {}/{} to disk'.format(
-                    iquad+1, self.config.QUAD_NB))
-                write_start_time = time.time()
-                out_cube = orb.cube.RWHDFCube(
-                    self._get_calibration_laser_spectrum_cube_path(),
-                    reset=False)
-
-                out_cube[x_min:x_max, y_min:y_max,:] = iquad_data
-                logging.info('Quad {}/{} written in {:.2f} s'.format(
-                    iquad+1, self.config.QUAD_NB, time.time() - write_start_time))
-            
-
-                out_cube.close()
-                del out_cube
 
         # Write uncorrected calibration laser map to disk (in case the
         # correction does not work)
@@ -1350,9 +1307,7 @@ class Interferogram(orb.cube.InterferogramCube):
                           high_order_phase_data,
                           high_order_phase_axis,
                           phase_cube, balanced,
-                          wavenumber), 
-                    modules=("import logging",
-                             "import numpy as np")))
+                          wavenumber)))
                         for ijob in range(ncpus)]
 
                 for ijob, job in jobs:
