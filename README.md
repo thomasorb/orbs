@@ -29,9 +29,10 @@ https://github.com/thomasorb/orb
 If you have followed the installation steps for orb, you already have a conda environment named `orb3`.
 
 ```bash
-conda install -n orb3 -c conda-forge clint
+conda install -n orb3 -c conda-forge clint html2text distro lxml python-magic
 conda activate orb3
 pip install cadcdata --no-deps
+pip install cadcutils --no-deps
 ```
 #### Install orbs module
 
