@@ -154,7 +154,7 @@ class Orbs(Tools):
                     self.options[option_key],
                     silent_init=True, no_sort=False,
                     instrument=self.instrument)
-                
+
                 # create mask
                 if mask_key is not None:
                     if mask_key in self.options:
@@ -171,9 +171,8 @@ class Orbs(Tools):
 
             self.options[option_key + '.hdf5'] = export_path
 
-
         Tools.__init__(self, **kwargs)
-        
+
         self.newly_exported = False
 
         if not silent:
@@ -396,6 +395,7 @@ class Orbs(Tools):
         if not fast_init:
             if not silent:
                 logging.info('loading airmass')
+                
             try: # check if the airmass as already been computed
                 airmass = orb.utils.io.read_fits(self._get_airmass_file_path())
                 logging.info('airmass read from file')

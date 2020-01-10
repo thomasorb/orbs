@@ -1082,8 +1082,7 @@ class Interferogram(orb.cube.InterferogramCube):
         :param wave_calibration: (Optional) If True wavelength
           calibration is done (default False).
 
-        """
-
+        """        
         def _compute_spectrum_in_column(params, calibration_coeff_map_column,
                                         data,
                                         window_type,
@@ -1290,15 +1289,17 @@ class Interferogram(orb.cube.InterferogramCube):
 
                 progress.update(ii, info="Quad %d/%d column : %d"%(
                     iquad+1, self.config.QUAD_NB, ii))
-            
+
+                params = self.params.convert()
+                calib_coeff_map = self.get_calibration_coeff_map()
                 # jobs creation
                 jobs = [(ijob, job_server.submit(
                     _compute_spectrum_in_column,
-                    args=(self.params.convert(),  
-                          self.get_calibration_coeff_map()[x_min + ii + ijob,
-                                                           y_min:y_max], 
+                    args=(params,  
+                          calib_coeff_map[x_min + ii + ijob,
+                                          y_min:y_max], 
                           iquad_data[ii+ijob,:,:],
-                          window_type, 
+                          window_type,
                           phase_correction, wave_calibration,
                           get_phase_maps_cols(
                              phase_maps, x_min + ii + ijob, y_min, y_max),

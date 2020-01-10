@@ -104,7 +104,7 @@ def clean(args):
     
     recfile = RecordFile(args.job_file_path)
     for record in recfile.records:
-        project = init_orbs(args, record['target'], record['cams'], silent=True,
+        project = init_orbs(args, record['target'], silent=True,
                             fast_init=True)
         rm = RoadMap(record['instrument'], record['target'], record['cams'],
                      project.indexer)
