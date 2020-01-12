@@ -1267,18 +1267,25 @@ class Interferogram(orb.cube.InterferogramCube):
         del out_cube
         
         for iquad in range(0, self.config.QUAD_NB):
+            # multi-processing server init
+            job_server, ncpus = self._init_pp_server()
+            # must be before loading quad because init frees memory
+            # used for the processing of the previous quadrant
+            
             x_min, x_max, y_min, y_max = self.get_quadrant_dims(iquad)
             logging.info('loading quad {}/{}'.format(iquad + 1, self.config.QUAD_NB))
             iquad_data = self.get_data(x_min, x_max, 
                                        y_min, y_max, 
                                        0, self.dimz)
-            
-            iquad_data = iquad_data.astype(np.complex128)
+
+            # it's better to use a dedicated output cube instead of
+            # reusing the input cube because modifying the input data
+            # makes it being copied between processes.
+            iquad_data_out = np.empty_like(iquad_data, dtype=np.complex128)
             logging.info('memory size of a quad {} Gb'.format(iquad_data.nbytes / 1e9))
             
             logging.info('processing quad {}/{}'.format(iquad + 1, self.config.QUAD_NB))
-            # multi-processing server init
-            job_server, ncpus = self._init_pp_server()
+
             progress = orb.core.ProgressBar(x_max - x_min)
             
             for ii in range(0, x_max - x_min, ncpus):
@@ -1314,7 +1321,7 @@ class Interferogram(orb.cube.InterferogramCube):
                 for ijob, job in jobs:
                     # spectrum comes in place of the interferograms
                     # to avoid using too much memory    
-                    iquad_data[ii+ijob,:,:], times = job()
+                    iquad_data_out[ii+ijob,:,:], times = job()
                     logging.debug({'looping time: {}'.format(np.median(times['loop']))})
                     logging.debug({'probe1 time: {}'.format(np.median(times['probe1']))})
                     logging.debug({'probe2 time: {}'.format(np.median(times['probe2']))})
@@ -1329,11 +1336,13 @@ class Interferogram(orb.cube.InterferogramCube):
             out_cube = orb.cube.RWHDFCube(
                 self._get_spectrum_cube_path(phase=phase_cube), reset=False)
             
-            out_cube[x_min:x_max, y_min:y_max,:] = iquad_data
+            out_cube[x_min:x_max, y_min:y_max,:] = iquad_data_out
             logging.info('Quad {}/{} written in {:.2f} s'.format(
                 iquad+1, self.config.QUAD_NB, time.time() - write_start_time))
                         
             del out_cube
+            del iquad_data_out
+            del iquad_data
             
         # Create indexer key
         if not phase_cube:
