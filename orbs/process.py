@@ -2986,7 +2986,8 @@ class Spectrum(orb.cube.SpectralCube):
 
         flambda = self.compute_flambda(std_im=std_im, std_sp=std_sp)
         out_cube.set_param('flambda', flambda.project(self.get_base_axis()).data)
-            
+        del out_cube
+        
         # Init of the multiprocessing server
         _params = self.params.convert()
         params = dict()
@@ -2995,18 +2996,30 @@ class Spectrum(orb.cube.SpectralCube):
                 params[ikey] = _params[ikey]
 
         for iquad in range(0, self.config.QUAD_NB):
+
+            job_server, ncpus = self._init_pp_server()
+            # must be before loading quad because init frees memory
+            # used for the processing of the previous quadrant
+            
             (x_min, x_max, 
              y_min, y_max) = self.get_quadrant_dims(iquad)
+            logging.info('loading quad {}/{}'.format(iquad + 1, self.config.QUAD_NB))
             
             iquad_data = self.get_data(x_min, x_max, 
                                        y_min, y_max, 
                                        0, self.dimz)
+
+            # it's better to use a dedicated output cube instead of
+            # reusing the input cube because modifying the input data
+            # makes it being copied between processes.
+            iquad_data_out = np.empty_like(iquad_data, dtype=np.complex128)
             
             iquad_calibration_laser_map = self.get_calibration_laser_map()[
                 x_min:x_max, y_min:y_max]
 
+            logging.info('memory size of a quad {} Gb'.format(iquad_data.nbytes / 1e9))
+            
             logging.info('processing quad {}/{}'.format(iquad + 1, self.config.QUAD_NB))
-            job_server, ncpus = self._init_pp_server()
             progress = orb.core.ProgressBar(x_max - x_min)
                                 
             for ii in range(0, x_max-x_min, ncpus):
@@ -3033,7 +3046,7 @@ class Spectrum(orb.cube.SpectralCube):
 
                 for ijob, job in jobs:
                     # corrected data comes in place of original data
-                    iquad_data[ii+ijob,:,:], times = job()
+                    iquad_data_out[ii+ijob,:,:], times = job()
                     logging.debug('timing: {:.2e}({:.2e},{:.2e})|{}'.format(
                         times['loop_time_median'],
                         times['loop_time_min'],
@@ -3047,12 +3060,19 @@ class Spectrum(orb.cube.SpectralCube):
             logging.info('Writing quad {}/{} to disk'.format(
                 iquad+1, self.config.QUAD_NB))
             write_start_time = time.time()
-            out_cube[x_min:x_max, y_min:y_max,:] = iquad_data
+            
+            out_cube = orb.cube.RWHDFCube(
+                self._get_calibrated_spectrum_cube_path(),
+                reset=False)
+        
+            out_cube[x_min:x_max, y_min:y_max,:] = iquad_data_out
             logging.info('Quad {}/{} written in {:.2f} s'.format(
                 iquad+1, self.config.QUAD_NB, time.time() - write_start_time))
                         
-        del out_cube            
-            
+            del out_cube
+            del iquad_data_out
+            del iquad_data
+
         if self.indexer is not None:
             self.indexer['calibrated_spectrum_cube'] = (
                 self._get_calibrated_spectrum_cube_path())
