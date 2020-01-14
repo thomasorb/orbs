@@ -901,7 +901,9 @@ class Orbs(Tools):
             min_star_number=self.config.DETECT_STAR_NB)
 
         cube.create_cosmic_ray_maps(alignment_vector_path_1, star_list_path, fwhm_pix)
-        cube.clean_cosmic_ray_maps()
+        cube.clean_cosmic_ray_map(1)
+        cube.clean_cosmic_ray_map(2)
+        
         perf_stats = perf.print_stats()
         del cube, perf
         return perf_stats

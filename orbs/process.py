@@ -2603,6 +2603,13 @@ class CosmicRayDetector(InterferogramMerger):
         """Return the default path to a HDF5 cube of the cosmic rays."""
         return self._data_path_hdr + "cr_map.cam{}.hdf5".format(camera_number)
 
+    def _get_cr_deep_frame_path(self, camera_number, final=False):
+        """Return the default path to the deep frame if a cosmic ray detection cube."""
+        pos = 'init'
+        if final:
+            pos = 'final'
+        return self._data_path_hdr + "cr_map_deep_frame.cam{}.{}.fits".format(camera_number, pos)
+
     def create_cosmic_ray_maps(self, alignment_vector_path_1,
                                star_list_path, fwhm_pix):
         """Create cosmic ray maps for both cubes.
@@ -2724,7 +2731,7 @@ class CosmicRayDetector(InterferogramMerger):
                                        config=self.config,
                                        params=self.params,
                                        reset=True, camera=2)
-        
+
         progress = orb.core.ProgressBar(int(self.cube_A.dimz/ncpus_max))
         for ik in range(0, self.cube_A.dimz, ncpus):
             progress.update(int(ik/ncpus_max), info="starting ({})".format(ik))
@@ -2816,54 +2823,49 @@ class CosmicRayDetector(InterferogramMerger):
                 self._get_cr_map_cube_path(2))
 
         
-    def clean_cosmic_ray_maps(self):
+    def clean_cosmic_ray_map(self, camera):
         """Clean maps computed with self.create_cosmic_ray_maps()
         """
         
         MAX_CRS = 3 # Max nb of cosmic rays in one pixels
 
-        out_cubeA = orb.cube.RWHDFCube(self._get_cr_map_cube_path(1), camera=1)
-        out_cubeB = orb.cube.RWHDFCube(self._get_cr_map_cube_path(2), camera=2)
+        if camera == 1:
+            cube = self.cube_A
+        elif camera == 2:
+            cube = self.cube_B
+        else: raise Exception('camera must be 1 or 2')
+            
         
+        out_cube = orb.cube.RWHDFCube(self._get_cr_map_cube_path(camera), camera=camera, reset=False)
+
+            
         # check to remove over detected pixels (stars)
-        cr_mapA_deep = out_cubeA.get_deep_frame().data
-        cr_mapB_deep = out_cubeB.get_deep_frame().data
+        cr_map_deep = out_cube.compute_sum_image()
+        logging.info('Initial number of contaminated pixels in camera {}: {}'.format(
+            camera, np.sum(cr_map_deep)))
+        orb.utils.io.write_fits(self._get_cr_deep_frame_path(camera, final=False),
+                                cr_map_deep, overwrite=True)
+        
+        badpix = np.nonzero(cr_map_deep > MAX_CRS)
 
-        badpixA = np.nonzero(cr_mapA_deep > MAX_CRS)
-        badpixB = np.nonzero(cr_mapB_deep > MAX_CRS)
-
-        if len(badpixA[0]) > 0:
-            logging.info('{} pixels with too much detections detected in camera 1 ({} percent)'.format(
-                len(badpixA[0]), len(badpixA[0]) / float(self.cube_A.dimx * self.cube_A.dimy)))
+        if len(badpix[0]) > 0:
+            logging.info('{} pixels with too much detections detected in camera {} ({} percent)'.format(len(badpix[0]), len(badpix[0]) / float(cube.dimx * cube.dimy), camera))
             
-            progress = orb.core.ProgressBar(len(badpixA[0]))
-            for i in range(len(badpixA[0])):
-                progress.update(i+1, 'correcting {}/{} pixels'.format(i+1, len(badpixA[0])))
-                out_cubeA[badpixA[0][i], badpixA[1][i], :] = 0
+            progress = orb.core.ProgressBar(len(badpix[0]))
+            for i in range(len(badpix[0])):
+                progress.update(i+1, 'correcting {}/{} pixels'.format(i+1, len(badpix[0])))
+                out_cube[badpix[0][i], badpix[1][i], :] = 0
             progress.end()
-            logging.info('{} pixels with too much detections cleaned in camera 1'.format(
-                len(badpixA[0])))
+            logging.info('{} pixels with too much detections cleaned in camera {}'.format(
+                len(badpix[0]), camera))
             
-        if len(badpixB[0]) > 0:
-            logging.info('{} pixels with too much detections detected in camera 2 ({} percent)'.format(
-                len(badpixB[0]), len(badpixB[0]) / float(self.cube_B.dimx * self.cube_B.dimy)))
-            
-            progress = orb.core.ProgressBar(len(badpixB[0]))
-            for i in range(len(badpixB[0])):
-                progress.update(i+1, 'correcting {}/{} pixels'.format(i+1, len(badpixB[0])))
-                out_cubeB[badpixB[0][i], badpixB[1][i], :] = 0
-            progress.end()
-            logging.info('{} pixels with too much detections cleaned in camera 2'.format(
-                len(badpixB[0])))
+        cr_map_deep = out_cube.compute_sum_image()
+        logging.info('Final number of contaminated pixels in camera {}: {}'.format(
+            camera, np.sum(cr_map_deep)))
+        orb.utils.io.write_fits(self._get_cr_deep_frame_path(camera, final=True),
+                                cr_map_deep, overwrite=True)
         
-        
-        logging.info('Final number of contaminated pixels in camera 1: {}'.format(
-            np.sum(out_cubeA.get_deep_frame(recompute=True).data)))
-        logging.info('Final number of contaminated pixels in camera 2: {}'.format(
-            np.sum(out_cubeB.get_deep_frame(recompute=True).data)))
-        
-        del out_cubeA
-        del out_cubeB
+        del out_cube
       
 
  
