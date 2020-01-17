@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python 
 # *-* coding: utf-8 *-*
 # Author: Thomas Martin <thomas.martin.1@ulaval.ca> 
 # File: orb-fit-calibration-laser-map
@@ -21,13 +21,15 @@
 ## along with ORB.  If not, see <http://www.gnu.org/licenses/>.
 
 import sys, os
-import gtk
 from argparse import ArgumentParser
 import argparse
 
-from orb.core import Tools, HDFCube, Logger
+
+from orb.core import Tools, Logger
+from orb.cube import HDFCube
 import orb
 
+import orb.utils.io
 import orb.utils.image
 
 ###########################################
@@ -37,21 +39,21 @@ import orb.utils.image
 def main(args):
     Logger().start_logging()
     to = Tools(instrument=args.instrument_mode)
-    calib_map = to.read_fits(args.calibration_laser_map_path)
+    calib_map = orb.utils.io.read_fits(args.calibration_laser_map_path)
     params, calib_map_fit, model_fit = orb.utils.image.fit_calibration_laser_map(
         calib_map, float(to._get_config_parameter('CALIB_NM_LASER')),
         binning=2, return_model_fit=True)
-    to.write_fits(
+    orb.utils.io.write_fits(
         os.path.splitext(args.calibration_laser_map_path)[0] + '.fit.fits',
         calib_map_fit, overwrite=True)
-    to.write_fits(
+    orb.utils.io.write_fits(
         os.path.splitext(
             args.calibration_laser_map_path)[0] + '.fit.residual.fits',
         calib_map - calib_map_fit, overwrite=True)
-    to.write_fits(
+    orb.utils.io.write_fits(
         os.path.splitext(args.calibration_laser_map_path)[0] + '.fit.model.fits',
         model_fit, overwrite=True)
-    to.write_fits(
+    orb.utils.io.write_fits(
         os.path.splitext(
             args.calibration_laser_map_path)[0] + '.fit.wavefront.fits',
         calib_map_fit - model_fit, overwrite=True)
@@ -61,10 +63,9 @@ def main(args):
 
 if __name__ == "__main__":
 
-    parser = ArgumentParser(version=('ORB-version {}'.format(
-        orb.core.__version__)),
-                            description=
-                            "Fit a calibration laser map.")
+    parser = ArgumentParser(prog='orbs-fit-calibration-laser-map',
+                            formatter_class=argparse.RawDescriptionHelpFormatter,
+                            description="Fit a calibration laser map.")
 
     parser.add_argument('instrument_mode',
                         action='store',

@@ -658,11 +658,10 @@ class CalibrationLaser(orb.cube.InterferogramCube):
                     and (max_index > 3*fwhm_guess)
                     and (max_index < dimz - 3*fwhm_guess)):
                     iline = ispectrum.axis.convert(max_index)
-                    # fitp = ispectrum.fit([iline], fmodel='gaussian',
-                    #                      nofilter=True,
-                    #                      fwhm_def=('free',),
-                    #                      poly_order=0, signal_range=signal_range_cm1)
-                    fitp = []
+                    fitp = ispectrum.fit([iline], fmodel='gaussian',
+                                         nofilter=True,
+                                         fwhm_def=('free',),
+                                         poly_order=0, signal_range=signal_range_cm1)
                     del ispectrum
                     
                 else:
@@ -712,13 +711,16 @@ class CalibrationLaser(orb.cube.InterferogramCube):
         params = self.params.convert()
         
         for iquad in range(self.config.QUAD_NB):
-            x_min, x_max, y_min, y_max = self.get_quadrant_dims(iquad)
-            iquad_data = self.get_data(x_min, x_max, 
-                                       y_min, y_max, 
-                                       0, self.dimz)
             # init multiprocessing server
             job_server, ncpus = self._init_pp_server()
 
+            x_min, x_max, y_min, y_max = self.get_quadrant_dims(iquad)
+            logging.info('loading quad {}/{}'.format(iquad + 1, self.config.QUAD_NB))
+            iquad_data = self.get_data(x_min, x_max, 
+                                       y_min, y_max, 
+                                       0, self.dimz)
+
+            logging.info('processing quad {}/{}'.format(iquad + 1, self.config.QUAD_NB))
             progress = orb.core.ProgressBar(x_max - x_min)
             for ii in range(0, x_max - x_min, ncpus):
                 
@@ -742,11 +744,14 @@ class CalibrationLaser(orb.cube.InterferogramCube):
                     (max_array[x_min + ii + ijob, y_min:y_max],
                      fitparams[x_min + ii + ijob, y_min:y_max,:]) = job()
                         
-                
-                self._close_pp_server(job_server)
+            self._close_pp_server(job_server)
             progress.end()
+            del iquad_data
 
 
+        # convert wavenumbers to wavelengths
+        max_array = orb.utils.spectrum.cm12nm(max_array)
+        
         # Write uncorrected calibration laser map to disk (in case the
         # correction does not work)
         orb.utils.io.write_fits(self._get_calibration_laser_map_path(), max_array,
