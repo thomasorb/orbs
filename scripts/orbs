@@ -122,53 +122,8 @@ def get_data(jobfile, args):
     for ipath in ['OBS', 'STDIM', 'FLAT']:
         files += jobfile.raw_params[ipath]
     to_download = list()
-    for ifile in files:
-        if os.path.exists(ifile): continue
-        to_download.append(os.path.splitext(os.path.split(ifile)[1])[0])
-
-    if len(to_download) > 0:
-        error_files = list()
-        for ifile in to_download:
-            if os.path.exists(ifile + '.fits'):
-                print('file {} already downloaded'.format(ifile + '.fits'))
-                continue
-
-            command = 'cadc-data get -v -z CFHT {}'.format(ifile)
-
-            # downloading
-            print('> downloading {} (command: {})'.format(ifile, command))
-            try:
-                p = subprocess.run(shlex.split(command), timeout=10)
-            except subprocess.TimeoutExpired:
-                print('timeout expired')
-                continue
-            
-            if p.returncode != 0:
-                warnings.warn('{} could not be downloaded'.format(ifile))
-                error_files.append(ifile)
-                continue
-
-            # uncompressing
-            command = 'funpack {}'.format(ifile + '.fits.fz')
-            print('> uncompressing {} (command: {})'.format(ifile, command))
-            p = subprocess.run(shlex.split(command))
-            if p.returncode != 0:
-                warnings.warn("{} could not be uncompressed (do you have funpack installed, if not try 'sudo apt install libcfitsio-bin')".format(ifile))
-                error_files.append(ifile)
-                continue
-            
-            # deleting compressed file
-            print('> removing compressed file {}'.format(ifile + '.fits.fz'))
-            os.remove(ifile + '.fits.fz')
-            
-            print('----------------')
-            
-        if len(error_files) > 0:
-            print('some files could not be downloaded (timeout ?).')
-            for ifile in error_files:
-                print('   {}'.format(ifile))
-            print('Please repeat the same command to try again.')
-                        
+    orb.utils.cadc.get_cadc_data(to_download)
+    
 def get_logfile_name(args):
      return os.path.basename(args.job_file_path) + '.log'
 

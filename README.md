@@ -27,12 +27,16 @@ https://github.com/thomasorb/orb
 #### Install specific dependencies
 
 If you have followed the installation steps for orb, you already have a conda environment named `orb3`.
-
 ```bash
 conda install -n orb3 -c conda-forge clint html2text distro lxml python-magic
 conda activate orb3
 pip install cadcdata --no-deps
 pip install cadcutils --no-deps
+```
+
+You will also need cfitsio. On Ubuntu you can install it with
+``` bash
+sudo apt install libcfitsio5 libcfitsio-bin
 ```
 #### Install orbs module
 
