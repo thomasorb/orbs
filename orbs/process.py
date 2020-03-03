@@ -1723,11 +1723,14 @@ class InterferogramMerger(orb.core.Tools):
                                  config=self.config, data_prefix=self._data_prefix,
                                  params=self.params, camera=2)
 
+        frameA.reset_sip()
+        frameB.reset_sip()
+
         XYSTEP_SIZE = 0.5 # Pixel step size of the search range
 
-        ANGLE_STEPS = 10 # Angle steps for brute force guess
-        ANGLE_RANGE = 1. # Angle range for brute force guess
-        RANGE_COEFF = self.config.ALIGNER_RANGE_COEFF
+        ANGLE_STEPS = 30 # Angle steps for brute force guess
+        ANGLE_RANGE = 3. # Angle range for brute force guess
+        RANGE_COEFF = self.config.ALIGNER_RANGE_COEFF * 2
 
         def get_ranges(xystep_size, angle_range, angle_steps, range_coeff):
             # define the ranges in x and y for the rough optimization

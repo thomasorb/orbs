@@ -1105,6 +1105,8 @@ class Orbs(Tools):
                     cube.dx, cube.dy, cube.dr, cube.da, cube.db = alignment_parameters[:5]
                     cube.rc = alignment_parameters[5:7]
                     cube.zoom_factor = alignment_parameters[7:9]
+                else:
+                    cube.compute_alignment_parameters(combine_first_frames=raw)
             else:
                 cube.compute_alignment_parameters(combine_first_frames=raw)
         else:
@@ -1366,12 +1368,7 @@ class Orbs(Tools):
         
         perf = Performance(cube, "Phase map creation", camera_number,
                            instrument=self.instrument)
-
-        if self.config["INSTRUMENT_NAME"] == 'SITELLE':
-            binning = 6
-        else:
-            binning = 3
-
+        
         high_order_phase_path = self._get_phase_file_path(
             self.options['filter_name'])
         
@@ -1382,7 +1379,7 @@ class Orbs(Tools):
             fit_order = self._get_phase_fit_order()
             
 
-        cube.create_phase_maps(binning, fit_order,
+        cube.create_phase_maps(int(self.config['PHASE_BINNING']), fit_order,
                                high_order_phase_path=high_order_phase_path)
             
         perf_stats = perf.print_stats()
