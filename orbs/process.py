@@ -2941,7 +2941,6 @@ class Spectrum(orb.cube.SpectralCube):
                 times['loop_time_min'] = np.nan
                 times['loop_time_max'] = np.nan
                 times['loop_breaks'] = np.nan
-                
             return result_col, times
 
 
@@ -2955,7 +2954,7 @@ class Spectrum(orb.cube.SpectralCube):
             instrument=self.instrument,
             config=self.config,
             params=self.params,
-            reset=True)
+            reset=True, dtype=np.complex64)
 
         # set deep frame and wcs
         if deep_frame_path is not None:
@@ -3024,7 +3023,7 @@ class Spectrum(orb.cube.SpectralCube):
             # it's better to use a dedicated output cube instead of
             # reusing the input cube because modifying the input data
             # makes it being copied between processes.
-            iquad_data_out = np.empty_like(iquad_data, dtype=np.complex128)
+            iquad_data_out = np.empty_like(iquad_data, dtype=np.complex64)
             
             iquad_calibration_laser_map = self.get_calibration_laser_map()[
                 x_min:x_max, y_min:y_max]
