@@ -1109,7 +1109,7 @@ class Interferogram(orb.cube.InterferogramCube):
             import time
             orb.utils.log.setup_socket_logging()
             dimz = data.shape[1]
-            spectrum_column = np.zeros_like(data, dtype=complex)
+            spectrum_column = np.zeros_like(data, dtype=np.complex128)
             ho_phase = Phase(high_order_phase_data,
                              axis=high_order_phase_axis,
                              params=params)
@@ -1268,6 +1268,7 @@ class Interferogram(orb.cube.InterferogramCube):
             instrument=self.instrument,
             config=self.config,
             params=self.params,
+            dtype=np.complex64,
             reset=True)
         del out_cube
         
@@ -1327,6 +1328,7 @@ class Interferogram(orb.cube.InterferogramCube):
                     # spectrum comes in place of the interferograms
                     # to avoid using too much memory    
                     iquad_data_out[ii+ijob,:,:], times = job()
+                    
                     logging.debug({'looping time: {}'.format(np.median(times['loop']))})
                     logging.debug({'probe1 time: {}'.format(np.median(times['probe1']))})
                     logging.debug({'probe2 time: {}'.format(np.median(times['probe2']))})
