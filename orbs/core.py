@@ -117,7 +117,7 @@ class JobFile(object):
                     flist.write('{}\n'.format(l[i]))
             return fpath
 
-        
+        self.config = dict()
         self.path = os.path.abspath(path)
         self.rootpath = os.path.split(self.path)[0]
         self.pathprefix = os.path.split(self.path)[1]
@@ -254,7 +254,6 @@ class JobFile(object):
                 self.raw_params.pop(ikey)
 
         # parse other parameters as config parameters
-        self.config = dict()
         for ikey in orb.core.Tools(instrument=instrument).config:
             if ikey in self.raw_params:
                 self.config[ikey] = self.raw_params.pop(ikey)
@@ -286,7 +285,9 @@ class JobFile(object):
         return False
 
     def check_validity(self):
-        if not self.is_valid(): raise Exception('JobFile invalid. One or more file could not be opened properly.')
+        if not self.is_valid():
+            warnings.warn('JobFile invalid. One or more files could not be opened properly.')
+            #raise Exception('JobFile invalid. One or more files could not be opened properly.')
 
 
 ##################################################

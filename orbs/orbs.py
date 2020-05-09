@@ -206,9 +206,39 @@ class Orbs(Tools):
         self.options['wavenumber'] = False
         self.options['no_sky'] = False
         self.options['apodization_function'] = None
-        
-        self.options.update(self.jobfile.get_params())
-
+                
+        if self.jobfile.is_valid():
+            self.options.update(self.jobfile.get_params())
+        else:
+            ## hacking parameters from already computed data, this may work or not ...
+            ## having a valid jobfile is a better way to continue the reduction.
+            warnings.warn('invalid jobfile, trying to guess parameters from already computed data (if it exists)')
+            hacked = False
+            with open(self.jobfile.path + '.log') as f:
+                for line in f:
+                    if 'zpd_index.fits' in line:
+                        line = line.strip().split()
+                        for word in line:
+                            if 'zpd_index' in word:
+                                obsfilepath = (os.path.split(word)[0] + os.sep
+                                               + os.path.split(self.jobfile.path)[-1]
+                                               + '.OBS.cam1.hdf5')
+                                cube = orb.cube.HDFCube(obsfilepath)
+                                for ikey in list(self.jobfile.header_keys.keys()) + [
+                                        'step',
+                                        'calibration_laser_map_path',]:
+                                    self.options[ikey] = cube.params[ikey]
+                                hacked = True
+                                self.jobfile.raw_params = []
+                                logging.info('parameters guessed from {}'.format(obsfilepath))
+                                break
+                    if hacked:
+                        break
+                    
+            if not hacked:
+                raise Exception('something went wrong during the parameters hack. It would be best to get a valid jobfile. Sorry...')
+            
+            
         ##########
         ## get the other parameters from the jobfile
         ##########
