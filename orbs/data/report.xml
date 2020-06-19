@@ -33,6 +33,11 @@
   <graph type='phase' name='merged.phase_maps' title='phase order 0' xlabel='x (pixels)' ylabel='y (pixels)' model='False'></graph>
   <graph type='phase' name='merged.phase_maps' title='phase order 0 model' xlabel='x (pixels)' ylabel='y (pixels)' model='True'></graph>
    
+  <graph type='spectrum' name='merged.calibrated_spectrum_cube' title='calibrated spectrum' xlabel='sigma (cm-1)' ylabel='flux' x='1024' y ='1032' r='100'></graph>
+  
+  <graph type='calib_image' name='merged.calibrated_spectrum_cube' title='calibrated deep frame zoom' xlabel='x (pixels)' ylabel='y (pixels)' xmin='500' xmax='1000' ymin='500' ymax='1000'></graph>
+  
+  <graph type='modulation_ratio' name='merged.calibrated_spectrum_cube' df='merged.deep_frame' title='modulation ratio' xlabel='x (pixels)' ylabel='y (pixels)'></graph>
   
    
 </graphs>

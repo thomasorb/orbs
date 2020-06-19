@@ -2895,7 +2895,7 @@ class Spectrum(orb.cube.SpectralCube):
         """Return the default path to a calibrated spectral cube."""
         return self._data_path_hdr + "calibrated_spectrum.hdf5"
 
-        
+
     def calibrate(self, deep_frame_path=None, phase_maps_path=None,
                   standard_image_path=None):
         

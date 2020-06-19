@@ -82,7 +82,7 @@ def status(args):
 
 def report(args):
     # make a report
-    reporter = orbs.report.Reporter(args.job_file_path, args.instrument_mode)
+    reporter = orbs.report.Reporter(args.job_file_path, args.instrument_mode, fast=args.fast)
         
 def resume(args, parser):
     recfile = RecordFile(args.job_file_path)
@@ -355,6 +355,10 @@ def add_all_operations(instrument_parser, epilog):
         '--debug', dest='debug', action='store_true',
         default=False,
         help="Turn on debug mode (logging messages displayed on screen are more informative)")
+    parser_report.add_argument(
+        '--fast', dest='fast', action='store_true',
+        default=False,
+        help="fast report mode (longer checks are not made)")
 
     
 ########################################################################

@@ -86,6 +86,37 @@ class Graph(object):
                 pm.modelize()
             imshow(pm.get_map(0))
 
+        elif self.getp('type') == 'spectrum':
+            cube = orb.cube.SpectralCube(path)
+            ix, iy = self.getp(('x', 'y'), cast=int)
+            r = self.getp('r', cast=float)
+            spectrum = cube.get_spectrum(ix, iy, r)
+            spectrum.plot()
+            pl.legend()
+
+        elif self.getp('type') == 'calib_image':
+            cube = orb.cube.SpectralCube(path)
+            im = cube.get_deep_frame()
+            im.imshow(perc=90)
+            pl.colorbar()
+            
+            try:
+                starcat = im.get_stars_from_catalog()
+            except Exception as e:
+                warnings.warn('star position could not be added: ', e)
+            else:
+                pl.scatter(starcat.x, starcat.y, c='red', marker='+')
+            try:
+                xmin, xmax, ymin, ymax = self.getp(('xmin', 'xmax', 'ymin', 'ymax'), cast=int)
+                pl.xlim((xmin, xmax))
+                pl.ylim((ymin, ymax))
+            except Exception as e:
+                logging.debug('error in getting xlim, ylim parameters: {}'.format(e))
+        elif self.getp('type') == 'modulation_ratio':
+            logging.info('Note that this may take a while. if you want to skip it, please use the --fast option')
+            cube = orb.cube.SpectralCube(path)
+            im = cube.compute_modulation_ratio()
+            imshow(im)
         else:
             raise TypeError('type {}  not understood'.format(self.getp('type')))
         pl.xlabel(self.getp('xlabel'))
@@ -129,15 +160,19 @@ class Reporter(object):
 
     GRAPHWIDTH = 200
     
-    def __init__(self, job_file_path, instrument):
+    def __init__(self, job_file_path, instrument, fast=False):
 
 
         self.orbs = orbs.Orbs(
             job_file_path, 'object', instrument=instrument,
             fast_init=True, silent=True)
 
-        graphs = xml.etree.ElementTree.parse(
-            os.path.join(core.ORBS_DATA_PATH, 'report.xml')).findall('graph')
+        if not fast:
+            graphs = xml.etree.ElementTree.parse(
+                os.path.join(core.ORBS_DATA_PATH, 'report.xml')).findall('graph')
+        else:
+            graphs = xml.etree.ElementTree.parse(
+                os.path.join(core.ORBS_DATA_PATH, 'report-fast.xml')).findall('graph')
 
         self.pdf = FPDF()
         self.pdf.add_page()
