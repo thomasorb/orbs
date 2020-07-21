@@ -47,7 +47,7 @@ class JobFile(object):
         'order': ('SITORDER', float),
         'exposure_time': ('EXPTIME', float),
         'obs_date': ('DATE-OBS', str),
-        'obs_time': ('TIME-OBS', str),
+        'obs_time': ('TIME-OBS', str, 'UTC-OBS'),
         'target_ra': ('RA', str),
         'target_dec': ('DEC', str),
     }

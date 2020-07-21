@@ -690,7 +690,6 @@ class CalibrationLaser(orb.cube.InterferogramCube):
                         warnings.warn('fit range is not large enough: median fwhm ({}) > 5xrange ({})'.format(fwhm_median, range_max - range_min))
 
             del column_data
-                
             return max_array_column, fitparams_column
             
         logging.info("Computing calibration laser map")

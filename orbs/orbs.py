@@ -140,7 +140,6 @@ class Orbs(Tools):
             # check if the hdf5 cube already
             # exists.
             if option_key not in self.options: return
-
             logging.info('exporting {}'.format(option_key))
             export_path = (
                 self._get_project_dir()
@@ -220,29 +219,53 @@ class Orbs(Tools):
                         line = line.strip().split()
                         for word in line:
                             if 'zpd_index' in word:
-                                obsfilepath = (os.path.split(word)[0] + os.sep
-                                               + os.path.split(self.jobfile.path)[-1]
-                                               + '.OBS.cam1.hdf5')
+                                obsfilepath = orb.utils.misc.find(
+                                    os.path.split(self.jobfile.path)[-1] + '*.cam1.hdf5',
+                                    os.path.split(word)[0])[0]
                                 cube = orb.cube.HDFCube(obsfilepath)
-                                for ikey in list(self.jobfile.header_keys.keys()) + [
+                            
+                                if target == 'laser':
+                                    self.options['calib_path_1'] = obsfilepath.replace(
+                                        '.hdf5', '.list')
+                                    self.options['calib_path_2'] = obsfilepath.replace(
+                                        '.hdf5', '.list').replace('cam1', 'cam2')
+                                else:
+                                    self.options['image_list_path_1'] = obsfilepath.replace(
+                                        '.hdf5', '.list')
+                                    self.options['image_list_path_2'] = obsfilepath.replace(
+                                        '.hdf5', '.list').replace('cam1', 'cam2')
+                                    
+                                header_keys = list(self.jobfile.header_keys.keys()) + ['target_x', 'target_y']
+                                if target != 'laser':
+                                    header_keys += [
                                         'step',
-                                        'calibration_laser_map_path',]:
-                                    self.options[ikey] = cube.params[ikey]
+                                        'calibration_laser_map_path',]
+                                    
+                                for ikey in header_keys:
+                                    try:
+                                        self.options[ikey] = cube.params[ikey]
+                                    except KeyError:
+                                        try:
+                                            self.options[ikey] = self.jobfile.header_keys[ikey][1](
+                                                cube.params[self.jobfile.header_keys[ikey][0]])
+                                        except KeyError: # try alternate keyword
+                                            self.options[ikey] = self.jobfile.header_keys[ikey][1](
+                                                cube.params[self.jobfile.header_keys[ikey][2]])
+                                    
                                 hacked = True
                                 self.jobfile.raw_params = []
                                 logging.info('parameters guessed from {}'.format(obsfilepath))
                                 break
                     if hacked:
                         break
-                    
+
             if not hacked:
                 raise Exception('something went wrong during the parameters hack. It would be best to get a valid jobfile. Sorry...')
-            
+
             
         ##########
         ## get the other parameters from the jobfile
         ##########
-                    
         # check step and order
         if target != 'laser':
             _step, _order = FilterFile(
@@ -326,7 +349,7 @@ class Orbs(Tools):
             export_images('standard_image_path_2', 2, mask_key='std_mask_path_2')
         
         
-        if target == 'laser':
+        if target == 'laser' and not fast_init:
             self.options['image_list_path_1'] = self.options['calib_path_1']
             self.options['image_list_path_2'] = self.options['calib_path_2']
             if 'calib_path_1.hdf5' in self.options:
@@ -374,6 +397,7 @@ class Orbs(Tools):
                     self.options['step_nb'] = dimz1
 
         logging.info('looking for ZPD shift')
+        
         # get ZPD shift in SITELLE's case
         if self.config["INSTRUMENT_NAME"] == 'SITELLE' and not fast_init:
             
@@ -382,8 +406,8 @@ class Orbs(Tools):
                 zpd_index = orb.utils.io.read_fits(zpd_file_path)
                 zpd_index = int(zpd_index)
                 logging.info('ZPD index read from file')
-            except Exception:
-                warnings.warn('ZPD file could not be opened')
+            except Exception as e:
+                warnings.warn('ZPD file could not be opened: {}'.format(e))
                 zpd_index = None
             
             if zpd_index is None:
