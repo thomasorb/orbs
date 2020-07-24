@@ -489,6 +489,8 @@ class Orbs(Tools):
 
         cams = 'full'
         if target == 'laser': cams = 'single1'
+        if target == 'flat': cams = 'single1'
+        
         self.roadmap = RoadMap(
             self.config["INSTRUMENT_NAME"].lower(), target, cams, self.indexer)
 
