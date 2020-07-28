@@ -66,8 +66,8 @@ class BinnedInterferogramCube(orb.cube.InterferogramCube):
                     zpd_index=zpd_index,
                     calib_coeff=calib_col[ij])
                 interf = interf.symmetric()
-                interf.subtract_mean()
-                interf.apodize('1.5')
+                interf = interf.subtract_mean()
+                interf = interf.apodize('1.5')
                 spectrum = interf.transform()
                 if isinstance(spectrum, orb.fft.Spectrum): # test if transform ok
                     spectrum = spectrum.interpolate(base_axis, quality=10)
