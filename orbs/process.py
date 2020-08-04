@@ -321,7 +321,7 @@ class RawData(orb.cube.InterferogramCube):
                 raise Exception("Alignment vector dimensions are not compatible")
                 return None
         else:
-            warnings.warn("Alignment vector not loaded")
+            logging.warn("Alignment vector not loaded")
             return None
 
 
@@ -425,7 +425,7 @@ class RawData(orb.cube.InterferogramCube):
         alignment_vector = self._load_alignment_vector(alignment_vector_path)
         if (alignment_vector is None):
             alignment_vector = np.zeros((self.dimz, 2), dtype = float)
-            warnings.warn("No alignment vector loaded : there will be no alignment of the images")
+            logging.warn("No alignment vector loaded : there will be no alignment of the images")
 
         # load cosmic ray map cube
         if cr_map_cube_path is None:
@@ -439,7 +439,7 @@ class RawData(orb.cube.InterferogramCube):
             logging.info("Loaded cosmic ray map: {}".format(cr_map_cube_path))
         else:
             cr_map_cube = None
-            warnings.warn("No cosmic ray map loaded")
+            logging.warn("No cosmic ray map loaded")
 
 
         # Multiprocessing server init
@@ -528,7 +528,7 @@ class RawData(orb.cube.InterferogramCube):
         out_cube.set_deep_frame(deep_frame)
         
         if np.nanmedian(deep_frame) < 0.:
-            warnings.warn('Deep frame median of the corrected cube is < 0. ({}), please check the calibration files (dark, bias, flat).')
+            logging.warn('Deep frame median of the corrected cube is < 0. ({}), please check the calibration files (dark, bias, flat).')
         
         orb.utils.io.write_fits(
             self._get_deep_frame_path(), deep_frame,
@@ -687,7 +687,7 @@ class CalibrationLaser(orb.cube.InterferogramCube):
                 if fwhm_median is not np.nan:
                     if (range_max - range_min) < 5. * fwhm_median:
                         import warnings
-                        warnings.warn('fit range is not large enough: median fwhm ({}) > 5xrange ({})'.format(fwhm_median, range_max - range_min))
+                        logging.warn('fit range is not large enough: median fwhm ({}) > 5xrange ({})'.format(fwhm_median, range_max - range_min))
 
             del column_data
             return max_array_column, fitparams_column
@@ -818,18 +818,6 @@ class Interferogram(orb.cube.InterferogramCube):
         """Return path to the binned calibration laser map."""
         return self._data_path_hdr + "binned_calibration_laser_map.fits"
 
-    def _get_transmission_vector_path(self):
-        """Return the path to the transmission vector"""
-        return self._data_path_hdr + "transmission_vector.fits"
-   
-    def _get_stray_light_vector_path(self):
-        """Return the path to the stray light vector"""
-        return self._data_path_hdr + "stray_light_vector.fits"
-
-    def _get_extracted_star_spectra_path(self):
-        """Return the path to the extracted star spectra"""
-        return self._data_path_hdr + "extracted_star_spectra.fits"
-
     def _get_corrected_interferogram_cube_path(self):
         """Return the default path to a spectrum HDF5 cube."""
         return self._data_path_hdr + 'corrected_interferogram_cube.hdf5'
@@ -880,7 +868,7 @@ class Interferogram(orb.cube.InterferogramCube):
         NO_TRANSMISSION_CORRECTION = bool(int(
             self._get_tuning_parameter('NO_TRANSMISSION_CORRECTION', 0)))
         if NO_TRANSMISSION_CORRECTION:
-            warnings.warn('No transmission correction')
+            logging.warn('No transmission correction')
             
         transmission_vector = orb.utils.io.read_fits(transmission_vector_path)
         if NO_TRANSMISSION_CORRECTION:
@@ -1180,10 +1168,10 @@ class Interferogram(orb.cube.InterferogramCube):
                 high_order_phase_axis = None
         else:
             phase_maps = None
-            warnings.warn('No phase correction')
+            logging.warn('No phase correction')
 
         if wave_calibration:
-            warnings.warn('Wavelength/wavenumber calibration')
+            logging.warn('Wavelength/wavenumber calibration')
             raise NotImplementedError('Wavenumber calibration not implemented. Must be done through process.Spectrum.calibrate()')
         
         #############################
@@ -1240,7 +1228,7 @@ class Interferogram(orb.cube.InterferogramCube):
 
             if (orb.utils.fft.spectrum_mean_energy(mean_spectrum.data.imag)
                 > .5 * orb.utils.fft.spectrum_mean_energy(mean_spectrum.data.real)):
-                warnings.warn("Too much energy in the imaginary part, check the phase correction")
+                logging.warn("Too much energy in the imaginary part, check the phase correction")
       
         ## Spectrum computation
 
@@ -1522,10 +1510,10 @@ class InterferogramMerger(orb.core.Tools):
         orb.core.Tools.__init__(self, **kwargs)
         self.params = orb.core.ROParams()
         
-        # manage params to pass in HDFCubes        
+        # manage params to pass in InterferogramCubes
         self.params.update(params)
         self.params.reset('instrument', self.instrument)
-        self.needed_params = orb.cube.Cube.needed_params + ('bin_cam_1', 'bin_cam_2')
+        self.needed_params = orb.cube.InterferogramCube.needed_params + ('bin_cam_1', 'bin_cam_2')
         for iparam in self.needed_params:
             if iparam not in self.params:
                 raise ValueError('param {} must be in params'.format(iparam))
@@ -1536,19 +1524,21 @@ class InterferogramMerger(orb.core.Tools):
         self._wcs_header = wcs_header
        
         if interf_cube_path_A is not None:
-            self.cube_A = orb.cube.Cube(interf_cube_path_A,
-                                        instrument=self.instrument,
-                                        config=self.config,
-                                        params=self.params,
-                                        data_prefix=self._data_prefix,
-                                        camera=1)
+            self.cube_A = orb.cube.InterferogramCube(
+                interf_cube_path_A,
+                instrument=self.instrument,
+                config=self.config,
+                params=self.params,
+                data_prefix=self._data_prefix,
+                camera=1)
         if interf_cube_path_B is not None:
-            self.cube_B = orb.cube.Cube(interf_cube_path_B,
-                                        instrument=self.instrument,
-                                        config=self.config,
-                                        params=self.params,
-                                        data_prefix=self._data_prefix,
-                                        camera=2)
+            self.cube_B = orb.cube.InterferogramCube(
+                interf_cube_path_B,
+                instrument=self.instrument,
+                config=self.config,
+                params=self.params,
+                data_prefix=self._data_prefix,
+                camera=2)
 
         self.bin_A = self.cube_A.params.binning
         self.bin_B = self.cube_B.params.binning
@@ -1595,7 +1585,15 @@ class InterferogramMerger(orb.core.Tools):
         reflections over clouds, the moon or the sun.
         """
         return self._data_path_hdr + "stray_light_vector.fits"
-   
+
+    def _get_standard_interferogram_path(self):
+        """Return the path to the standard interferogram"""
+        return self._data_path_hdr + "standard_interferogram.hdf5"
+
+    def _get_standard_spectrum_path(self):
+        """Return the path to the standard spectrum"""
+        return self._data_path_hdr + "standard_spectrum.hdf5"
+
     def _get_ext_illumination_vector_path(self):
         """Return the path to the external illumination vector.
 
@@ -1625,11 +1623,6 @@ class InterferogramMerger(orb.core.Tools):
         interferograms of the calibrated stars"""
         
         return self._data_path_hdr + "calibration_stars.fits"
-
-    def _get_extracted_star_spectra_path(self):
-        """Return the path to a data file containing the spectra of
-        the extracted stars"""
-        return self._data_path_hdr + "extracted_star_spectra.fits"
 
     def _get_deep_frame_path(self):
         """Return the path to the deep frame.
@@ -1675,7 +1668,7 @@ class InterferogramMerger(orb.core.Tools):
         """return self.params as a fits header"""
         return orb.utils.io.dict2header(dict(self.params))
     
-    def compute_alignment_parameters(self, combine_first_frames=False):
+    def compute_alignment_parameters(self, combine_first_frames=True):
         """
         Return the alignment coefficients to align the cube of the
         camera 2 on the cube of the camera 1
@@ -1687,7 +1680,7 @@ class InterferogramMerger(orb.core.Tools):
         """
         # High pass filtering of the frames
         HPFILTER = int(self._get_tuning_parameter('HPFILTER', 0))
-        N_FRAMES = 10 # number of combined frames
+        N_FRAMES = 50 # number of combined frames
         
         logging.info("Computing alignment parameters")
 
@@ -1727,11 +1720,11 @@ class InterferogramMerger(orb.core.Tools):
         frameA.reset_sip()
         frameB.reset_sip()
 
-        XYSTEP_SIZE = 0.5 # Pixel step size of the search range
+        XYSTEP_SIZE = 0.2 # Pixel step size of the search range
 
-        ANGLE_STEPS = 30 # Angle steps for brute force guess
-        ANGLE_RANGE = 3. # Angle range for brute force guess
-        RANGE_COEFF = self.config.ALIGNER_RANGE_COEFF * 2
+        ANGLE_STEPS = 60 # Angle steps for brute force guess
+        ANGLE_RANGE = 1.5 # Angle range for brute force guess
+        RANGE_COEFF = self.config.ALIGNER_RANGE_COEFF
 
         def get_ranges(xystep_size, angle_range, angle_steps, range_coeff):
             # define the ranges in x and y for the rough optimization
@@ -1784,7 +1777,7 @@ class InterferogramMerger(orb.core.Tools):
         """Brute force algorithm used to find laser frames alignment"""
 
         ### laser frame alignment is not precise enough to be used.
-        warnings.warn('No brute force search: init alignment parameters unchanged')
+        logging.warn('No brute force search: init alignment parameters unchanged')
         self.dx, self.dy, self.dr = init_dx, init_dy, init_angle
         self.da = 0.
         self.db = 0.
@@ -2029,7 +2022,7 @@ merge() method).
         NO_TRANSMISSION_CORRECTION = bool(int(
             self._get_tuning_parameter('NO_TRANSMISSION_CORRECTION', 0)))
         if NO_TRANSMISSION_CORRECTION:
-            warnings.warn('No transmission correction')
+            logging.warn('No transmission correction')
 
 
         local_background = True
@@ -2042,7 +2035,7 @@ merge() method).
             TRANS_ZPD_SIZE = float(
                 self._get_tuning_parameter('TRANS_ZPD_SIZE', 0.1))
             
-            warnings.warn(
+            logging.warn(
                 'Region considered as an extended emission region')
         else:
             fix_fwhm = False
@@ -2374,7 +2367,7 @@ merge() method).
                     deg=int(ext_level_vector.shape[0] * SMOOTH_RATIO_EXT))
 
         else:
-            warnings.warn(
+            logging.warn(
                 "External illumination vector computation skipped")
             ext_level_vector = np.zeros(self.cube_A.dimz, dtype=float)
      
@@ -2593,6 +2586,63 @@ merge() method).
 
         logging.info("Cubes merged")
         del out_cube
+
+    def extract_star_spectrum(self, x, y):
+        modulation_ratio = float(orb.utils.io.read_fits(self._get_modulation_ratio_path()))
+        trans = orb.utils.io.read_fits(self._get_transmission_vector_path())
+        star_list_B, fwhm_B = self.cube_B.detect_stars(path=self._get_star_list_path(2))
+            
+        fwhm_arc_B = np.nanmedian(star_list_B['fwhm_arc'])
+        logging.info(
+            'mean FWHM of the stars in camera 2: {} arc-seconds'.format(
+                fwhm_arc_B))
+
+        rmin = fwhm_B * 4
+        rmax = fwhm_B * 7
+        
+        back_region = self.cube_A.get_region(
+            'annulus({},{},{},{})'.format(
+                x+1, y+1, float(rmin), float(rmax)))
+        
+        
+        back1 = self.cube_A.get_zvector_from_region(back_region, median=True)
+        back2 = self.cube_B.get_zvector_from_region(back_region, median=True)
+
+        interf1 = self.cube_A.get_interferogram(x, y, fwhm_B * 3)
+        interf2 = self.cube_B.get_interferogram(x, y, fwhm_B * 3)
+                
+        back1.data /= back1.params['pixels']
+        back1.params = interf1.params
+        back1.axis = interf1.axis
+        back1.params['pixels'] = 1
+        back2.data /= back2.params['pixels']
+        back2.params = interf2.params
+        back2.axis = interf2.axis
+        back2.params['pixels'] = 1
+        
+        interf1.subtract_sky(back1)
+        interf2.subtract_sky(back2)
+
+        trans = orb.core.Vector1d(trans, axis=interf1.axis, params=interf1.params)
+
+        interfm = interf1.combine(interf2, transmission=trans, ratio=modulation_ratio)
+        interfm.writeto(self._get_standard_interferogram_path())
+        
+        if self.indexer is not None:
+            self.indexer['standard_interferogram'] = self._get_standard_interferogram_path()
+
+        logging.info("standard interferogram computed")
+
+        spectrum = interfm.get_spectrum()
+        spectrum.data = spectrum.get_amplitude()
+        spectrum.writeto(self._get_standard_spectrum_path())
+
+        if self.indexer is not None:
+            self.indexer['standard_spectrum'] = self._get_standard_spectrum_path()
+
+        logging.info("standard spectrum computed")
+
+        
 
 
 ##################################################
@@ -2972,7 +3022,7 @@ class Spectrum(orb.cube.SpectralCube):
             try:
                 phase_maps = orb.fft.PhaseMaps(phase_maps_path)
             except Exception as e:
-                warnings.warn('phase maps could not be opened: {}'.format(e))
+                logging.warn('phase maps could not be opened: {}'.format(e))
             else:
                 out_cube.set_phase_maps(phase_maps)
 
@@ -2981,14 +3031,14 @@ class Spectrum(orb.cube.SpectralCube):
             try:
                 std_im = orb.image.StandardImage(standard_image_path)
             except Exception as e:
-                warnings.warn('standard image could not be opened: {}'.format(e))
+                logging.warn('standard image could not be opened: {}'.format(e))
             else:
                 out_cube.set_standard_image(std_im)
 
         try:
             std_sp = self.get_standard_spectrum() # get standard spectrum from 'standard_path'
         except Exception as e:
-            warnings.warn('standard spectrum could not be opened {}'.format(e))
+            logging.warn('standard spectrum could not be opened {}'.format(e))
             std_sp = None
         else:
             # set it as as a dataset so that it goes with the output cube

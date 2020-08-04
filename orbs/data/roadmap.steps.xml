@@ -37,4 +37,14 @@
     <outfile name='calibrated_spectrum_cube'></outfile>
   </step>
 
+  <step name="extract_standard_spectrum">
+    <outfile name='standard_spectrum'></outfile>
+  </step>
+
+  <step name="compute_wcs">
+    <outfile name='wcs_deep_frame'></outfile>
+  </step>
+  
+  
+
 </steps>

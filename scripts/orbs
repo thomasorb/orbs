@@ -75,7 +75,6 @@ def status(args):
     for record in recfile.records:
         project = init_orbs(args, record['target'], silent=True,
                             fast_init=True)
-        print(record['cams'])
         rm = RoadMap(record['instrument'], record['target'], record['cams'],
                      project.indexer)
         rm.print_status()
@@ -144,6 +143,7 @@ def start(args, resume=False):
     #################
 
     # special targets are mutually exclusive
+    camera = 'full'
     if np.sum([args.flat, args.standard, args.laser, args.extphase]) > 1:
         raise Exception("only one special target (flat, standard, laser, extphase) can be choosen")
         sys.exit(2)
@@ -152,7 +152,9 @@ def start(args, resume=False):
     elif args.laser:
         target = 'laser'
         camera = 'single1'
-    elif args.extphase: target = 'extphase'
+    elif args.extphase:
+        target = 'extphase'
+        camera = 'single1'
 
     
     # check first if reduction can be resumed
@@ -226,9 +228,7 @@ def start(args, resume=False):
     
     # record roadmap
     recfile = RecordFile(args.job_file_path)
-    cams = 'full'
-    if target == 'laser': cams = 'single1'
-    recfile.add_record(args.instrument_mode, target, cams)
+    recfile.add_record(args.instrument_mode, target, camera)
     
     project = init_orbs(args, target)
 

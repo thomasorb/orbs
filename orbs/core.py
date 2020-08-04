@@ -168,7 +168,7 @@ class JobFile(object):
                 return_hdu_only=True).header
             
         except IOError:
-            warnings.warn('File {} could not be opened!'.format(self.raw_params[header_key][0]))
+            logging.warn('File {} could not be opened!'.format(self.raw_params[header_key][0]))
             self.header = None
             return
         
@@ -259,7 +259,7 @@ class JobFile(object):
                 self.config[ikey] = self.raw_params.pop(ikey)
                 
         if len(self.raw_params) > 0:
-            warnings.warn('Some parameters in the job file are not recognized: {}'.format(list(self.raw_params.keys())))
+            logging.warn('Some parameters in the job file are not recognized: {}'.format(list(self.raw_params.keys())))
         
     def get_params(self):
         self.check_validity()
@@ -286,7 +286,7 @@ class JobFile(object):
 
     def check_validity(self):
         if not self.is_valid():
-            warnings.warn('JobFile invalid. One or more files could not be opened properly.')
+            logging.warn('JobFile invalid. One or more files could not be opened properly.')
             #raise Exception('JobFile invalid. One or more files could not be opened properly.')
 
 
@@ -627,7 +627,7 @@ class JobsWalker():
                                 if fnmatch.fnmatch(ifile, os.path.split(file_)[1] + '*.log'):
                                     self.jobfiles.append(ijobpath)
                                 else:
-                                    warnings.warn('{} does not have any corresponding log file.'.format(ijobpath))
+                                    logging.warn('{} does not have any corresponding log file.'.format(ijobpath))
         self.data = dict()
         self.data['jobfile'] = list()
         
@@ -636,7 +636,7 @@ class JobsWalker():
             try:
                 iparams = JobFile(ijobfile, 'sitelle').get_params()
             except Exception as e:
-                warnings.warn('job file {} could not be read: {}'.format(ijobfile, e))
+                logging.warn('job file {} could not be read: {}'.format(ijobfile, e))
                 continue
                 
             for param in iparams:

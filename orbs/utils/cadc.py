@@ -26,6 +26,7 @@ import os
 import subprocess
 import shlex
 import warnings
+import logging
 
 try:
     import cadcdata
@@ -74,7 +75,7 @@ def get_cadc_data(to_download):
                 continue
             
             if p.returncode != 0:
-                warnings.warn('{} could not be downloaded'.format(ifile))
+                logging.warn('{} could not be downloaded'.format(ifile))
                 error_files.append(ifile)
                 continue
 
@@ -83,7 +84,7 @@ def get_cadc_data(to_download):
             print('> uncompressing {} (command: {})'.format(ifile, command))
             p = subprocess.run(shlex.split(command))
             if p.returncode != 0:
-                warnings.warn("{} could not be uncompressed (do you have funpack installed, if not try 'sudo apt install libcfitsio-bin')".format(ifile))
+                logging.warn("{} could not be uncompressed (do you have funpack installed, if not try 'sudo apt install libcfitsio-bin')".format(ifile))
                 error_files.append(ifile)
                 continue
             

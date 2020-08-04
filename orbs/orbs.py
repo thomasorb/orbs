@@ -157,7 +157,7 @@ class Orbs(Tools):
                 # create mask
                 if mask_key is not None:
                     if mask_key in self.options:
-                        warnings.warn('Mask applied: {}'.format(self.options[mask_key]))
+                        logging.warn('Mask applied: {}'.format(self.options[mask_key]))
                         image_mask = orb.utils.io.read_fits(
                             self.options[mask_key])
                     else: image_mask = None
@@ -211,7 +211,7 @@ class Orbs(Tools):
         else:
             ## hacking parameters from already computed data, this may work or not ...
             ## having a valid jobfile is a better way to continue the reduction.
-            warnings.warn('invalid jobfile, trying to guess parameters from already computed data (if it exists)')
+            logging.warn('invalid jobfile, trying to guess parameters from already computed data (if it exists)')
             hacked = False
             with open(self.jobfile.path + '.log') as f:
                 for line in f:
@@ -271,7 +271,7 @@ class Orbs(Tools):
             _step, _order = FilterFile(
                 self.options['filter_name']).get_observation_params()
             if int(self.options['order']) != int(_order):
-                warnings.warn('Bad order. Option file tells {} while filter file tells {}. Order parameter replaced by {}'.format(int(self.options['order']), _order, _order))
+                logging.warn('Bad order. Option file tells {} while filter file tells {}. Order parameter replaced by {}'.format(int(self.options['order']), _order, _order))
                 self.options['order'] = _order
             if abs(self.options['step'] - float(_step))/float(_step) > 0.1:
                 raise Exception('There is more than 10% difference between the step size in the option file ({}) and the step size recorded in the filter file ({})'.format(self.options['step'], _step))
@@ -294,7 +294,7 @@ class Orbs(Tools):
            if key in newconf:
                self.config.reset(key, newconf[key])
                if not silent:
-                   warnings.warn("Configuration option %s changed to %s"%(key, self.config[key]))
+                   logging.warn("Configuration option %s changed to %s"%(key, self.config[key]))
 
         # Calibration laser wavelength is changed if the calibration
         # laser map gives a new calibration laser wavelength
@@ -305,18 +305,18 @@ class Orbs(Tools):
             if 'CALIBNM' in calib_hdu.header:
                 self.config['CALIB_NM_LASER'] = calib_hdu.header['CALIBNM']
                 if not silent:
-                    warnings.warn('Calibration laser wavelength (CALIB_NM_LASER) read from calibration laser map header: {}'.format(self.config['CALIB_NM_LASER']))
+                    logging.warn('Calibration laser wavelength (CALIB_NM_LASER) read from calibration laser map header: {}'.format(self.config['CALIB_NM_LASER']))
                
         # Get tuning parameters
         # self.tuning_parameters = self.optionfile.get_tuning_parameters()
         # for itune in self.tuning_parameters:
         #     if not silent:
-        #         warnings.warn("Tuning parameter %s changed to %s"%(
+        #         logging.warn("Tuning parameter %s changed to %s"%(
         #             itune, self.tuning_parameters[itune]))
         self.tuning_parameters = dict(self.jobfile.raw_params)
         for itune in self.tuning_parameters:
             if not silent:
-                warnings.warn("Tuning parameter %s changed to %s"%(
+                logging.warn("Tuning parameter %s changed to %s"%(
                     itune, self.tuning_parameters[itune]))
         self.config.update(self.tuning_parameters)
         
@@ -392,7 +392,7 @@ class Orbs(Tools):
 
                 if self.options['step_nb'] < dimz1:
                     if not silent:
-                        warnings.warn('Step number option changed to {} because the number of steps ({}) of a full cube must be greater or equal to the number of images given for CAM1 and CAM2 ({})'.format(
+                        logging.warn('Step number option changed to {} because the number of steps ({}) of a full cube must be greater or equal to the number of images given for CAM1 and CAM2 ({})'.format(
                         dimz1, self.options['step_nb'], dimz1))
                     self.options['step_nb'] = dimz1
 
@@ -407,7 +407,7 @@ class Orbs(Tools):
                 zpd_index = int(zpd_index)
                 logging.info('ZPD index read from file')
             except Exception as e:
-                warnings.warn('ZPD file could not be opened: {}'.format(e))
+                logging.warn('ZPD file could not be opened: {}'.format(e))
                 zpd_index = None
             
             if zpd_index is None:
@@ -425,7 +425,7 @@ class Orbs(Tools):
                             break
                     if not zpd_found:
                         if not silent:
-                            warnings.warn('zpd index could not be found, forced to 25% of the interferogram size')
+                            logging.warn('zpd index could not be found, forced to 25% of the interferogram size')
                         zpd_index = int(cube1.dimz * 0.25)
                 else:
                     for ik in range(cube1.dimz):
@@ -513,6 +513,12 @@ class Orbs(Tools):
                             self.compute_spectrum)
         self.roadmap.attach('calibrate_spectrum',
                             self.calibrate_spectrum)
+        self.roadmap.attach('extract_standard_spectrum',
+                            self.extract_standard_spectrum)
+        
+        self.roadmap.attach('compute_wcs',
+                            self._compute_wcs)
+        
         
             
     def _get_project_dir(self):
@@ -599,7 +605,12 @@ class Orbs(Tools):
         """
         return self._get_file_folder_path_hdr(1) + 'wcs_standard_image.hdf5'
 
+    def _get_standard_cropped_image_path(self):
+        """Return path to the cropped standard deep frame
+        """
+        return self._get_file_folder_path_hdr(0) + 'standard_cropped.fits'
 
+        
     def _get_calibration_laser_map_path(self, camera_number):
         """Return path to the calibration laser map from a flat cube.
         
@@ -618,14 +629,10 @@ class Orbs(Tools):
         return (self._get_root_data_path_hdr(camera_number)
                 + 'cm1.1.0.hdf5')
 
-    def _get_standard_spectrum_path(self, camera_number):
-        """Return path to the standard star spectrum
-        
-        :param camera_number: Camera number (must be 1, 2 or 0 for
-          merged data).
+    def _get_standard_spectrum_path(self):
+        """Return path to the standard star spectrum        
         """
-        return (self._get_root_data_path_hdr(camera_number)
-                + 'standard_spectrum.fits')
+        return (self._get_root_data_path_hdr(0) + 'standard_spectrum.hdf5')
 
     def _get_extracted_source_spectra_path(self, camera_number):
         """Return path to the source spectra
@@ -910,8 +917,7 @@ class Orbs(Tools):
             self.export_calibrated_spectrum_cube(cam)
         if self.target == 'flat': self.export_flat_phase_map(cam)
         if self.target == 'laser': self.export_calibration_laser_map(cam)
-        if self.target == 'standard': self.export_standard_spectrum(
-            cam, auto_phase=True)
+        if self.target == 'standard': self.export_standard_spectrum()
 
     def compute_alignment_vector(self, camera_number):
         """Run the computation of the alignment vector.
@@ -1005,7 +1011,7 @@ class Orbs(Tools):
                            os.path.abspath(cube._get_interfero_cube_path()))
                 self.indexer['interfero_cube'] = cube._get_interfero_cube_path()
             else:
-                warnings.warn('interferogram symlink already created')
+                logging.warn('interferogram symlink already created')
 
             return
         
@@ -1020,29 +1026,29 @@ class Orbs(Tools):
             if "dark_path_1" in self.options:
                 dark_path = self.options["dark_path_1.hdf5"]
             else:
-                warnings.warn("No path to dark frames given, please check the option file.")
+                logging.warn("No path to dark frames given, please check the option file.")
             if "bias_path_1" in self.options:
                 bias_path = self.options["bias_path_1.hdf5"]
             else:
-                warnings.warn("No path to bias frames given, please check the option file.")
+                logging.warn("No path to bias frames given, please check the option file.")
             if "flat_path_1" in self.options:
                 flat_path = self.options["flat_path_1.hdf5"]
             else:
-                warnings.warn("No path to flat frames given, please check the option file.")
+                logging.warn("No path to flat frames given, please check the option file.")
     
         if camera_number == 2: 
             if "dark_path_2" in self.options:
                 dark_path = self.options["dark_path_2.hdf5"]
             else:
-                warnings.warn("No path to dark frames given, please check the option file.")
+                logging.warn("No path to dark frames given, please check the option file.")
             if "bias_path_2" in self.options:
                 bias_path = self.options["bias_path_2.hdf5"]
             else:
-                warnings.warn("No path to bias frames given, please check the option file.")
+                logging.warn("No path to bias frames given, please check the option file.")
             if "flat_path_2" in self.options:
                 flat_path = self.options["flat_path_2.hdf5"]
             else:
-                warnings.warn("No path to flat frames given, please check the option file.")
+                logging.warn("No path to flat frames given, please check the option file.")
         
         if self.config["INSTRUMENT_NAME"] == 'SITELLE':
             if camera_number == 1:
@@ -1155,16 +1161,16 @@ class Orbs(Tools):
         if not no_star:
             if self.indexer['merged.alignment_parameters'] is not None:
                 if os.path.exists(self.indexer['merged.alignment_parameters']):
-                    warnings.warn('alignment parameters already computed from a previous reduction process. Computation will not be done again. To force computation please remove {}'.format(self.indexer['merged.alignment_parameters']))
+                    logging.warn('alignment parameters already computed from a previous reduction process. Computation will not be done again. To force computation please remove {}'.format(self.indexer['merged.alignment_parameters']))
                     alignment_parameters = orb.utils.io.read_fits(
                         self.indexer['merged.alignment_parameters'])
                     cube.dx, cube.dy, cube.dr, cube.da, cube.db = alignment_parameters[:5]
                     cube.rc = alignment_parameters[5:7]
                     cube.zoom_factor = alignment_parameters[7:9]
                 else:
-                    cube.compute_alignment_parameters(combine_first_frames=raw)
+                    cube.compute_alignment_parameters(combine_first_frames=True)
             else:
-                cube.compute_alignment_parameters(combine_first_frames=raw)
+                cube.compute_alignment_parameters(combine_first_frames=True)
         else:
             if laser:
                 raise NotImplementedError('init_dx, init_dy and init_angle must be defined in find_laser_alignment itself')
@@ -1236,7 +1242,7 @@ class Orbs(Tools):
         .. seealso:: :meth:`process.CalibrationLaser.create_calibration_laser_map`
         """
         if 'calibration_laser_map_path' in self.options:
-            warnings.warn('A path to a calibration laser map has already been given ({}), this step is skipped.'.format(
+            logging.warn('A path to a calibration laser map has already been given ({}), this step is skipped.'.format(
                 self.options['calibration_laser_map_path']))
 
             return 
@@ -1459,35 +1465,45 @@ class Orbs(Tools):
             return self._get_wcs_standard_image_path()
         
         except Exception as e:
-            warnings.warn('no standard image can be created: {}'.format(e))
+            logging.warn('no standard image can be created: {}'.format(e))
             return None
         
     def _compute_wcs(self, camera_number):
         """Register deep frame and compute wcs
         """
         if os.path.exists(self._get_wcs_deep_frame_path()):
-            warnings.warn('WCS has already been computed and will be used as is. To force WCS computation delete {}'.format(self._get_wcs_deep_frame_path()))
+            self.indexer.set_file_group(camera_number)
+            self.indexer['wcs_deep_frame'] = self._get_wcs_deep_frame_path()
+        
+            logging.warn('WCS has already been computed and will be used as is. To force WCS computation delete {}'.format(self._get_wcs_deep_frame_path()))
             return
         
         if (self.options['target_ra'] is None or self.options['target_dec'] is None
             or self.options['target_x'] is None or self.options['target_y'] is None):
-            warnings.warn("wcs options are missing. wcs correction cannot be done.")
+            logging.warn("wcs options are missing. wcs correction cannot be done.")
             return
         
         logging.info('registering deep frame')
         deep_frame_path = self.indexer.get_path(
             'deep_frame', camera_number)
+        if not os.path.exists(deep_frame_path):
+            cube = orb.cube.HDFCube(self._get_interfero_cube_path(camera_number))
+            deep_frame = cube.get_deep_frame()
+            deep_frame.to_fits(deep_frame_path)
+            
+            
         deep_frame = orb.image.Image(deep_frame_path, instrument=self.instrument,
                                      params=self.options)
         try:
             deep_frame.register()
         except Exception as e:
             exc_info = sys.exc_info()
-            warnings.warn('Error during WCS computation, check WCS parameters in the option file: {}'.format(e))
+            logging.warn('Error during WCS computation, check WCS parameters in the option file: {}'.format(e))
             traceback.print_exception(*exc_info)
             del exc_info
             correct_wcs = None
         deep_frame.writeto(self._get_wcs_deep_frame_path())
+        self.indexer['wcs_deep_frame_{}'.format(camera_number)] = self._get_wcs_deep_frame_path()
             
 
     def calibrate_spectrum(self, camera_number, cam1_scale=False,
@@ -1534,14 +1550,14 @@ class Orbs(Tools):
         if flux_calibration:
             std_im_path = self._get_standard_image(spectrum)
         else:
-            warnings.warn("no flux calibration.")
+            logging.warn("no flux calibration.")
         
         # Get WCS
         deep_frame = None
         if not no_star and wcs_calibration:
             self._compute_wcs(camera_number)
         else:
-            warnings.warn("no wcs calibration.")
+            logging.warn("no wcs calibration.")
 
         # Calibration
         spectrum.calibrate(
@@ -1555,7 +1571,51 @@ class Orbs(Tools):
         return perf_stats
 
 
+    def extract_standard_spectrum(self):
+        im = orb.image.Image(self._get_wcs_deep_frame_path())
+        target_x, target_y = im.find_object(is_standard=True)
+        fit = im.fit_stars([[target_x, target_y]])
+        target_x, target_y = float(fit.x), float(fit.y)
+        
+        crop = im.crop(target_x, target_y, 45)
+        crop.to_fits(self._get_standard_cropped_image_path())
+        self.indexer.set_file_group(0)
+        self.indexer['standard_cropped'] = self._get_standard_cropped_image_path()
+                
+        # get cubes path
+        interf_cube_path_1 = self.indexer.get_path(
+            'cam1.interfero_cube', err=True)
+        interf_cube_path_2 = self.indexer.get_path(
+            'merged.transformed_interfero_cube', err=True)
+        
+        self.indexer.set_file_group('merged')
+        cube = InterferogramMerger(
+            interf_cube_path_A=interf_cube_path_1,
+            interf_cube_path_B=interf_cube_path_2,
+            data_prefix=self._get_data_prefix(0),
+            indexer=self.indexer,
+            instrument=self.instrument,
+            params=self.options,
+            config=self.config)
+        
+        cube.extract_star_spectrum(target_x, target_y)
+        
 
+    def export_standard_spectrum(self):
+        """Extract spectrum of the standard stars and write it at the
+        root of the reduction folder.
+        """
+
+        logging.info('Writing standard spectrum to disk')
+        self.indexer.set_file_group(0)
+        spectrum = orb.fft.RealSpectrum(self.indexer.get_path('merged.standard_spectrum'))
+        spectrum.writeto(self._get_standard_spectrum_path())
+        self.indexer['standard_spectrum'] = self._get_standard_spectrum_path()
+        
+        
+        
+
+        
     def export_calibration_laser_map(self, camera_number):
         """Export the computed calibration laser map at the root of the
         reduction folder.
@@ -1620,61 +1680,7 @@ class Orbs(Tools):
         shutil.copyfile(real_path, link_path)
         logging.info('Calibrated spectrum cube exprted to {}'.format(link_path))
         
-        
-
-
-    def export_standard_spectrum(self, camera_number, phase_correction=True,
-                                 aperture_photometry=True,
-                                 apodization_function=2.0,
-                                 auto_phase=True):
-        """Extract spectrum of the standard stars and write it at the
-        root of the reduction folder.
-
-        .. note:: The position of the standard star is defined in the
-          option file with TARGETX and TARGETY keywords.
-
-        :param camera_number: Camera number (must be 1, 2 or 0 for
-          merged data).
-    
-        :param phase_correction: (Optional) If False, no phase
-          correction will be done and the resulting spectrum will be
-          the absolute value of the complex spectrum (default True).
-    
-        :param apodization_function: (Optional) Apodization function to use for
-          spectrum computation (default 2.0).
-
-        :param aperture_photometry: (Optional) If True, star flux is
-          computed by aperture photometry. If False, star flux is
-          computed from the results of the fit.
-
-        :param auto_phase: (Optional) If True, phase is computed for
-          each star independantly. Useful for high SNR stars when no
-          reliable external phase can be provided (e.g. Standard
-          stars).
-        """
-        std_spectrum, hdr = orb.utils.io.read_fits(
-            self.indexer.get_path(
-            'extracted_source_spectra', file_group=camera_number),
-            return_header=True)
-        
-        corr = hdr['AXCORR0']
-        axis = orb.utils.spectrum.create_cm1_axis(
-            std_spectrum.shape[0], self.options['step'], self.options['order'],
-            corr=corr)
-        
-        std_header = (self._get_project_fits_header()
-                      + self._get_basic_header('Standard Spectrum')
-                      + self._get_fft_params_header(apodization_function)
-                      + self._get_basic_spectrum_cube_header(
-                          axis, wavenumber=True))
-
-        hdr.extend(std_header, strip=False, update=True, end=True)
-
-        std_spectrum_path = self._get_standard_spectrum_path(camera_number)
-        
-        orb.utils.io.write_fits(std_spectrum_path, std_spectrum,
-                        fits_header=hdr,
-                        overwrite=True)        
+                
             
 ##################################################
 #### CLASS Performance ###########################

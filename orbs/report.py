@@ -37,7 +37,7 @@ import warnings
 class Graph(object):
 
 
-    def __init__(self, params, indexer):
+    def __init__(self, params, indexer, fast):
 
         def imshow(data):
             pl.figure()
@@ -53,6 +53,12 @@ class Graph(object):
                 logging.debug('error in getting xlim, ylim parameters: {}'.format(e))
 
         self.params = params
+
+        try: slow = bool(self.getp('slow'))
+        except Exception: slow = False
+        if slow and fast:
+            logging.warning('{} not generated because of fast keyword'.format(self.getp('name')))
+            
         logging.info('generating graph for {}'.format(self.getp('name')))
         path = indexer.get_path(self.getp('name'))
         if self.getp('type') == 'vector':
@@ -87,6 +93,16 @@ class Graph(object):
             imshow(pm.get_map(0))
 
         elif self.getp('type') == 'spectrum':
+            pl.figure(figsize=(8, 4))
+            spectrum = orb.fft.Spectrum(path)
+            spectrum.plot()
+            
+        elif self.getp('type') == 'interferogram':
+            pl.figure(figsize=(8, 4))
+            interf = orb.fft.Interferogram(path)
+            interf.plot()
+            
+        elif self.getp('type') == 'spectrum_cube':
             cube = orb.cube.SpectralCube(path)
             ix, iy = self.getp(('x', 'y'), cast=int)
             r = self.getp('r', cast=float)
@@ -103,7 +119,7 @@ class Graph(object):
             try:
                 starcat = im.get_stars_from_catalog()
             except Exception as e:
-                warnings.warn('star position could not be added: ', e)
+                logging.warn('star position could not be added: ', e)
             else:
                 pl.scatter(starcat.x, starcat.y, c='red', marker='+')
             try:
@@ -111,7 +127,8 @@ class Graph(object):
                 pl.xlim((xmin, xmax))
                 pl.ylim((ymin, ymax))
             except Exception as e:
-                logging.debug('error in getting xlim, ylim parameters: {}'.format(e))
+                logging.debug('error getting xlim, ylim parameters: {}'.format(e))
+                
         elif self.getp('type') == 'modulation_ratio':
             logging.info('Note that this may take a while. if you want to skip it, please use the --fast option')
             cube = orb.cube.SpectralCube(path)
@@ -166,13 +183,10 @@ class Reporter(object):
         self.orbs = orbs.Orbs(
             job_file_path, 'object', instrument=instrument,
             fast_init=True, silent=True)
-
-        if not fast:
-            graphs = xml.etree.ElementTree.parse(
-                os.path.join(core.ORBS_DATA_PATH, 'report.xml')).findall('graph')
-        else:
-            graphs = xml.etree.ElementTree.parse(
-                os.path.join(core.ORBS_DATA_PATH, 'report-fast.xml')).findall('graph')
+        self.fast = bool(fast)
+        
+        graphs = xml.etree.ElementTree.parse(
+            os.path.join(core.ORBS_DATA_PATH, 'report.xml')).findall('graph')
 
         self.pdf = FPDF()
         self.pdf.add_page()
@@ -203,11 +217,11 @@ class Reporter(object):
                 self.pdf.ln(20)
             else:
                 try:
-                    igraph = Graph(igraphxml, self.orbs.indexer)
+                    igraph = Graph(igraphxml, self.orbs.indexer, self.fast)
                     ipath = igraph.savefig(self.get_temp_folder_path())
                     self.pdf.image(ipath, None, None, self.GRAPHWIDTH)
                 except Exception as e:
-                    warnings.warn('graph {} not generated: {}'.format(igraphxml.get('name'), e))
+                    logging.warn('graph {} not generated: {}'.format(igraphxml.get('name'), e))
                     self.pdf.set_font('arial', '', 15)
                     self.pdf.cell(0, 12, igraphxml.get('name') + ' NOT GENERATED !!!', 1, 0, 'L')
                     self.pdf.ln(20)

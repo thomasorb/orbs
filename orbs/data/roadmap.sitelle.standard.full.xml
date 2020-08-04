@@ -23,14 +23,11 @@
     <kwarg name='add_frameB'></kwarg>
   </step>
 
-  <step name='extract_source_interferograms' cam='0'>
-    <arg value='0' type='int'></arg>
+  <step name='compute_wcs' cam='1'>
+    <arg value='1' type='int'></arg>
   </step>
 
-  <step name='compute_source_spectra' cam='0'>
-    <arg value='0' type='int'></arg>
-    <kwarg name='phase_correction'></kwarg>
-    <kwarg name='filter_correction'></kwarg>
+  <step name='extract_standard_spectrum' cam='0'>
   </step>
 
 </steps>
