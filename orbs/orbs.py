@@ -1503,7 +1503,8 @@ class Orbs(Tools):
             del exc_info
             correct_wcs = None
         deep_frame.writeto(self._get_wcs_deep_frame_path())
-        self.indexer['wcs_deep_frame_{}'.format(camera_number)] = self._get_wcs_deep_frame_path()
+        self.indexer.set_file_group(camera_number)
+        self.indexer['wcs_deep_frame'.format(camera_number)] = self._get_wcs_deep_frame_path()
             
 
     def calibrate_spectrum(self, camera_number, cam1_scale=False,

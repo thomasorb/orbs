@@ -482,7 +482,7 @@ class RoadMap(orb.core.Tools):
         
         for istep in range(len(self.road)):
             step = self.road[istep]
-            for outf in self.steps[step['name']].get_outfiles(step['cam']):
+            for outf in self.steps[step['name']].get_outfiles(step['cam']):                
                 if outf in self.indexer.index:
                     if os.path.exists(self.indexer[outf]):
                         self.road[istep]['status'] = True

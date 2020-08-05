@@ -2635,6 +2635,7 @@ merge() method).
 
         spectrum = interfm.get_spectrum()
         spectrum.data = spectrum.get_amplitude()
+        spectrum.params['camera'] = 0
         spectrum.writeto(self._get_standard_spectrum_path())
 
         if self.indexer is not None:
