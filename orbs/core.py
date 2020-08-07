@@ -23,6 +23,7 @@
 import os
 import xml.etree.ElementTree
 import warnings
+import logging
 import fnmatch
 
 import orb.utils.io
