@@ -4,7 +4,7 @@
 reduction software created to process data obtained with
 SITELLE. Is it the reduction software used by the CFHT.
 
-
+Documentation may be found on https://readthedocs.org/projects/orbs/
 
 ## Installation
 

@@ -101,6 +101,23 @@
 <li class="toctree-l2"><a class="reference internal" href="#generating-a-report">generating a report</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#checking-by-hand">checking by hand</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#alignment-vectors">alignment vectors</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#Merging-process">Merging process</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#transmission">transmission</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#stray-light">stray light</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#Phase">Phase</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#Binned-cubes">Binned cubes</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#High-order-phase">High order phase</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#first-order-p_1">first order <span class="math notranslate nohighlight">\(p_1\)</span></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#zeroth-order-p_0">zeroth order <span class="math notranslate nohighlight">\(p_0\)</span></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#Calibrated-spectrum">Calibrated spectrum</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#Astrometry">Astrometry</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#Flux-calibration">Flux calibration</a></li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>
@@ -551,13 +568,571 @@ Text(0.5, 1.0, &#39;alignement uncertainty&#39;)
 <img alt="_images/science_cube_6_2.png" src="_images/science_cube_6_2.png" />
 </div>
 </div>
+</div>
+<div class="section" id="Merging-process">
+<h3>Merging process<a class="headerlink" href="#Merging-process" title="Permalink to this headline">¶</a></h3>
+<p>merging equation is</p>
+<p><span class="math notranslate nohighlight">\(M = \frac{I_1 - I_2}{transmission}\)</span></p>
+<p>where <span class="math notranslate nohighlight">\(I_1 - I_2\)</span> is the modulated part of the interferogram. When subtracting the interferogram from camera 2 to the interferogram from camera 1 all the unmodulated component present in both cameras (stray light) si removed. If one camera has more stray light than the other, the added stray light in one camera will not be removed. In sitelle, we consider that the stray light is the same in both cameras.</p>
+<div class="section" id="transmission">
+<h4>transmission<a class="headerlink" href="#transmission" title="Permalink to this headline">¶</a></h4>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">orb.utils.io</span>
+<span class="kn">import</span> <span class="nn">pylab</span> <span class="k">as</span> <span class="nn">pl</span>
+<span class="n">trans</span> <span class="o">=</span> <span class="n">orb</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">read_fits</span><span class="p">(</span><span class="s1">&#39;/reductions2/sitelle/M95/SN1/science/M95_SN1/MERGED/M95_SN1.merged.InterferogramMerger.transmission_vector.fits&#39;</span><span class="p">)</span>
+<span class="n">pl</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">trans</span><span class="p">)</span>
+<span class="n">pl</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;transmission&#39;</span><span class="p">)</span>
+<span class="n">pl</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;frame index&#39;</span><span class="p">)</span>
+<span class="n">pl</span><span class="o">.</span><span class="n">grid</span><span class="p">()</span>
+<span class="n">pl</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;transmission&#39;</span><span class="p">)</span>
+
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Text(0.5, 1.0, &#39;transmission&#39;)
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="_images/science_cube_9_1.png" src="_images/science_cube_9_1.png" />
+</div>
+</div>
+</div>
+<div class="section" id="stray-light">
+<h4>stray light<a class="headerlink" href="#stray-light" title="Permalink to this headline">¶</a></h4>
+<p>This vector is computed for checking purpose. <strong>It is not used in the merging process</strong>. But, if the number of counts becomes too high, it could indicates a strong stray light which may produce incorrect interferograms (e.g. a non-negligible amount of it may be found in excess in one of the cameras and the hypothesis of an equal amount of stray light in both cameras may be wrong)</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[15]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">orb.utils.io</span>
+<span class="kn">import</span> <span class="nn">pylab</span> <span class="k">as</span> <span class="nn">pl</span>
+<span class="n">stray</span> <span class="o">=</span> <span class="n">orb</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">read_fits</span><span class="p">(</span><span class="s1">&#39;/reductions2/sitelle/M95/SN1/science/M95_SN1/MERGED/M95_SN1.merged.InterferogramMerger.stray_light_vector.fits&#39;</span><span class="p">)</span>
+<span class="n">pl</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">stray</span><span class="p">)</span>
+<span class="n">pl</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;stray light (counts / pixel)&#39;</span><span class="p">)</span>
+<span class="n">pl</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;frame index&#39;</span><span class="p">)</span>
+<span class="n">pl</span><span class="o">.</span><span class="n">grid</span><span class="p">()</span>
+<span class="n">pl</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;stray light&#39;</span><span class="p">)</span>
+
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[15]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Text(0.5, 1.0, &#39;stray light&#39;)
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="_images/science_cube_11_1.png" src="_images/science_cube_11_1.png" />
+</div>
+</div>
+</div>
+</div>
+<div class="section" id="Phase">
+<h3>Phase<a class="headerlink" href="#Phase" title="Permalink to this headline">¶</a></h3>
+<p>A lot of information on the phase computation can be found in Martin+2017: <a class="reference external" href="https://arxiv.org/abs/1706.03230">https://arxiv.org/abs/1706.03230</a>. This paper is a draft and is a little outdated. A final version is in preparation and should hopefully be published in 2020.</p>
+<p>Phase computation is done on a binned cube (more SNR). First, a binned interferogram cube is computed from which a binned phase cube can be obtained.</p>
+<p>A phase vector is considered to be a polynomial of arbitrary high order :</p>
+<p><span class="math notranslate nohighlight">\(\Phi = p_0 + \sigma p_1 + p_{n\ge 2}\)</span>, where <span class="math notranslate nohighlight">\(\sigma\)</span> is the wavenumber</p>
+<ul class="simple">
+<li><p><span class="math notranslate nohighlight">\(p_{n\ge 2}\)</span> is computed from a phase cube and stored in the orb data folder (see below how it can be retrieved)</p></li>
+<li><p><span class="math notranslate nohighlight">\(p_1\)</span> is different for each cube, but, as it is the same for all the pixels of a cube, it can be measured with a good enough precision from the fit of all the phase vectors in the binned phase cube.</p></li>
+<li><p><span class="math notranslate nohighlight">\(p_0\)</span> is different for each pixel and mapped and can be obtained with a good enough precision once, the <span class="math notranslate nohighlight">\(p_1\)</span> is known, which means that 2 fit processes are necessary to obtain a preliminary mapping of <span class="math notranslate nohighlight">\(p_0\)</span> (the first fit of the phase cube is used to obtain <span class="math notranslate nohighlight">\(p_1\)</span>, once <span class="math notranslate nohighlight">\(p_1\)</span> is fixed, we can obtain <span class="math notranslate nohighlight">\(p_0\)</span>). <span class="math notranslate nohighlight">\(p_0\)</span> is a linear function of the opd <span class="math notranslate nohighlight">\(\cos(\theta)\)</span> (with <span class="math notranslate nohighlight">\(\theta\)</span> the incident angle): <span class="math notranslate nohighlight">\(p_0 = \alpha + \beta \cos(\theta)\)</span></p></li>
+</ul>
+<div class="section" id="Binned-cubes">
+<h4>Binned cubes<a class="headerlink" href="#Binned-cubes" title="Permalink to this headline">¶</a></h4>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[42]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">orbs.phase</span>
+<span class="n">bic</span> <span class="o">=</span> <span class="n">orbs</span><span class="o">.</span><span class="n">phase</span><span class="o">.</span><span class="n">BinnedInterferogramCube</span><span class="p">(</span><span class="s1">&#39;/reductions2/sitelle/M95/SN1/science/M95_SN1/MERGED/M95_SN1.merged.Interferogram.binned_interferogram_cube.hdf5&#39;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">bic</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+<span class="n">bic</span><span class="o">.</span><span class="n">get_interferogram</span><span class="p">(</span><span class="mi">150</span><span class="p">,</span><span class="mi">150</span><span class="p">,</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">plot</span><span class="p">()</span>
+<span class="n">pl</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;interferogram taken at the center of the binned interferogram cube&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+WARNING:root:image might be cropped, target_x, target_y and other parameters might be wrong
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+(341, 344, 171)
+ [==========] [100%] [completed in 1.43 s]
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+WARNING:root:image might be cropped, target_x, target_y and other parameters might be wrong
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[42]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Text(0.5, 1.0, &#39;interferogram taken at the center of the binned interferogram cube&#39;)
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="_images/science_cube_14_5.png" src="_images/science_cube_14_5.png" />
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[43]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">bpc</span> <span class="o">=</span> <span class="n">orbs</span><span class="o">.</span><span class="n">phase</span><span class="o">.</span><span class="n">BinnedPhaseCube</span><span class="p">(</span><span class="s1">&#39;/reductions2/sitelle/M95/SN1/science/M95_SN1/MERGED/M95_SN1.merged.Interferogram.binned_phase_cube.hdf5&#39;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">bpc</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+<span class="n">phase</span> <span class="o">=</span> <span class="n">bpc</span><span class="o">.</span><span class="n">get_phase</span><span class="p">(</span><span class="mi">150</span><span class="p">,</span><span class="mi">150</span><span class="p">)</span>
+<span class="n">phase</span><span class="o">.</span><span class="n">plot</span><span class="p">()</span>
+<span class="n">pl</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span><span class="n">phase</span><span class="o">.</span><span class="n">get_filter_bandpass_cm1</span><span class="p">()[</span><span class="mi">0</span><span class="p">],</span><span class="n">c</span><span class="o">=</span><span class="s1">&#39;orange&#39;</span><span class="p">,</span> <span class="n">ls</span><span class="o">=</span><span class="s1">&#39;:&#39;</span><span class="p">)</span>
+<span class="n">pl</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span><span class="n">phase</span><span class="o">.</span><span class="n">get_filter_bandpass_cm1</span><span class="p">()[</span><span class="mi">1</span><span class="p">],</span><span class="n">c</span><span class="o">=</span><span class="s1">&#39;orange&#39;</span><span class="p">,</span> <span class="n">ls</span><span class="o">=</span><span class="s1">&#39;:&#39;</span><span class="p">)</span>
+<span class="n">pl</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;phase taken at the center of the binned phase cube&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+WARNING:root:image might be cropped, target_x, target_y and other parameters might be wrong
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+(341, 344, 171)
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[43]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Text(0.5, 1.0, &#39;phase taken at the center of the binned phase cube&#39;)
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="_images/science_cube_15_3.png" src="_images/science_cube_15_3.png" />
+</div>
+</div>
+</div>
+<div class="section" id="High-order-phase">
+<h4>High order phase<a class="headerlink" href="#High-order-phase" title="Permalink to this headline">¶</a></h4>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[95]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">orb.core</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="n">reload</span><span class="p">(</span><span class="n">orb</span><span class="o">.</span><span class="n">core</span><span class="p">)</span>
+<span class="c1">#hop = orb.core.Cm1Vector1d(tools._get_)</span>
+
+<span class="n">ff</span> <span class="o">=</span> <span class="n">orb</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">FilterFile</span><span class="p">(</span><span class="s1">&#39;SN1&#39;</span><span class="p">)</span>
+<span class="n">ff</span><span class="o">.</span><span class="n">get_high_order_phase</span><span class="p">()</span><span class="o">.</span><span class="n">plot</span><span class="p">()</span>
+<span class="n">pl</span><span class="o">.</span><span class="n">xlim</span><span class="p">((</span><span class="mi">25500</span><span class="p">,</span> <span class="mi">28000</span><span class="p">))</span>
+<span class="n">pl</span><span class="o">.</span><span class="n">grid</span><span class="p">()</span>
+<span class="n">pl</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;SN1 high order phase&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[95]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Text(0.5, 1.0, &#39;SN1 high order phase&#39;)
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="_images/science_cube_17_1.png" src="_images/science_cube_17_1.png" />
+</div>
+</div>
+</div>
+<div class="section" id="first-order-p_1">
+<h4>first order <span class="math notranslate nohighlight">\(p_1\)</span><a class="headerlink" href="#first-order-p_1" title="Permalink to this headline">¶</a></h4>
+<p>During the first fit iteration, the high order phase being fixed, we can fit <span class="math notranslate nohighlight">\(p_0\)</span> and <span class="math notranslate nohighlight">\(p_1\)</span>. The broadening of the distribution is only due to noise.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[67]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">pm_firstpass</span> <span class="o">=</span> <span class="n">orb</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">PhaseMaps</span><span class="p">(</span><span class="s1">&#39;/reductions2/sitelle/M95/SN1/science/M95_SN1/MERGED/M95_SN1.merged.BinnedPhaseCube.phase_maps.iter1.hdf5&#39;</span><span class="p">)</span>
+<span class="n">pl</span><span class="o">.</span><span class="n">hist</span><span class="p">(</span><span class="n">pm_firstpass</span><span class="o">.</span><span class="n">get_map</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">flatten</span><span class="p">(),</span> <span class="n">bins</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="nb">range</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">nanpercentile</span><span class="p">(</span><span class="n">pm_firstpass</span><span class="o">.</span><span class="n">get_map</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span> <span class="p">[</span><span class="mf">0.1</span><span class="p">,</span><span class="mf">99.9</span><span class="p">]))</span>
+<span class="n">pl</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;distribution of p1 from the first fit&#39;</span><span class="p">)</span>
+
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[67]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Text(0.5, 1.0, &#39;distribution of p1 from the first fit&#39;)
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="_images/science_cube_19_1.png" src="_images/science_cube_19_1.png" />
+</div>
+</div>
+</div>
+<div class="section" id="zeroth-order-p_0">
+<h4>zeroth order <span class="math notranslate nohighlight">\(p_0\)</span><a class="headerlink" href="#zeroth-order-p_0" title="Permalink to this headline">¶</a></h4>
+<p>During the second fit iteration, the high order phase and <span class="math notranslate nohighlight">\(p_1\)</span> being fixed, we can fit <span class="math notranslate nohighlight">\(p_0\)</span> with a much better precision.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[75]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">pm_secondpass</span> <span class="o">=</span> <span class="n">orb</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">PhaseMaps</span><span class="p">(</span><span class="s1">&#39;/reductions2/sitelle/M95/SN1/science/M95_SN1/MERGED/M95_SN1.merged.BinnedPhaseCube.phase_maps.iter0.hdf5&#39;</span><span class="p">)</span>
+<span class="n">p0_orig</span> <span class="o">=</span> <span class="n">pm_secondpass</span><span class="o">.</span><span class="n">get_map</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+<span class="n">pl</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">p0_orig</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="n">origin</span><span class="o">=</span><span class="s1">&#39;bottom&#39;</span><span class="p">)</span>
+<span class="n">pl</span><span class="o">.</span><span class="n">colorbar</span><span class="p">()</span>
+<span class="n">pl</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;preliminary p0 map&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[75]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Text(0.5, 1.0, &#39;preliminary p0 map&#39;)
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="_images/science_cube_21_1.png" src="_images/science_cube_21_1.png" />
+</div>
+</div>
+<p>this preliminary map can then be modeled</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[76]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">pm_secondpass</span><span class="o">.</span><span class="n">modelize</span><span class="p">()</span>
+<span class="n">p0_model</span> <span class="o">=</span> <span class="n">pm_secondpass</span><span class="o">.</span><span class="n">get_map</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+<span class="n">pl</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">p0_model</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="n">origin</span><span class="o">=</span><span class="s1">&#39;bottom&#39;</span><span class="p">)</span>
+<span class="n">pl</span><span class="o">.</span><span class="n">colorbar</span><span class="p">()</span>
+<span class="n">pl</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;model p0 map&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[76]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Text(0.5, 1.0, &#39;model p0 map&#39;)
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="_images/science_cube_23_1.png" src="_images/science_cube_23_1.png" />
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[78]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">residual</span> <span class="o">=</span> <span class="n">p0_orig</span> <span class="o">-</span> <span class="n">p0_model</span>
+<span class="n">vmin</span><span class="p">,</span> <span class="n">vmax</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nanpercentile</span><span class="p">(</span><span class="n">residual</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">99</span><span class="p">])</span>
+<span class="n">pl</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">residual</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="n">origin</span><span class="o">=</span><span class="s1">&#39;bottom&#39;</span><span class="p">,</span> <span class="n">vmin</span><span class="o">=</span><span class="n">vmin</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="n">vmax</span><span class="p">)</span>
+<span class="n">pl</span><span class="o">.</span><span class="n">colorbar</span><span class="p">()</span>
+<span class="n">pl</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;residual&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[78]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Text(0.5, 1.0, &#39;residual&#39;)
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="_images/science_cube_24_1.png" src="_images/science_cube_24_1.png" />
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[103]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="c1"># The computed phase model and the original phase can be compared at any given pixel</span>
+<span class="n">x</span> <span class="o">=</span> <span class="mi">140</span> <span class="p">;</span> <span class="n">y</span> <span class="o">=</span> <span class="mi">160</span>
+
+<span class="n">phase_model</span> <span class="o">=</span> <span class="n">pm_secondpass</span><span class="o">.</span><span class="n">get_phase</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+<span class="n">phase_model</span> <span class="o">=</span> <span class="n">phase_model</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">ff</span><span class="o">.</span><span class="n">get_high_order_phase</span><span class="p">())</span> <span class="c1"># high order phase must be added</span>
+<span class="n">phase_model</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">phase_model</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span> <span class="c1"># converts type from float128 to float64 to avoid an exception</span>
+<span class="n">phase_model</span><span class="o">.</span><span class="n">cleaned</span><span class="p">()</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">label</span><span class="o">=</span><span class="s1">&#39;model&#39;</span><span class="p">)</span>
+
+<span class="n">phase</span> <span class="o">=</span> <span class="n">bpc</span><span class="o">.</span><span class="n">get_phase</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+<span class="n">phase</span><span class="o">.</span><span class="n">cleaned</span><span class="p">()</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">label</span><span class="o">=</span><span class="s1">&#39;original&#39;</span><span class="p">)</span>
+
+<span class="n">pl</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;phase at (</span><span class="si">{}</span><span class="s1">,</span><span class="si">{}</span><span class="s1">)&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">))</span>
+<span class="n">pl</span><span class="o">.</span><span class="n">grid</span><span class="p">()</span>
+<span class="n">pl</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;wavenumber (cm-1)&#39;</span><span class="p">)</span>
+<span class="n">pl</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;phase (rad)&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[103]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Text(0, 0.5, &#39;phase (rad)&#39;)
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="_images/science_cube_25_1.png" src="_images/science_cube_25_1.png" />
+</div>
+</div>
+</div>
+</div>
+<div class="section" id="Calibrated-spectrum">
+<h3>Calibrated spectrum<a class="headerlink" href="#Calibrated-spectrum" title="Permalink to this headline">¶</a></h3>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">orb.cube</span>
+<span class="kn">import</span> <span class="nn">pylab</span> <span class="k">as</span> <span class="nn">pl</span>
+<span class="n">cube</span> <span class="o">=</span> <span class="n">orb</span><span class="o">.</span><span class="n">cube</span><span class="o">.</span><span class="n">SpectralCube</span><span class="p">(</span><span class="s1">&#39;/reductions2/sitelle/M95/SN1/science/M95_SN1/MERGED/M95_SN1.merged.Spectrum.calibrated_spectrum.hdf5&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[34]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">df</span> <span class="o">=</span> <span class="n">cube</span><span class="o">.</span><span class="n">get_deep_frame</span><span class="p">()</span>
+<span class="n">df</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">7</span><span class="p">,</span><span class="mi">7</span><span class="p">),</span> <span class="n">cmap</span><span class="o">=</span><span class="s1">&#39;gray&#39;</span><span class="p">,</span> <span class="n">perc</span><span class="o">=</span><span class="mi">95</span><span class="p">)</span>
+<span class="n">pl</span><span class="o">.</span><span class="n">grid</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="_images/science_cube_28_0.png" src="_images/science_cube_28_0.png" />
+</div>
+</div>
+<div class="section" id="Astrometry">
+<h4>Astrometry<a class="headerlink" href="#Astrometry" title="Permalink to this headline">¶</a></h4>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">sl</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">get_stars_from_catalog</span><span class="p">()</span>
+<span class="n">df</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">cmap</span><span class="o">=</span><span class="s1">&#39;gray&#39;</span><span class="p">,</span> <span class="n">perc</span><span class="o">=</span><span class="mi">95</span><span class="p">)</span>
+<span class="n">pl</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">sl</span><span class="o">.</span><span class="n">x</span><span class="p">,</span> <span class="n">sl</span><span class="o">.</span><span class="n">y</span><span class="p">,</span> <span class="n">marker</span><span class="o">=</span><span class="s1">&#39;+&#39;</span><span class="p">,</span> <span class="n">c</span><span class="o">=</span><span class="s1">&#39;red&#39;</span><span class="p">)</span>
+
+<span class="n">pl</span><span class="o">.</span><span class="n">grid</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="_images/science_cube_30_0.png" src="_images/science_cube_30_0.png" />
+</div>
+</div>
+</div>
+<div class="section" id="Flux-calibration">
+<h4>Flux calibration<a class="headerlink" href="#Flux-calibration" title="Permalink to this headline">¶</a></h4>
+<p>In a calibrated spectral cube, internal data is still in counts. A spectrum can be calibrated by using the <code class="docutils literal notranslate"><span class="pre">flambda</span></code> vector contained in the hdf5 archive. Using ORCS, this process is transparently taken care of, but with ORB only, some manipulations must be done.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[31]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">spectrum</span> <span class="o">=</span> <span class="n">cube</span><span class="o">.</span><span class="n">get_spectrum</span><span class="p">(</span><span class="mi">1000</span><span class="p">,</span><span class="mi">1000</span><span class="p">,</span><span class="mi">30</span><span class="p">)</span>
+<span class="n">spectrum</span><span class="o">.</span><span class="n">plot</span><span class="p">()</span>
+<span class="n">pl</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;internal data&#39;</span><span class="p">)</span>
+<span class="n">pl</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;wavenumber (cm-1)&#39;</span><span class="p">)</span>
+<span class="n">pl</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;flux (counts)&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[31]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Text(0, 0.5, &#39;flux (counts)&#39;)
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="_images/science_cube_32_1.png" src="_images/science_cube_32_1.png" />
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[27]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">pl</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">cube</span><span class="o">.</span><span class="n">get_base_axis</span><span class="p">()</span><span class="o">.</span><span class="n">data</span><span class="p">,</span> <span class="n">cube</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">flambda</span><span class="p">)</span>
+<span class="n">pl</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;flambda calibration&#39;</span><span class="p">)</span>
+<span class="n">pl</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;wavenumber (cm-1)&#39;</span><span class="p">)</span>
+<span class="n">pl</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;flambda calibration [erg/cm2/s/A] / [counts/s]&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[27]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Text(0, 0.5, &#39;flambda calibration [erg/cm2/s/A] / [counts/s]&#39;)
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="_images/science_cube_33_1.png" src="_images/science_cube_33_1.png" />
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[28]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">spectrum</span> <span class="o">=</span> <span class="n">cube</span><span class="o">.</span><span class="n">get_spectrum</span><span class="p">(</span><span class="mi">1000</span><span class="p">,</span><span class="mi">1000</span><span class="p">,</span><span class="mi">30</span><span class="p">)</span>
+<span class="n">spectrum</span><span class="o">.</span><span class="n">data</span> <span class="o">*=</span> <span class="n">cube</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">flambda</span> <span class="o">/</span> <span class="n">cube</span><span class="o">.</span><span class="n">dimz</span> <span class="o">/</span> <span class="n">cube</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">exposure_time</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[30]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">spectrum</span><span class="o">.</span><span class="n">plot</span><span class="p">()</span>
+<span class="n">pl</span><span class="o">.</span><span class="n">grid</span><span class="p">()</span>
+<span class="n">pl</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;calibrated spectrum&#39;</span><span class="p">)</span>
+<span class="n">pl</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;wavenumber (cm-1)&#39;</span><span class="p">)</span>
+<span class="n">pl</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;flux (erg/cm2/s/A)&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[30]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Text(0, 0.5, &#39;flux (erg/cm2/s/A)&#39;)
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="_images/science_cube_35_1.png" src="_images/science_cube_35_1.png" />
+</div>
+</div>
 <div class="nbinput nblast docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
-<span></span><span class="c1">##</span>
+<span></span>
 </pre></div>
+</div>
 </div>
 </div>
 </div>
