@@ -197,7 +197,12 @@ class Reporter(object):
 
         for igraphxml in graphs:
             if igraphxml.get('type') == 'text':
-                idata = orb.utils.io.read_fits(self.orbs.indexer.get_path(igraphxml.get('name')))
+                try:
+                    idata = orb.utils.io.read_fits(self.orbs.indexer.get_path(igraphxml.get('name')))
+                except:
+                    logging.warning('{} could not be retrieved'.format(igraphxml.get('name')))
+                    continue
+                
                 if idata.size > 1:
                     idata = ' '.join(['{:.3f}'.format(ii) for ii in idata])
                 else:

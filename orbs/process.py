@@ -2774,7 +2774,7 @@ class CosmicRayDetector(InterferogramMerger):
         BIAS = 100000
         
         alignment_vector_1 = orb.utils.io.read_fits(alignment_vector_path_1)
-        star_list = orb.utils.astrometry.load_star_list(star_list_path)
+        star_list = orb.utils.astrometry.load_star_list(star_list_path, remove_nans=True)
         
         job_server, ncpus = self._init_pp_server()
         ncpus_max = ncpus
@@ -2828,12 +2828,12 @@ class CosmicRayDetector(InterferogramMerger):
             for ijob, job in jobs:
                 framesB[:,:,ijob] = job()
             
-                
+
             framesM = framesA + framesB # ok for SITELLE, not for SpIOMM
             framesM -= np.nanmean(np.nanmean(framesM, axis=0), axis=0)
             framesM += BIAS
             frameref = bn.nanmedian(framesM, axis=2)
-
+            
             # detect CRS
             progress.update(int(ik/ncpus_max), info="detecting ({})".format(ik))
             
