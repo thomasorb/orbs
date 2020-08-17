@@ -1,0 +1,580 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Core module &mdash; Orbs latest documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+
+  
+  
+    <link rel="shortcut icon" href="_static/logo.ico"/>
+  
+  
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script src="_static/language_data.js"></script>
+        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+        <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+        <script type="text/x-mathjax-config">MathJax.Hub.Config({"tex2jax": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true, "ignoreClass": "document", "processClass": "math|output_area"}})</script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Orbs module" href="orbs_module.html" />
+    <link rel="prev" title="ORBS Reduction FAQ" href="reduction_faq.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="index.html" class="icon icon-home" alt="Documentation Home"> Orbs
+          
+
+          
+            
+            <img src="_static/logo_sidebar.png" class="logo" alt="Logo"/>
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                latest
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="calibration_laser_map.html">Compute and fit a calibration laser map</a></li>
+<li class="toctree-l1"><a class="reference internal" href="standard_spectrum.html">compute standard spectrum</a></li>
+<li class="toctree-l1"><a class="reference internal" href="science_cube.html">Science cube reduction process</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="reduction_guide.html">ORBS Reduction Guide (Outdated)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="reduction_faq.html">ORBS Reduction FAQ</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Core module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="orbs_module.html">Orbs module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="process_module.html">Process module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="report_module.html">Report module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="phase_module.html">Phase module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="utils_module.html">Utils module</a></li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Orbs</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+        
+      <li>Core module</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/core_module.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  
+<style>
+/* CSS overrides for sphinx_rtd_theme */
+
+/* 24px margin */
+.nbinput.nblast.container,
+.nboutput.nblast.container {
+    margin-bottom: 19px;  /* padding has already 5px */
+}
+
+/* ... except between code cells! */
+.nblast.container + .nbinput.container {
+    margin-top: -19px;
+}
+
+.admonition > p:before {
+    margin-right: 4px;  /* make room for the exclamation icon */
+}
+
+/* Fix math alignment, see https://github.com/rtfd/sphinx_rtd_theme/pull/686 */
+.math {
+    text-align: unset;
+}
+</style>
+<div class="section" id="module-orbs.core">
+<span id="core-module"></span><h1>Core module<a class="headerlink" href="#module-orbs.core" title="Permalink to this headline">¶</a></h1>
+<dl class="py class">
+<dt id="orbs.core.JobFile">
+<em class="property">class </em><code class="sig-prename descclassname">orbs.core.</code><code class="sig-name descname">JobFile</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">path</span></em>, <em class="sig-param"><span class="n">instrument</span></em>, <em class="sig-param"><span class="n">is_laser</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.core.JobFile" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>manage a job file and convert it to a dictionary of reduction parameters.</p>
+<dl class="py method">
+<dt id="orbs.core.JobFile.__init__">
+<code class="sig-name descname">__init__</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">path</span></em>, <em class="sig-param"><span class="n">instrument</span></em>, <em class="sig-param"><span class="n">is_laser</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.core.JobFile.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Init class.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>path</strong> – Path to the job file.</p></li>
+<li><p><strong>instrument</strong> – Instrument (may be ‘sitelle’ or ‘spiomm’)</p></li>
+<li><p><strong>is_laser</strong> – True if target is a laser cube (default False).</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="orbs.core.JobFile.__weakref__">
+<code class="sig-name descname">__weakref__</code><a class="headerlink" href="#orbs.core.JobFile.__weakref__" title="Permalink to this definition">¶</a></dt>
+<dd><p>list of weak references to the object (if defined)</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="orbs.core.JobFile.as_str">
+<code class="sig-name descname">as_str</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#orbs.core.JobFile.as_str" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return job file as a string</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="orbs.core.JobsWalker">
+<em class="property">class </em><code class="sig-prename descclassname">orbs.core.</code><code class="sig-name descname">JobsWalker</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">root_folders</span></em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.core.JobsWalker" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Construct a database of all the job files found in a given folder
+and its subfolders.</p>
+<dl class="py method">
+<dt id="orbs.core.JobsWalker.__init__">
+<code class="sig-name descname">__init__</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">root_folders</span></em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.core.JobsWalker.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Init class.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>root_folders</strong> – A list of path to the folders where the
+job files are to be found.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="orbs.core.JobsWalker.__weakref__">
+<code class="sig-name descname">__weakref__</code><a class="headerlink" href="#orbs.core.JobsWalker.__weakref__" title="Permalink to this definition">¶</a></dt>
+<dd><p>list of weak references to the object (if defined)</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="orbs.core.JobsWalker.get_data">
+<code class="sig-name descname">get_data</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#orbs.core.JobsWalker.get_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the whole content of the job files as a dict, which can be
+directly passed to a pandas DataFrame.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="orbs.core.JobsWalker.get_job_files">
+<code class="sig-name descname">get_job_files</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#orbs.core.JobsWalker.get_job_files" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a list of the job files found</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="orbs.core.JobsWalker.update">
+<code class="sig-name descname">update</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#orbs.core.JobsWalker.update" title="Permalink to this definition">¶</a></dt>
+<dd><p>update the database.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="orbs.core.RecordFile">
+<em class="property">class </em><code class="sig-prename descclassname">orbs.core.</code><code class="sig-name descname">RecordFile</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">job_file_path</span></em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.core.RecordFile" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Manage a file where all the launched reductions are recorded.</p>
+<p>This class is used for ‘status’, ‘clean’ and ‘resume’ operations</p>
+<dl class="py method">
+<dt id="orbs.core.RecordFile.__init__">
+<code class="sig-name descname">__init__</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">job_file_path</span></em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.core.RecordFile.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Init class</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>job_file_path</strong> – Path to the job file.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="orbs.core.RecordFile.__weakref__">
+<code class="sig-name descname">__weakref__</code><a class="headerlink" href="#orbs.core.RecordFile.__weakref__" title="Permalink to this definition">¶</a></dt>
+<dd><p>list of weak references to the object (if defined)</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="orbs.core.RecordFile.add_record">
+<code class="sig-name descname">add_record</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">mode</span></em>, <em class="sig-param"><span class="n">target</span></em>, <em class="sig-param"><span class="n">cams</span></em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.core.RecordFile.add_record" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add a new record and update file on disk</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="orbs.core.RecordFile.update">
+<code class="sig-name descname">update</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#orbs.core.RecordFile.update" title="Permalink to this definition">¶</a></dt>
+<dd><p>update file on disk</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="orbs.core.RoadMap">
+<em class="property">class </em><code class="sig-prename descclassname">orbs.core.</code><code class="sig-name descname">RoadMap</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">instrument</span></em>, <em class="sig-param"><span class="n">target</span></em>, <em class="sig-param"><span class="n">cams</span></em>, <em class="sig-param"><span class="n">indexer</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.core.RoadMap" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">orb.core.Tools</span></code></p>
+<p>Manage a reduction road map given a target and the camera to
+use (camera 1, 2 or both cameras).</p>
+<p>All steps are defined in a particular xml files in the data folder
+of ORBS (<code class="file docutils literal notranslate"><span class="pre">orbs/data/roadmap.steps.xml</span></code>).</p>
+<p>Each roadmap is defined by an xml file which can also be found in
+orbs/data.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The name of a roadmap file is defined as follows:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">roadmap</span><span class="o">.</span><span class="p">[</span><span class="n">instrument</span><span class="p">]</span><span class="o">.</span><span class="p">[</span><span class="n">target</span><span class="p">]</span><span class="o">.</span><span class="p">[</span><span class="n">camera</span><span class="p">]</span><span class="o">.</span><span class="n">xml</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p><em>instrument</em> can be <em>spiomm</em> or <em>sitelle</em></p></li>
+<li><p><em>target</em> can be one of the special targets listed above or object
+for the default target</p></li>
+<li><p><em>camera</em> can be <em>full</em> for a process using both cameras; <em>single1</em>
+or <em>single2</em> for a process using only the camera 1 or 2.</p></li>
+</ul>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>RoadMap file syntax:</p>
+<div class="highlight-xml notranslate"><div class="highlight"><pre><span></span><span class="cp">&lt;?xml version=&quot;1.0&quot;?&gt;</span>
+<span class="nt">&lt;steps&gt;</span>
+  <span class="nt">&lt;step</span> <span class="na">name=</span><span class="s">&#39;compute_alignment_vector&#39;</span> <span class="na">cam=</span><span class="s">&#39;1&#39;</span><span class="nt">&gt;</span>
+    <span class="nt">&lt;arg</span> <span class="na">value=</span><span class="s">&#39;1&#39;</span> <span class="na">type=</span><span class="s">&#39;int&#39;</span><span class="nt">&gt;&lt;/arg&gt;</span>
+  <span class="nt">&lt;/step&gt;</span>
+
+  <span class="nt">&lt;step</span> <span class="na">name=</span><span class="s">&#39;compute_alignment_vector&#39;</span> <span class="na">cam=</span><span class="s">&#39;2&#39;</span><span class="nt">&gt;</span>
+    <span class="nt">&lt;arg</span> <span class="na">value=</span><span class="s">&#39;2&#39;</span> <span class="na">type=</span><span class="s">&#39;int&#39;</span><span class="nt">&gt;&lt;/arg&gt;</span>
+  <span class="nt">&lt;/step&gt;</span>
+
+  <span class="nt">&lt;step</span> <span class="na">name=</span><span class="s">&#39;compute_spectrum&#39;</span> <span class="na">cam=</span><span class="s">&#39;0&#39;</span><span class="nt">&gt;</span>
+    <span class="nt">&lt;arg</span> <span class="na">value=</span><span class="s">&#39;0&#39;</span> <span class="na">type=</span><span class="s">&#39;int&#39;</span><span class="nt">&gt;&lt;/arg&gt;</span>
+    <span class="nt">&lt;kwarg</span> <span class="na">name=</span><span class="s">&#39;phase_correction&#39;</span><span class="nt">&gt;&lt;/kwarg&gt;</span>
+    <span class="nt">&lt;kwarg</span> <span class="na">name=</span><span class="s">&#39;apodization_function&#39;</span><span class="nt">&gt;&lt;/kwarg&gt;</span>
+  <span class="nt">&lt;/step&gt;</span>
+<span class="nt">&lt;/steps&gt;</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>&lt;step&gt; Each step is defined by its <strong>name</strong> (which can be
+found in <code class="file docutils literal notranslate"><span class="pre">orbs/data/roadmap.steps.xml</span></code>) and the camera
+used (1, 2 or 0 for merged data).</p></li>
+<li><p>&lt;arg&gt; Every needed arguments can be passed by giving the
+value and its type (see
+<code class="xref py py-data docutils literal notranslate"><span class="pre">orbs.orbs.RoadMap.types_dict</span></code>).</p></li>
+<li><p>&lt;kwarg&gt; optional arguments. They must be added to the step
+definition if their value has to be passed from the calling
+method (<a class="reference internal" href="orbs_module.html#orbs.orbs.Orbs.start_reduction" title="orbs.orbs.Orbs.start_reduction"><code class="xref py py-meth docutils literal notranslate"><span class="pre">orbs.orbs.Orbs.start_reduction()</span></code></a>). Only the
+optional arguments of
+<a class="reference internal" href="orbs_module.html#orbs.orbs.Orbs.start_reduction" title="orbs.orbs.Orbs.start_reduction"><code class="xref py py-meth docutils literal notranslate"><span class="pre">orbs.orbs.Orbs.start_reduction()</span></code></a> can thus be passed
+as optional arguments of the step function.</p></li>
+</ul>
+</div>
+<dl class="py attribute">
+<dt id="orbs.core.RoadMap.ROADMAP_STEPS_FILE_NAME">
+<code class="sig-name descname">ROADMAP_STEPS_FILE_NAME</code><em class="property"> = 'roadmap.steps.xml'</em><a class="headerlink" href="#orbs.core.RoadMap.ROADMAP_STEPS_FILE_NAME" title="Permalink to this definition">¶</a></dt>
+<dd><p>Roadmap steps file name</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="orbs.core.RoadMap.__init__">
+<code class="sig-name descname">__init__</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">instrument</span></em>, <em class="sig-param"><span class="n">target</span></em>, <em class="sig-param"><span class="n">cams</span></em>, <em class="sig-param"><span class="n">indexer</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.core.RoadMap.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Init class.</p>
+<p>Load steps definitions and roadmap.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>instrument</strong> – Instrument. Can be ‘sitelle’ or ‘spiomm’</p></li>
+<li><p><strong>target</strong> – Target of the data to reduce</p></li>
+<li><p><strong>cams</strong> – Camera to use (cam be ‘single1’, ‘single2’ or ‘full’)</p></li>
+<li><p><strong>indexer</strong> – An orb.Indexer instance.</p></li>
+<li><p><strong>kwargs</strong> – Kwargs are <code class="xref py py-meth docutils literal notranslate"><span class="pre">core.Tools()</span></code> properties.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="orbs.core.RoadMap._str2bool">
+<code class="sig-name descname">_str2bool</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#orbs.core.RoadMap._str2bool" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert a string to a boolean value.</p>
+<p>String must be ‘True’,’1’ or ‘False’,’0’.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>s</strong> – string to convert.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="orbs.core.RoadMap.attach">
+<code class="sig-name descname">attach</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">step_name</span></em>, <em class="sig-param"><span class="n">func</span></em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.core.RoadMap.attach" title="Permalink to this definition">¶</a></dt>
+<dd><p>Attach a reduction function to a step.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>step_name</strong> – Name of the step</p></li>
+<li><p><strong>func</strong> – function to attach</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="orbs.core.RoadMap.check_road">
+<code class="sig-name descname">check_road</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#orbs.core.RoadMap.check_road" title="Permalink to this definition">¶</a></dt>
+<dd><p>Check the status of each step of the road.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="orbs.core.RoadMap.get_road_len">
+<code class="sig-name descname">get_road_len</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#orbs.core.RoadMap.get_road_len" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the number of steps of the road</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="orbs.core.RoadMap.get_step_func">
+<code class="sig-name descname">get_step_func</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">index</span></em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.core.RoadMap.get_step_func" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the function and the arguments for a particular step.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>index</strong> – Index of of the step.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>(func, args, kwargs)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="orbs.core.RoadMap.get_steps_str">
+<code class="sig-name descname">get_steps_str</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">indent</span><span class="o">=</span><span class="default_value">0</span></em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.core.RoadMap.get_steps_str" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a string describing the different steps and their index.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>indent</strong> – (Optional) Indentation of each line (default 0)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="orbs.core.RoadMap.print_status">
+<code class="sig-name descname">print_status</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#orbs.core.RoadMap.print_status" title="Permalink to this definition">¶</a></dt>
+<dd><p>Print roadmap status</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="orbs.core.RoadMap.types_dict">
+<code class="sig-name descname">types_dict</code><em class="property"> = {'bool': &lt;function RoadMap._str2bool&gt;, 'float': &lt;class 'float'&gt;, 'int': &lt;class 'int'&gt;, 'str': &lt;class 'str'&gt;}</em><a class="headerlink" href="#orbs.core.RoadMap.types_dict" title="Permalink to this definition">¶</a></dt>
+<dd><p>Dictionary of the defined arguments types</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="orbs.core.Step">
+<em class="property">class </em><code class="sig-prename descclassname">orbs.core.</code><code class="sig-name descname">Step</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">infiles</span></em>, <em class="sig-param"><span class="n">func</span></em>, <em class="sig-param"><span class="n">outfiles</span></em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.core.Step" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Reduction step definition.</p>
+<p>This class is used by <code class="xref py py-class docutils literal notranslate"><span class="pre">orbs.orbs.RoadMap</span></code>.</p>
+<dl class="py method">
+<dt id="orbs.core.Step.__init__">
+<code class="sig-name descname">__init__</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">infiles</span></em>, <em class="sig-param"><span class="n">func</span></em>, <em class="sig-param"><span class="n">outfiles</span></em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.core.Step.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Init class</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>infiles</strong> – a list of strings defining the input files.</p></li>
+<li><p><strong>func</strong> – a function object attached to the reduction step.</p></li>
+<li><p><strong>outfiles</strong> – a list of strings defining the output files.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="orbs.core.Step.__weakref__">
+<code class="sig-name descname">__weakref__</code><a class="headerlink" href="#orbs.core.Step.__weakref__" title="Permalink to this definition">¶</a></dt>
+<dd><p>list of weak references to the object (if defined)</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="orbs.core.Step.get_outfiles">
+<code class="sig-name descname">get_outfiles</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">cam</span></em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.core.Step.get_outfiles" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the complete output name of the file as it is
+recorded in the indexer (see <code class="xref py py-class docutils literal notranslate"><span class="pre">orb.core.Indexer</span></code>).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>cam</strong> – camera used (can be 0,1 or 2)</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="orbs_module.html" class="btn btn-neutral float-right" title="Orbs module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="reduction_faq.html" class="btn btn-neutral float-left" title="ORBS Reduction FAQ" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        
+        &copy; Copyright 2020, Thomas Martin (thomas.martin.1@ulaval.ca)
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

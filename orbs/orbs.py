@@ -1167,6 +1167,8 @@ class Orbs(Tools):
                     cube.dx, cube.dy, cube.dr, cube.da, cube.db = alignment_parameters[:5]
                     cube.rc = alignment_parameters[5:7]
                     cube.zoom_factor = alignment_parameters[7:9]
+                    logging.info('alignment parameters: dx {:.2f}, dy {:.2f}, dr {:.2f}, da {:.2f}, db {:.2f}, rcx {:.2f}, rcy {:.2f}, z {:.2f}'.format(
+                        *alignment_parameters))
                 else:
                     cube.compute_alignment_parameters(combine_first_frames=True)
             else:

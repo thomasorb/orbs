@@ -21,30 +21,36 @@ ORBS Documentation
 Installation
 ------------
 
-You may have to install Python_ or some modules before installing
-ORBS. You will find here informations on how to install ORBS on
-Ubuntu.
+Installation instructions can be found on Github:
 
-.. toctree::
-   :maxdepth: 2
-
-   installing_orbs
+https://github.com/thomasorb/orbs
 
   
-
 Reduction Guide
 ---------------
 
-You will find here what you need to know to reduce your data. This is
-also certainly the first place to look if you experience any problem
-using ORBS.
+You will find here useful examples describing the whole reduction
+process and giving hints on how to handle and check the outputs.
+
+.. toctree::
+   :maxdepth: 2
+	      
+   calibration_laser_map.ipynb
+   standard_spectrum.ipynb
+   science_cube.ipynb
+   
+
+Old Reduction Guide (outdated)
+------------------------------
+
+This is the old reduction guide. Some infos are oudated but most of it
+is still useful to understand the underlying core concepts.
 
 .. toctree::
    :maxdepth: 2
 
    reduction_guide
    reduction_faq
-   reduction_errors
 
 
 Code Documentation
@@ -56,17 +62,13 @@ process works in details.
 .. toctree::
    :maxdepth: 2
 
+   core_module
    orbs_module
    process_module
+   report_module
+   phase_module
+   utils_module
 
-
-Changelog
----------
-
-.. toctree::
-   :maxdepth: 2
-
-   changelog
 
 Indices and tables
 ------------------

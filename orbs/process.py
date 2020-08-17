@@ -3023,7 +3023,7 @@ class Spectrum(orb.cube.SpectralCube):
             try:
                 phase_maps = orb.fft.PhaseMaps(phase_maps_path)
             except Exception as e:
-                logging.warn('phase maps could not be opened: {}'.format(e))
+                logging.warn('phase maps could not be open: {}'.format(e))
             else:
                 out_cube.set_phase_maps(phase_maps)
 
@@ -3032,17 +3032,17 @@ class Spectrum(orb.cube.SpectralCube):
             try:
                 std_im = orb.image.StandardImage(standard_image_path)
             except Exception as e:
-                logging.warn('standard image could not be opened: {}'.format(e))
+                logging.warn('standard image could not be open: {}'.format(e))
             else:
                 out_cube.set_standard_image(std_im)
 
         try:
             std_sp = self.get_standard_spectrum() # get standard spectrum from 'standard_path'
         except Exception as e:
-            logging.warn('standard spectrum could not be opened {}'.format(e))
+            logging.warn('standard spectrum could not be open {}'.format(e))
             std_sp = None
         else:
-            # set it as as a dataset so that it goes with the output cube
+            # set it as a dataset so that it goes with the output cube
             out_cube.set_standard_spectrum(std_sp)
 
         flambda = self.compute_flambda(std_im=std_im, std_sp=std_sp)

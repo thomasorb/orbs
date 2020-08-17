@@ -1,15 +1,18 @@
 
 
 <!DOCTYPE html>
-<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
-<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<html class="writer-html5" lang="en" >
 <head>
   <meta charset="utf-8">
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Process module &mdash; Orbs 4.1 documentation</title>
+  <title>Process module &mdash; Orbs latest documentation</title>
   
+
+  
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
 
   
   
@@ -19,51 +22,46 @@
   
 
   
-
-  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
   
     
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script src="_static/language_data.js"></script>
+        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+        <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+        <script type="text/x-mathjax-config">MathJax.Hub.Config({"tex2jax": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true, "ignoreClass": "document", "processClass": "math|output_area"}})</script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
 
-  
-
-  
-  
-    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
-  
-
-  
-
-  
-        <link rel="index" title="Index"
-              href="genindex.html"/>
-        <link rel="search" title="Search" href="search.html"/>
-    <link rel="top" title="Orbs 4.1 documentation" href="index.html"/>
-        <link rel="next" title="Changelog" href="changelog.html"/>
-        <link rel="prev" title="Orbs module" href="orbs_module.html"/> 
-
-  
-  <script src="_static/js/modernizr.min.js"></script>
-
+    
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Report module" href="report_module.html" />
+    <link rel="prev" title="Orbs module" href="orbs_module.html" /> 
 </head>
 
-<body class="wy-body-for-nav" role="document">
+<body class="wy-body-for-nav">
 
    
   <div class="wy-grid-for-nav">
-
     
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
-        <div class="wy-side-nav-search">
+        <div class="wy-side-nav-search" >
           
 
           
-            <a href="index.html" class="icon icon-home"> Orbs
+            <a href="index.html" class="icon icon-home" alt="Documentation Home"> Orbs
           
 
           
             
-            <img src="_static/logo_sidebar.png" class="logo" />
+            <img src="_static/logo_sidebar.png" class="logo" alt="Logo"/>
           
           </a>
 
@@ -71,7 +69,7 @@
             
             
               <div class="version">
-                4.1
+                latest
               </div>
             
           
@@ -88,6 +86,7 @@
           
         </div>
 
+        
         <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
           
             
@@ -96,40 +95,34 @@
             
             
               <ul>
-<li class="toctree-l1"><a class="reference internal" href="installing_orbs.html">Installing Orbs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="calibration_laser_map.html">Compute and fit a calibration laser map</a></li>
+<li class="toctree-l1"><a class="reference internal" href="standard_spectrum.html">compute standard spectrum</a></li>
+<li class="toctree-l1"><a class="reference internal" href="science_cube.html">Science cube reduction process</a></li>
 </ul>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="reduction_guide.html">ORBS Reduction Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="reduction_guide.html">ORBS Reduction Guide (Outdated)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="reduction_faq.html">ORBS Reduction FAQ</a></li>
-<li class="toctree-l1"><a class="reference internal" href="reduction_errors.html">ORBS Common reduction errors</a></li>
 </ul>
 <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="core_module.html">Core module</a></li>
 <li class="toctree-l1"><a class="reference internal" href="orbs_module.html">Orbs module</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Process module</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#rawdata-class">RawData class</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#interferogram-class">Interferogram class</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#interferogrammerger-class">InterferogramMerger class</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#calibrationlaser-class">CalibrationLaser class</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#spectrum-class">Spectrum class</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#sourceextractor-class">SourceExtractor class</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#phasemaps-class">PhaseMaps class</a></li>
-</ul>
-</li>
-</ul>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="changelog.html">Changelog</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Process module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="report_module.html">Report module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="phase_module.html">Phase module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="utils_module.html">Utils module</a></li>
 </ul>
 
             
           
         </div>
+        
       </div>
     </nav>
 
     <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
 
       
-      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+      <nav class="wy-nav-top" aria-label="top navigation">
         
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
           <a href="index.html">Orbs</a>
@@ -137,9 +130,10 @@
       </nav>
 
 
-      
       <div class="wy-nav-content">
+        
         <div class="rst-content">
+        
           
 
 
@@ -160,7 +154,7 @@
 
   <ul class="wy-breadcrumbs">
     
-      <li><a href="index.html">Docs</a> &raquo;</li>
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
         
       <li>Process module</li>
     
@@ -186,1575 +180,37 @@
 /* CSS overrides for sphinx_rtd_theme */
 
 /* 24px margin */
-.nbinput.nblast,
-.nboutput.nblast {
+.nbinput.nblast.container,
+.nboutput.nblast.container {
     margin-bottom: 19px;  /* padding has already 5px */
 }
 
 /* ... except between code cells! */
-.nblast + .nbinput {
+.nblast.container + .nbinput.container {
     margin-top: -19px;
 }
 
-/* nice headers on first paragraph of info/warning boxes */
-.admonition .first {
-    margin: -12px;
-    padding: 6px 12px;
-    margin-bottom: 12px;
-    color: #fff;
-    line-height: 1;
-    display: block;
-}
-.admonition.warning .first {
-    background: #f0b37e;
-}
-.admonition.note .first {
-    background: #6ab0de;
-}
 .admonition > p:before {
     margin-right: 4px;  /* make room for the exclamation icon */
 }
+
+/* Fix math alignment, see https://github.com/rtfd/sphinx_rtd_theme/pull/686 */
+.math {
+    text-align: unset;
+}
 </style>
-<div class="section" id="process-module">
-<span id="id1"></span><h1><a class="toc-backref" href="#id2">Process module</a><a class="headerlink" href="#process-module" title="Permalink to this headline">¶</a></h1>
-<div class="contents topic" id="contents">
-<p class="topic-title first">Contents</p>
-<ul class="simple">
-<li><a class="reference internal" href="#process-module" id="id2">Process module</a><ul>
-<li><a class="reference internal" href="#rawdata-class" id="id3">RawData class</a></li>
-<li><a class="reference internal" href="#interferogram-class" id="id4">Interferogram class</a></li>
-<li><a class="reference internal" href="#interferogrammerger-class" id="id5">InterferogramMerger class</a></li>
-<li><a class="reference internal" href="#calibrationlaser-class" id="id6">CalibrationLaser class</a></li>
-<li><a class="reference internal" href="#spectrum-class" id="id7">Spectrum class</a></li>
-<li><a class="reference internal" href="#sourceextractor-class" id="id8">SourceExtractor class</a></li>
-<li><a class="reference internal" href="#phasemaps-class" id="id9">PhaseMaps class</a></li>
-</ul>
-</li>
-</ul>
-</div>
-<div class="section" id="rawdata-class">
-<h2><a class="toc-backref" href="#id3">RawData class</a><a class="headerlink" href="#rawdata-class" title="Permalink to this headline">¶</a></h2>
-<dl class="class">
-<dt id="process.RawData">
-<em class="property">class </em><code class="descclassname">process.</code><code class="descname">RawData</code><span class="sig-paren">(</span><em>cube_path</em>, <em>project_header=[]</em>, <em>wcs_header=[]</em>, <em>calibration_laser_header=[]</em>, <em>overwrite=False</em>, <em>indexer=None</em>, <em>silent_init=False</em>, <em>binning=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#process.RawData" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">orb.core.HDFCube</span></code></p>
-<p>ORBS raw data processing class.</p>
-<div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last">Raw data is the output data of SpIOMM/SITELLE without
-any kind of processing.</p>
-</div>
-<dl class="method">
-<dt id="process.RawData._get_alignment_vector_header">
-<code class="descname">_get_alignment_vector_header</code><span class="sig-paren">(</span><em>err=False</em><span class="sig-paren">)</span><a class="headerlink" href="#process.RawData._get_alignment_vector_header" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the header of the alignment vector.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>err</strong> – (Optional) If True, the error vector header is
-returned (default False).</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.RawData._get_alignment_vector_path">
-<code class="descname">_get_alignment_vector_path</code><span class="sig-paren">(</span><em>err=False</em><span class="sig-paren">)</span><a class="headerlink" href="#process.RawData._get_alignment_vector_path" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the default path to the alignment vector.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>err</strong> – (Optional) If True, the error vector path is
-returned (default False).</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.RawData._get_cr_map_cube_path">
-<code class="descname">_get_cr_map_cube_path</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#process.RawData._get_cr_map_cube_path" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the default path to a HDF5 cube of the cosmic rays.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.RawData._get_cr_map_frame_header">
-<code class="descname">_get_cr_map_frame_header</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#process.RawData._get_cr_map_frame_header" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the header of the cosmic ray map.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.RawData._get_deep_frame_header">
-<code class="descname">_get_deep_frame_header</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#process.RawData._get_deep_frame_header" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the header of the deep frame.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.RawData._get_deep_frame_path">
-<code class="descname">_get_deep_frame_path</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#process.RawData._get_deep_frame_path" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the default path to the deep frame.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.RawData._get_energy_map_header">
-<code class="descname">_get_energy_map_header</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#process.RawData._get_energy_map_header" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the header of the energy map.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.RawData._get_energy_map_path">
-<code class="descname">_get_energy_map_path</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#process.RawData._get_energy_map_path" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the default path to the energy map.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.RawData._get_hp_map_path">
-<code class="descname">_get_hp_map_path</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#process.RawData._get_hp_map_path" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the default path to the hot pixels map.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.RawData._get_interfero_cube_path">
-<code class="descname">_get_interfero_cube_path</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#process.RawData._get_interfero_cube_path" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the default path to the interferogram HDF5 cube.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.RawData._get_interfero_frame_header">
-<code class="descname">_get_interfero_frame_header</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#process.RawData._get_interfero_frame_header" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the header of an interferogram frame</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.RawData._get_master_header">
-<code class="descname">_get_master_header</code><span class="sig-paren">(</span><em>kind</em><span class="sig-paren">)</span><a class="headerlink" href="#process.RawData._get_master_header" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the header of a master frame.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>kind</strong> – Kind of master frame (e.g. : ‘bias’, ‘dark’,
-‘flat’)</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.RawData._get_master_path">
-<code class="descname">_get_master_path</code><span class="sig-paren">(</span><em>kind</em><span class="sig-paren">)</span><a class="headerlink" href="#process.RawData._get_master_path" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the default path to a master frame.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>kind</strong> – Kind of master frame (e.g. : ‘bias’, ‘dark’,
-‘flat’)</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.RawData._load_alignment_vector">
-<code class="descname">_load_alignment_vector</code><span class="sig-paren">(</span><em>alignment_vector_path</em><span class="sig-paren">)</span><a class="headerlink" href="#process.RawData._load_alignment_vector" title="Permalink to this definition">¶</a></dt>
-<dd><p>Load the alignment vector.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>alignment_vector_path</strong> – Path to the alignment vector file.</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.RawData._load_bias">
-<code class="descname">_load_bias</code><span class="sig-paren">(</span><em>bias_list_path</em>, <em>return_temperature=False</em>, <em>combine='average'</em>, <em>reject='avsigclip'</em><span class="sig-paren">)</span><a class="headerlink" href="#process.RawData._load_bias" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return a master bias.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>bias_list_path</strong> – Path to the list of bias frames</li>
-<li><strong>return_temperature</strong> – If True return also the mean
-temperature of the bias frames. Note that the header of the
-files must have the keyword ‘CCD_TEMP’. Return None if the
-temperatures could not be read.</li>
-<li><strong>reject</strong> – (Optional) Rejection operation. Can be
-‘sigclip’, ‘minmax’, ‘avsigclip’ or None (default
-‘avsigclip’). See
-<code class="xref py py-meth docutils literal"><span class="pre">orb.utils.image.create_master_frame()</span></code>.</li>
-<li><strong>combine</strong> – (Optional) Combining operation. Can be
-‘average’ or ‘median’ (default ‘average’). See
-<code class="xref py py-meth docutils literal"><span class="pre">orb.utils.image.create_master_frame()</span></code>.</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
-<div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last">Bias images are resized if x and y dimensions of the
-flat images are not equal to the cube dimensions.</p>
-</div>
-<div class="admonition seealso">
-<p class="first admonition-title">See also</p>
-<p class="last"><code class="xref py py-meth docutils literal"><span class="pre">orb.utils.image.create_master_frame()</span></code></p>
-</div>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.RawData._load_dark">
-<code class="descname">_load_dark</code><span class="sig-paren">(</span><em>dark_list_path</em>, <em>return_temperature=False</em>, <em>combine='average'</em>, <em>reject='avsigclip'</em><span class="sig-paren">)</span><a class="headerlink" href="#process.RawData._load_dark" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return a master dark.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>dark_list_path</strong> – Path to the list of dark frames</li>
-<li><strong>return_temperature</strong> – If True return also the mean
-temperature of the dark frames. Note that the header of the
-files must have the keyword ‘CCD_TEMP’. Return None if the
-temperatures could not be read.</li>
-<li><strong>reject</strong> – (Optional) Rejection operation. Can be
-‘sigclip’, ‘minmax’, ‘avsigclip’ or None (default
-‘avsigclip’). See
-<code class="xref py py-meth docutils literal"><span class="pre">orb.utils.image.create_master_frame()</span></code>.</li>
-<li><strong>combine</strong> – (Optional) Combining operation. Can be
-‘average’ or ‘median’ (default ‘average’). See
-<code class="xref py py-meth docutils literal"><span class="pre">orb.utils.image.create_master_frame()</span></code>.</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
-<div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last">Dark images are resized if x and y dimensions of the
-flat images are not equal to the cube dimensions.</p>
-</div>
-<div class="admonition seealso">
-<p class="first admonition-title">See also</p>
-<p class="last"><code class="xref py py-meth docutils literal"><span class="pre">orb.utils.image.create_master_frame()</span></code></p>
-</div>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.RawData._load_flat">
-<code class="descname">_load_flat</code><span class="sig-paren">(</span><em>flat_list_path</em>, <em>combine='average'</em>, <em>reject='avsigclip'</em>, <em>smooth_deg=0</em><span class="sig-paren">)</span><a class="headerlink" href="#process.RawData._load_flat" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return a master flat.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>flat_list_path</strong> – Path to the list of flat frames</li>
-<li><strong>reject</strong> – (Optional) Rejection operation. Can be
-‘sigclip’, ‘minmax’, ‘avsigclip’ or None (default
-‘avsigclip’). See
-<code class="xref py py-meth docutils literal"><span class="pre">orb.utils.image.create_master_frame()</span></code>.</li>
-<li><strong>combine</strong> – (Optional) Combining operation. Can be
-‘average’ or ‘median’ (default ‘average’). See
-<code class="xref py py-meth docutils literal"><span class="pre">orb.utils.image.create_master_frame()</span></code>.</li>
-<li><strong>smooth_deg</strong> – (Optional) If &gt; 0 smooth the master flat (help in
-removing possible fringe pattern) (default 0).</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
-<div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last">Flat images are resized if the x and y dimensions of
-the flat images are not equal to the cube dimensions.</p>
-</div>
-<div class="admonition seealso">
-<p class="first admonition-title">See also</p>
-<p class="last"><code class="xref py py-meth docutils literal"><span class="pre">orb.utils.image.create_master_frame()</span></code></p>
-</div>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.RawData.check_bad_frames">
-<code class="descname">check_bad_frames</code><span class="sig-paren">(</span><em>cr_map_cube_path=None</em>, <em>coeff=2.0</em><span class="sig-paren">)</span><a class="headerlink" href="#process.RawData.check_bad_frames" title="Permalink to this definition">¶</a></dt>
-<dd><p>Check an interferogram cube for bad frames.</p>
-<p>If the number of detected cosmic rays is too important the
-frame is considered as bad</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>cr_map_cube_path</strong> – (Optional) Path to the cosmic ray map
-cube. If None given, default path is used (default None).</li>
-<li><strong>coeff</strong> – (Optional) Threshold coefficient (default 2.)</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.RawData.correct">
-<code class="descname">correct</code><span class="sig-paren">(</span><em>bias_path=None</em>, <em>dark_path=None</em>, <em>flat_path=None</em>, <em>cr_map_cube_path=None</em>, <em>alignment_vector_path=None</em>, <em>dark_int_time=None</em>, <em>flat_int_time=None</em>, <em>exposition_time=None</em>, <em>bad_frames_vector=[]</em>, <em>optimize_dark_coeff=False</em>, <em>dark_activation_energy=None</em>, <em>bias_calibration_params=None</em>, <em>negative_values=False</em>, <em>z_range=[]</em>, <em>order=1</em>, <em>zeros=False</em>, <em>combine='average'</em>, <em>reject='avsigclip'</em>, <em>flat_smooth_deg=0</em><span class="sig-paren">)</span><a class="headerlink" href="#process.RawData.correct" title="Permalink to this definition">¶</a></dt>
-<dd><p>Correct raw data for bias, dark, flat, cosmic rays and
-alignment using the precomputed alignment vector and the
-cosmic ray map.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>bias_path</strong> – (Optional) Path to a list of bias files. If
-none given no correction is done.</li>
-<li><strong>dark_path</strong> – (Optional) Path to a list of dark files. If
-none given no dark and flat corrections are done.</li>
-<li><strong>flat_path</strong> – (Optional) Path to a list of flat files. If
-none given no flat correction is done.</li>
-<li><strong>cr_map_cube_path</strong> – (Optional) Path to the cosmic ray map
-HDF5 cube, if none given the default path is used.</li>
-<li><strong>alignment_vector_path</strong> – (Optional) Path to the alignment
-vector file, if none given the default path is used.</li>
-<li><strong>dark_int_time</strong> – (Optional) Integration time of the dark
-frames. Used to remove the dark pattern from a flat with a
-different integration time. User must specify flat_int_time.</li>
-<li><strong>flat_int_time</strong> – (Optional) Integration time of the flat
-frames. see dark_int_time.</li>
-<li><strong>bad_frames_vector</strong> – (Optional) Contains the index of the
-frames to be replaced by zeros.</li>
-<li><strong>optimize_dark_coeff</strong> – (Optional) If True use a fast optimization
-routine to calculate the best coefficient for dark
-correction. This routine is used to correct for the images
-of the camera 2 on SpIOMM, because it contains a lot of hot
-pixels (Default False).</li>
-<li><strong>dark_activation_energy</strong> – Activation energy in eV. This is a
-calibration parameter used to guess the master dark
-coefficient to apply in case the temperature of the frame is
-different from the master dark temperature. Useful only if
-optimize_dark_coeff is True and the temperature of the dark
-frames and the interferogram frames is given in their header
-[keyword ‘CCD-TEMP’] (Default None).</li>
-<li><strong>bias_calibration_params</strong> – (Optional) a tuple of 2
-parameters [a,b] that are used to compute the bias
-coefficient for a varying temperature of the camera. Useful
-only if optimize_dark_coeff is True and the temperature of
-the bias frames and the interferogram frames is given in
-their header [keyword ‘CCD-TEMP’] (Default None).</li>
-<li><strong>exposition_time</strong> – (Optional) Integration time of the 
-frames (can be defined in the option file).</li>
-<li><strong>negative_values</strong> – (Optional) If False, replace negative values in
-the calculated interferogram by zero (Default False).</li>
-<li><strong>z_range</strong> – (Optional) 1d array containing the index of
-the frames to be computed.</li>
-<li><strong>order</strong> – (Optional) Interpolation order (Default 1). Be
-careful in using an interpolation order greater than 1 with
-images containing stars.</li>
-<li><strong>zeros</strong> – (Optional) If True, cosmic rays are replaced by
-zeros. If False, cosmic rays are replaced by the median of
-the neighbouring region (default False).</li>
-<li><strong>reject</strong> – (Optional) Rejection operation for master
-frames creation. Can be ‘sigclip’, ‘minmax’, ‘avsigclip’ or
-None (default ‘avsigclip’). See
-<code class="xref py py-meth docutils literal"><span class="pre">orb.utils.image.create_master_frame()</span></code>.</li>
-<li><strong>combine</strong> – (Optional) Combining operation for master
-frames creation. Can be ‘average’ or ‘median’ (default
-‘average’). See
-<code class="xref py py-meth docutils literal"><span class="pre">orb.utils.image.create_master_frame()</span></code>.</li>
-<li><strong>flat_smooth_deg</strong> – (Optional) If &gt; 0 smooth the master
-flat (help removing possible fringe pattern) (default
-0). See <a class="reference internal" href="#process.RawData._load_flat" title="process.RawData._load_flat"><code class="xref py py-meth docutils literal"><span class="pre">process.RawData._load_flat()</span></code></a>.</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
-<div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last">Frames considered as bad (which index are in
-<code class="docutils literal"><span class="pre">bad_frames_vector</span></code> or not in the <code class="docutils literal"><span class="pre">z_range</span></code> vector) are just
-replaced by frames of zeros.</p>
-</div>
-<div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p>The creation of the corrected interferogram frames
-walks through 2 steps:</p>
-<ol class="last arabic simple">
-<li>Correction for bias, dark, and flat field. Please refer
-to: <a class="reference internal" href="#process.RawData.correct_frame" title="process.RawData.correct_frame"><code class="xref py py-meth docutils literal"><span class="pre">process.RawData.correct_frame()</span></code></a>.</li>
-<li>Alignment of the frame using linear interpolation by
-default. A higher order interpolation can be used if the
-field contains no star like object. By default cosmic
-rays are replaced by the weighted average of the
-neighbouring region. Weights are computed from a gaussian
-kernel.</li>
-</ol>
-</div>
-<div class="admonition seealso">
-<p class="first admonition-title">See also</p>
-<p class="last"><a class="reference internal" href="#process.RawData.correct_frame" title="process.RawData.correct_frame"><code class="xref py py-meth docutils literal"><span class="pre">process.RawData.correct_frame()</span></code></a></p>
-</div>
-<div class="admonition seealso">
-<p class="first admonition-title">See also</p>
-<p class="last"><a class="reference internal" href="#process.RawData.create_cosmic_ray_map" title="process.RawData.create_cosmic_ray_map"><code class="xref py py-meth docutils literal"><span class="pre">process.RawData.create_cosmic_ray_map()</span></code></a></p>
-</div>
-<div class="admonition seealso">
-<p class="first admonition-title">See also</p>
-<p class="last"><a class="reference internal" href="#process.RawData.create_alignment_vector" title="process.RawData.create_alignment_vector"><code class="xref py py-meth docutils literal"><span class="pre">process.RawData.create_alignment_vector()</span></code></a></p>
-</div>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.RawData.correct_frame">
-<code class="descname">correct_frame</code><span class="sig-paren">(</span><em>index</em>, <em>master_bias</em>, <em>master_dark</em>, <em>master_flat</em>, <em>dark_int_time</em>, <em>flat_int_time</em>, <em>hp_map_path</em>, <em>optimize_dark_coeff</em>, <em>exposition_time</em>, <em>negative_values</em>, <em>master_dark_temp</em>, <em>master_bias_temp</em>, <em>dark_activation_energy</em>, <em>bias_calibration_params</em>, <em>master_bias_level</em>, <em>master_dark_level</em><span class="sig-paren">)</span><a class="headerlink" href="#process.RawData.correct_frame" title="Permalink to this definition">¶</a></dt>
-<dd><p>Correct a frame for the bias, dark and flat field.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>index</strong> – Index of the frame to be corrected</li>
-<li><strong>master_bias</strong> – Master Bias (if None, no correction is done)</li>
-<li><strong>master_dark</strong> – Master Dark. Must be in counts/s and bias
-must have been removed. (if None, no dark and flat
-corrections are done)</li>
-<li><strong>master_flat</strong> – Master Flat (if None, no flat correction
-is done)</li>
-<li><strong>dark_int_time</strong> – Dark integration time</li>
-<li><strong>flat_int_time</strong> – Flat integration time</li>
-<li><strong>hp_map_path</strong> – Path to the hot pixel map</li>
-<li><strong>optimize_dark_coeff</strong> – If True use a fast optimization
-routine to calculate the best coefficient for dark
-correction. This routine is used to correct for the images
-of the camera 2 on SpIOMM, because it has a varying dark and
-bias level and contains a lot of hot pixels (Default False).</li>
-<li><strong>dark_activation_energy</strong> – Activation energy in eV. This
-is a calibration parameter used to guess the master dark
-coefficient to apply in case the temperature of the frame is
-different from the master dark temperature. Useful only if
-optimize_dark_coeff is True and the temperature of the dark
-frames and the interferogram frames is given in their header
-[keyword ‘CCD-TEMP’] (Default None).</li>
-<li><strong>bias_calibration_params</strong> – A tuple of 2 parameters [a,b]
-that are used to compute the bias coefficient for a varying
-temperature of the camera. Useful only if
-optimize_dark_coeff is True and the temperature of the bias
-frames and the interferogram frames is given in their header
-[keyword ‘CCD-TEMP’] (Default None).</li>
-<li><strong>master_dark_temp</strong> – Mean temperature of the master dark
-frame.</li>
-<li><strong>master_bias_temp</strong> – Mean temperature of the master bias
-frame.</li>
-<li><strong>master_bias_level</strong> – Median level of the master bias frame.</li>
-<li><strong>master_dark_level</strong> – Median level of the master dark frame.</li>
-<li><strong>exposition_time</strong> – (Optional) Integration time of the 
-frames (can be defined in the option file).</li>
-<li><strong>negative_values</strong> – if False, replace negative values in
-the calculated interferogram by zero.</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
-<div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p>The correction steps are:</p>
-<ul class="last simple">
-<li>(If optimize_dark_coeff is True) : Dark and bias levels
-are corrected using calibrated functions and the level of
-hot pixels are optimized by minimizing their standard
-deviation.</li>
-<li>Bias is substracted to dark and flat</li>
-<li>Dark is substracted to flat if the integration 
-time of the flat is given</li>
-<li>Flat is normalized (median = 1)</li>
-<li>The corrected image is calculated
-<span class="math">\(frame=\frac{frame - dark + bias}{flat}\)</span>.</li>
-<li>Negative values are set to 0 by default</li>
-</ul>
-</div>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.RawData.create_alignment_vector">
-<code class="descname">create_alignment_vector</code><span class="sig-paren">(</span><em>star_list_path</em>, <em>init_fwhm_arc</em>, <em>fov</em>, <em>profile_name='gaussian'</em>, <em>moffat_beta=2.1</em>, <em>min_coeff=0.3</em>, <em>readout_noise=10.0</em>, <em>dark_current_level=0.0</em><span class="sig-paren">)</span><a class="headerlink" href="#process.RawData.create_alignment_vector" title="Permalink to this definition">¶</a></dt>
-<dd><dl class="docutils">
-<dt>Create the alignment vector used to compute the</dt>
-<dd>interferogram from the raw images.</dd>
-</dl>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>star_list_path</strong> – Path to a list of star coordinates that
-will be used to calculates the displacement vector. Please
-refer to <code class="xref py py-meth docutils literal"><span class="pre">orb.utils.astrometry.load_star_list()</span></code> for more
-information about a list of stars.</li>
-<li><strong>init_fwhm_arc</strong> – Initial guess for the FWHM in arcsec</li>
-<li><strong>fov</strong> – Field of View along x axis in arcmin</li>
-<li><strong>profile_name</strong> – (Optional) PSF profile for star
-fitting. Can be ‘moffat’ or ‘gaussian’. See:
-<code class="xref py py-class docutils literal"><span class="pre">orb.astrometry.Astrometry</span></code> (default ‘gaussian’).</li>
-<li><strong>moffat_beta</strong> – (Optional) Beta parameter to use for
-moffat PSF (default 3.5).</li>
-<li><strong>min_coeff</strong> – (Optional) The minimum proportion of stars
-correctly fitted to assume a good enough calculated
-disalignment (default 0.3).</li>
-<li><strong>readout_noise</strong> – (Optional) Readout noise in ADU/pixel
-(can be computed from bias frames: std(master_bias_frame))
-(default 10.)</li>
-<li><strong>dark_current_level</strong> – (Optional) Dark current level in
-ADU/pixel (can be computed from dark frames:
-median(master_dark_frame)) (default 0.)</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
-<div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last">The alignement vector contains the calculated
-disalignment for each image along x and y axes to the first
-image.</p>
-</div>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.RawData.create_cosmic_ray_map">
-<code class="descname">create_cosmic_ray_map</code><span class="sig-paren">(</span><em>z_coeff=3.0</em>, <em>step_number=None</em>, <em>bad_frames_vector=[]</em>, <em>star_list_path=None</em>, <em>stars_fwhm_pix=2.0</em><span class="sig-paren">)</span><a class="headerlink" href="#process.RawData.create_cosmic_ray_map" title="Permalink to this definition">¶</a></dt>
-<dd><p>Find the cosmic rays in the raw images and creates 
-the cosmic ray map used to compute the interferogram.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>z_coeff</strong> – (Optional) Threshold coefficient for cosmic ray
-detection, lower it to detect more cosmic rays (default : 3.).</li>
-<li><strong>step_number</strong> – (Optional) ‘Full’ number of steps if the
-cube was complete. Might be different from the ‘real’ number
-of steps obtained. Helps in finding ZPD (default None).</li>
-<li><strong>bad_frames_vector</strong> – (Optional) Contains the index of the
-frames considered as bad(default []).</li>
-<li><strong>star_list_path</strong> – (Optional) Path to a list of stars that
-must be protected from over detection. All cosmic rays
-detected in those stars will be removed.</li>
-<li><strong>stars_fwhm_pix</strong> – (Optional) mean FWHM of the stars in
-pixels.</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
-<div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last">A cosmic ray map is a ‘mask like’ cube filled with
-zeros and containing a one for each pixel identified as a
-cosmic ray. This cube is stored as a virtual
-<strong>frame-divided</strong> cube</p>
-</div>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.RawData.create_hot_pixel_map">
-<code class="descname">create_hot_pixel_map</code><span class="sig-paren">(</span><em>dark_image</em>, <em>bias_image</em><span class="sig-paren">)</span><a class="headerlink" href="#process.RawData.create_hot_pixel_map" title="Permalink to this definition">¶</a></dt>
-<dd><p>Create a hot pixel map from a cube of dark frame</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>bias_image</strong> – Master bias frame (can be set to None)</li>
-<li><strong>dark_image</strong> – Master dark frame</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
-<div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last">A hot pixel map is a mask like frame (1 for a hot
-pixel, 0 elsewhere)</p>
-</div>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.RawData.get_bias_coeff_from_T">
-<code class="descname">get_bias_coeff_from_T</code><span class="sig-paren">(</span><em>master_bias_temp</em>, <em>master_bias_level</em>, <em>frame_temp</em>, <em>calibrated_params</em><span class="sig-paren">)</span><a class="headerlink" href="#process.RawData.get_bias_coeff_from_T" title="Permalink to this definition">¶</a></dt>
-<dd><table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>master_bias_temp</strong> – Temperature of the master bias frame.</li>
-<li><strong>master_bias_level</strong> – Median of the master bias frame.</li>
-<li><strong>frame_temp</strong> – Temperature of the frame to correct.</li>
-<li><strong>calibrated_params</strong> – parameters [a, b] of the
-function bias_level(T) = aT + b. T is in degrees C and
-bias_level(T) is the median of the bias frame at the
-given temperature.</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.RawData.get_dark_coeff_from_T">
-<code class="descname">get_dark_coeff_from_T</code><span class="sig-paren">(</span><em>master_dark_temp</em>, <em>master_dark_level</em>, <em>frame_temp</em>, <em>activation_energy</em><span class="sig-paren">)</span><a class="headerlink" href="#process.RawData.get_dark_coeff_from_T" title="Permalink to this definition">¶</a></dt>
-<dd><blockquote>
-<div>Return calibrated coefficient of the calibrated dark frame
-given the temperature of the frame to correct (see Widenhorn
-et al. 2002)</div></blockquote>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>frame_temp</strong> – Temperature of the frame to correct.</td>
-</tr>
-<tr class="field-even field"><th class="field-name" colspan="2">Master_dark_level:</th></tr>
-<tr class="field-even field"><td>&#160;</td><td class="field-body">Master dark level in counts</td>
-</tr>
-<tr class="field-odd field"><th class="field-name" colspan="2">Master_dark_temp:</th></tr>
-<tr class="field-odd field"><td>&#160;</td><td class="field-body">Master dark temperature in Celsius</td>
-</tr>
-<tr class="field-even field"><th class="field-name" colspan="2">Activation_energy:</th></tr>
-<tr class="field-even field"><td>&#160;</td><td class="field-body">Activation energy in eV</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.RawData.get_noise_values">
-<code class="descname">get_noise_values</code><span class="sig-paren">(</span><em>bias_path</em>, <em>dark_path</em>, <em>exposition_time</em>, <em>dark_int_time</em>, <em>combine='average'</em>, <em>reject='avsigclip'</em><span class="sig-paren">)</span><a class="headerlink" href="#process.RawData.get_noise_values" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return readout noise and dark current level from bias and dark
-frames.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>bias_path</strong> – Path to a list of bias files.</li>
-<li><strong>dark_path</strong> – Path to a list of dark files.</li>
-<li><strong>exposition_time</strong> – Integration time of the frames.</li>
-<li><strong>dark_int_time</strong> – Integration time of the dark frames.</li>
-<li><strong>reject</strong> – (Optional) Rejection operation for master
-frames creation. Can be ‘sigclip’, ‘minmax’, ‘avsigclip’ or
-None (default ‘avsigclip’). See
-<code class="xref py py-meth docutils literal"><span class="pre">orb.utils.image.create_master_frame()</span></code>.</li>
-<li><strong>combine</strong> – (Optional) Combining operation for master
-frames creation. Can be ‘average’ or ‘median’ (default
-‘average’). See
-<code class="xref py py-meth docutils literal"><span class="pre">orb.utils.image.create_master_frame()</span></code>.</li>
-</ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">readout_noise, dark_current_level</p>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-</dd></dl>
-
-</div>
-<div class="section" id="interferogram-class">
-<h2><a class="toc-backref" href="#id4">Interferogram class</a><a class="headerlink" href="#interferogram-class" title="Permalink to this headline">¶</a></h2>
-<dl class="class">
-<dt id="process.Interferogram">
-<em class="property">class </em><code class="descclassname">process.</code><code class="descname">Interferogram</code><span class="sig-paren">(</span><em>cube_path</em>, <em>project_header=[]</em>, <em>wcs_header=[]</em>, <em>calibration_laser_header=[]</em>, <em>overwrite=False</em>, <em>indexer=None</em>, <em>silent_init=False</em>, <em>binning=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#process.Interferogram" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">orb.core.HDFCube</span></code></p>
-<p>ORBS interferogram processing class.</p>
-<div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last">Interferogram data is defined as data already processed
-(corrected and aligned frames) by <a class="reference internal" href="#process.RawData" title="process.RawData"><code class="xref py py-class docutils literal"><span class="pre">process.RawData</span></code></a> and
-ready to be transformed to a spectrum by a Fast Fourier
-Transform (FFT).</p>
-</div>
-<dl class="method">
-<dt id="process.Interferogram._get_binned_calibration_laser_map_path">
-<code class="descname">_get_binned_calibration_laser_map_path</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#process.Interferogram._get_binned_calibration_laser_map_path" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return path to the binned calibration laser map</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.Interferogram._get_binned_interferogram_cube_path">
-<code class="descname">_get_binned_interferogram_cube_path</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#process.Interferogram._get_binned_interferogram_cube_path" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return path to the binned interferogram cube.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.Interferogram._get_binned_phase_cube_path">
-<code class="descname">_get_binned_phase_cube_path</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#process.Interferogram._get_binned_phase_cube_path" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return path to the binned phase cube.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.Interferogram._get_corrected_interferogram_cube_path">
-<code class="descname">_get_corrected_interferogram_cube_path</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#process.Interferogram._get_corrected_interferogram_cube_path" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the default path to a spectrum HDF5 cube.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.Interferogram._get_corrected_interferogram_frame_header">
-<code class="descname">_get_corrected_interferogram_frame_header</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#process.Interferogram._get_corrected_interferogram_frame_header" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the header of a corrected interferogram frame</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.Interferogram._get_extracted_star_spectra_header">
-<code class="descname">_get_extracted_star_spectra_header</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#process.Interferogram._get_extracted_star_spectra_header" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the header to the extracted star spectra</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.Interferogram._get_extracted_star_spectra_path">
-<code class="descname">_get_extracted_star_spectra_path</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#process.Interferogram._get_extracted_star_spectra_path" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the path to the extracted star spectra</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.Interferogram._get_phase_map_header">
-<code class="descname">_get_phase_map_header</code><span class="sig-paren">(</span><em>order</em>, <em>err=False</em><span class="sig-paren">)</span><a class="headerlink" href="#process.Interferogram._get_phase_map_header" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return phase map header</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>order</strong> – Order of the phase map.</li>
-<li><strong>err</strong> – (Optional) If True, map is an error map (default
-False).</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.Interferogram._get_phase_map_path">
-<code class="descname">_get_phase_map_path</code><span class="sig-paren">(</span><em>order</em>, <em>err=False</em><span class="sig-paren">)</span><a class="headerlink" href="#process.Interferogram._get_phase_map_path" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return path to phase map</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>order</strong> – Order of the phase map.</li>
-<li><strong>err</strong> – (Optional) If True, map is an error map (default
-False).</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.Interferogram._get_spectrum_cube_path">
-<code class="descname">_get_spectrum_cube_path</code><span class="sig-paren">(</span><em>phase=False</em><span class="sig-paren">)</span><a class="headerlink" href="#process.Interferogram._get_spectrum_cube_path" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the default path to a spectrum HDF5 cube.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>phase</strong> – (Optional) If True the path is changed for a
-phase cube (default False).</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.Interferogram._get_spectrum_frame_header">
-<code class="descname">_get_spectrum_frame_header</code><span class="sig-paren">(</span><em>frame_index</em>, <em>axis</em>, <em>apodization_function</em>, <em>phase=False</em>, <em>wavenumber=False</em><span class="sig-paren">)</span><a class="headerlink" href="#process.Interferogram._get_spectrum_frame_header" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the header of the spectral frames.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>frame_index</strong> – Index of the frame.</li>
-<li><strong>axis</strong> – Spectrum axis (must be in wavelength or in
-wavenumber).</li>
-<li><strong>phase</strong> – (Optional) If True the path is changed for a
-phase cube (default False).</li>
-<li><strong>wavenumber</strong> – (Optional) If True the axis is considered
-to be in wavenumber. If False the axis is considered to be
-in wavelength (default False).</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.Interferogram._get_spectrum_header">
-<code class="descname">_get_spectrum_header</code><span class="sig-paren">(</span><em>axis</em>, <em>apodization_function</em>, <em>phase=False</em>, <em>wavenumber=False</em><span class="sig-paren">)</span><a class="headerlink" href="#process.Interferogram._get_spectrum_header" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the header of the spectal cube.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>axis</strong> – Spectrum axis (must be in wavelength or in
-wavenumber).</li>
-<li><strong>phase</strong> – (Optional) If True the path is changed for a
-phase cube (default False).</li>
-<li><strong>wavenumber</strong> – (Optional) If True the axis is considered
-to be in wavenumber. If False the axis is considered to be
-in wavelength (default False).</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.Interferogram._get_stray_light_vector_header">
-<code class="descname">_get_stray_light_vector_header</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#process.Interferogram._get_stray_light_vector_header" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the header of the stray light vector</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.Interferogram._get_stray_light_vector_path">
-<code class="descname">_get_stray_light_vector_path</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#process.Interferogram._get_stray_light_vector_path" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the path to the stray light vector</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.Interferogram._get_transmission_vector_header">
-<code class="descname">_get_transmission_vector_header</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#process.Interferogram._get_transmission_vector_header" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the header of the transmission vector</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.Interferogram._get_transmission_vector_path">
-<code class="descname">_get_transmission_vector_path</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#process.Interferogram._get_transmission_vector_path" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the path to the transmission vector</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.Interferogram.compute_spectrum">
-<code class="descname">compute_spectrum</code><span class="sig-paren">(</span><em>calibration_laser_map_path</em>, <em>step</em>, <em>order</em>, <em>nm_laser</em>, <em>zpd_shift=None</em>, <em>phase_correction=True</em>, <em>bad_frames_vector=None</em>, <em>window_type=None</em>, <em>phase_cube=False</em>, <em>phase_map_paths=None</em>, <em>filter_name=None</em>, <em>wave_calibration=False</em>, <em>balanced=True</em>, <em>fringes=None</em>, <em>wavenumber=False</em><span class="sig-paren">)</span><a class="headerlink" href="#process.Interferogram.compute_spectrum" title="Permalink to this definition">¶</a></dt>
-<dd><p>Compute the spectrum from the corrected interferogram
-frames. Can be used to compute spectrum for camera 1, camera 2
-or merged interferogram.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>calibration_laser_map_path</strong> – Path to the calibration
-map.</li>
-<li><strong>order</strong> – Folding order</li>
-<li><strong>step</strong> – Step size in nm</li>
-<li><strong>zpd_shift</strong> – (Optional) Shift of the ZPD in
-frames. Automaticaly computed if none given.</li>
-<li><strong>window_type</strong> – (Optional) Apodization window to be used
-(Default None, no apodization)</li>
-<li><strong>phase_correction</strong> – (Optional) If False, no phase
-correction will be done and the resulting spectrum will be
-the absolute value of the complex spectrum (default True).</li>
-<li><strong>bad_frames_vector</strong> – (Optional) Mask-like vector
-containing ones for bad frames. Bad frames are replaced by
-zeros using a special function that smoothes transition
-between good parts and zeros (default None).</li>
-<li><strong>phase_cube</strong> – (Optional) If True, only the phase cube is
-returned (default False).</li>
-<li><strong>phase_map_paths</strong> – (Optional) List of path to the phase
-maps. Each path must point to a FITS file that contains a
-map or a number. If a map is given it must have the same
-dimensions as the frames of the interferogram cube (default
-None).</li>
-<li><strong>filter_name</strong> – (Optional) Name of the filter used.</li>
-<li><strong>balanced</strong> – (Optional) If False, the interferogram is
-considered as unbalanced. It is flipped before its
-transformation to get a positive spectrum. Note that a
-merged interferogram is balanced (default True).</li>
-<li><strong>fringes</strong> – (Optional) If not None, must be an array
-giving for each fringe to remove its frequency and
-intensity. The array must be like [[freq1, amp1], [freq2,
-amp2], [freq3, amp3], …]. Fringes are removed by dividing
-the interferograms by a sinusoidal function representing a
-periodically variable modulation efficiency (default None).</li>
-<li><strong>wavenumber</strong> – (Optional) If True, the returned spectrum
-is projected onto its original wavenumber axis (emission
-lines and especially unapodized sinc emission lines are thus
-symetric which is not the case if the spectrum is projected
-onto a, more convenient, regular wavelength axis) (default
-False).</li>
-<li><strong>wave_calibration</strong> – (Optional) If True wavelength
-calibration is done (default False).</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
-<div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p>External phase computation:</p>
-<p class="last">In order to achieve a better phase correction it can be
-useful to compute some of the phase coefficients from an
-external source.</p>
-</div>
-<div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p>Spectrum computation walks through 8 steps:</p>
-<ol class="last arabic simple">
-<li>Mean interferogram subtraction to suppress the
-zero-frequency term in the spectrum</li>
-<li>Low order polynomial subtraction to suppress low
-frequency noise in the spectrum</li>
-<li>Apodization (the user can choose which apodization
-function to use)</li>
-<li>Zero-padding to have two times more points in the
-interferogram in order to keep the same resolution during
-the Fourier transform.</li>
-<li>ZPD shift to correct for a non-centered ZPD.</li>
-<li>Fast Fourier Transform of the interferogram</li>
-<li>Phase correction (if the user chooses to get the real
-part of the spectrum with phase correction instead of the
-power spectrum)</li>
-<li>Wavelength correction using the data obtained with the
-calibration cube.</li>
-</ol>
-</div>
-<div class="admonition seealso">
-<p class="first admonition-title">See also</p>
-<p class="last"><code class="xref py py-meth docutils literal"><span class="pre">orb.utils.fft.transform_interferogram()</span></code></p>
-</div>
-<div class="admonition seealso">
-<p class="first admonition-title">See also</p>
-<p class="last"><code class="xref py py-class docutils literal"><span class="pre">process.Phase</span></code></p>
-</div>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.Interferogram.correct_interferogram">
-<code class="descname">correct_interferogram</code><span class="sig-paren">(</span><em>transmission_vector_path</em>, <em>stray_light_vector_path</em><span class="sig-paren">)</span><a class="headerlink" href="#process.Interferogram.correct_interferogram" title="Permalink to this definition">¶</a></dt>
-<dd><p>Correct an interferogram cube for for variations
-of sky transmission and stray light.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>sky_transmission_vector_path</strong> – Path to the transmission
-vector.All the interferograms of the cube are divided by
-this vector. The vector must have the same size as the 3rd
-axis of the cube (the OPD axis).</li>
-<li><strong>stray_light_vector_path</strong> – Path to the stray light
-vector. This vector is substracted from the interferograms
-of all the cube. The vector must have the same size as the
-3rd axis of the cube (the OPD axis).</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
-<div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last">The sky transmission vector gives the absorption
-caused by clouds or airmass variation.</p>
-</div>
-<div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last">The stray light vector gives the counts added
-homogeneously to each frame caused by a cloud reflecting
-light coming from the ground, the moon or the sun.</p>
-</div>
-<div class="admonition seealso">
-<p class="first admonition-title">See also</p>
-<p class="last"><a class="reference internal" href="#process.Interferogram.create_correction_vectors" title="process.Interferogram.create_correction_vectors"><code class="xref py py-meth docutils literal"><span class="pre">process.Interferogram.create_correction_vectors()</span></code></a></p>
-</div>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.Interferogram.create_binned_calibration_laser_map">
-<code class="descname">create_binned_calibration_laser_map</code><span class="sig-paren">(</span><em>binning</em>, <em>calibration_laser_map_path</em><span class="sig-paren">)</span><a class="headerlink" href="#process.Interferogram.create_binned_calibration_laser_map" title="Permalink to this definition">¶</a></dt>
-<dd><p>Create a binned calibration laser map</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>binning</strong> – Binning</li>
-<li><strong>calibration_laser_map_path</strong> – Calibration laser map path</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.Interferogram.create_binned_interferogram_cube">
-<code class="descname">create_binned_interferogram_cube</code><span class="sig-paren">(</span><em>binning</em><span class="sig-paren">)</span><a class="headerlink" href="#process.Interferogram.create_binned_interferogram_cube" title="Permalink to this definition">¶</a></dt>
-<dd><p>Create a binned interferogram cube</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>binning</strong> – Binning</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.Interferogram.create_correction_vectors">
-<code class="descname">create_correction_vectors</code><span class="sig-paren">(</span><em>star_list_path</em>, <em>fwhm_arc</em>, <em>fov</em>, <em>profile_name='gaussian'</em>, <em>moffat_beta=3.5</em>, <em>step_number=None</em>, <em>bad_frames_vector=[]</em>, <em>aperture_photometry=True</em><span class="sig-paren">)</span><a class="headerlink" href="#process.Interferogram.create_correction_vectors" title="Permalink to this definition">¶</a></dt>
-<dd><p>Create a sky transmission vector computed from star
-photometry and an stray light vector computed from the median
-of the frames.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>star_list_path</strong> – Path to a list of star positions.</li>
-<li><strong>box_size</strong> – (Optional) The size of the box in pixel
-around each given star used to fit a 2D gaussian (default
-15 pixels). Choose it to be between 3 and 6 times the
-FWHM.</li>
-<li><strong>step_number</strong> – (Optional) ‘Full’ number of steps if the
-cube was complete. Might be different from the ‘real’ number
-of steps obtained. Helps in finding ZPD (default None).</li>
-<li><strong>bad_frames_vector</strong> – (Optional) Contains the index of the
-frames considered as bad (default []).</li>
-<li><strong>aperture_photometry</strong> – If True, flux of stars is computed
-by aperture photometry. Else, The flux is evaluated given
-the fit parameters.</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
-<div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last">The sky transmission vector gives the absorption
-caused by clouds or airmass variation.</p>
-</div>
-<div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last">The stray light vector gives the counts added
-homogeneously to each frame caused by a cloud reflecting
-light coming from the ground, the moon or the sun.</p>
-</div>
-<div class="admonition warning">
-<p class="first admonition-title">Warning</p>
-<p class="last">This method is intented to be used to correct a
-‘single camera’ interferogram cube. In the case of a merged
-interferogram this is already done by the
-<a class="reference internal" href="#process.InterferogramMerger.merge" title="process.InterferogramMerger.merge"><code class="xref py py-meth docutils literal"><span class="pre">process.InterferogramMerger.merge()</span></code></a> with a far
-better precision (because both cubes are used to compute it)</p>
-</div>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.Interferogram.create_phase_maps">
-<code class="descname">create_phase_maps</code><span class="sig-paren">(</span><em>step</em>, <em>order</em>, <em>zpd_shift=None</em>, <em>binning=4</em>, <em>filter_name=None</em>, <em>calibration_laser_map_path=None</em>, <em>nm_laser=None</em>, <em>fit_order=1</em><span class="sig-paren">)</span><a class="headerlink" href="#process.Interferogram.create_phase_maps" title="Permalink to this definition">¶</a></dt>
-<dd><p>Create phase maps directly from the interferogram cube.</p>
-<p>Cube is binned before each phase vector is fitted.</p>
-<p>The order 0 map is then computed by minimizing the imaginary
-part of the spectrum with the order 1 fixed.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>step</strong> – Step size in nm.</li>
-<li><strong>order</strong> – Folding order.</li>
-<li><strong>zpd_shift</strong> – (Optional) ZPD shift. If None, ZPD shift is
-computed from the median interferogram vector (default None).</li>
-<li><strong>binning</strong> – (Optional) Binning factor of the cube to
-accelerate the phase map computation (default 4).</li>
-<li><strong>filter_name</strong> – (Optional) Filter name (default None).</li>
-<li><strong>calibration_laser_map_path</strong> – (Optional) Path to a
-calibration laser map (default None). Must be set if
-filter_name is set.</li>
-<li><strong>nm_laser</strong> – (Optional) Calibration laser wavelength in nm
-(default None) Must be set if calibration_laser_map_path is
-set.</li>
-<li><strong>fit_order</strong> – (Optional) Order of the polynomial used to
-fit the phase (default 1).</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.Interferogram.create_phase_maps_from_external_source">
-<code class="descname">create_phase_maps_from_external_source</code><span class="sig-paren">(</span><em>phase_map_order_0_path</em>, <em>phase_map_order_1_path</em>, <em>step</em>, <em>order</em>, <em>zpd_shift</em>, <em>filter_name</em>, <em>calibration_laser_map_path</em>, <em>nm_laser</em>, <em>fit_order=1</em>, <em>binning=4</em><span class="sig-paren">)</span><a class="headerlink" href="#process.Interferogram.create_phase_maps_from_external_source" title="Permalink to this definition">¶</a></dt>
-<dd><p>Create phase maps directly from the interferogram cube.</p>
-<p>Cube is binned before each phase vector is fitted.</p>
-<p>The order 0 map is then computed by minimizing the imaginary
-part of the spectrum with the order 1 fixed.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>phase_map_order_0_path</strong> – Path to the zeroth order phase
-map.</li>
-<li><strong>step</strong> – Step size in nm.</li>
-<li><strong>order</strong> – Folding order.</li>
-<li><strong>zpd_shift</strong> – ZPD shift.</li>
-<li><strong>filter_name</strong> – Filter name</li>
-<li><strong>calibration_laser_map_path</strong> – Path to a
-calibration laser map</li>
-<li><strong>nm_laser</strong> – Calibration laser wavelength in nm</li>
-<li><strong>binning</strong> – (Optional) Binning factor of the cube to
-accelerate the phase map computation (default 4).</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
-<div class="admonition warning">
-<p class="first admonition-title">Warning</p>
-<p class="last">This function cannot be used with SpIOMM.</p>
-</div>
-</dd></dl>
-
-</dd></dl>
-
-</div>
-<div class="section" id="interferogrammerger-class">
-<h2><a class="toc-backref" href="#id5">InterferogramMerger class</a><a class="headerlink" href="#interferogrammerger-class" title="Permalink to this headline">¶</a></h2>
-<dl class="class">
-<dt id="process.InterferogramMerger">
-<em class="property">class </em><code class="descclassname">process.</code><code class="descname">InterferogramMerger</code><span class="sig-paren">(</span><em>interf_cube_path_A=None</em>, <em>interf_cube_path_B=None</em>, <em>bin_A=None</em>, <em>bin_B=None</em>, <em>pix_size_A=None</em>, <em>pix_size_B=None</em>, <em>alignment_coeffs=None</em>, <em>project_header=[]</em>, <em>cube_A_project_header=[]</em>, <em>cube_B_project_header=[]</em>, <em>wcs_header=[]</em>, <em>overwrite=False</em>, <em>indexer=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#process.InterferogramMerger" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">orb.core.Tools</span></code></p>
-<p>ORBS interferogram merging class.</p>
-<p>The InterferogramMerger class is aimed to merge the interferogram
-cubes of the two cameras of SpIOMM/SITELLE.</p>
-<div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last">In this class the letter ‘A’ refers to the camera 1 and the
-letter ‘B’ to the camera 2</p>
-</div>
-<dl class="method">
-<dt id="process.InterferogramMerger.__init__">
-<code class="descname">__init__</code><span class="sig-paren">(</span><em>interf_cube_path_A=None</em>, <em>interf_cube_path_B=None</em>, <em>bin_A=None</em>, <em>bin_B=None</em>, <em>pix_size_A=None</em>, <em>pix_size_B=None</em>, <em>alignment_coeffs=None</em>, <em>project_header=[]</em>, <em>cube_A_project_header=[]</em>, <em>cube_B_project_header=[]</em>, <em>wcs_header=[]</em>, <em>overwrite=False</em>, <em>indexer=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#process.InterferogramMerger.__init__" title="Permalink to this definition">¶</a></dt>
-<dd><p>Initialize InterferogramMerger class</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>interf_cube_path_A</strong> – (Optional) Path to the interferogram
-cube of the camera 1</li>
-<li><strong>interf_cube_path_B</strong> – (Optional) Path to the interferogram
-cube of the camera 2</li>
-<li><strong>bin_A</strong> – (Optional) Binning factor of the camera A</li>
-<li><strong>bin_B</strong> – (Optional) Binning factor of the camera B</li>
-<li><strong>pix_size_A</strong> – (Optional) Pixel size of the camera A</li>
-<li><strong>pix_size_A</strong> – (Optional) Pixel size of the camera B</li>
-<li><strong>project_header</strong> – (Optional) header section to be added
-to each output files based on merged data (an empty list by
-default).</li>
-<li><strong>cube_A_project_header</strong> – (Optional) header section to be
-added to each output files based on pure cube A data (an
-empty list by default).</li>
-<li><strong>cube_B_project_header</strong> – (Optional) header section to be
-added to each output files based on pure cube B data (an
-empty list by default).</li>
-<li><strong>wcs_header</strong> – (Optional) header section describing WCS
-that can be added to each created image files (an empty list
-by default).</li>
-<li><strong>alignment_coeffs</strong> – (Optional) Pre-calculated alignement
-coefficients. Setting alignment_coeffs to something else
-than ‘None’ will avoid alignment coeffs calculation in
-<a class="reference internal" href="#process.InterferogramMerger.find_alignment" title="process.InterferogramMerger.find_alignment"><code class="xref py py-meth docutils literal"><span class="pre">process.InterferogramMerger.find_alignment()</span></code></a></li>
-<li><strong>overwrite</strong> – (Optional) If True existing FITS files will
-be overwritten (default False).</li>
-<li><strong>indexer</strong> – (Optional) Must be a <code class="xref py py-class docutils literal"><span class="pre">orb.core.Indexer</span></code>
-instance. If not None created files can be indexed by this
-instance.</li>
-<li><strong>kwargs</strong> – Kwargs are <code class="xref py py-meth docutils literal"><span class="pre">core.Tools()</span></code> properties.</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.InterferogramMerger._get_alignment_parameters_header">
-<code class="descname">_get_alignment_parameters_header</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#process.InterferogramMerger._get_alignment_parameters_header" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the header of the alignment parameters.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.InterferogramMerger._get_alignment_parameters_path">
-<code class="descname">_get_alignment_parameters_path</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#process.InterferogramMerger._get_alignment_parameters_path" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the path to the alignment parameters.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.InterferogramMerger._get_bad_frames_vector_header">
-<code class="descname">_get_bad_frames_vector_header</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#process.InterferogramMerger._get_bad_frames_vector_header" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the header of the bad frames vector.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.InterferogramMerger._get_bad_frames_vector_path">
-<code class="descname">_get_bad_frames_vector_path</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#process.InterferogramMerger._get_bad_frames_vector_path" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the path to the bad frames vector.</p>
-<p>This vector is created by
-<a class="reference internal" href="#process.InterferogramMerger.merge" title="process.InterferogramMerger.merge"><code class="xref py py-meth docutils literal"><span class="pre">process.InterferogramMerger.merge()</span></code></a> method.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.InterferogramMerger._get_calibration_stars_header">
-<code class="descname">_get_calibration_stars_header</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#process.InterferogramMerger._get_calibration_stars_header" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the header of the calibration stars data file.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.InterferogramMerger._get_calibration_stars_path">
-<code class="descname">_get_calibration_stars_path</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#process.InterferogramMerger._get_calibration_stars_path" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the path to a data file containing the merged
-interferograms of the calibrated stars</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.InterferogramMerger._get_deep_frame_header">
-<code class="descname">_get_deep_frame_header</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#process.InterferogramMerger._get_deep_frame_header" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the header of the deep frame.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.InterferogramMerger._get_deep_frame_path">
-<code class="descname">_get_deep_frame_path</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#process.InterferogramMerger._get_deep_frame_path" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the path to the deep frame.</p>
-<p>The energy map is the mean frame from the merged cube. It is
-useful to check the alignement.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.InterferogramMerger._get_energy_map_header">
-<code class="descname">_get_energy_map_header</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#process.InterferogramMerger._get_energy_map_header" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the header of the energy map.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.InterferogramMerger._get_energy_map_path">
-<code class="descname">_get_energy_map_path</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#process.InterferogramMerger._get_energy_map_path" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the path to the energy map.</p>
-<p>The energy map is the mean frame from the merged cube. It is
-useful to check the alignement.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.InterferogramMerger._get_ext_illumination_vector_header">
-<code class="descname">_get_ext_illumination_vector_header</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#process.InterferogramMerger._get_ext_illumination_vector_header" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the header of the external illumination vector.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.InterferogramMerger._get_ext_illumination_vector_path">
-<code class="descname">_get_ext_illumination_vector_path</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#process.InterferogramMerger._get_ext_illumination_vector_path" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the path to the external illumination vector.</p>
-<p>The external illuminaton vector records the external
-illumination difference between both cameras (e.g. if one
-camera get some diffused light from the sky while the other is
-well isolated). This vector is used to correct
-interferograms.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.InterferogramMerger._get_extracted_star_spectra_header">
-<code class="descname">_get_extracted_star_spectra_header</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#process.InterferogramMerger._get_extracted_star_spectra_header" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the header of a data file containing the spectra of
-the extracted stars</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.InterferogramMerger._get_extracted_star_spectra_path">
-<code class="descname">_get_extracted_star_spectra_path</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#process.InterferogramMerger._get_extracted_star_spectra_path" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the path to a data file containing the spectra of
-the extracted stars</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.InterferogramMerger._get_merged_interfero_cube_path">
-<code class="descname">_get_merged_interfero_cube_path</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#process.InterferogramMerger._get_merged_interfero_cube_path" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the default path to the merged interferogram frames.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.InterferogramMerger._get_merged_interfero_frame_header">
-<code class="descname">_get_merged_interfero_frame_header</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#process.InterferogramMerger._get_merged_interfero_frame_header" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the header of the merged interferogram frames.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.InterferogramMerger._get_modulation_ratio_header">
-<code class="descname">_get_modulation_ratio_header</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#process.InterferogramMerger._get_modulation_ratio_header" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the header of the modulation ratio.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.InterferogramMerger._get_modulation_ratio_path">
-<code class="descname">_get_modulation_ratio_path</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#process.InterferogramMerger._get_modulation_ratio_path" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the path to the modulation ratio.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.InterferogramMerger._get_stray_light_vector_header">
-<code class="descname">_get_stray_light_vector_header</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#process.InterferogramMerger._get_stray_light_vector_header" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the header of the stray light vector.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.InterferogramMerger._get_stray_light_vector_path">
-<code class="descname">_get_stray_light_vector_path</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#process.InterferogramMerger._get_stray_light_vector_path" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the path to the stray light vector.</p>
-<p>The external illuminaton vector records lights coming from
-reflections over clouds, the moon or the sun.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.InterferogramMerger._get_transformed_interfero_cube_path">
-<code class="descname">_get_transformed_interfero_cube_path</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#process.InterferogramMerger._get_transformed_interfero_cube_path" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the default path to the transformed interferogram frames.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.InterferogramMerger._get_transformed_interfero_frame_header">
-<code class="descname">_get_transformed_interfero_frame_header</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#process.InterferogramMerger._get_transformed_interfero_frame_header" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the header of the transformed interferogram frames.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.InterferogramMerger._get_transmission_vector_header">
-<code class="descname">_get_transmission_vector_header</code><span class="sig-paren">(</span><em>err=False</em><span class="sig-paren">)</span><a class="headerlink" href="#process.InterferogramMerger._get_transmission_vector_header" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the header of the transmission vector.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>err</strong> – (Optional) True if error vector (default False).</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.InterferogramMerger._get_transmission_vector_path">
-<code class="descname">_get_transmission_vector_path</code><span class="sig-paren">(</span><em>err=False</em><span class="sig-paren">)</span><a class="headerlink" href="#process.InterferogramMerger._get_transmission_vector_path" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the path to the transmission vector.</p>
-<p>Transmission vector is the vector used to correct
-interferograms for the variations of the sky transmission.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>err</strong> – (Optional) True if error vector (default False).</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.InterferogramMerger.alternative_merge">
-<code class="descname">alternative_merge</code><span class="sig-paren">(</span><em>add_frameB=True</em><span class="sig-paren">)</span><a class="headerlink" href="#process.InterferogramMerger.alternative_merge" title="Permalink to this definition">¶</a></dt>
-<dd><p>Alternative merging process.</p>
-<p>Star photometry is not used during the merging process. Might
-be more noisy but useful if for some reason the correction
-vectors cannot be well computed (e.g. not enough good stars,
-intense emission lines everywhere in the field)</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>add_frameB</strong> – (Optional) Set it to False if B frame is
-too noisy to be added to the result. In this case frame B
-is used only to correct for variations of flux from the
-source (airmass, clouds …) (Default False).</td>
-</tr>
-</tbody>
-</table>
-<div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p>Cubes are merged using the formula (for the nth frame):</p>
-<div class="last math">
-\[Frame_{n,M} = \frac{Frame_{n,1} -
-Frame_{n,2}}{Frame_{n,1} + Frame_{n,2}}\]</div>
-</div>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.InterferogramMerger.find_alignment">
-<code class="descname">find_alignment</code><span class="sig-paren">(</span><em>star_list_path_A</em>, <em>init_angle</em>, <em>init_dx</em>, <em>init_dy</em>, <em>fwhm_arc_A</em>, <em>fov_A</em>, <em>combine_first_frames=False</em><span class="sig-paren">)</span><a class="headerlink" href="#process.InterferogramMerger.find_alignment" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the alignment coefficients to align the cube of the
-camera 2 on the cube of the camera 1</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>star_list_path_A</strong> – Path to a list of star for the camera A</li>
-<li><strong>init_angle</strong> – Initial rotation angle between images</li>
-<li><strong>init_dx</strong> – Initial shift along x axis between images</li>
-<li><strong>init_dy</strong> – Initial shift along y axis between images</li>
-<li><strong>fwhm_arc_A</strong> – rough FWHM of the stars in arcsec in the
-camera A.</li>
-<li><strong>fov_A</strong> – Field of view of the camera A in arcminutes (given
-along x axis.</li>
-<li><strong>combine_first_frames</strong> – If True, only the fist frames are
-combined to compute alignement parameters (default False).</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
-<div class="admonition seealso">
-<p class="first admonition-title">See also</p>
-<p class="last">py:meth:<cite>orb.astrometry.Aligner.compute_alignment_parameters</cite></p>
-</div>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.InterferogramMerger.find_laser_alignment">
-<code class="descname">find_laser_alignment</code><span class="sig-paren">(</span><em>init_dx</em>, <em>init_dy</em>, <em>init_angle</em><span class="sig-paren">)</span><a class="headerlink" href="#process.InterferogramMerger.find_laser_alignment" title="Permalink to this definition">¶</a></dt>
-<dd><p>Brute force algorithm used to find laser frames alignment</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.InterferogramMerger.merge">
-<code class="descname">merge</code><span class="sig-paren">(</span><em>star_list_path</em>, <em>step_number</em>, <em>fwhm_arc</em>, <em>fov</em>, <em>add_frameB=True</em>, <em>smooth_vector=True</em>, <em>profile_name='gaussian'</em>, <em>moffat_beta=3.5</em>, <em>bad_frames_vector=[]</em>, <em>compute_ext_light=True</em>, <em>aperture_photometry=True</em>, <em>readout_noise_1=10.0</em>, <em>dark_current_level_1=0.0</em>, <em>readout_noise_2=10.0</em>, <em>dark_current_level_2=0.0</em><span class="sig-paren">)</span><a class="headerlink" href="#process.InterferogramMerger.merge" title="Permalink to this definition">¶</a></dt>
-<dd><p>Merge the cube of the camera 1 and the transformed cube of the
-camera 2.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>star_list_path</strong> – Path to a list of star positions.</li>
-<li><strong>step_number</strong> – Number of steps for a full cube.</li>
-<li><strong>add_frameB</strong> – (Optional) Set it to False if B frame is
-too noisy to be added to the result. In this case frame B
-is used only to correct for variations of flux from the
-source (airmass, clouds …) (Default False).</li>
-<li><strong>smooth_vector</strong> – (Optional) If True smooth the obtained
-correction vector with a gaussian weighted moving average.
-Reduce the possible high frequency noise of the correction
-function. (Default True).</li>
-<li><strong>fwhm_arc</strong> – rough FWHM of the stars in arcsec</li>
-<li><strong>fov</strong> – Field of view of the frame in arcminutes (given
-along x axis.</li>
-<li><strong>profile_name</strong> – (Optional) PSF profile to use to fit
-stars. Can be ‘gaussian’ or ‘moffat’ (default
-‘gaussian’). See:
-<code class="xref py py-meth docutils literal"><span class="pre">orb.astrometry.Astrometry.fit_stars_in_frame()</span></code>.</li>
-<li><strong>moffat_beta</strong> – (Optional) Beta parameter to use for
-moffat PSF (default 3.5).</li>
-<li><strong>bad_frames_vector</strong> – (Optional) Contains the index of the
-frames considered as bad(default []).</li>
-<li><strong>compute_ext_light</strong> – (Optional) If True compute the
-external light vector. Make sure that there’s enough ‘sky’
-pixels in the frame. The vector will be deeply affected if
-the object covers the whole area (default True).</li>
-<li><strong>aperture_photometry</strong> – (Optional) If True, flux of stars
-is computed by aperture photometry. Else, The flux is
-evaluated given the fit parameters (default True).</li>
-<li><strong>readout_noise_1</strong> – (Optional) Readout noise in ADU/pixel
-of camera 1 (can be computed from bias frames:
-std(master_bias_frame)) (default 10.)</li>
-<li><strong>dark_current_level_1</strong> – (Optional) Dark current level of
-camera 1 in ADU/pixel (can be computed from dark frames:
-median(master_dark_frame)) (default 0.)</li>
-<li><strong>readout_noise_2</strong> – (Optional) Readout noise in ADU/pixel
-of camera 2 (can be computed from bias frames:
-std(master_bias_frame)) (default 10.)</li>
-<li><strong>dark_current_level_2</strong> – (Optional) Dark current level of
-camera 2 in ADU/pixel (can be computed from dark frames:
-median(master_dark_frame)) (default 0.)</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
-<div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p>The merging process goes throught 3 steps:</p>
-<ol class="last arabic">
-<li><p class="first">Compute external illumination vector: This vector
-records the external illumination difference between
-both cameras (e.g. if one camera get some diffused light
-from the sky while the other is well isolated). This
-vector is used to correct interferograms.</p>
-</li>
-<li><p class="first">Compute transmission vector: the transmission vector is
-computed from star photometry (2D gaussian or moffat
-fitting. See
-<code class="xref py py-meth docutils literal"><span class="pre">orb.astrometry.Astrometry.fit_stars_in_cube()</span></code>) of
-both frames from camera 1 and camera 2 (frames must
-therefore be aligned).</p>
-</li>
-<li><p class="first">Cube merging using for each frame (nth) of the cube the
-formula:</p>
-<div class="math">
-\[Frame_{n,M} = \frac{Frame_{n,1}
--Frame_{n,2}}{transmission vector[n]}\]</div>
-</li>
-</ol>
-</div>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.InterferogramMerger.transform">
-<code class="descname">transform</code><span class="sig-paren">(</span><em>interp_order=1</em><span class="sig-paren">)</span><a class="headerlink" href="#process.InterferogramMerger.transform" title="Permalink to this definition">¶</a></dt>
-<dd><p>Transform cube B given a set of alignment coefficients.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>interp_order</strong> – Order of interpolation. (1: linear by default)</td>
-</tr>
-</tbody>
-</table>
-<div class="admonition seealso">
-<p class="first admonition-title">See also</p>
-<p class="last"><code class="xref py py-meth docutils literal"><span class="pre">orb.utils.image.transform_frame()</span></code></p>
-</div>
-</dd></dl>
-
-</dd></dl>
-
-</div>
-<div class="section" id="calibrationlaser-class">
-<h2><a class="toc-backref" href="#id6">CalibrationLaser class</a><a class="headerlink" href="#calibrationlaser-class" title="Permalink to this headline">¶</a></h2>
-<dl class="class">
-<dt id="process.CalibrationLaser">
-<em class="property">class </em><code class="descclassname">process.</code><code class="descname">CalibrationLaser</code><span class="sig-paren">(</span><em>cube_path</em>, <em>project_header=[]</em>, <em>wcs_header=[]</em>, <em>calibration_laser_header=[]</em>, <em>overwrite=False</em>, <em>indexer=None</em>, <em>silent_init=False</em>, <em>binning=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#process.CalibrationLaser" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">orb.core.HDFCube</span></code></p>
+<div class="section" id="module-orbs.process">
+<span id="id1"></span><span id="process-module"></span><h1>Process module<a class="headerlink" href="#module-orbs.process" title="Permalink to this headline">¶</a></h1>
+<p>The Process module contains all the processing classes of ORBS.</p>
+<dl class="py class">
+<dt id="orbs.process.CalibrationLaser">
+<em class="property">class </em><code class="sig-prename descclassname">orbs.process.</code><code class="sig-name descname">CalibrationLaser</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">path</span></em>, <em class="sig-param"><span class="n">params</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">instrument</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.process.CalibrationLaser" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">orb.cube.InterferogramCube</span></code></p>
 <p>ORBS calibration laser processing class.</p>
 <p>CalibrationLaser class is aimed to compute the calibration laser map that
 is used to correct for the <strong>off-axis effect</strong>.</p>
 <div class="admonition note">
-<p class="first admonition-title">Note</p>
+<p class="admonition-title">Note</p>
 <p>The <strong>off-axis effect</strong> comes from the angle between one
 pixel of a camera and the optical axis of the interferometer. For
 a given displacement of the mirror (step) the optical path
@@ -1766,675 +222,731 @@ expanded spectrum relatively to its theoretical shape.</p>
 monochromatic light. The real position of the emission line (its
 channel) help us to correct for the step variations using the
 formula :</p>
-<div class="last math">
+<div class="math notranslate nohighlight">
 \[step_{real} = step_{th} * \frac{\lambda_{LASER}}{channel}\]</div>
 </div>
-<dl class="method">
-<dt id="process.CalibrationLaser._get_calibration_laser_fitparams_header">
-<code class="descname">_get_calibration_laser_fitparams_header</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#process.CalibrationLaser._get_calibration_laser_fitparams_header" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the header of the file containing the fit parameters
-of the calibration laser cube.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.CalibrationLaser._get_calibration_laser_fitparams_path">
-<code class="descname">_get_calibration_laser_fitparams_path</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#process.CalibrationLaser._get_calibration_laser_fitparams_path" title="Permalink to this definition">¶</a></dt>
+<dl class="py method">
+<dt id="orbs.process.CalibrationLaser._get_calibration_laser_fitparams_path">
+<code class="sig-name descname">_get_calibration_laser_fitparams_path</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#orbs.process.CalibrationLaser._get_calibration_laser_fitparams_path" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return the path to the file containing the fit parameters
 of the calibration laser cube.</p>
 </dd></dl>
 
-<dl class="method">
-<dt id="process.CalibrationLaser._get_calibration_laser_ils_ratio_header">
-<code class="descname">_get_calibration_laser_ils_ratio_header</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#process.CalibrationLaser._get_calibration_laser_ils_ratio_header" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the header of the file containing the instrumental
-line shape ratio map (ILS / theoretical ILS) of the
-calibration laser cube.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.CalibrationLaser._get_calibration_laser_ils_ratio_path">
-<code class="descname">_get_calibration_laser_ils_ratio_path</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#process.CalibrationLaser._get_calibration_laser_ils_ratio_path" title="Permalink to this definition">¶</a></dt>
+<dl class="py method">
+<dt id="orbs.process.CalibrationLaser._get_calibration_laser_ils_ratio_path">
+<code class="sig-name descname">_get_calibration_laser_ils_ratio_path</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#orbs.process.CalibrationLaser._get_calibration_laser_ils_ratio_path" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return the path to the file containing the instrumental
 line shape ratio map (ILS / theoretical ILS) of the
 calibration laser cube.</p>
 </dd></dl>
 
-<dl class="method">
-<dt id="process.CalibrationLaser._get_calibration_laser_map_header">
-<code class="descname">_get_calibration_laser_map_header</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#process.CalibrationLaser._get_calibration_laser_map_header" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the header of the calibration laser map.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.CalibrationLaser._get_calibration_laser_map_path">
-<code class="descname">_get_calibration_laser_map_path</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#process.CalibrationLaser._get_calibration_laser_map_path" title="Permalink to this definition">¶</a></dt>
+<dl class="py method">
+<dt id="orbs.process.CalibrationLaser._get_calibration_laser_map_path">
+<code class="sig-name descname">_get_calibration_laser_map_path</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#orbs.process.CalibrationLaser._get_calibration_laser_map_path" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return the default path to the calibration laser map.</p>
 </dd></dl>
 
-<dl class="method">
-<dt id="process.CalibrationLaser._get_calibration_laser_spectrum_cube_path">
-<code class="descname">_get_calibration_laser_spectrum_cube_path</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#process.CalibrationLaser._get_calibration_laser_spectrum_cube_path" title="Permalink to this definition">¶</a></dt>
+<dl class="py method">
+<dt id="orbs.process.CalibrationLaser._get_calibration_laser_spectrum_cube_path">
+<code class="sig-name descname">_get_calibration_laser_spectrum_cube_path</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#orbs.process.CalibrationLaser._get_calibration_laser_spectrum_cube_path" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return the default path to the reduced calibration laser
 HDF5 cube.</p>
 </dd></dl>
 
-<dl class="method">
-<dt id="process.CalibrationLaser._get_calibration_laser_spectrum_frame_header">
-<code class="descname">_get_calibration_laser_spectrum_frame_header</code><span class="sig-paren">(</span><em>index</em>, <em>axis</em><span class="sig-paren">)</span><a class="headerlink" href="#process.CalibrationLaser._get_calibration_laser_spectrum_frame_header" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the header of a calibration spectrum frame.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>index</strong> – Index of the frame.</li>
-<li><strong>axis</strong> – Wavenumber axis.</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.CalibrationLaser.create_calibration_laser_map">
-<code class="descname">create_calibration_laser_map</code><span class="sig-paren">(</span><em>order=30</em>, <em>step=9765</em>, <em>get_calibration_laser_spectrum=False</em>, <em>fast=True</em><span class="sig-paren">)</span><a class="headerlink" href="#process.CalibrationLaser.create_calibration_laser_map" title="Permalink to this definition">¶</a></dt>
+<dl class="py method">
+<dt id="orbs.process.CalibrationLaser.create_calibration_laser_map">
+<code class="sig-name descname">create_calibration_laser_map</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">get_calibration_laser_spectrum</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.process.CalibrationLaser.create_calibration_laser_map" title="Permalink to this definition">¶</a></dt>
 <dd><p>Create the calibration laser map.</p>
 <p>Compute the spectral cube from the calibration laser cube and
 create the calibration laser map containing the fitted central
 position of the emission line for each pixel of the image
 plane (x/y axes).</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>order</strong> – (Optional) Folding order</li>
-<li><strong>step</strong> – (Optional) Step size in um</li>
-<li><strong>get_calibration_laser_spectrum</strong> – (Optional) If True return the
-calibration laser spectrum</li>
-<li><strong>fast</strong> – (Optional) If False a sinc^2 is fitted so the fit
-is better but the procedure becomes slower. If True a
-gaussian is fitted (default True).</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>get_calibration_laser_spectrum</strong> – (Optional) If True return the
+calibration laser spectrum</p>
+</dd>
+</dl>
 </dd></dl>
 
 </dd></dl>
 
+<dl class="py class">
+<dt id="orbs.process.CosmicRayDetector">
+<em class="property">class </em><code class="sig-prename descclassname">orbs.process.</code><code class="sig-name descname">CosmicRayDetector</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">interf_cube_path_A</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">interf_cube_path_B</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">bin_A</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">bin_B</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">project_header</span><span class="o">=</span><span class="default_value">[]</span></em>, <em class="sig-param"><span class="n">cube_A_project_header</span><span class="o">=</span><span class="default_value">[]</span></em>, <em class="sig-param"><span class="n">cube_B_project_header</span><span class="o">=</span><span class="default_value">[]</span></em>, <em class="sig-param"><span class="n">wcs_header</span><span class="o">=</span><span class="default_value">[]</span></em>, <em class="sig-param"><span class="n">overwrite</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">indexer</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">params</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.process.CosmicRayDetector" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#orbs.process.InterferogramMerger" title="orbs.process.InterferogramMerger"><code class="xref py py-class docutils literal notranslate"><span class="pre">orbs.process.InterferogramMerger</span></code></a></p>
+<p>Class created for cosmic ray detection using both cubes (cam1
+and cam2).</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>This class has been designed for SITELLE’s
+data. Cosmic ray detection for SpIOMM must use the RawData
+class.</p>
 </div>
-<div class="section" id="spectrum-class">
-<h2><a class="toc-backref" href="#id7">Spectrum class</a><a class="headerlink" href="#spectrum-class" title="Permalink to this headline">¶</a></h2>
-<dl class="class">
-<dt id="process.Spectrum">
-<em class="property">class </em><code class="descclassname">process.</code><code class="descname">Spectrum</code><span class="sig-paren">(</span><em>cube_path</em>, <em>project_header=[]</em>, <em>wcs_header=[]</em>, <em>calibration_laser_header=[]</em>, <em>overwrite=False</em>, <em>indexer=None</em>, <em>silent_init=False</em>, <em>binning=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#process.Spectrum" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">orb.core.HDFCube</span></code></p>
+<dl class="py method">
+<dt id="orbs.process.CosmicRayDetector._get_cr_deep_frame_path">
+<code class="sig-name descname">_get_cr_deep_frame_path</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">camera_number</span></em>, <em class="sig-param"><span class="n">final</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.process.CosmicRayDetector._get_cr_deep_frame_path" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the default path to the deep frame if a cosmic ray detection cube.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="orbs.process.CosmicRayDetector._get_cr_map_cube_path">
+<code class="sig-name descname">_get_cr_map_cube_path</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">camera_number</span></em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.process.CosmicRayDetector._get_cr_map_cube_path" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the default path to a HDF5 cube of the cosmic rays.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="orbs.process.CosmicRayDetector.clean_cosmic_ray_map">
+<code class="sig-name descname">clean_cosmic_ray_map</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">camera</span></em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.process.CosmicRayDetector.clean_cosmic_ray_map" title="Permalink to this definition">¶</a></dt>
+<dd><p>Clean maps computed with self.create_cosmic_ray_maps()</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="orbs.process.CosmicRayDetector.create_cosmic_ray_maps">
+<code class="sig-name descname">create_cosmic_ray_maps</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">alignment_vector_path_1</span></em>, <em class="sig-param"><span class="n">star_list_path</span></em>, <em class="sig-param"><span class="n">fwhm_pix</span></em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.process.CosmicRayDetector.create_cosmic_ray_maps" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create cosmic ray maps for both cubes.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>alignment_vector_path_1</strong> – Alignement vector of the camera 1.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="orbs.process.Interferogram">
+<em class="property">class </em><code class="sig-prename descclassname">orbs.process.</code><code class="sig-name descname">Interferogram</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">path</span></em>, <em class="sig-param"><span class="n">params</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">instrument</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.process.Interferogram" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">orb.cube.InterferogramCube</span></code></p>
+<p>ORBS interferogram processing class.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Interferogram data is defined as data already processed
+(corrected and aligned frames) by <code class="xref py py-class docutils literal notranslate"><span class="pre">process.RawData</span></code> and
+ready to be transformed to a spectrum by a Fast Fourier
+Transform (FFT).</p>
+</div>
+<dl class="py method">
+<dt id="orbs.process.Interferogram._get_binned_calibration_laser_map_path">
+<code class="sig-name descname">_get_binned_calibration_laser_map_path</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#orbs.process.Interferogram._get_binned_calibration_laser_map_path" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return path to the binned calibration laser map.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="orbs.process.Interferogram._get_binned_interferogram_cube_path">
+<code class="sig-name descname">_get_binned_interferogram_cube_path</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#orbs.process.Interferogram._get_binned_interferogram_cube_path" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return path to the binned interferogram cube.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="orbs.process.Interferogram._get_binned_phase_cube_path">
+<code class="sig-name descname">_get_binned_phase_cube_path</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#orbs.process.Interferogram._get_binned_phase_cube_path" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return path to the binned phase cube.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="orbs.process.Interferogram._get_corrected_interferogram_cube_path">
+<code class="sig-name descname">_get_corrected_interferogram_cube_path</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#orbs.process.Interferogram._get_corrected_interferogram_cube_path" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the default path to a spectrum HDF5 cube.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="orbs.process.Interferogram._get_high_order_phase_path">
+<code class="sig-name descname">_get_high_order_phase_path</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#orbs.process.Interferogram._get_high_order_phase_path" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return path to the high order phase</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="orbs.process.Interferogram._get_high_order_phase_std_path">
+<code class="sig-name descname">_get_high_order_phase_std_path</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#orbs.process.Interferogram._get_high_order_phase_std_path" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return path to the high order phase std</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="orbs.process.Interferogram._get_phase_cube_model_path">
+<code class="sig-name descname">_get_phase_cube_model_path</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#orbs.process.Interferogram._get_phase_cube_model_path" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return path to the phase cube model</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="orbs.process.Interferogram._get_spectrum_cube_path">
+<code class="sig-name descname">_get_spectrum_cube_path</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">phase</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.process.Interferogram._get_spectrum_cube_path" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the default path to a spectrum HDF5 cube.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>phase</strong> – (Optional) If True the path is changed for a
+phase cube (default False).</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="orbs.process.Interferogram.compute_spectrum">
+<code class="sig-name descname">compute_spectrum</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">phase_correction</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="n">bad_frames_vector</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">window_type</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">phase_cube</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">phase_maps_path</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">high_order_phase_path</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">wave_calibration</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">balanced</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="n">wavenumber</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.process.Interferogram.compute_spectrum" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute the spectrum from the corrected interferogram
+frames. Can be used to compute spectrum for camera 1, camera 2
+or merged interferogram.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>window_type</strong> – (Optional) Apodization window to be used
+(Default None, no apodization)</p></li>
+<li><p><strong>phase_correction</strong> – (Optional) If False, no phase
+correction will be done and the resulting spectrum will be
+the absolute value of the complex spectrum (default True).</p></li>
+<li><p><strong>phase_cube</strong> – (Optional) If True, only the phase cube is
+returned (default False).</p></li>
+<li><p><strong>phase_maps_path</strong> – (Optional) Path to the HDF5 phase map
+file.</p></li>
+<li><p><strong>high_order_phase_path</strong> – (Optional) Path to an HDF5 phase
+file.</p></li>
+<li><p><strong>balanced</strong> – (Optional) If False, the interferogram is
+considered as unbalanced. It is flipped before its
+transformation to get a positive spectrum. Note that a
+merged interferogram is balanced (default True).</p></li>
+<li><p><strong>wavenumber</strong> – (Optional) If True, the returned spectrum
+is projected onto its original wavenumber axis (emission
+lines and especially unapodized sinc emission lines are thus
+symetric which is not the case if the spectrum is projected
+onto a, more convenient, regular wavelength axis) (default
+False).</p></li>
+<li><p><strong>wave_calibration</strong> – (Optional) If True wavelength
+calibration is done (default False).</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="orbs.process.Interferogram.correct_interferogram">
+<code class="sig-name descname">correct_interferogram</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">transmission_vector_path</span></em>, <em class="sig-param"><span class="n">stray_light_vector_path</span></em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.process.Interferogram.correct_interferogram" title="Permalink to this definition">¶</a></dt>
+<dd><p>Correct an interferogram cube for for variations
+of sky transmission and stray light.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>sky_transmission_vector_path</strong> – Path to the transmission
+vector. All the interferograms of the cube are divided by
+this vector. The vector must have the same size as the 3rd
+axis of the cube (the OPD axis).</p></li>
+<li><p><strong>stray_light_vector_path</strong> – Path to the stray light
+vector. This vector is substracted from the interferograms
+of all the cube. The vector must have the same size as the
+3rd axis of the cube (the OPD axis).</p></li>
+</ul>
+</dd>
+</dl>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The sky transmission vector gives the absorption
+caused by clouds or airmass variation.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The stray light vector gives the counts added
+homogeneously to each frame caused by a cloud reflecting
+light coming from the ground, the moon or the sun.</p>
+</div>
+<div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<p><code class="xref py py-meth docutils literal notranslate"><span class="pre">process.Interferogram.create_correction_vectors()</span></code></p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt id="orbs.process.Interferogram.create_binned_calibration_laser_map">
+<code class="sig-name descname">create_binned_calibration_laser_map</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">binning</span></em>, <em class="sig-param"><span class="n">calibration_laser_map_path</span></em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.process.Interferogram.create_binned_calibration_laser_map" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a binned calibration laser map</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>binning</strong> – Binning</p></li>
+<li><p><strong>calibration_laser_map_path</strong> – Calibration laser map path</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="orbs.process.Interferogram.create_binned_interferogram_cube">
+<code class="sig-name descname">create_binned_interferogram_cube</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">binning</span></em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.process.Interferogram.create_binned_interferogram_cube" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a binned interferogram cube</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>binning</strong> – Binning</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="orbs.process.Interferogram.create_phase_maps">
+<code class="sig-name descname">create_phase_maps</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">binning</span></em>, <em class="sig-param"><span class="n">poly_order</span></em>, <em class="sig-param"><span class="n">high_order_phase_path</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.process.Interferogram.create_phase_maps" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create phase maps</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>binning</strong> – Interferogram cube is binned before to
+accelerate computation.</p></li>
+<li><p><strong>poly_order</strong> – Order of the fitted polynomial (must be &gt;= 1)</p></li>
+<li><p><strong>high_order_phase_path</strong> – (Optional) Path to an HDF5 phase
+file.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="orbs.process.InterferogramMerger">
+<em class="property">class </em><code class="sig-prename descclassname">orbs.process.</code><code class="sig-name descname">InterferogramMerger</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">interf_cube_path_A</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">interf_cube_path_B</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">bin_A</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">bin_B</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">project_header</span><span class="o">=</span><span class="default_value">[]</span></em>, <em class="sig-param"><span class="n">cube_A_project_header</span><span class="o">=</span><span class="default_value">[]</span></em>, <em class="sig-param"><span class="n">cube_B_project_header</span><span class="o">=</span><span class="default_value">[]</span></em>, <em class="sig-param"><span class="n">wcs_header</span><span class="o">=</span><span class="default_value">[]</span></em>, <em class="sig-param"><span class="n">overwrite</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">indexer</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">params</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.process.InterferogramMerger" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">orb.core.Tools</span></code></p>
+<p>ORBS interferogram merging class.</p>
+<p>The InterferogramMerger class is aimed to merge the interferogram
+cubes of the two cameras of SpIOMM/SITELLE.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>In this class the letter ‘A’ refers to the camera 1 and the
+letter ‘B’ to the camera 2</p>
+</div>
+<dl class="py method">
+<dt id="orbs.process.InterferogramMerger.__init__">
+<code class="sig-name descname">__init__</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">interf_cube_path_A</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">interf_cube_path_B</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">bin_A</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">bin_B</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">project_header</span><span class="o">=</span><span class="default_value">[]</span></em>, <em class="sig-param"><span class="n">cube_A_project_header</span><span class="o">=</span><span class="default_value">[]</span></em>, <em class="sig-param"><span class="n">cube_B_project_header</span><span class="o">=</span><span class="default_value">[]</span></em>, <em class="sig-param"><span class="n">wcs_header</span><span class="o">=</span><span class="default_value">[]</span></em>, <em class="sig-param"><span class="n">overwrite</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">indexer</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">params</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.process.InterferogramMerger.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize InterferogramMerger class</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>interf_cube_path_A</strong> – (Optional) Path to the interferogram
+cube of the camera 1</p></li>
+<li><p><strong>interf_cube_path_B</strong> – (Optional) Path to the interferogram
+cube of the camera 2</p></li>
+<li><p><strong>bin_A</strong> – (Optional) Binning factor of the camera A</p></li>
+<li><p><strong>bin_B</strong> – (Optional) Binning factor of the camera B</p></li>
+<li><p><strong>pix_size_A</strong> – (Optional) Pixel size of the camera A</p></li>
+<li><p><strong>pix_size_A</strong> – (Optional) Pixel size of the camera B</p></li>
+<li><p><strong>project_header</strong> – (Optional) header section to be added
+to each output files based on merged data (an empty list by
+default).</p></li>
+<li><p><strong>cube_A_project_header</strong> – (Optional) header section to be
+added to each output files based on pure cube A data (an
+empty list by default).</p></li>
+<li><p><strong>cube_B_project_header</strong> – (Optional) header section to be
+added to each output files based on pure cube B data (an
+empty list by default).</p></li>
+<li><p><strong>wcs_header</strong> – (Optional) header section describing WCS
+that can be added to each created image files (an empty list
+by default).</p></li>
+<li><p><strong>alignment_coeffs</strong> – (Optional) Pre-calculated alignement
+coefficients. Setting alignment_coeffs to something else
+than ‘None’ will avoid alignment coeffs calculation in
+<code class="xref py py-meth docutils literal notranslate"><span class="pre">process.InterferogramMerger.find_alignment()</span></code></p></li>
+<li><p><strong>overwrite</strong> – (Optional) If True existing FITS files will
+be overwritten (default False).</p></li>
+<li><p><strong>indexer</strong> – (Optional) Must be a <code class="xref py py-class docutils literal notranslate"><span class="pre">orb.core.Indexer</span></code>
+instance. If not None created files can be indexed by this
+instance.</p></li>
+<li><p><strong>params</strong> – (Optional) observation parameters dictionary
+(default None).</p></li>
+<li><p><strong>kwargs</strong> – Kwargs are <code class="xref py py-meth docutils literal notranslate"><span class="pre">orb.core.Tools()</span></code> properties.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="orbs.process.InterferogramMerger._get_alignment_parameters_path">
+<code class="sig-name descname">_get_alignment_parameters_path</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#orbs.process.InterferogramMerger._get_alignment_parameters_path" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the path to the alignment parameters.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="orbs.process.InterferogramMerger._get_bad_frames_vector_path">
+<code class="sig-name descname">_get_bad_frames_vector_path</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#orbs.process.InterferogramMerger._get_bad_frames_vector_path" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the path to the bad frames vector.</p>
+<p>This vector is created by
+<code class="xref py py-meth docutils literal notranslate"><span class="pre">process.InterferogramMerger.merge()</span></code> method.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="orbs.process.InterferogramMerger._get_calibration_stars_path">
+<code class="sig-name descname">_get_calibration_stars_path</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#orbs.process.InterferogramMerger._get_calibration_stars_path" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the path to a data file containing the merged
+interferograms of the calibrated stars</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="orbs.process.InterferogramMerger._get_deep_frame_path">
+<code class="sig-name descname">_get_deep_frame_path</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#orbs.process.InterferogramMerger._get_deep_frame_path" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the path to the deep frame.</p>
+<p>The energy map is the mean frame from the merged cube. It is
+useful to check the alignement.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="orbs.process.InterferogramMerger._get_energy_map_path">
+<code class="sig-name descname">_get_energy_map_path</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#orbs.process.InterferogramMerger._get_energy_map_path" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the path to the energy map.</p>
+<p>The energy map is the mean frame from the merged cube. It is
+useful to check the alignement.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="orbs.process.InterferogramMerger._get_ext_illumination_vector_path">
+<code class="sig-name descname">_get_ext_illumination_vector_path</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#orbs.process.InterferogramMerger._get_ext_illumination_vector_path" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the path to the external illumination vector.</p>
+<p>The external illuminaton vector records the external
+illumination difference between both cameras (e.g. if one
+camera get some diffused light from the sky while the other is
+well isolated). This vector is used to correct
+interferograms.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="orbs.process.InterferogramMerger._get_fit_results_path">
+<code class="sig-name descname">_get_fit_results_path</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">camera</span></em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.process.InterferogramMerger._get_fit_results_path" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the default path to the fit results.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="orbs.process.InterferogramMerger._get_mean_image_path">
+<code class="sig-name descname">_get_mean_image_path</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">index</span></em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.process.InterferogramMerger._get_mean_image_path" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the path to the mean image</p>
+<p>The energy map is the mean frame from the merged cube. It is
+useful to check the alignement.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="orbs.process.InterferogramMerger._get_merged_interfero_cube_path">
+<code class="sig-name descname">_get_merged_interfero_cube_path</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#orbs.process.InterferogramMerger._get_merged_interfero_cube_path" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the default path to the merged interferogram frames.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="orbs.process.InterferogramMerger._get_modulation_ratio_path">
+<code class="sig-name descname">_get_modulation_ratio_path</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#orbs.process.InterferogramMerger._get_modulation_ratio_path" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the path to the modulation ratio.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="orbs.process.InterferogramMerger._get_standard_interferogram_path">
+<code class="sig-name descname">_get_standard_interferogram_path</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#orbs.process.InterferogramMerger._get_standard_interferogram_path" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the path to the standard interferogram</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="orbs.process.InterferogramMerger._get_standard_spectrum_path">
+<code class="sig-name descname">_get_standard_spectrum_path</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#orbs.process.InterferogramMerger._get_standard_spectrum_path" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the path to the standard spectrum</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="orbs.process.InterferogramMerger._get_star_list_path">
+<code class="sig-name descname">_get_star_list_path</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">camera</span></em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.process.InterferogramMerger._get_star_list_path" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the default path to the star list.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="orbs.process.InterferogramMerger._get_stray_light_vector_path">
+<code class="sig-name descname">_get_stray_light_vector_path</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#orbs.process.InterferogramMerger._get_stray_light_vector_path" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the path to the stray light vector.</p>
+<p>The external illuminaton vector records lights coming from
+reflections over clouds, the moon or the sun.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="orbs.process.InterferogramMerger._get_transformed_interfero_cube_path">
+<code class="sig-name descname">_get_transformed_interfero_cube_path</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#orbs.process.InterferogramMerger._get_transformed_interfero_cube_path" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the default path to the transformed interferogram frames.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="orbs.process.InterferogramMerger._get_transmission_vector_path">
+<code class="sig-name descname">_get_transmission_vector_path</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">err</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.process.InterferogramMerger._get_transmission_vector_path" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the path to the transmission vector.</p>
+<p>Transmission vector is the vector used to correct
+interferograms for the variations of the sky transmission.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>err</strong> – (Optional) True if error vector (default False).</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="orbs.process.InterferogramMerger.compute_alignment_parameters">
+<code class="sig-name descname">compute_alignment_parameters</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">combine_first_frames</span><span class="o">=</span><span class="default_value">True</span></em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.process.InterferogramMerger.compute_alignment_parameters" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the alignment coefficients to align the cube of the
+camera 2 on the cube of the camera 1</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>star_list_path_B</strong> – Path to a list of star for camera B</p></li>
+<li><p><strong>combine_first_frames</strong> – If True, only the fist frames are
+combined to compute alignement parameters (default False).</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="orbs.process.InterferogramMerger.compute_correction_vectors">
+<code class="sig-name descname">compute_correction_vectors</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">smooth_vector</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="n">compute_ext_light</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="n">aperture_photometry</span><span class="o">=</span><span class="default_value">True</span></em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.process.InterferogramMerger.compute_correction_vectors" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute the correction vectors used during the merging process (see
+merge() method).</p>
+<blockquote>
+<div><dl class="field-list simple">
+<dt class="field-odd">param add_frameB</dt>
+<dd class="field-odd"><p>(Optional) Set it to False if B frame is
+too noisy to be added to the result. In this case frame B
+is used only to correct for variations of flux from the
+source (airmass, clouds …) (Default False).</p>
+</dd>
+<dt class="field-even">param smooth_vector</dt>
+<dd class="field-even"><p>(Optional) If True smooth the obtained
+correction vector with a gaussian weighted moving average.
+Reduce the possible high frequency noise of the correction
+function. (Default True).</p>
+</dd>
+<dt class="field-odd">param compute_ext_light</dt>
+<dd class="field-odd"><p>(Optional) If True compute the
+external light vector. Make sure that there’s enough ‘sky’
+pixels in the frame. The vector will be deeply affected if
+the object covers the whole area (default True).</p>
+</dd>
+<dt class="field-even">param aperture_photometry</dt>
+<dd class="field-even"><p>(Optional) If True, flux of stars
+is computed by aperture photometry. Else, The flux is
+evaluated given the fit parameters (default True).</p>
+</dd>
+</dl>
+</div></blockquote>
+</dd></dl>
+
+<dl class="py method">
+<dt id="orbs.process.InterferogramMerger.find_laser_alignment">
+<code class="sig-name descname">find_laser_alignment</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">init_dx</span></em>, <em class="sig-param"><span class="n">init_dy</span></em>, <em class="sig-param"><span class="n">init_angle</span></em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.process.InterferogramMerger.find_laser_alignment" title="Permalink to this definition">¶</a></dt>
+<dd><p>Brute force algorithm used to find laser frames alignment</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="orbs.process.InterferogramMerger.get_header">
+<code class="sig-name descname">get_header</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#orbs.process.InterferogramMerger.get_header" title="Permalink to this definition">¶</a></dt>
+<dd><p>return self.params as a fits header</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="orbs.process.InterferogramMerger.merge">
+<code class="sig-name descname">merge</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">add_frameB</span><span class="o">=</span><span class="default_value">True</span></em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.process.InterferogramMerger.merge" title="Permalink to this definition">¶</a></dt>
+<dd><p>Merge the cube of the camera 1 and the transformed cube of the
+camera 2.</p>
+<p>correction vectors must have computed with
+compute_correction_vectors() method.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The merging process goes throught 3 steps:</p>
+<ol class="arabic">
+<li><p>Compute external illumination vector: This vector
+records the external illumination difference between
+both cameras (e.g. if one camera get some diffused light
+from the sky while the other is well isolated). This
+vector is used to correct interferograms.</p></li>
+<li><p>Compute transmission vector: the transmission vector is
+computed from star photometry (2D gaussian or moffat
+fitting) of
+both frames from camera 1 and camera 2 (frames must
+therefore be aligned).</p></li>
+<li><p>Cube merging using for each frame (nth) of the cube the
+formula:</p>
+<div class="math notranslate nohighlight">
+\[Frame_{n,M} = \frac{Frame_{n,1}
+-Frame_{n,2}}{transmission vector[n]}\]</div>
+</li>
+</ol>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt id="orbs.process.InterferogramMerger.transform">
+<code class="sig-name descname">transform</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">interp_order</span><span class="o">=</span><span class="default_value">1</span></em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.process.InterferogramMerger.transform" title="Permalink to this definition">¶</a></dt>
+<dd><p>Transform cube B given a set of alignment coefficients.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>interp_order</strong> – Order of interpolation. (1: linear by default)</p>
+</dd>
+</dl>
+<div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<p><code class="xref py py-meth docutils literal notranslate"><span class="pre">orb.utils.image.transform_frame()</span></code></p>
+</div>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="orbs.process.RawData">
+<em class="property">class </em><code class="sig-prename descclassname">orbs.process.</code><code class="sig-name descname">RawData</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">path</span></em>, <em class="sig-param"><span class="n">params</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">instrument</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.process.RawData" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">orb.cube.InterferogramCube</span></code></p>
+<p>ORBS raw data processing class.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Raw data is the output data of SpIOMM/SITELLE without
+any kind of processing.</p>
+</div>
+<dl class="py method">
+<dt id="orbs.process.RawData._get_alignment_vector_path">
+<code class="sig-name descname">_get_alignment_vector_path</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">err</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.process.RawData._get_alignment_vector_path" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the default path to the alignment vector.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>err</strong> – (Optional) If True, the error vector path is
+returned (default False).</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="orbs.process.RawData._get_cr_map_cube_path">
+<code class="sig-name descname">_get_cr_map_cube_path</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#orbs.process.RawData._get_cr_map_cube_path" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the default path to a HDF5 cube of the cosmic rays.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="orbs.process.RawData._get_deep_frame_path">
+<code class="sig-name descname">_get_deep_frame_path</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#orbs.process.RawData._get_deep_frame_path" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the default path to the deep frame.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="orbs.process.RawData._get_hp_map_path">
+<code class="sig-name descname">_get_hp_map_path</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#orbs.process.RawData._get_hp_map_path" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the default path to the hot pixels map.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="orbs.process.RawData._get_interfero_cube_path">
+<code class="sig-name descname">_get_interfero_cube_path</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#orbs.process.RawData._get_interfero_cube_path" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the default path to the interferogram HDF5 cube.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="orbs.process.RawData._get_master_path">
+<code class="sig-name descname">_get_master_path</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">kind</span></em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.process.RawData._get_master_path" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the default path to a master frame.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>kind</strong> – Kind of master frame (e.g. : ‘bias’, ‘dark’,
+‘flat’)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="orbs.process.RawData._load_alignment_vector">
+<code class="sig-name descname">_load_alignment_vector</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">alignment_vector_path</span></em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.process.RawData._load_alignment_vector" title="Permalink to this definition">¶</a></dt>
+<dd><p>Load the alignment vector.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>alignment_vector_path</strong> – Path to the alignment vector file.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="orbs.process.RawData.correct">
+<code class="sig-name descname">correct</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">bias_path</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">dark_path</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">flat_path</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">cr_map_cube_path</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">alignment_vector_path</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.process.RawData.correct" title="Permalink to this definition">¶</a></dt>
+<dd><p>Correct raw data for bias, dark, flat, cosmic rays and
+alignment using the precomputed alignment vector and the
+cosmic ray map.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>bias_path</strong> – (Optional) Path to a list of bias files. If
+none given no correction is done.</p></li>
+<li><p><strong>dark_path</strong> – (Optional) Path to a list of dark files. If
+none given no dark and flat corrections are done.</p></li>
+<li><p><strong>flat_path</strong> – (Optional) Path to a list of flat files. If
+none given no flat correction is done.</p></li>
+<li><p><strong>cr_map_cube_path</strong> – (Optional) Path to the cosmic ray map
+HDF5 cube, if none given the default path is used.</p></li>
+<li><p><strong>alignment_vector_path</strong> – (Optional) Path to the alignment
+vector file, if none given the default path is used.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="orbs.process.RawData.create_alignment_vector">
+<code class="sig-name descname">create_alignment_vector</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">star_list_path</span></em>, <em class="sig-param"><span class="n">profile_name</span><span class="o">=</span><span class="default_value">'gaussian'</span></em>, <em class="sig-param"><span class="n">min_coeff</span><span class="o">=</span><span class="default_value">0.3</span></em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.process.RawData.create_alignment_vector" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="simple">
+<dt>Create the alignment vector used to compute the</dt><dd><p>interferogram from the raw images.</p>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>star_list_path</strong> – Path to a list of star coordinates that
+will be used to calculates the displacement vector. Please
+refer to <code class="xref py py-meth docutils literal notranslate"><span class="pre">orb.utils.astrometry.load_star_list()</span></code> for more
+information about a list of stars.</p></li>
+<li><p><strong>profile_name</strong> – (Optional) PSF profile for star
+fitting. Can be ‘moffat’ or ‘gaussian’.</p></li>
+<li><p><strong>min_coeff</strong> – (Optional) The minimum proportion of stars
+correctly fitted to assume a good enough calculated
+disalignment (default 0.3).</p></li>
+</ul>
+</dd>
+</dl>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The alignement vector contains the calculated
+disalignment for each image along x and y axes to the first
+image.</p>
+</div>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="orbs.process.Spectrum">
+<em class="property">class </em><code class="sig-prename descclassname">orbs.process.</code><code class="sig-name descname">Spectrum</code><span class="sig-paren">(</span><em class="sig-param"><span class="o">*</span><span class="n">args</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.process.Spectrum" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">orb.cube.SpectralCube</span></code></p>
 <p>ORBS spectrum processing class.</p>
 <p>This class is used to correct the spectrum computed by the
 Interferogram class.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>spectrum_cube_path</strong> – Path to the spectrum cube</td>
-</tr>
-</tbody>
-</table>
-<dl class="method">
-<dt id="process.Spectrum._get_calibrated_spectrum_cube_path">
-<code class="descname">_get_calibrated_spectrum_cube_path</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#process.Spectrum._get_calibrated_spectrum_cube_path" title="Permalink to this definition">¶</a></dt>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>spectrum_cube_path</strong> – Path to the spectrum cube</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="orbs.process.Spectrum._get_calibrated_spectrum_cube_path">
+<code class="sig-name descname">_get_calibrated_spectrum_cube_path</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#orbs.process.Spectrum._get_calibrated_spectrum_cube_path" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return the default path to a calibrated spectral cube.</p>
 </dd></dl>
 
-<dl class="method">
-<dt id="process.Spectrum._get_calibrated_spectrum_frame_header">
-<code class="descname">_get_calibrated_spectrum_frame_header</code><span class="sig-paren">(</span><em>frame_index</em>, <em>axis</em>, <em>apodization_function</em>, <em>wavenumber=False</em><span class="sig-paren">)</span><a class="headerlink" href="#process.Spectrum._get_calibrated_spectrum_frame_header" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the header of the calibrated spectral frames.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>frame_index</strong> – Index of the frame.</li>
-<li><strong>axis</strong> – Spectrum axis (must be in wavelength or in
-wavenumber).</li>
-<li><strong>wavenumber</strong> – (Optional) If True the axis is considered
-to be in wavenumber. If False the axis is considered to be
-in wavelength (default False).</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.Spectrum._get_calibrated_spectrum_header">
-<code class="descname">_get_calibrated_spectrum_header</code><span class="sig-paren">(</span><em>axis</em>, <em>apodization_function</em>, <em>wavenumber=False</em><span class="sig-paren">)</span><a class="headerlink" href="#process.Spectrum._get_calibrated_spectrum_header" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the header of the calibrated spectral cube.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>axis</strong> – Spectrum axis (must be in wavelength or in
-wavenumber).</li>
-<li><strong>wavenumber</strong> – (Optional) If True the axis is considered
-to be in wavenumber. If False the axis is considered to be
-in wavelength (default False).</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.Spectrum._get_modulation_efficiency_map_header">
-<code class="descname">_get_modulation_efficiency_map_header</code><span class="sig-paren">(</span><em>imag=False</em><span class="sig-paren">)</span><a class="headerlink" href="#process.Spectrum._get_modulation_efficiency_map_header" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the header of the modulation efficiency map.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>imag</strong> – (Optional) True for imaginary part of the
-modulation efficiency (default False).</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.Spectrum._get_modulation_efficiency_map_path">
-<code class="descname">_get_modulation_efficiency_map_path</code><span class="sig-paren">(</span><em>imag=False</em><span class="sig-paren">)</span><a class="headerlink" href="#process.Spectrum._get_modulation_efficiency_map_path" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return path to the modulation efficiency map.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>imag</strong> – (Optional) True for imaginary part of the
-modulation efficiency (default False).</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.Spectrum._get_stars_coords_path">
-<code class="descname">_get_stars_coords_path</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#process.Spectrum._get_stars_coords_path" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return path to the list of stars coordinates used to correct WCS</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.Spectrum._update_hdr_wcs">
-<code class="descname">_update_hdr_wcs</code><span class="sig-paren">(</span><em>hdr</em>, <em>wcs_hdr</em><span class="sig-paren">)</span><a class="headerlink" href="#process.Spectrum._update_hdr_wcs" title="Permalink to this definition">¶</a></dt>
-<dd><p>Update a header with WCS parameters</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>hdr</strong> – A pyfits.Header() instance</li>
-<li><strong>wcs_header</strong> – A pyfits.Header() instance containing the
-new WCS parameters.</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.Spectrum.calibrate">
-<code class="descname">calibrate</code><span class="sig-paren">(</span><em>filter_name</em>, <em>step</em>, <em>order</em>, <em>calibration_laser_map_path</em>, <em>nm_laser</em>, <em>exposure_time</em>, <em>correct_wcs=None</em>, <em>flux_calibration_vector=None</em>, <em>flux_calibration_coeff=None</em>, <em>wavenumber=False</em>, <em>standard_header=None</em>, <em>spectral_calibration=True</em>, <em>filter_correction=True</em><span class="sig-paren">)</span><a class="headerlink" href="#process.Spectrum.calibrate" title="Permalink to this definition">¶</a></dt>
-<dd><p>Calibrate spectrum cube: correct for filter transmission
-function, correct WCS parameters and flux calibration.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>filter_name</strong> – Name of the filter (If None, no filter
-correction will be made).</li>
-<li><strong>step</strong> – Step size of the interferogram in nm.</li>
-<li><strong>order</strong> – Folding order of the interferogram.</li>
-<li><strong>calibration_laser_map_path</strong> – Path to the calibration
-laser map.</li>
-<li><strong>nm_laser</strong> – Calibration laser wavelength.</li>
-<li><strong>exposure_time</strong> – Exposure time in s (by frame).</li>
-<li><strong>(</strong><strong>Optional</strong><strong>)</strong> (<em>spectral_calibration</em>) – If True, the ouput
-spectral cube will be calibrated in
-wavelength/wavenumber. Note that in this case the spectrum
-must be interpolated. Else no spectral calibration is done:
-the channel position of a given wavelength/wavenumber
-changes with its position in the field (default True).</li>
-<li><strong>filter_correction</strong> – (Optional) If True spectra are
-corrected for the filter transmission.</li>
-<li><strong>correct_wcs</strong> – (Optional) Must be a pywcs.WCS
-instance. If not None header of the corrected spectrum
-cube is updated with the new WCS.</li>
-<li><strong>flux_calibration_vector</strong> – (Optional) Tuple (cm1_axis,
-vector). Must be a vector calibrated in erg/cm^2/A as the
-one given by
-<a class="reference internal" href="#process.Spectrum.get_flux_calibration_vector" title="process.Spectrum.get_flux_calibration_vector"><code class="xref py py-meth docutils literal"><span class="pre">process.Spectrum.get_flux_calibration_vector()</span></code></a>. Each
-spectrum will be multiplied by this vector to be flux
-calibrated (default None).</li>
-<li><strong>flux_calibration_coeff</strong> – (Optional) If given flux
-calibration vector is adjusted to fit the mean calibration
-coeff. If no flux calibration vector is given, this flux
-calibration coefficient is used as a flat flux calibration
-vector (default None).</li>
-<li><strong>wavenumber</strong> – (Optional) If True, the spectrum is
-considered to be in wavenumber. If False it is considered to
-be in wavelength (default False).</li>
-<li><strong>standard_header</strong> – (Optional) Header for the standard
-star used for flux calibration. This header part will be
-appended to the FITS header.</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
-<div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p>The filter file used must have two colums separated
-by a space character. The first column contains the
-wavelength axis in nm. The second column contains the
-transmission coefficients. Comments are preceded with a #.
-Filter edges can be specified using the keywords :
-FILTER_MIN and FILTER_MAX:</p>
-<div class="last highlight-default"><div class="highlight"><pre><span></span><span class="c1">## ORBS filter file </span>
-<span class="c1"># Author: Thomas Martin &lt;thomas.martin.1@ulaval.ca&gt;</span>
-<span class="c1"># Filter name : SpIOMM_R</span>
-<span class="c1"># Wavelength in nm | Transmission percentage</span>
-<span class="c1"># FILTER_MIN 648</span>
-<span class="c1"># FILTER_MAX 678</span>
-<span class="mi">1000</span> <span class="mf">0.001201585284</span>
-<span class="mf">999.7999878</span> <span class="mf">0.009733387269</span>
-<span class="mf">999.5999756</span> <span class="o">-</span><span class="mf">0.0004460749624</span>
-<span class="mf">999.4000244</span> <span class="mf">0.01378122438</span>
-<span class="mf">999.2000122</span> <span class="mf">0.002538740868</span>
-</pre></div>
-</div>
-</div>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.Spectrum.get_flux_calibration_coeff">
-<code class="descname">get_flux_calibration_coeff</code><span class="sig-paren">(</span><em>std_image_cube_path_1</em>, <em>std_image_cube_path_2</em>, <em>std_name</em>, <em>std_pos_1</em>, <em>std_pos_2</em>, <em>fwhm_pix</em>, <em>step</em>, <em>order</em>, <em>filter_name</em>, <em>optics_file_path</em>, <em>calibration_laser_map_path</em>, <em>nm_laser</em><span class="sig-paren">)</span><a class="headerlink" href="#process.Spectrum.get_flux_calibration_coeff" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return flux calibration coefficient in [erg/cm2/s/A]/ADU
-from a set of images.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>std_spectrum_path_1</strong> – Path to the standard image list</li>
-<li><strong>std_spectrum_path_2</strong> – Path to the standard image list</li>
-<li><strong>std_name</strong> – Name of the standard</li>
-<li><strong>std_pos_1</strong> – X,Y Position of the standard star.in camera 1</li>
-<li><strong>std_pos_2</strong> – X,Y Position of the standard star.in camera 2</li>
-<li><strong>fwhm_pix</strong> – Rough FWHM size in pixels.</li>
-<li><strong>step</strong> – Step size of the spectrum to calibrate</li>
-<li><strong>order</strong> – Order of the spectrum to calibrate</li>
-<li><strong>filter_name</strong> – Name fo the filter. If given the
-filter edges can be used to give a weight to the phase
-points. See <code class="xref py py-meth docutils literal"><span class="pre">process.Spectrum.correct_filter()</span></code> for more
-information about the filter file.</li>
-<li><strong>optics_file_path</strong> – Path to the optics fileé</li>
-<li><strong>calibration_laser_map_path</strong> – Path to the calibration
-laser map.</li>
-<li><strong>nm_laser</strong> – Calibration laser wavelength in nm.</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
-<div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last">This calibration coefficient must be used for non
-filter-corrected data</p>
-</div>
-<div class="admonition warning">
-<p class="first admonition-title">Warning</p>
-<p class="last">This calibration coeff cannot take Modulation
-Efficiency into account. A more representative calibration
-coefficient would be divided by the modulation
-efficiency. This coefficient must thus be used on spectral
-data already normalized to an ME of 100%</p>
-</div>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.Spectrum.get_flux_calibration_vector">
-<code class="descname">get_flux_calibration_vector</code><span class="sig-paren">(</span><em>std_spectrum_path</em>, <em>std_name</em>, <em>filter_name</em><span class="sig-paren">)</span><a class="headerlink" href="#process.Spectrum.get_flux_calibration_vector" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return a flux calibration vector in [erg/cm^2]/ADU on the range
-corresponding to the observation parameters of the spectrum to
-be calibrated.</p>
-<p>The spectrum to be calibrated can then be simply multiplied by
-the returned vector to be converted in [erg/cm^2]</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>std_spectrum_path</strong> – Path to the standard spectrum</li>
-<li><strong>std_name</strong> – Name of the standard</li>
-<li><strong>filter_name</strong> – Name fo the filter. If given the
-filter edges can be used to give a weight to the phase
-points. See <code class="xref py py-meth docutils literal"><span class="pre">process.Spectrum.correct_filter()</span></code> for more
-information about the filter file.</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
-<div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last">Standard spectrum must not be corrected for the
-filter.</p>
-</div>
-<div class="admonition warning">
-<p class="first admonition-title">Warning</p>
-<p class="last">This flux calibration vector is computed from a
-spectrum which has a given modulation efficiency. It must be
-normalized to a modulation efficiency of 100% via the
-calibration coefficient computed from standard images.</p>
-</div>
+<dl class="py method">
+<dt id="orbs.process.Spectrum.calibrate">
+<code class="sig-name descname">calibrate</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">deep_frame_path</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">phase_maps_path</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">standard_image_path</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#orbs.process.Spectrum.calibrate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a calibrated spectrum cube.</p>
 </dd></dl>
 
 </dd></dl>
 
-</div>
-<div class="section" id="sourceextractor-class">
-<h2><a class="toc-backref" href="#id8">SourceExtractor class</a><a class="headerlink" href="#sourceextractor-class" title="Permalink to this headline">¶</a></h2>
-<dl class="class">
-<dt id="process.SourceExtractor">
-<em class="property">class </em><code class="descclassname">process.</code><code class="descname">SourceExtractor</code><span class="sig-paren">(</span><em>interf_cube_path_A=None</em>, <em>interf_cube_path_B=None</em>, <em>bin_A=None</em>, <em>bin_B=None</em>, <em>pix_size_A=None</em>, <em>pix_size_B=None</em>, <em>alignment_coeffs=None</em>, <em>project_header=[]</em>, <em>cube_A_project_header=[]</em>, <em>cube_B_project_header=[]</em>, <em>wcs_header=[]</em>, <em>overwrite=False</em>, <em>indexer=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#process.SourceExtractor" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference internal" href="#process.InterferogramMerger" title="process.InterferogramMerger"><code class="xref py py-class docutils literal"><span class="pre">process.InterferogramMerger</span></code></a></p>
-<dl class="method">
-<dt id="process.SourceExtractor._get_extracted_source_fwhm_header">
-<code class="descname">_get_extracted_source_fwhm_header</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#process.SourceExtractor._get_extracted_source_fwhm_header" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return header of extracted source fwhm data file</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.SourceExtractor._get_extracted_source_fwhm_path">
-<code class="descname">_get_extracted_source_fwhm_path</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#process.SourceExtractor._get_extracted_source_fwhm_path" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return path to extracted source fwhm follow-up</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.SourceExtractor._get_extracted_source_interferograms_header">
-<code class="descname">_get_extracted_source_interferograms_header</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#process.SourceExtractor._get_extracted_source_interferograms_header" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return header of extracted source interferograms data file</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.SourceExtractor._get_extracted_source_interferograms_path">
-<code class="descname">_get_extracted_source_interferograms_path</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#process.SourceExtractor._get_extracted_source_interferograms_path" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return path to extracted source interferograms</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.SourceExtractor._get_extracted_source_spectra_header">
-<code class="descname">_get_extracted_source_spectra_header</code><span class="sig-paren">(</span><em>apodization_function</em><span class="sig-paren">)</span><a class="headerlink" href="#process.SourceExtractor._get_extracted_source_spectra_header" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return header of extracted source spectra data file</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.SourceExtractor._get_extracted_source_spectra_path">
-<code class="descname">_get_extracted_source_spectra_path</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#process.SourceExtractor._get_extracted_source_spectra_path" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return path to extracted source spectra</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.SourceExtractor.compute_source_spectra">
-<code class="descname">compute_source_spectra</code><span class="sig-paren">(</span><em>source_list</em>, <em>source_interf_path</em>, <em>step</em>, <em>order</em>, <em>apodization_function</em>, <em>filter_name</em>, <em>phase_map_paths</em>, <em>nm_laser</em>, <em>calibration_laser_map_path</em>, <em>phase_correction=True</em>, <em>optimize_phase=False</em>, <em>wavenumber=True</em>, <em>filter_correction=True</em>, <em>cube_A_is_balanced=True</em>, <em>zpd_shift=None</em>, <em>phase_order=None</em>, <em>return_phase=False</em><span class="sig-paren">)</span><a class="headerlink" href="#process.SourceExtractor.compute_source_spectra" title="Permalink to this definition">¶</a></dt>
-<dd><p>Compute source spectra</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>phase_order</strong> – (Optional) If phase_map_paths is set to None, phase_order must be given.</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.SourceExtractor.extract_source_interferograms">
-<code class="descname">extract_source_interferograms</code><span class="sig-paren">(</span><em>source_list</em>, <em>star_list_path</em>, <em>fov</em>, <em>alignment_vector_1_path</em>, <em>alignment_vector_2_path</em>, <em>modulation_ratio_path</em>, <em>transmission_vector_path</em>, <em>ext_illumination_vector_path</em>, <em>fwhm_arc</em>, <em>deep_frame=None</em>, <em>profile_name='gaussian'</em>, <em>moffat_beta=3.5</em><span class="sig-paren">)</span><a class="headerlink" href="#process.SourceExtractor.extract_source_interferograms" title="Permalink to this definition">¶</a></dt>
-<dd><p>Extract the interferogram of all sources.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>deep_frame</strong> – if a deep frame is given the fwhm of the
-sources is fitted as a first guess.</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-</dd></dl>
-
-</div>
-<div class="section" id="phasemaps-class">
-<h2><a class="toc-backref" href="#id9">PhaseMaps class</a><a class="headerlink" href="#phasemaps-class" title="Permalink to this headline">¶</a></h2>
-<dl class="class">
-<dt id="process.PhaseMaps">
-<em class="property">class </em><code class="descclassname">process.</code><code class="descname">PhaseMaps</code><span class="sig-paren">(</span><em>phase_map_path_list</em>, <em>residual_map_path_list</em>, <em>dimx_unbinned</em>, <em>dimy_unbinned</em>, <em>project_header=[]</em>, <em>calibration_laser_header=[]</em>, <em>overwrite=False</em>, <em>indexer=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#process.PhaseMaps" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">orb.core.Tools</span></code></p>
-<dl class="method">
-<dt id="process.PhaseMaps.__init__">
-<code class="descname">__init__</code><span class="sig-paren">(</span><em>phase_map_path_list</em>, <em>residual_map_path_list</em>, <em>dimx_unbinned</em>, <em>dimy_unbinned</em>, <em>project_header=[]</em>, <em>calibration_laser_header=[]</em>, <em>overwrite=False</em>, <em>indexer=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#process.PhaseMaps.__init__" title="Permalink to this definition">¶</a></dt>
-<dd><p>Initialize PhaseMaps class.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>phase_map_path_list</strong> – List of phase map paths as a
-tuple.</li>
-<li><strong>residual_map_path_list</strong> – List of residual map paths as a
-tuple.</li>
-<li><strong>dimx_unbinned</strong> – Unbinned X dimension of the maps.</li>
-<li><strong>dimy_unbinned</strong> – Unbinned Y dimension of the maps.</li>
-<li><strong>project_header</strong> – (Optional) header section describing
-the observation parameters that can be added to each output
-files (an empty list() by default).</li>
-<li><strong>calibration_laser_header</strong> – (Optional) header section
-describing the calibration laser parameters that can be
-added to the concerned output files e.g. calibration laser map,
-spectral cube (an empty list() by default).</li>
-<li><strong>overwrite</strong> – (Optional) If True existing FITS files will
-be overwritten (default False).</li>
-<li><strong>indexer</strong> – (Optional) Must be a <code class="xref py py-class docutils literal"><span class="pre">core.Indexer</span></code>
-instance. If not None created files can be indexed by this
-instance.</li>
-<li><strong>kwargs</strong> – Kwargs are <code class="xref py py-meth docutils literal"><span class="pre">core.Tools()</span></code> properties.</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.PhaseMaps._get_calibration_laser_map_header">
-<code class="descname">_get_calibration_laser_map_header</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#process.PhaseMaps._get_calibration_laser_map_header" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return a calibration laser map header.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.PhaseMaps._get_calibration_laser_map_path">
-<code class="descname">_get_calibration_laser_map_path</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#process.PhaseMaps._get_calibration_laser_map_path" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return path to the calibration laser map created during the
-fitting procedure of the phase map (with a SITELLE’s fit model
-of the phase).</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.PhaseMaps._get_phase_map_header">
-<code class="descname">_get_phase_map_header</code><span class="sig-paren">(</span><em>order</em>, <em>phase_map_type=None</em><span class="sig-paren">)</span><a class="headerlink" href="#process.PhaseMaps._get_phase_map_header" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the header of the phase map.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>order</strong> – Order of the parameter of the polynomial fitted
-to the phase.</li>
-<li><strong>phase_map_type</strong> – (Optional) Type of phase map. Must be
-None, ‘unwraped’, ‘fitted’, ‘error’, ‘unbinned’ or ‘residual’</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
-<div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last">unwraped, fitted and error are incompatible. If more
-than one of those options are set to True the priority order
-is unwraped, then fitted, then error.</p>
-</div>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.PhaseMaps._get_phase_map_path">
-<code class="descname">_get_phase_map_path</code><span class="sig-paren">(</span><em>order</em>, <em>phase_map_type=None</em><span class="sig-paren">)</span><a class="headerlink" href="#process.PhaseMaps._get_phase_map_path" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the default path to the phase map.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>order</strong> – Order of the parameter of the polynomial fitted
-to the phase.</li>
-<li><strong>phase_map_type</strong> – (Optional) Type of phase map. Must be
-None, ‘unwraped’, ‘fitted’, ‘error’ or ‘residual’</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.PhaseMaps.fit_phase_map">
-<code class="descname">fit_phase_map</code><span class="sig-paren">(</span><em>order</em>, <em>calibration_laser_map_path</em>, <em>nm_laser</em><span class="sig-paren">)</span><a class="headerlink" href="#process.PhaseMaps.fit_phase_map" title="Permalink to this definition">¶</a></dt>
-<dd><p>Robust fit of phase maps of order &gt; 0</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>order</strong> – Order of the phase map to fit.</li>
-<li><strong>calibration_laser_map_path</strong> – Path to the calibration laser map.</li>
-<li><strong>nm_laser</strong> – Calibration laser wavelength in nm</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
-<div class="admonition seealso">
-<p class="first admonition-title">See also</p>
-<p class="last"><code class="xref py py-meth docutils literal"><span class="pre">orb.utils.image.fit_highorder_phase_map()</span></code></p>
-</div>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.PhaseMaps.fit_phase_map_0">
-<code class="descname">fit_phase_map_0</code><span class="sig-paren">(</span><em>phase_model='spiomm'</em>, <em>calibration_laser_map_path=None</em>, <em>calibration_laser_nm=None</em>, <em>wavefront_map_path=None</em><span class="sig-paren">)</span><a class="headerlink" href="#process.PhaseMaps.fit_phase_map_0" title="Permalink to this definition">¶</a></dt>
-<dd><p>Fit the order 0 phase map.</p>
-<p>Help remove most of the noise. This process is useful if the
-phase map has been computed from astronomical data without a
-high SNR for every pixel in all the filter bandpass.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>phase_model</strong> – (Optional) Model used to fit phase, can be
-‘spiomm’ or ‘sitelle’. If ‘spiomm’, the model is a very
-basic one considering only linear variation of the phase map
-along the columns. If ‘sitelle’, the phase model is based on
-a the calibration laser map, tip tilt and rotation of the
-calibration laser map are considered in the fit, along with
-the first order of the phase (default ‘spiomm’).</li>
-<li><strong>calibration_laser_map_path</strong> – (Optional) Path to the
-calibration laser map. Only useful if the phase model is
-‘sitelle’ (default None).</li>
-<li><strong>calibration_laser_nm</strong> – (Optional) Wavelength of the
-calibration laser (in nm). Only useful if the phase model is
-‘sitelle’ (default None).</li>
-<li><strong>wavefront_map_path</strong> – (Optional) Only used with
-SITELLE. Residual between the modeled calibration laser map
-and the real laser map. This residual can generally be
-fitted with Zernike polynomials. If given, the wavefront is
-considered stable and is removed before the model is fitted
-(default None).</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.PhaseMaps.reduce_phase_map">
-<code class="descname">reduce_phase_map</code><span class="sig-paren">(</span><em>order</em><span class="sig-paren">)</span><a class="headerlink" href="#process.PhaseMaps.reduce_phase_map" title="Permalink to this definition">¶</a></dt>
-<dd><p>Reduce a phase map to only one number.</p>
-<div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last">The reduced phase maps are also saved as ‘fitted’.</p>
-</div>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>order</strong> – Order of the phase map to reduce.</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
-<dt id="process.PhaseMaps.unwrap_phase_map_0">
-<code class="descname">unwrap_phase_map_0</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#process.PhaseMaps.unwrap_phase_map_0" title="Permalink to this definition">¶</a></dt>
-<dd><p>Unwrap order 0 phase map.</p>
-<p>Phase is defined modulo pi/2. The Unwrapping is a
-reconstruction of the phase so that the distance between two
-neighboor pixels is always less than pi/4. Then the real phase
-pattern can be recovered and fitted easily.</p>
-<p>The idea is the same as with np.unwrap() but in 2D, on a
-possibly very noisy map, where a naive 2d unwrapping cannot be
-done.</p>
-</dd></dl>
-
-</dd></dl>
-
-</div>
 </div>
 
 
            </div>
-           <div class="articleComments">
-            
-           </div>
+           
           </div>
           <footer>
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="changelog.html" class="btn btn-neutral float-right" title="Changelog" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="report_module.html" class="btn btn-neutral float-right" title="Report module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="orbs_module.html" class="btn btn-neutral" title="Orbs module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="orbs_module.html" class="btn btn-neutral float-left" title="Orbs module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
@@ -2443,11 +955,19 @@ done.</p>
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2017, Thomas Martin (thomas.martin.1@ulaval.ca).
+        
+        &copy; Copyright 2020, Thomas Martin (thomas.martin.1@ulaval.ca)
 
     </p>
   </div>
-  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+    
+    
+    
+    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
 
 </footer>
 
@@ -2459,38 +979,15 @@ done.</p>
   </div>
   
 
-
-  
-
-    <script type="text/javascript">
-        var DOCUMENTATION_OPTIONS = {
-            URL_ROOT:'./',
-            VERSION:'4.1',
-            COLLAPSE_INDEX:false,
-            FILE_SUFFIX:'.html',
-            HAS_SOURCE:  true,
-            SOURCELINK_SUFFIX: '.txt'
-        };
-    </script>
-      <script type="text/javascript" src="_static/jquery.js"></script>
-      <script type="text/javascript" src="_static/underscore.js"></script>
-      <script type="text/javascript" src="_static/doctools.js"></script>
-      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
-
-  
-
-  
-  
-    <script type="text/javascript" src="_static/js/theme.js"></script>
-  
-
-  
-  
   <script type="text/javascript">
       jQuery(function () {
-          SphinxRtdTheme.StickyNav.enable();
+          SphinxRtdTheme.Navigation.enable(true);
       });
   </script>
+
+  
+  
+    
    
 
 </body>

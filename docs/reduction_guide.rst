@@ -1,8 +1,8 @@
 .. _reduction_guide:
 
-======================
- ORBS Reduction Guide
-======================
+================================
+ ORBS Reduction Guide (Outdated)
+================================
 
 .. contents::
 
