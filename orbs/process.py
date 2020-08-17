@@ -980,30 +980,29 @@ class Interferogram(orb.cube.InterferogramCube):
                                       coeffs=coeffs)
         
         phase_cube_model = orb.utils.io.read_fits(self._get_phase_cube_model_path())
-        phase_cube_residual = phase_cube[:,:,:] - phase_cube_model
+
+        fake_phase = phase_cube.get_phase(10, 10)
+        phase_cube_residual = phase_cube[:,:,:] - phase_cube_model - high_order_phase.project(fake_phase.axis).data
 
         ## remove the median of the phase vector at each pixel
-        fake_phase = phase_cube.get_phase(10, 10)
         zmin, zmax = fake_phase.get_filter_bandpass_pix(border_ratio=0.2)
         medframe = np.nanmean(phase_cube_residual[:,:,zmin:zmax], axis=2)        
         phase_cube_residual = np.subtract(phase_cube_residual.T, medframe.T).T
 
         # compute mean
-        high_order_phase = np.nanmean(phase_cube_residual, axis=(0,1))
+        high_order_phase = np.nanmean(phase_cube_residual, axis=(0,1)).astype(np.float64)
         high_order_phase = orb.fft.Phase(high_order_phase, phase_cube.get_base_axis(),
                                          params=phase_cube.params)
         
         # compute std
-        high_order_phase_std = np.nanstd(phase_cube_residual, axis=(0,1))
+        high_order_phase_std = np.nanstd(phase_cube_residual, axis=(0,1)).astype(np.float64)
+
+        
 
         median_std = np.median(high_order_phase_std[zmin:zmax])
         logging.info('median std of each phase value: {:.2e} rad'.format(
             median_std))
-        
-        logging.info('estimated precision: {:.2e} rad'.format(
-            median_std / np.sqrt(phase_cube.dimx * phase_cube.dimy)))
-        
-        
+                
         high_order_phase_std = orb.fft.Phase(
             high_order_phase_std, phase_cube.get_base_axis(),
             params=phase_cube.params)
@@ -1012,7 +1011,7 @@ class Interferogram(orb.cube.InterferogramCube):
         high_order_phase = high_order_phase.cleaned(border_ratio=-0.1)
         phase_corr = high_order_phase.data - high_order_phase.polyfit(1).data
 
-        # extrapolate values on the border to avoid phase switch off
+        # extrapolate values on the border to avoid phase switch at
         # filter borders
         filtmin = np.argmin(np.isnan(phase_corr))
         phase_corr[:filtmin] = phase_corr[filtmin]
@@ -1021,6 +1020,7 @@ class Interferogram(orb.cube.InterferogramCube):
         high_order_phase_corr = orb.fft.Phase(
             phase_corr,
             high_order_phase.axis.data,
+            err=high_order_phase_std.data,
             params=phase_cube.params)
 
         high_order_phase_corr.writeto(self._get_high_order_phase_path())
