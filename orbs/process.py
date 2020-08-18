@@ -946,32 +946,35 @@ class Interferogram(orb.cube.InterferogramCube):
         else:
             high_order_phase = None
 
-        self.create_binned_interferogram_cube(binning)
+        # self.create_binned_interferogram_cube(binning)
 
-        interf_cube = BinnedInterferogramCube(
-            self._get_binned_interferogram_cube_path(), config=self.config,
-            params=self.params, instrument=self.instrument)
+        # interf_cube = BinnedInterferogramCube(
+        #     self._get_binned_interferogram_cube_path(), config=self.config,
+        #     params=self.params, instrument=self.instrument)
 
-        interf_cube.compute_phase(self._get_binned_phase_cube_path())
+        # interf_cube.compute_phase(self._get_binned_phase_cube_path())
 
-        if self.indexer is not None:
-            self.indexer['binned_phase_cube'] = (
-                self._get_binned_phase_cube_path())
+        # if self.indexer is not None:
+        #     self.indexer['binned_phase_cube'] = (
+        #         self._get_binned_phase_cube_path())
 
         phase_cube = BinnedPhaseCube(
             self._get_binned_phase_cube_path(),
             params=self.params, instrument=self.instrument, config=self.config,
             data_prefix=self._data_prefix)
 
-        # compute phase maps iteratively
-        final_phase_maps_path = phase_cube.iterative_polyfit(
-            poly_order, high_order_phase=high_order_phase)
+        # # compute phase maps iteratively
+        # final_phase_maps_path = phase_cube.iterative_polyfit(
+        #     poly_order, high_order_phase=high_order_phase)
 
-        logging.info('final computed phase maps path: {}'.format(final_phase_maps_path))
-        if self.indexer is not None:                 
-            self.indexer['phase_maps'] = final_phase_maps_path
+        # logging.info('final computed phase maps path: {}'.format(final_phase_maps_path))
+        # if self.indexer is not None:                 
+        #     self.indexer['phase_maps'] = final_phase_maps_path
 
         # compute high order phase
+        final_phase_maps_path = self.indexer.get_path(
+            'phase_maps', file_group=self.indexer.file_group)
+        
         phasemaps = orb.fft.PhaseMaps(final_phase_maps_path)
         phasemaps.modelize()
 
@@ -982,7 +985,7 @@ class Interferogram(orb.cube.InterferogramCube):
         phase_cube_model = orb.utils.io.read_fits(self._get_phase_cube_model_path())
 
         fake_phase = phase_cube.get_phase(10, 10)
-        phase_cube_residual = phase_cube[:,:,:] - phase_cube_model - high_order_phase.project(fake_phase.axis).data
+        phase_cube_residual = phase_cube[:,:,:] - phase_cube_model
 
         ## remove the median of the phase vector at each pixel
         zmin, zmax = fake_phase.get_filter_bandpass_pix(border_ratio=0.2)
@@ -995,9 +998,8 @@ class Interferogram(orb.cube.InterferogramCube):
                                          params=phase_cube.params)
         
         # compute std
+        phase_cube_residual -= high_order_phase.data
         high_order_phase_std = np.nanstd(phase_cube_residual, axis=(0,1)).astype(np.float64)
-
-        
 
         median_std = np.median(high_order_phase_std[zmin:zmax])
         logging.info('median std of each phase value: {:.2e} rad'.format(
@@ -1019,7 +1021,7 @@ class Interferogram(orb.cube.InterferogramCube):
         phase_corr[filtmax:] = phase_corr[filtmax-1]
         high_order_phase_corr = orb.fft.Phase(
             phase_corr,
-            high_order_phase.axis.data,
+            axis=high_order_phase.axis.data,
             err=high_order_phase_std.data,
             params=phase_cube.params)
 
