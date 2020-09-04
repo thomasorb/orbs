@@ -46,13 +46,14 @@ import gvar
 #################################################
 class BinnedInterferogramCube(orb.cube.InterferogramCube):
 
-    def compute_phase(self, path):
+    def compute_phase(self, path, calibrate=True):
         """Compute binned phase cube
 
         :param path: path of the output binned phase cube.
         """
 
-        def compute_phase_in_column(col, calib_col, zpd_index, params, base_axis):
+        def compute_phase_in_column(col, calib_col, zpd_index,
+                                    params, base_axis, calibrate):
             warnings.simplefilter('ignore', RuntimeWarning)
             warnings.simplefilter('ignore', UserWarning)
             warnings.simplefilter('ignore', FutureWarning)
@@ -70,8 +71,14 @@ class BinnedInterferogramCube(orb.cube.InterferogramCube):
                 interf = interf.apodize('1.5')
                 spectrum = interf.transform()
                 if isinstance(spectrum, orb.fft.Spectrum): # test if transform ok
-                    spectrum = spectrum.interpolate(base_axis, quality=10)
-                    phase_col[ij,:] = np.copy(spectrum.get_phase().data)
+                    if calibrate:
+                        spectrum = spectrum.interpolate(base_axis, quality=10)
+                    iphase = np.copy(spectrum.get_phase().data)
+                    # note: the [:iphase.size] as been addedwhen the phase is
+                    # not interpolated (calibrate=False) because the
+                    # number of samples can be smaller after the
+                    # symmetric() step
+                    phase_col[ij,:iphase.size] = iphase
             return phase_col
 
         calib_map = self.get_calibration_coeff_map()
@@ -94,7 +101,7 @@ class BinnedInterferogramCube(orb.cube.InterferogramCube):
                           calib_map[ii+ijob,:],
                           self.params.zpd_index,
                           self.params.convert(),
-                          base_axis),
+                          base_axis, calibrate),
                     modules=("import logging",
                              "import warnings",
                              "import numpy as np",
