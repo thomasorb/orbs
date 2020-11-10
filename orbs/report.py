@@ -57,9 +57,10 @@ class Graph(object):
         try: slow = bool(self.getp('slow'))
         except Exception: slow = False
         if slow and fast:
-            logging.warning('{} not generated because of fast keyword'.format(self.getp('name')))
+            logging.warning('{}/{} not generated because of fast keyword'.format(self.getp('name'), self.getp('type')))
+            return
             
-        logging.info('generating graph for {}'.format(self.getp('name')))
+        logging.info('generating graph for {}/{}'.format(self.getp('name'), self.getp('type')))
         path = indexer.get_path(self.getp('name'))
         if self.getp('type') == 'vector':
             pl.figure(figsize=(8, 4))
