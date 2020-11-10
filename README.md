@@ -40,16 +40,21 @@ sudo apt install libcfitsio5 libcfitsio-bin
 ```
 #### Install orbs module
 
-ORBS can be downloaded and installed from github also
-  
-https://github.com/thomasorb/orbs
-
-Once the archive has been downloaded (from github just click on the
-green button `clone or download` and click on `Download ZIP`) you may
-extract it in a temporary folder. Then cd into the extracted folder
-and type:
+During ORB install you have already created a folder name `orb-stable`. You can thus do
 
 ```bash
-python setup.py install
+cd path/to/orb-stable
+git clone https://github.com/thomasorb/orbs.git
+python setup.py install (not for developer)
+```
+**(developer only)**
+```bash
+cd
+echo '/absolute/path/to/orb-stable/orbs' >> miniconda3/envs/orb3/lib/python3.7/site-packages/conda.pth
 ```
 
+Test it:
+```bash
+conda activate orb3 # you don't need to do it if you are already in the orb3 environment
+python -c 'import orbs.core'
+```
