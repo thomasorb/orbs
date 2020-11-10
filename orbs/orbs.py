@@ -417,23 +417,30 @@ class Orbs(Tools):
 
                 zpd_found = False
                 if target == 'laser':
+                    progress = ProgressBar(cube1.dimz)
                     for ik in range(cube1.dimz):
                         sitstep = cube1.get_frame_header(ik)['SITFRING']
+                        progress.update(ik, info='searching zpd: {}'.format(sitstep))
                         if sitstep > 0:
                             zpd_index = ik
                             zpd_found = True
                             break
+                    progress.end()
                     if not zpd_found:
                         if not silent:
                             logging.warn('zpd index could not be found, forced to 25% of the interferogram size')
                         zpd_index = int(cube1.dimz * 0.25)
                 else:
+                    progress = ProgressBar(cube1.dimz)
                     for ik in range(cube1.dimz):
-                        sitstep = cube1.get_frame_header(ik)['SITSTEP']
-                        if sitstep == 0:
+                        sitstep = (float(cube1.get_frame_header(ik)['SITSTEP']),
+                                   float(cube1.get_frame_header(ik)['SITFRING']))
+                        progress.update(ik, info='searching zpd: {}'.format(sitstep))
+                        if np.any(np.isclose(sitstep, 0)):
                             zpd_index = ik
                             zpd_found = True
                             break
+                    progress.end()
                     if not zpd_found: raise Exception('zpd index could not be found')
                 del cube1
                 
