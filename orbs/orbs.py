@@ -1447,8 +1447,7 @@ class Orbs(Tools):
             fit_order = 1
         else:
             high_order_phase_path = None
-            fit_order = self._get_phase_fit_order()
-            
+            fit_order = int(self._get_phase_fit_order())
 
         cube.create_phase_maps(int(self.config['PHASE_BINNING']), fit_order,
                                high_order_phase_path=high_order_phase_path)
