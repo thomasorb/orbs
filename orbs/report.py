@@ -41,7 +41,7 @@ class Graph(object):
 
         def imshow(data):
             pl.figure()
-            pl.imshow(data, origin='bottom-left',
+            pl.imshow(data, origin='lower',
                       vmin=np.nanpercentile(data, 10),
                       vmax=np.nanpercentile(data, 90))
             pl.colorbar()
