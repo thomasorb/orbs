@@ -946,13 +946,21 @@ class Interferogram(orb.cube.InterferogramCube):
         else:
             high_order_phase = None
 
-        self.create_binned_interferogram_cube(binning)
+        if os.path.exists(self._get_binned_interferogram_cube_path()):
+           logging.warning('Binned interferogram cube already computed. If you want to recompute it please delete: {}'.format(
+               self._get_binned_interferogram_cube_path()))
+        else:
+            self.create_binned_interferogram_cube(binning)
 
         interf_cube = BinnedInterferogramCube(
             self._get_binned_interferogram_cube_path(), config=self.config,
             params=self.params, instrument=self.instrument)
 
-        interf_cube.compute_phase(self._get_binned_phase_cube_path())
+        if os.path.exists(self._get_binned_phase_cube_path()):
+           logging.warning('Binned phase cube already computed. If you want to recompute it please delete: {}'.format(
+               self._get_binned_phase_cube_path()))
+        else:
+            interf_cube.compute_phase(self._get_binned_phase_cube_path())
 
         if self.indexer is not None:
             self.indexer['binned_phase_cube'] = (
