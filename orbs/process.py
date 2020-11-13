@@ -709,17 +709,17 @@ class CalibrationLaser(orb.cube.InterferogramCube):
         max_array.fill(np.nan)
         params = self.params.convert()
         
-        for iquad in range(self.config.QUAD_NB):
+        for iquad in range(self.config.DIV_NB**2):
             # init multiprocessing server
             job_server, ncpus = self._init_pp_server()
 
             x_min, x_max, y_min, y_max = self.get_quadrant_dims(iquad)
-            logging.info('loading quad {}/{}'.format(iquad + 1, self.config.QUAD_NB))
+            logging.info('loading quad {}/{}'.format(iquad + 1, self.config.DIV_NB**2))
             iquad_data = self.get_data(x_min, x_max, 
                                        y_min, y_max, 
                                        0, self.dimz)
 
-            logging.info('processing quad {}/{}'.format(iquad + 1, self.config.QUAD_NB))
+            logging.info('processing quad {}/{}'.format(iquad + 1, self.config.DIV_NB**2))
             progress = orb.core.ProgressBar(x_max - x_min)
             for ii in range(0, x_max - x_min, ncpus):
                 
@@ -728,7 +728,7 @@ class CalibrationLaser(orb.cube.InterferogramCube):
                     ncpus = x_max - x_min - ii
 
                 progress.update(ii, info="quad %d/%d, column : %d"%(
-                    iquad+1, self.config.QUAD_NB, ii))
+                    iquad+1, self.config.DIV_NB**2, ii))
                 
                 # create jobs
                 jobs = [(ijob, job_server.submit(
@@ -1268,15 +1268,16 @@ class Interferogram(orb.cube.InterferogramCube):
             dtype=np.complex64,
             reset=True)
         del out_cube
-        
-        for iquad in range(0, self.config.QUAD_NB):
+
+
+        for iquad in range(0, self.config.DIV_NB**2):
             # multi-processing server init
             job_server, ncpus = self._init_pp_server()
             # must be before loading quad because init frees memory
             # used for the processing of the previous quadrant
             
             x_min, x_max, y_min, y_max = self.get_quadrant_dims(iquad)
-            logging.info('loading quad {}/{}'.format(iquad + 1, self.config.QUAD_NB))
+            logging.info('loading quad {}/{}'.format(iquad + 1, self.config.DIV_NB**2))
             iquad_data = self.get_data(x_min, x_max, 
                                        y_min, y_max, 
                                        0, self.dimz)
@@ -1287,7 +1288,7 @@ class Interferogram(orb.cube.InterferogramCube):
             iquad_data_out = np.empty_like(iquad_data, dtype=np.complex128)
             logging.info('memory size of a quad {} Gb'.format(iquad_data.nbytes / 1e9))
             
-            logging.info('processing quad {}/{}'.format(iquad + 1, self.config.QUAD_NB))
+            logging.info('processing quad {}/{}'.format(iquad + 1, self.config.DIV_NB**2))
 
             progress = orb.core.ProgressBar(x_max - x_min)
             
@@ -1298,7 +1299,7 @@ class Interferogram(orb.cube.InterferogramCube):
                     ncpus = x_max - x_min - ii
 
                 progress.update(ii, info="Quad %d/%d column : %d"%(
-                    iquad+1, self.config.QUAD_NB, ii))
+                    iquad+1, self.config.DIV_NB**2, ii))
 
                 params = self.params.convert()
                 calib_coeff_map = self.get_calibration_coeff_map()
@@ -1335,14 +1336,14 @@ class Interferogram(orb.cube.InterferogramCube):
             
             # save data
             logging.info('Writing quad {}/{} to disk'.format(
-                iquad+1, self.config.QUAD_NB))
+                iquad+1, self.config.DIV_NB**2))
             write_start_time = time.time()
             out_cube = orb.cube.RWHDFCube(
                 self._get_spectrum_cube_path(phase=phase_cube), reset=False)
             
             out_cube[x_min:x_max, y_min:y_max,:] = iquad_data_out
             logging.info('Quad {}/{} written in {:.2f} s'.format(
-                iquad+1, self.config.QUAD_NB, time.time() - write_start_time))
+                iquad+1, self.config.DIV_NB**2, time.time() - write_start_time))
                         
             del out_cube
             del iquad_data_out
@@ -3066,7 +3067,7 @@ class Spectrum(orb.cube.SpectralCube):
             if ikey in ['step', 'order', 'calib_coeff', 'filter_name']:
                 params[ikey] = _params[ikey]
 
-        for iquad in range(0, self.config.QUAD_NB):
+        for iquad in range(0, self.config.DIV_NB**2):
 
             job_server, ncpus = self._init_pp_server()
             # must be before loading quad because init frees memory
@@ -3074,7 +3075,7 @@ class Spectrum(orb.cube.SpectralCube):
             
             (x_min, x_max, 
              y_min, y_max) = self.get_quadrant_dims(iquad)
-            logging.info('loading quad {}/{}'.format(iquad + 1, self.config.QUAD_NB))
+            logging.info('loading quad {}/{}'.format(iquad + 1, self.config.DIV_NB**2))
             
             iquad_data = self.get_data(x_min, x_max, 
                                        y_min, y_max, 
@@ -3090,12 +3091,12 @@ class Spectrum(orb.cube.SpectralCube):
 
             logging.info('memory size of a quad {} Gb'.format(iquad_data.nbytes / 1e9))
             
-            logging.info('processing quad {}/{}'.format(iquad + 1, self.config.QUAD_NB))
+            logging.info('processing quad {}/{}'.format(iquad + 1, self.config.DIV_NB**2))
             progress = orb.core.ProgressBar(x_max - x_min)
                                 
             for ii in range(0, x_max-x_min, ncpus):
                 progress.update(ii, info="Quad %d/%d column : %d"%(
-                    iquad+1, self.config.QUAD_NB, ii))
+                    iquad+1, self.config.DIV_NB**2, ii))
                 
                 # no more jobs than frames to compute
                 if (ii + ncpus >= x_max-x_min):
@@ -3129,7 +3130,7 @@ class Spectrum(orb.cube.SpectralCube):
 
             # save data
             logging.info('Writing quad {}/{} to disk'.format(
-                iquad+1, self.config.QUAD_NB))
+                iquad+1, self.config.DIV_NB**2))
             write_start_time = time.time()
             
             out_cube = orb.cube.RWHDFCube(
@@ -3138,7 +3139,7 @@ class Spectrum(orb.cube.SpectralCube):
         
             out_cube[x_min:x_max, y_min:y_max,:] = iquad_data_out
             logging.info('Quad {}/{} written in {:.2f} s'.format(
-                iquad+1, self.config.QUAD_NB, time.time() - write_start_time))
+                iquad+1, self.config.DIV_NB**2, time.time() - write_start_time))
                         
             del out_cube
             del iquad_data_out

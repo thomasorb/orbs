@@ -1741,7 +1741,7 @@ class Performance(Tools):
         self._sx = cube.dimx
         self._sy = cube.dimy
         self._sz = cube.dimz
-        self._quad_nb = cube.config.QUAD_NB
+        self._quad_nb = cube.config.DIV_NB**2
         logging.info("%s started for camera %d"%(self._process_name,
                                                     self._camera_number))
 
