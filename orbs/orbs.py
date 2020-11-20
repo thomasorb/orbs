@@ -45,7 +45,6 @@ import warnings
 import shutil
 from datetime import datetime
 import astropy
-import bottleneck as bn
 
 from orb.core import Tools, Indexer, TextColor
 from orb.cube import FDCube, HDFCube, Cube, RWHDFCube
@@ -183,7 +182,6 @@ class Orbs(Tools):
             logging.info("Numpy version: %s"%np.__version__)
             logging.info("Scipy version: %s"%scipy.__version__)
             logging.info("Astropy version: %s"%astropy.__version__)
-            logging.info("Bottleneck version: %s"%bn.__version__)
 
             # Print the entire config file for log
             with orb.utils.io.open_file(self._get_config_file_path(), 'r') as conf_file:
@@ -1583,8 +1581,10 @@ class Orbs(Tools):
     def extract_standard_spectrum(self):
         im = orb.image.Image(self._get_wcs_deep_frame_path())
         target_x, target_y = im.find_object(is_standard=True)
+        logging.info('standard position guessed from astrometry solution: ({:.1f},{:.1f})'.format(target_x, target_y))
         fit = im.fit_stars([[target_x, target_y]])
         target_x, target_y = float(fit.x), float(fit.y)
+        logging.info('standard position fitted: ({:.1f},{:.1f})'.format(target_x, target_y))
         
         crop = im.crop(target_x, target_y, 45)
         crop.to_fits(self._get_standard_cropped_image_path())

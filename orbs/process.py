@@ -47,9 +47,6 @@ import orb.constants
 
 from .phase import BinnedInterferogramCube, BinnedPhaseCube
 
-
-import bottleneck as bn
-
 import os
 import numpy as np
 import math
@@ -1217,7 +1214,7 @@ class Interferogram(orb.cube.InterferogramCube):
             # ymax = 1416+5
             ### DEBUG
 
-            mean_interf = bn.nanmedian(bn.nanmedian(
+            mean_interf = np.nanmedian(np.nanmedian(
                 self.get_data(xmin, xmax, ymin, ymax, 0, self.dimz),
                 axis=0), axis=0)
             
@@ -1712,8 +1709,8 @@ class InterferogramMerger(orb.core.Tools):
             frameA = self.cube_A.get_deep_frame().data
             frameB = self.cube_B.get_deep_frame().data
         else:
-            frameA = bn.nanmedian(self.cube_A[:,:,:N_FRAMES], axis=2)
-            frameB = bn.nanmedian(self.cube_B[:,:,:N_FRAMES], axis=2)
+            frameA = np.nanmedian(self.cube_A[:,:,:N_FRAMES], axis=2)
+            frameB = np.nanmedian(self.cube_B[:,:,:N_FRAMES], axis=2)
             
 
         if HPFILTER: # Filter alignment frames
@@ -2843,11 +2840,11 @@ class CosmicRayDetector(InterferogramMerger):
             framesM = framesA + framesB # ok for SITELLE, not for SpIOMM
             framesM -= np.nanmean(np.nanmean(framesM, axis=0), axis=0)
             framesM += BIAS
-            frameref = bn.nanmedian(framesM, axis=2)
+            frameref = np.nanmedian(framesM, axis=2)
             
             # detect CRS
             progress.update(int(ik/ncpus_max), info="detecting ({})".format(ik))
-            
+
             jobs = [(ijob, job_server.submit(
                 detect_crs_in_frame, 
                 args=(framesA[:,:,ijob].astype(np.float32),
