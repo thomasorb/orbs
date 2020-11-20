@@ -1419,7 +1419,9 @@ class Orbs(Tools):
         
         .. seealso:: :meth:`process.Phase.create_phase_maps`
         
-        """             
+        """
+        FIT_ORDER = 1
+        
         # get base phase maps
         if not no_star:
             interfero_cube_path = self._get_interfero_cube_path(
@@ -1442,14 +1444,12 @@ class Orbs(Tools):
         
         high_order_phase_path = self._get_phase_file_path(
             self.options['filter_name'])
-        
-        if high_order_phase_path is not None and os.path.exists(high_order_phase_path):
-            fit_order = 1
-        else:
-            high_order_phase_path = None
-            fit_order = int(self._get_phase_fit_order())
 
-        cube.create_phase_maps(int(self.config['PHASE_BINNING']), fit_order,
+        if high_order_phase_path is None or not os.path.exists(high_order_phase_path):
+            high_order_phase_path = None
+            logging.warnings('No high order phase loaded')
+            
+        cube.create_phase_maps(int(self.config['PHASE_BINNING']), FIT_ORDER,
                                high_order_phase_path=high_order_phase_path)
             
         perf_stats = perf.print_stats()

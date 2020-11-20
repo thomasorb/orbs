@@ -301,7 +301,7 @@ class BinnedPhaseCube(orb.cube.Cube):
     
     def iterative_polyfit(self, polydeg, suffix=None, high_order_phase=None):
         """Fit the cube iteratively, starting by fitting all orders, then
-        fixing the last free order to its mean in the map obtained
+        fixing the last free order to the model of the map obtained
         from the preceding fit.
 
         :param polydeg: Degree of the fitting polynomial. Must be >= 0.
@@ -315,7 +315,6 @@ class BinnedPhaseCube(orb.cube.Cube):
         :return: Path to the last phase maps file (can then be opened
           with PhaseMaps).
         """
-
         if not isinstance(polydeg, int): raise TypeError('polydeg must be an integer')
         if polydeg < 0: raise ValueError('polydeg must be >= 0')
 
@@ -330,11 +329,11 @@ class BinnedPhaseCube(orb.cube.Cube):
                 coeffs=coeffs, high_order_phase=high_order_phase)
             if ideg > 0:
                 ipm = orb.fft.PhaseMaps(ipm_path)
+                ipm.modelize()
                 last_map = ipm.get_map(ideg)
-                last_dist = orb.utils.stats.sigmacut(last_map)
-                logging.info('Computed coefficient of order {}: {:.2e} ({:.2e})'.format(
-                    ideg, np.nanmean(last_dist), np.nanstd(last_dist)))
-                coeffs[ideg] = np.nanmean(last_dist)
+                logging.info('Computed map of order {}: {:.2e} ({:.2e})'.format(
+                    ideg, np.nanmean(last_map), np.nanstd(last_map)))
+                coeffs[ideg] = last_map
         logging.info('final computed phase maps path: {}'.format(ipm_path))
 
         return ipm_path
