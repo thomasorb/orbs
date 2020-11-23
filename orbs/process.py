@@ -991,14 +991,15 @@ class Interferogram(orb.cube.InterferogramCube):
 
         fake_phase = phase_cube.get_phase(10, 10)
         phase_cube_residual = phase_cube[:,:,:] - phase_cube_model
+        phase_cube_residual = orb.utils.stats.robust_modulo(phase_cube_residual)
 
         ## remove the median of the phase vector at each pixel
         zmin, zmax = fake_phase.get_filter_bandpass_pix(border_ratio=0.2)
-        medframe = np.nanmean(phase_cube_residual[:,:,zmin:zmax], axis=2)        
-        phase_cube_residual = np.subtract(phase_cube_residual.T, medframe.T).T
+        #medframe = np.nanmean(phase_cube_residual[:,:,zmin:zmax], axis=2)        
+        #phase_cube_residual = np.subtract(phase_cube_residual.T, medframe.T).T
 
         # compute mean
-        high_order_phase = np.nanmean(phase_cube_residual, axis=(0,1)).astype(np.float64)
+        high_order_phase = np.nanmedian(phase_cube_residual, axis=(0,1)).astype(np.float64)
         high_order_phase = orb.fft.Phase(high_order_phase, phase_cube.get_base_axis(),
                                          params=phase_cube.params)
         
@@ -1006,9 +1007,12 @@ class Interferogram(orb.cube.InterferogramCube):
         phase_cube_residual -= high_order_phase.data
         high_order_phase_std = np.nanstd(phase_cube_residual, axis=(0,1)).astype(np.float64)
 
-        median_std = np.median(high_order_phase_std[zmin:zmax])
         logging.info('median std of each phase value: {:.2e} rad'.format(
-            median_std))
+            np.median(high_order_phase_std[zmin:zmax])))
+        logging.info('min std of each phase value: {:.2e} rad'.format(
+            np.min(high_order_phase_std[zmin:zmax])))
+        logging.info('max std of each phase value: {:.2e} rad'.format(
+            np.max(high_order_phase_std[zmin:zmax])))
                 
         high_order_phase_std = orb.fft.Phase(
             high_order_phase_std, phase_cube.get_base_axis(),
