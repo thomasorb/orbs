@@ -931,6 +931,7 @@ class Interferogram(orb.cube.InterferogramCube):
         :param high_order_phase_path: (Optional) Path to an HDF5 phase
           file.
         """
+        auto_recompute = False
         if not isinstance(poly_order, int): raise TypeError('poly_order must be an int')
         if poly_order < 1: raise ValueError('poly_order = {} but must be >= 1'.format(poly_order))
         
@@ -948,16 +949,18 @@ class Interferogram(orb.cube.InterferogramCube):
                self._get_binned_interferogram_cube_path()))
         else:
             self.create_binned_interferogram_cube(binning)
+            auto_recompute = True
 
         interf_cube = BinnedInterferogramCube(
             self._get_binned_interferogram_cube_path(), config=self.config,
             params=self.params, instrument=self.instrument)
 
-        if os.path.exists(self._get_binned_phase_cube_path()):
-           logging.warning('Binned phase cube already computed. If you want to recompute it please delete: {}'.format(
+        if os.path.exists(self._get_binned_phase_cube_path()) and not auto_recompute:
+            logging.warning('Binned phase cube already computed. If you want to recompute it please delete: {}'.format(
                self._get_binned_phase_cube_path()))
         else:
             interf_cube.compute_phase(self._get_binned_phase_cube_path())
+            auto_recompute = True
 
         if self.indexer is not None:
             self.indexer['binned_phase_cube'] = (
@@ -969,34 +972,72 @@ class Interferogram(orb.cube.InterferogramCube):
             data_prefix=self._data_prefix)
 
         # compute phase maps iteratively
-        final_phase_maps_path = phase_cube.iterative_polyfit(
-            poly_order, high_order_phase=high_order_phase)
+        final_phase_maps_path = self.indexer.get_path(
+            'phase_maps', file_group=self.indexer.file_group)
 
-        logging.info('final computed phase maps path: {}'.format(final_phase_maps_path))
-        if self.indexer is not None:                 
-            self.indexer['phase_maps'] = final_phase_maps_path
+        redo_polyfit = True
+        if final_phase_maps_path is not None:
+            if os.path.exists(final_phase_maps_path) and not auto_recompute:
+                redo_polyfit = False
+                logging.warning('Phase model already computed. If you want to recompute it please delete: {}'.format(
+                    final_phase_maps_path))
+                
+        if redo_polyfit:
+            final_phase_maps_path = phase_cube.iterative_polyfit(
+                poly_order, high_order_phase=high_order_phase)
+            
+            logging.info('final computed phase maps path: {}'.format(final_phase_maps_path))
+            if self.indexer is not None:                 
+                self.indexer['phase_maps'] = final_phase_maps_path
+                
+            auto_recompute = True                
 
-        # compute high order phase
+        ## analyze residual
         final_phase_maps_path = self.indexer.get_path(
             'phase_maps', file_group=self.indexer.file_group)
         
         phasemaps = orb.fft.PhaseMaps(final_phase_maps_path)
         phasemaps.modelize()
 
-        coeffs = [None] * 2 + [0] * (poly_order - 1)
-        phasemaps.generate_phase_cube(self._get_phase_cube_model_path(),
-                                      coeffs=coeffs)
-        
+        if os.path.exists(self._get_phase_cube_model_path()) and not auto_recompute:
+            logging.warning('Phase cube model already computed. If you want to recompute it please delete: {}'.format(
+                 self._get_phase_cube_model_path()))
+            
+        else:
+            coeffs = [None] * 2 + [0] * (poly_order - 1)
+            phasemaps.generate_phase_cube(self._get_phase_cube_model_path(),
+                                          coeffs=coeffs)
+            auto_recompute = True
+             
+
         phase_cube_model = orb.utils.io.read_fits(self._get_phase_cube_model_path())
 
         fake_phase = phase_cube.get_phase(10, 10)
-        phase_cube_residual = phase_cube[:,:,:] - phase_cube_model
-        phase_cube_residual = orb.utils.stats.robust_modulo(phase_cube_residual)
-
-        ## remove the median of the phase vector at each pixel
         zmin, zmax = fake_phase.get_filter_bandpass_pix(border_ratio=0.2)
-        #medframe = np.nanmean(phase_cube_residual[:,:,zmin:zmax], axis=2)        
-        #phase_cube_residual = np.subtract(phase_cube_residual.T, medframe.T).T
+        
+        phase_cube_data = phase_cube.get_all_data()
+        
+        phase_cube_residual = phase_cube_data - phase_cube_model
+        if high_order_phase is not None:
+            phase_cube_residual -= high_order_phase.project(fake_phase.axis).data
+            
+        phase_cube_residual = orb.utils.stats.robust_modulo(phase_cube_residual, np.pi)
+        logging.info('unbiased std of the residual phase cube: {:.2e} rad'.format(
+            orb.utils.stats.unbiased_std(phase_cube_residual[:,:,zmin:zmax].flatten())))
+        
+        ## compute high order phase
+
+        # warning recompute phase cube residual from the beginning,
+        # cause now, we don't want the modulo stuff
+        phase_cube_residual = phase_cube_data - phase_cube_model
+        
+        # remove clear outliers
+        phase_cube_residual[phase_cube_residual > np.nanpercentile(phase_cube_residual, 99.9)] = np.nan
+        phase_cube_residual[phase_cube_residual < np.nanpercentile(phase_cube_residual, 0.1)] = np.nan
+        
+        ### remove the median of the phase vector at each pixel
+        medframe = np.nanmean(phase_cube_residual[:,:,zmin:zmax], axis=2)        
+        phase_cube_residual = np.subtract(phase_cube_residual.T, medframe.T).T
 
         # compute mean
         high_order_phase = np.nanmedian(phase_cube_residual, axis=(0,1)).astype(np.float64)
@@ -1004,14 +1045,14 @@ class Interferogram(orb.cube.InterferogramCube):
                                          params=phase_cube.params)
         
         # compute std
-        phase_cube_residual -= high_order_phase.data
-        high_order_phase_std = np.nanstd(phase_cube_residual, axis=(0,1)).astype(np.float64)
+        
+        high_order_phase_std = np.nanstd(phase_cube_residual - high_order_phase.data, axis=(0,1)).astype(np.float64)
 
-        logging.info('median std of each phase value: {:.2e} rad'.format(
+        logging.info('median uncertainty (std) of the newly computed high order phase: {:.2e} rad'.format(
             np.median(high_order_phase_std[zmin:zmax])))
-        logging.info('min std of each phase value: {:.2e} rad'.format(
+        logging.info('min uncertainty (std) of the newly computed high order phase: {:.2e} rad'.format(
             np.min(high_order_phase_std[zmin:zmax])))
-        logging.info('max std of each phase value: {:.2e} rad'.format(
+        logging.info('max uncertainty (std) of the newly computed high order phase: {:.2e} rad'.format(
             np.max(high_order_phase_std[zmin:zmax])))
                 
         high_order_phase_std = orb.fft.Phase(
