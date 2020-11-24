@@ -2801,13 +2801,13 @@ class CosmicRayDetector(InterferogramMerger):
                                        instrument=self.instrument,
                                        config=self.config,
                                        params=self.params,
-                                       reset=True, camera=1)
+                                       reset=True, camera=1, dtype=bool)
         out_cubeB = orb.cube.RWHDFCube(self._get_cr_map_cube_path(2),
                                        shape=(self.cube_B.dimx, self.cube_B.dimy, self.cube_B.dimz),
                                        instrument=self.instrument,
                                        config=self.config,
                                        params=self.params,
-                                       reset=True, camera=2)
+                                       reset=True, camera=2, dtype=bool)
 
         progress = orb.core.ProgressBar(int(self.cube_A.dimz/ncpus_max))
         for ik in range(0, self.cube_A.dimz, ncpus):
