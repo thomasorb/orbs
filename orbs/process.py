@@ -2932,7 +2932,7 @@ class CosmicRayDetector(InterferogramMerger):
             progress = orb.core.ProgressBar(len(badpix[0]))
             for i in range(len(badpix[0])):
                 progress.update(i+1, 'correcting {}/{} pixels'.format(i+1, len(badpix[0])))
-                out_cube[badpix[0][i], badpix[1][i], :] = 0
+                out_cube[badpix[0][i], badpix[1][i], :] = False
             progress.end()
             logging.info('{} pixels with too much detections cleaned in camera {}'.format(
                 len(badpix[0]), camera))
