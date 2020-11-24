@@ -1171,7 +1171,8 @@ class Orbs(Tools):
                         self.indexer['merged.alignment_parameters'])
                     cube.dx, cube.dy, cube.dr, cube.da, cube.db = alignment_parameters[:5]
                     cube.rc = alignment_parameters[5:7]
-                    cube.zoom_factor = alignment_parameters[7:9]
+                    cube.zoom_factor = alignment_parameters[7:8]
+                    
                     logging.info('alignment parameters: dx {:.2f}, dy {:.2f}, dr {:.2f}, da {:.2f}, db {:.2f}, rcx {:.2f}, rcy {:.2f}, z {:.2f}'.format(
                         *alignment_parameters))
                 else:
@@ -1181,8 +1182,6 @@ class Orbs(Tools):
         else:
             if laser:
                 raise NotImplementedError('init_dx, init_dy and init_angle must be defined in find_laser_alignment itself')
-                cube.find_laser_alignment(
-                    init_dx, init_dy, self.config["INIT_ANGLE"])
 
             logging.info("Alignment parameters: {} {} {} {} {}".format(
                 cube.dx, cube.dy, cube.dr, cube.da, cube.db))

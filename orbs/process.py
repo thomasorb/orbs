@@ -1826,42 +1826,6 @@ class InterferogramMerger(orb.core.Tools):
         return [[self.dx, self.dy, self.dr, self.da, self.db], self.rc, 
                 self.zoom_factor]
 
-    def find_laser_alignment(self, init_dx, init_dy, init_angle):
-        """Brute force algorithm used to find laser frames alignment"""
-
-        ### laser frame alignment is not precise enough to be used.
-        logging.warn('No brute force search: init alignment parameters unchanged')
-        self.dx, self.dy, self.dr = init_dx, init_dy, init_angle
-        self.da = 0.
-        self.db = 0.
-        return [[self.dx, self.dy, self.dr, self.da, self.db], self.rc, 
-                self.zoom_factor]
-
-        ### old alignment function
-        CROP_COEFF = 0.5
-        
-        logging.info("Computing alignment parameters for laser frames")
-        logging.info("Rotation center: %s"%str(self.rc))
-        logging.info("Zoom factor: %f"%self.zoom_factor)
-
-        cx = int(self.cube_A.dimx / 2)
-        cy = int(self.cube_A.dimy / 2)
-        dx = int(self.cube_A.dimx * CROP_COEFF / 2.)
-        dy = int(self.cube_A.dimy * CROP_COEFF / 2.)
-        frameA = self.cube_A[cx-dx:cx+dx+1,cy-dy:cy+dy+1,0]
-        frameB = self.cube_B[cx-dx:cx+dx+1,cy-dy:cy+dy+1,0]
-        deep_A = self.cube_A.get_mean_image()[cx-dx:cx+dx+1,cy-dy:cy+dy+1]
-        deep_B = self.cube_B.get_mean_image()[cx-dx:cx+dx+1,cy-dy:cy+dy+1]
-        frameA /= deep_A
-        frameB /= deep_B
-
-        self.dx, self.dy, self.dr = orb.utils.image.bf_laser_aligner(
-            frameA, frameB, init_dx, init_dy, init_angle, self.zoom_factor)
-        self.da = 0.
-        self.db = 0.
-        return [[self.dx, self.dy, self.dr, self.da, self.db], self.rc, 
-                self.zoom_factor]
-
     def transform(self, interp_order=1):
         """Transform cube B given a set of alignment coefficients.
 
@@ -2890,6 +2854,7 @@ class CosmicRayDetector(InterferogramMerger):
             # detect CRS
             progress.update(int(ik/ncpus_max), info="detecting ({})".format(ik))
 
+            
             jobs = [(ijob, job_server.submit(
                 detect_crs_in_frame, 
                 args=(framesA[:,:,ijob].astype(np.float32),
@@ -2900,7 +2865,7 @@ class CosmicRayDetector(InterferogramMerger):
                        self.dy - alignment_vector_1[ik+ijob, 1],
                        self.dr, self.da, self.db,
                        self.rc[0], self.rc[1],
-                       self.zoom_factor[0], self.zoom_factor[1]],
+                       self.zoom_factor, self.zoom_factor],
                       star_list, fwhm_pix,
                       alignment_vector_1[ik+ijob, 0],
                       alignment_vector_1[ik+ijob, 1]),
