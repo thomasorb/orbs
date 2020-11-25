@@ -3,7 +3,7 @@
 # Author: Thomas Martin <thomas.martin.1@ulaval.ca>
 # File: phase.py
 
-## Copyright (c) 2010-2017 Thomas Martin <thomas.martin.1@ulaval.ca>
+## Copyright (c) 2010-2020 Thomas Martin <thomas.martin.1@ulaval.ca>
 ## 
 ## This file is part of ORBS
 ##
