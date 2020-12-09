@@ -74,7 +74,7 @@ class BinnedInterferogramCube(orb.cube.InterferogramCube):
                     if calibrate:
                         spectrum = spectrum.interpolate(base_axis, quality=10)
                     iphase = np.copy(spectrum.get_phase().data)
-                    # note: the [:iphase.size] as been addedwhen the phase is
+                    # note: the [:iphase.size] has been added when the phase is
                     # not interpolated (calibrate=False) because the
                     # number of samples can be smaller after the
                     # symmetric() step
@@ -143,6 +143,9 @@ class BinnedPhaseCube(orb.cube.Cube):
             suffix = '.' + suffix
         return self._data_path_hdr + 'phase_maps{}.hdf5'.format(suffix)
 
+    def get_high_order_phase_cube_path(self):
+        return self._data_path_hdr + 'high_order_phase_cube.hdf5'
+
     def get_phase(self, x, y):
         """Return a phase vector at position x, y
 
@@ -174,24 +177,21 @@ class BinnedPhaseCube(orb.cube.Cube):
 
         """
         def fit_phase_in_column(col, deg, incoeffs_col, params, base_axis,
-                                high_order_phase_proj, calibcoeff_col):
+                                high_order_phase_col):
             warnings.simplefilter('ignore', RuntimeWarning)
             outcoeffs_col = np.empty((col.shape[0], deg + 1), dtype=float)
             outcoeffs_col.fill(np.nan)
             outcoeffs_err_col = np.empty((col.shape[0], deg + 1), dtype=float)
             outcoeffs_err_col.fill(np.nan)
-            if high_order_phase_proj is not None:
-                _ho_phase = orb.fft.Phase(high_order_phase_proj, base_axis, params)
-            else:
-                _ho_phase = None
             for ij in range(col.shape[0]):
+                
                 icoeffs = tuple([icoeff[ij] for icoeff in incoeffs_col])
                 _phase = orb.fft.Phase(col[ij,:], base_axis, params)
-                if _ho_phase is not None:
-                    _phase = _phase.subtract(_ho_phase)
+                if high_order_phase_col is not None:
+                    _phase.data -= high_order_phase_col[ij,:]
                 try:
                     outcoeffs_col[ij,:], outcoeffs_err_col[ij,:] = _phase.polyfit(
-                        deg, coeffs=icoeffs, calib_coeff=calibcoeff_col[ij],
+                        deg, coeffs=icoeffs, 
                         return_coeffs=True)
                 except orb.utils.err.FitError:
                     logging.debug('fit error')
@@ -200,12 +200,18 @@ class BinnedPhaseCube(orb.cube.Cube):
         if not isinstance(polydeg, int): raise TypeError('polydeg must be an integer')
         if polydeg < 0: raise ValueError('polydeg must be >= 0')
 
-        calibcoeff_map = self.get_calibration_coeff_map()
         
         if high_order_phase is not None:
-            if not isinstance(high_order_phase, orb.fft.Phase):
-                raise TypeError('high_order_phase must be an orb.fft.Phase instance')
-            high_order_phase_proj = high_order_phase.project(self.get_base_axis()).data
+            if isinstance(high_order_phase, orb.fft.Phase):
+                high_order_phase_proj = np.zeros(self.shape, dtype=float)
+                high_order_phase_proj += high_order_phase.project(self.get_base_axis()).data
+                
+            elif isinstance(high_order_phase, orb.fft.HighOrderPhaseCube):
+                high_order_phase_proj = high_order_phase.generate_phase_cube(
+                    None, self.dimx, self.dimy, axis=self.get_base_axis())
+            else:
+                raise TypeError('high_order_phase must be an orb.fft.Phase/HighOrderPhaseMaps instance')
+                
         else: 
             high_order_phase_proj = None
 
@@ -257,7 +263,7 @@ class BinnedPhaseCube(orb.cube.Cube):
                       polydeg,
                       [icoeff[ii+ijob,:] for icoeff in coeffs],
                       self.params.convert(), np.copy(base_axis),
-                      high_order_phase_proj, calibcoeff_map[ii+ijob,:]),
+                      high_order_phase_proj[ii+ijob,:,:]),
                 modules=("import logging",
                          "import warnings",
                          "import numpy as np",
@@ -273,7 +279,8 @@ class BinnedPhaseCube(orb.cube.Cube):
         coeffs_err_cube[np.nonzero(coeffs_cube == 0)] = np.nan
         coeffs_cube[np.nonzero(coeffs_cube == 0)] = np.nan
         
-        coeffs_cube[:,:,0] = orb.utils.image.unwrap_phase_map0(coeffs_cube[:,:,0])
+        coeffs_cube[:,:,0] = orb.utils.image.unwrap_phase_map0(
+            coeffs_cube[:,:,0])
         coeffs_cube[np.nonzero(coeffs_cube == 0)] = np.nan
         
         phase_maps_path = self.get_phase_maps_path(suffix=suffix)
@@ -338,4 +345,42 @@ class BinnedPhaseCube(orb.cube.Cube):
 
         return ipm_path
     
+    def compute_high_order_phase_cube(self, polydeg=None, divnb=30):
+        
+        smin, smax = orb.utils.spectrum.cm12pix(
+            self.get_base_axis().data,
+            self.filterfile.get_filter_bandpass_cm1())
+        smin = int(smin)
+        smax = int(smax) + 1
 
+        if polydeg is None:
+            polydeg = int(self.filterfile.get_phase_fit_order())
+            
+        assert isinstance(polydeg, int), 'polydeg must be an int'
+        logging.info('fitting high order phase with a {} degrees polynomial'.format(polydeg))
+        boxsize = int(self.shape[0]//divnb)
+
+        high_orders_map = np.empty((divnb, divnb, polydeg + 1), dtype=float)
+        axis = self.get_base_axis().data[smin:smax].astype(float)
+        progress = orb.core.ProgressBar(divnb)
+        for ii in range(divnb):
+            progress.update(ii)
+            for ij in range(divnb):
+                xmin, xmax = ii*boxsize, (ii+1)*boxsize
+                ymin, ymax = ij*boxsize, (ij+1)*boxsize
+                ibox = self[xmin:xmax, ymin:ymax, smin:smax]
+                ibox -= np.nanmedian(ibox, axis=2).reshape((ibox.shape[0], ibox.shape[1], 1))
+                
+                iphase = np.nanmedian(ibox, axis=(0,1))
+                icoeffs = np.polyfit(axis, iphase, polydeg)
+                high_orders_map[ii,ij,:] = icoeffs
+        progress.end()
+        
+        params = dict(self.params)
+        params['polyfit_phase_axis'] = axis
+        params['phase_axis'] = self.get_base_axis().data
+        data = orb.core.Data(high_orders_map, params=params)
+        data.writeto(self.get_high_order_phase_cube_path())
+        logging.info('high order phase cube written as: {}'.format(self.get_high_order_phase_cube_path()))
+
+        
