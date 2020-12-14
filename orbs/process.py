@@ -278,6 +278,10 @@ class RawData(orb.cube.InterferogramCube):
         else:
             return self._data_path_hdr + "alignment_vector_err.fits"
 
+    def _get_alignment_fit_results_path(self):
+        """Return the default path to a HDF5 cube of the cosmic rays."""
+        return self._data_path_hdr + "alignment_fit_results.hdf5"
+        
     def _get_cr_map_cube_path(self):
         """Return the default path to a HDF5 cube of the cosmic rays."""
         return self._data_path_hdr + "cr_map.hdf5"
@@ -348,14 +352,20 @@ class RawData(orb.cube.InterferogramCube):
         # get alignment vectors
         (alignment_vector_x,
          alignment_vector_y,
-         alignment_error) = self.get_alignment_vectors(star_list_path)
+         alignment_error) = self.get_alignment_vectors(
+             star_list_path, path=self._get_alignment_fit_results_path())
         
-
+        if self.indexer is not None:
+            self.indexer['alignment_fit_results'] = self._get_alignment_fit_results_path()
+        
         self.alignment_vector = np.array([alignment_vector_x,
                                           alignment_vector_y]).T
         
         alignment_vector_path = self._get_alignment_vector_path()
-        alignment_err_vector_path = self._get_alignment_vector_path(err=True)
+        alignment_err_vector_path = self._get_alignment_vector_path(
+            err=True)
+        
+        
         orb.utils.io.write_fits(alignment_vector_path, self.alignment_vector, 
                                 fits_header=self.get_header())
         if self.indexer is not None:
@@ -1893,7 +1903,8 @@ class InterferogramMerger(orb.core.Tools):
     def compute_correction_vectors(self,
                                    smooth_vector=True,
                                    compute_ext_light=True,
-                                   aperture_photometry=True):
+                                   aperture_photometry=True,
+                                   filter_background=False):
         """Compute the correction vectors used during the merging process (see
 merge() method).
 
@@ -2076,6 +2087,9 @@ merge() method).
         
         star_list_A, fwhm_A = self.cube_A.detect_stars(path=self._get_star_list_path(1))
         star_list_B, fwhm_B = self.cube_B.detect_stars(path=self._get_star_list_path(2))
+        if self.indexer is not None:
+            self.indexer['merger_star_list1'] = self._get_star_list_path(1)
+            self.indexer['merger_star_list2'] = self._get_star_list_path(2)
             
         fwhm_arc_A = np.nanmedian(star_list_A['fwhm_arc'])
         logging.info(
@@ -2086,40 +2100,29 @@ merge() method).
             'mean FWHM of the stars in camera 2: {} arc-seconds'.format(
                 fwhm_arc_B))
 
-        astrom_A = self.cube_A.fit_stars_in_cube(
-            star_list_A, fix_fwhm=False, fix_height=False, no_fit=False,
-            fix_aperture_fwhm_pix=fwhm_A * 1.5, multi_fit=True)
-        orb.utils.io.save_dflist(astrom_A, self._get_fit_results_path(1))
+        if not os.path.exists(self._get_fit_results_path(1)):
+            astrom_A = self.cube_A.fit_stars_in_cube(
+                star_list_A, fix_fwhm=False, fix_height=False, no_fit=False,
+                fix_aperture_fwhm_pix=fwhm_A * 1.5, multi_fit=True,
+                filter_background=filter_background)
+            orb.utils.io.save_dflist(astrom_A, self._get_fit_results_path(1))
+        else:
+            logging.warning('cube A photometry already computed. If you want to redo it remove {}'.format(self._get_fit_results_path(1)))
 
-        astrom_B = self.cube_B.fit_stars_in_cube(
-            star_list_A, fix_fwhm=False, fix_height=False, no_fit=False,
-            fix_aperture_fwhm_pix=fwhm_B * 1.5, multi_fit=True)
-        orb.utils.io.save_dflist(astrom_B, self._get_fit_results_path(2))
+        if not os.path.exists(self._get_fit_results_path(2)):
+            astrom_B = self.cube_B.fit_stars_in_cube(
+                star_list_A, fix_fwhm=False, fix_height=False, no_fit=False,
+                fix_aperture_fwhm_pix=fwhm_B * 1.5, multi_fit=True,
+                filter_background=filter_background)
+            orb.utils.io.save_dflist(astrom_B, self._get_fit_results_path(2))
+        else:
+            logging.warning('cube B photometry already computed. If you want to redo it remove {}'.format(self._get_fit_results_path(2)))
         
         astrom_A = orb.utils.io.load_dflist(self._get_fit_results_path(1))
         astrom_B = orb.utils.io.load_dflist(self._get_fit_results_path(2))
-
-        def get_photometry_array(photom, key):
-            _photom = list()
-            _len = None
-            for ik in photom:
-                is_empty = False
-                if ik is None: is_empty = True
-                elif ik.empty: is_empty = True
-                if not is_empty:
-                    _photom.append(ik[key].values)
-                    _len = len(_photom[-1])
-                else:
-                    _photom.append(None)
-            if _len is None: raise Exception('photometry dataframe is empty')
-            for ik in range(len(_photom)):
-                if _photom[ik] is None:
-                    _photom[ik] = list([np.nan]) * _len
-                    
-            return np.array(_photom).T
         
-        photom_A = get_photometry_array(astrom_A, key=photometry_type)
-        photom_B = get_photometry_array(astrom_B, key=photometry_type)
+        photom_A = orb.utils.astrometry.dflist2arr(astrom_A, key=photometry_type)
+        photom_B = orb.utils.astrometry.dflist2arr(astrom_B, key=photometry_type)
         
         ## MODULATION RATIO #######################################
         # Calculating the mean modulation ratio (to correct for
@@ -2197,6 +2200,10 @@ merge() method).
                 "Fixed modulation ratio: %f"%(
                     modulation_ratio))
 
+        if not 0.99 < modulation_ratio < 1.01:
+            logging.warning('Bad modulation ratio: {}. Modulation ratio fixed at 1. Outputs should be checked with care,'.format(modulation_ratio))
+            modulation_ratio = 1.
+            
         orb.utils.io.write_fits(
             self._get_modulation_ratio_path(), 
             np.array([modulation_ratio]),
@@ -2206,17 +2213,22 @@ merge() method).
             self.indexer['modulation_ratio'] = self._get_modulation_ratio_path()
 
         # PHOTOMETRY ON MERGED FRAMES #############################
-        astrom_merged = self.cube_B.fit_stars_in_cube(
-            star_list_A, local_background=local_background,
-            fix_aperture_fwhm_pix=fwhm_B * 1.5, multi_fit=True,
-            add_cube=[self.cube_A, modulation_ratio],
-            no_fit=no_fit)
-        orb.utils.io.save_dflist(astrom_merged, self._get_fit_results_path('M'))
+        if not os.path.exists(self._get_fit_results_path('M')):
+            astrom_merged = self.cube_B.fit_stars_in_cube(
+                star_list_A, local_background=local_background,
+                fix_aperture_fwhm_pix=fwhm_B * 1.5, multi_fit=True,
+                add_cube=[self.cube_A, modulation_ratio],
+                no_fit=no_fit, filter_background=filter_background)
+            orb.utils.io.save_dflist(astrom_merged, self._get_fit_results_path('M'))
+        else:
+            logging.warning('cube B photometry already computed. If you want to redo it remove {}'.format(self._get_fit_results_path('M')))
 
         astrom_merged = orb.utils.io.load_dflist(self._get_fit_results_path('M'))
 
-        photom_merged = get_photometry_array(astrom_merged, key=photometry_type)
-        photom_merged_err = get_photometry_array(astrom_merged, key=photometry_type + '_err')
+        photom_merged = orb.utils.astrometry.dflist2arr(
+            astrom_merged, key=photometry_type)
+        photom_merged_err = orb.utils.astrometry.dflist2arr(
+            astrom_merged, key=photometry_type + '_err')
 
         ## TRANSMISSION VECTOR ####################################
         logging.info("Computing transmission vector")
@@ -2226,7 +2238,7 @@ merge() method).
         trans_err_list = list()
         
         # normalization of the merged photometry vector
-        chisq_A = get_photometry_array(astrom_A, key='reduced-chi-square')
+        chisq_A = orb.utils.astrometry.dflist2arr(astrom_A, key='reduced-chi-square')
         for istar in range(star_list_A.shape[0]):
             if not np.all(np.isnan(photom_merged)):
                 trans = np.copy(photom_merged[istar,:])

@@ -33,15 +33,16 @@ import logging
 import numpy as np
 import orb.fft
 import warnings
+import pandas as pd
 
 class Graph(object):
 
 
     def __init__(self, params, indexer, fast):
 
-        def imshow(data):
+        def imshow(data, star_list=None):
             pl.figure()
-            pl.imshow(data, origin='lower',
+            pl.imshow(data.T, origin='lower',
                       vmin=np.nanpercentile(data, 10),
                       vmax=np.nanpercentile(data, 90))
             pl.colorbar()
@@ -51,7 +52,35 @@ class Graph(object):
                 pl.ylim((ymin, ymax))
             except Exception as e:
                 logging.debug('error in getting xlim, ylim parameters: {}'.format(e))
+            if star_list is not None:
+                try:
+                    pl.scatter(star_list.x, star_list.y, marker='+', color='red')
+                    for i in range(len(star_list)):
+                        pl.text(star_list.x.values[i] - 100,
+                                star_list.y.values[i] - 100,
+                                i, c='red')
 
+                except Exception as e:
+                    logging.warning('star list could not be read')
+                
+        def starsgrid(im, star_list):
+            xdiv = int(np.sqrt(len(star_list)))
+            ydiv = len(star_list)//xdiv + 1
+            boxsz = 10
+            fig, axes = pl.subplots(xdiv, ydiv)
+            axes = axes.flatten()
+            for i in range(len(star_list)):
+                ix = int(star_list.x.values[i])
+                iy = int(star_list.y.values[i])
+                ibox = im[ix-boxsz:ix+boxsz+1, iy-boxsz:iy+boxsz+1]
+                vmin, vmax = np.nanpercentile(ibox, (10, 95))
+                axes[i].imshow(ibox.T, vmin=vmin, vmax=vmax, origin='lower')
+                axes[i].text(0,0,i, c='red')
+
+            for i in range(len(axes)):
+                axes[i].axis('off')
+
+    
         self.params = params
 
         try: slow = bool(self.getp('slow'))
@@ -84,9 +113,37 @@ class Graph(object):
                 pl.errorbar(np.arange(ivector.size), ivector, yerr=ierr)
                 
         elif self.getp('type') == 'image':
+            try:
+                slname = self.getp('slname')
+            except Exception as e:
+                slname = self.getp('name').split('.')[0] + '.star_list'
+                
+            star_list_path = indexer.get_path(slname)
+            if os.path.exists(star_list_path):
+                sl = pd.read_hdf(star_list_path)
+            else:
+                logging.warning('no star list file attached to {} ({} does not exist)'.format(path, star_list_path))
+                sl = None
+            
             data = orb.utils.io.read_fits(path)
-            imshow(data)            
+            imshow(data, star_list=sl)
 
+        elif self.getp('type') == 'starsgrid':
+            try:
+                slname = self.getp('slname')
+            except Exception as e:
+                slname = self.getp('name').split('.')[0] + '.star_list'
+                
+            star_list_path = indexer.get_path(slname)
+            if os.path.exists(star_list_path):
+                sl = pd.read_hdf(star_list_path)
+            else:
+                raise Exception('no star list file attached to {} ({} does not exist)'.format(path, star_list_path))
+            
+            data = orb.utils.io.read_fits(path)
+            starsgrid(data, sl)
+
+            
         elif self.getp('type') == 'phase':
             pm = orb.fft.PhaseMaps(path)
             if self.getp('model') == 'True':
@@ -139,8 +196,11 @@ class Graph(object):
             raise TypeError('type {}  not understood'.format(self.getp('type')))
         pl.xlabel(self.getp('xlabel'))
         pl.ylabel(self.getp('ylabel'))
-        pl.title(self.getp('title'))
+        pl.gcf().suptitle(self.getp('title'))
         pl.grid()
+
+
+        
 
 
     def savefig(self, folderpath):
@@ -192,8 +252,10 @@ class Reporter(object):
         self.pdf = FPDF()
         self.pdf.add_page()
         self.pdf.set_xy(0, 0)
-        self.pdf.set_font('arial', '', 40)
-        self.pdf.cell(0, 40, 'ORBS Report for {} {}'.format(self.orbs.options['object_name'], self.orbs.options['filter_name']), 1, 0, 'L')
+        self.pdf.set_font('arial', '', 30)
+        self.pdf.cell(0, 40, 'ORBS Report'.format(self.orbs.options['object_name'], self.orbs.options['filter_name']), 0, 0, 'C')
+        self.pdf.ln(20)
+        self.pdf.cell(0, 40, '{} {}'.format(self.orbs.options['object_name'], self.orbs.options['filter_name']), 0, 0, 'C')
         self.pdf.ln(20)
 
         for igraphxml in graphs:

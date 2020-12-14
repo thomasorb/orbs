@@ -595,6 +595,11 @@ class Orbs(Tools):
         """
         return self._get_file_folder_path_hdr(1) + 'zpd_index.fits'
 
+    def _get_star_list_path(self, camera_number):
+        """Return path to the created list of stars
+        """
+        return self._get_file_folder_path_hdr(camera_number) + 'star_list.hdf'
+
     def _get_airmass_file_path(self):
         """Return path to the airmass file.        
         """
@@ -940,7 +945,11 @@ class Orbs(Tools):
         perf = Performance(cube, "Alignment vector computation", camera_number,
                            instrument=self.instrument)
         
-        star_list_path, _ = cube.detect_stars(min_star_number=self.config.DETECT_STAR_NB)
+        star_list_path, _ = cube.detect_stars(
+            min_star_number=self.config.DETECT_STAR_NB,
+            path=self._get_star_list_path(camera_number))
+        self.indexer.set_file_group(camera_number)
+        self.indexer['star_list'] = self._get_star_list_path(camera_number)
 
         cube.create_alignment_vector(
             star_list_path, 
@@ -1223,10 +1232,21 @@ class Orbs(Tools):
         perf = Performance(cube.cube_A, "Merging process", 1,
                            instrument=self.instrument)
 
+        aperture_photometry = True
+        filter_background = False
+        if self.options['filter_name'] == 'C4':
+            # sky lines are way too strong!!
+            aperture_photometry = False 
+            filter_background = True
+            
+            logging.warning('C4 filter: photometry will use fitted flux instead of aperture flux')
+            
         cube.compute_correction_vectors(
             smooth_vector=smooth_vector,
             compute_ext_light=(not self.options['no_sky']
-                               and self.config['EXT_ILLUMINATION']))
+                               and self.config['EXT_ILLUMINATION']),
+            aperture_photometry=aperture_photometry,
+            filter_background=filter_background)
         cube.merge(add_frameB=add_frameB)
         
         perf_stats = perf.print_stats()
