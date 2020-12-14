@@ -948,7 +948,7 @@ class Interferogram(orb.cube.InterferogramCube):
         logging.info('Computing phase maps up to order {}'.format(poly_order))        
 
         if high_order_phase_path is not None:
-            high_order_phase = orb.fft.Phase(
+            high_order_phase = orb.fft.HighOrderPhaseCube(
                 high_order_phase_path, axis=None)
             logging.info('High order phase file loaded: {}'.format(high_order_phase_path))
         else:
@@ -1014,9 +1014,16 @@ class Interferogram(orb.cube.InterferogramCube):
                  self._get_phase_cube_model_path()))
             
         else:
-            coeffs = [None] * 2 + [0] * (poly_order - 1)
-            phasemaps.generate_phase_cube(self._get_phase_cube_model_path(),
-                                          coeffs=coeffs)
+            phase_cube_model = phasemaps.generate_phase_cube(None)
+            if high_order_phase is not None:
+                high_order_model = high_order_phase.generate_phase_cube(
+                    None, low_order_model.shape[0], low_order_model.shape[1], axis=phasemaps.axis)
+                phase_cube_model += high_order_model
+                del high_order_model
+            
+            orb.utils.io.write_fits(
+                self._get_phase_cube_model_path(), phase_cube_model,
+                overwrite=True)
             auto_recompute = True
              
 
@@ -1028,8 +1035,6 @@ class Interferogram(orb.cube.InterferogramCube):
         phase_cube_data = phase_cube.get_all_data()
         
         phase_cube_residual = phase_cube_data - phase_cube_model
-        if high_order_phase is not None:
-            phase_cube_residual -= high_order_phase.project(fake_phase.axis).data
             
         phase_cube_residual = orb.utils.stats.robust_modulo(phase_cube_residual, np.pi)
         logging.info('unbiased std of the residual phase cube: {:.2e} rad'.format(
@@ -1037,61 +1042,61 @@ class Interferogram(orb.cube.InterferogramCube):
         
         ## compute high order phase
 
-        # warning recompute phase cube residual from the beginning,
-        # cause now, we don't want the modulo stuff
-        phase_cube_residual = phase_cube_data - phase_cube_model
+        # # warning recompute phase cube residual from the beginning,
+        # # cause now, we don't want the modulo stuff
+        # phase_cube_residual = phase_cube_data - phase_cube_model
         
-        # remove clear outliers
-        phase_cube_residual[phase_cube_residual > np.nanpercentile(phase_cube_residual, 99.9)] = np.nan
-        phase_cube_residual[phase_cube_residual < np.nanpercentile(phase_cube_residual, 0.1)] = np.nan
+        # # remove clear outliers
+        # phase_cube_residual[phase_cube_residual > np.nanpercentile(phase_cube_residual, 99.9)] = np.nan
+        # phase_cube_residual[phase_cube_residual < np.nanpercentile(phase_cube_residual, 0.1)] = np.nan
         
-        ### remove the median of the phase vector at each pixel
-        medframe = np.nanmean(phase_cube_residual[:,:,zmin:zmax], axis=2)        
-        phase_cube_residual = np.subtract(phase_cube_residual.T, medframe.T).T
+        # ### remove the median of the phase vector at each pixel
+        # medframe = np.nanmean(phase_cube_residual[:,:,zmin:zmax], axis=2)        
+        # phase_cube_residual = np.subtract(phase_cube_residual.T, medframe.T).T
 
-        # compute mean
-        high_order_phase = np.nanmedian(phase_cube_residual, axis=(0,1)).astype(np.float64)
-        high_order_phase = orb.fft.Phase(high_order_phase, phase_cube.get_base_axis(),
-                                         params=phase_cube.params)
+        # # compute mean
+        # high_order_phase = np.nanmedian(phase_cube_residual, axis=(0,1)).astype(np.float64)
+        # high_order_phase = orb.fft.Phase(high_order_phase, phase_cube.get_base_axis(),
+        #                                  params=phase_cube.params)
         
-        # compute std
+        # # compute std
         
-        high_order_phase_std = np.nanstd(phase_cube_residual - high_order_phase.data, axis=(0,1)).astype(np.float64)
+        # high_order_phase_std = np.nanstd(phase_cube_residual - high_order_phase.data, axis=(0,1)).astype(np.float64)
 
-        logging.info('median uncertainty (std) of the newly computed high order phase: {:.2e} rad'.format(
-            np.median(high_order_phase_std[zmin:zmax])))
-        logging.info('min uncertainty (std) of the newly computed high order phase: {:.2e} rad'.format(
-            np.min(high_order_phase_std[zmin:zmax])))
-        logging.info('max uncertainty (std) of the newly computed high order phase: {:.2e} rad'.format(
-            np.max(high_order_phase_std[zmin:zmax])))
+        # logging.info('median uncertainty (std) of the newly computed high order phase: {:.2e} rad'.format(
+        #     np.median(high_order_phase_std[zmin:zmax])))
+        # logging.info('min uncertainty (std) of the newly computed high order phase: {:.2e} rad'.format(
+        #     np.min(high_order_phase_std[zmin:zmax])))
+        # logging.info('max uncertainty (std) of the newly computed high order phase: {:.2e} rad'.format(
+        #     np.max(high_order_phase_std[zmin:zmax])))
                 
-        high_order_phase_std = orb.fft.Phase(
-            high_order_phase_std, phase_cube.get_base_axis(),
-            params=phase_cube.params)
+        # high_order_phase_std = orb.fft.Phase(
+        #     high_order_phase_std, phase_cube.get_base_axis(),
+        #     params=phase_cube.params)
 
-        # remove orders 0 and 1 from the phase residual
-        high_order_phase = high_order_phase.cleaned(border_ratio=-0.1)
-        phase_corr = high_order_phase.data - high_order_phase.polyfit(1).data
+        # # remove orders 0 and 1 from the phase residual
+        # high_order_phase = high_order_phase.cleaned(border_ratio=-0.1)
+        # phase_corr = high_order_phase.data - high_order_phase.polyfit(1).data
 
-        # extrapolate values on the border to avoid phase switch at
-        # filter borders
-        filtmin = np.argmin(np.isnan(phase_corr))
-        phase_corr[:filtmin] = phase_corr[filtmin]
-        filtmax = np.argmax(np.isnan(phase_corr))
-        phase_corr[filtmax:] = phase_corr[filtmax-1]
-        high_order_phase_corr = orb.fft.Phase(
-            phase_corr,
-            axis=high_order_phase.axis.data,
-            err=high_order_phase_std.data,
-            params=phase_cube.params)
+        # # extrapolate values on the border to avoid phase switch at
+        # # filter borders
+        # filtmin = np.argmin(np.isnan(phase_corr))
+        # phase_corr[:filtmin] = phase_corr[filtmin]
+        # filtmax = np.argmax(np.isnan(phase_corr))
+        # phase_corr[filtmax:] = phase_corr[filtmax-1]
+        # high_order_phase_corr = orb.fft.Phase(
+        #     phase_corr,
+        #     axis=high_order_phase.axis.data,
+        #     err=high_order_phase_std.data,
+        #     params=phase_cube.params)
 
-        high_order_phase_corr.writeto(self._get_high_order_phase_path())
-        high_order_phase_std.writeto(self._get_high_order_phase_std_path())
+        # high_order_phase_corr.writeto(self._get_high_order_phase_path())
+        # high_order_phase_std.writeto(self._get_high_order_phase_std_path())
     
-        logging.info('high order phase path: {}'.format(
-            self._get_high_order_phase_path()))
-        if self.indexer is not None:                 
-            self.indexer['high_order_phase'] = self._get_high_order_phase_path()
+        # logging.info('high order phase path: {}'.format(
+        #     self._get_high_order_phase_path()))
+        # if self.indexer is not None:                 
+        #     self.indexer['high_order_phase'] = self._get_high_order_phase_path()
 
 
     def compute_spectrum(self, phase_correction=True,

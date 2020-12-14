@@ -145,10 +145,20 @@ class Graph(object):
 
             
         elif self.getp('type') == 'phase':
+            order = int(self.getp('order'))
+            if order == 1:
+                path = path.replace('iter0', 'iter1')
+                
             pm = orb.fft.PhaseMaps(path)
+            pm0 = pm.get_map(order)
             if self.getp('model') == 'True':
                 pm.modelize()
-            imshow(pm.get_map(0))
+                pm0 = pm.get_map(order)
+            if self.getp('model') == 'res':
+                old_pm0 = np.copy(pm0)
+                pm.modelize()
+                pm0 = old_pm0 - pm.get_map(order)
+            imshow(pm0)
 
         elif self.getp('type') == 'spectrum':
             pl.figure(figsize=(8, 4))
