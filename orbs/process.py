@@ -947,12 +947,7 @@ class Interferogram(orb.cube.InterferogramCube):
         
         logging.info('Computing phase maps up to order {}'.format(poly_order))        
 
-        if high_order_phase_path is not None:
-            high_order_phase = orb.fft.HighOrderPhaseCube(
-                high_order_phase_path, axis=None)
-            logging.info('High order phase file loaded: {}'.format(high_order_phase_path))
-        else:
-            high_order_phase = None
+        high_order_phase = self.get_high_order_phase()
 
         if os.path.exists(self._get_binned_interferogram_cube_path()):
            logging.warning('Binned interferogram cube already computed. If you want to recompute it please delete: {}'.format(
@@ -1040,69 +1035,10 @@ class Interferogram(orb.cube.InterferogramCube):
         logging.info('unbiased std of the residual phase cube: {:.2e} rad'.format(
             orb.utils.stats.unbiased_std(phase_cube_residual[:,:,zmin:zmax].flatten())))
         
-        ## compute high order phase
-
-        # # warning recompute phase cube residual from the beginning,
-        # # cause now, we don't want the modulo stuff
-        # phase_cube_residual = phase_cube_data - phase_cube_model
-        
-        # # remove clear outliers
-        # phase_cube_residual[phase_cube_residual > np.nanpercentile(phase_cube_residual, 99.9)] = np.nan
-        # phase_cube_residual[phase_cube_residual < np.nanpercentile(phase_cube_residual, 0.1)] = np.nan
-        
-        # ### remove the median of the phase vector at each pixel
-        # medframe = np.nanmean(phase_cube_residual[:,:,zmin:zmax], axis=2)        
-        # phase_cube_residual = np.subtract(phase_cube_residual.T, medframe.T).T
-
-        # # compute mean
-        # high_order_phase = np.nanmedian(phase_cube_residual, axis=(0,1)).astype(np.float64)
-        # high_order_phase = orb.fft.Phase(high_order_phase, phase_cube.get_base_axis(),
-        #                                  params=phase_cube.params)
-        
-        # # compute std
-        
-        # high_order_phase_std = np.nanstd(phase_cube_residual - high_order_phase.data, axis=(0,1)).astype(np.float64)
-
-        # logging.info('median uncertainty (std) of the newly computed high order phase: {:.2e} rad'.format(
-        #     np.median(high_order_phase_std[zmin:zmax])))
-        # logging.info('min uncertainty (std) of the newly computed high order phase: {:.2e} rad'.format(
-        #     np.min(high_order_phase_std[zmin:zmax])))
-        # logging.info('max uncertainty (std) of the newly computed high order phase: {:.2e} rad'.format(
-        #     np.max(high_order_phase_std[zmin:zmax])))
-                
-        # high_order_phase_std = orb.fft.Phase(
-        #     high_order_phase_std, phase_cube.get_base_axis(),
-        #     params=phase_cube.params)
-
-        # # remove orders 0 and 1 from the phase residual
-        # high_order_phase = high_order_phase.cleaned(border_ratio=-0.1)
-        # phase_corr = high_order_phase.data - high_order_phase.polyfit(1).data
-
-        # # extrapolate values on the border to avoid phase switch at
-        # # filter borders
-        # filtmin = np.argmin(np.isnan(phase_corr))
-        # phase_corr[:filtmin] = phase_corr[filtmin]
-        # filtmax = np.argmax(np.isnan(phase_corr))
-        # phase_corr[filtmax:] = phase_corr[filtmax-1]
-        # high_order_phase_corr = orb.fft.Phase(
-        #     phase_corr,
-        #     axis=high_order_phase.axis.data,
-        #     err=high_order_phase_std.data,
-        #     params=phase_cube.params)
-
-        # high_order_phase_corr.writeto(self._get_high_order_phase_path())
-        # high_order_phase_std.writeto(self._get_high_order_phase_std_path())
-    
-        # logging.info('high order phase path: {}'.format(
-        #     self._get_high_order_phase_path()))
-        # if self.indexer is not None:                 
-        #     self.indexer['high_order_phase'] = self._get_high_order_phase_path()
-
 
     def compute_spectrum(self, phase_correction=True,
                          bad_frames_vector=None, window_type=None,
                          phase_cube=False, phase_maps_path=None,
-                         high_order_phase_path=None,
                          wave_calibration=False, balanced=True,
                          wavenumber=False):
         
@@ -1150,8 +1086,8 @@ class Interferogram(orb.cube.InterferogramCube):
                                         phase_maps_col,
                                         phase_maps_axis,
                                         phase_maps_params,
-                                        high_order_phase_data,
-                                        high_order_phase_axis,
+                                        high_order_phase,
+                                        xmin, ymin,
                                         return_phase, # not implemented
                                         balanced,
                                         wavenumber): # nm computation not implemented
@@ -1161,13 +1097,12 @@ class Interferogram(orb.cube.InterferogramCube):
             import logging
             import orb.utils.log
             import time
+            import warnings
+            warnings.simplefilter('ignore', RuntimeWarning)
             orb.utils.log.setup_socket_logging()
             dimz = data.shape[1]
             spectrum_column = np.zeros_like(data, dtype=np.complex128)
-            ho_phase = Phase(high_order_phase_data,
-                             axis=high_order_phase_axis,
-                             params=params)
-
+            
             times = {'loop':list(), 'probe1':list(), 'probe2':list()}
             for ij in range(data.shape[0]):
                 itime = dict()
@@ -1196,8 +1131,9 @@ class Interferogram(orb.cube.InterferogramCube):
                 iphase = Phase(phase_maps_col[ij,:],
                                axis=phase_maps_axis,
                                params=phase_maps_params)
-                iphase = iphase.add(ho_phase)
-
+                iphase = iphase.add(high_order_phase.get_phase(
+                    xmin, ymin+ij, axis=phase_maps_axis))
+                
                 if phase_correction:
                     ispectrum.correct_phase(iphase)
                     spectrum_column[ij,:] = np.copy(ispectrum.data)
@@ -1219,23 +1155,17 @@ class Interferogram(orb.cube.InterferogramCube):
             logging.info("Computing phase")
             raise NotImplementedError('Phase computation not implemented')
 
+        # loading high order phase
+        high_order_phase = self.get_high_order_phase()
+        
         if phase_correction:
             # get phase
             phase_maps = orb.fft.PhaseMaps(phase_maps_path)
             phase_maps.modelize() # phase maps model is computed in place
             logging.info('Phase maps file: {}'.format(phase_maps_path))
-            if high_order_phase_path is not None:
-                high_order_phase = orb.fft.Phase(high_order_phase_path, None, params=self.params)
-                logging.info('High order phase file loaded: {}'.format(high_order_phase_path))
-                high_order_phase_data = np.copy(high_order_phase.data)
-                high_order_phase_axis = np.copy(high_order_phase.axis.data)
-            else:
-                high_order_phase = None
-                high_order_phase_data = None
-                high_order_phase_axis = None
         else:
             phase_maps = None
-            logging.warn('No phase correction')
+            logging.warn('No low order phase correction')
 
         if wave_calibration:
             logging.warn('Wavelength/wavenumber calibration')
@@ -1267,12 +1197,6 @@ class Interferogram(orb.cube.InterferogramCube):
                 int(0.02*self.dimx),
                 0, self.dimx,
                 0, self.dimy)
-            ### DEBUG
-            # xmin = 213-5
-            # xmax = 213+5
-            # ymin = 1416-5
-            # ymax = 1416+5
-            ### DEBUG
 
             mean_interf = np.nanmedian(np.nanmedian(
                 self.get_data(xmin, xmax, ymin, ymax, 0, self.dimz),
@@ -1285,17 +1209,12 @@ class Interferogram(orb.cube.InterferogramCube):
             mean_spectrum = mean_interf.get_spectrum()
             
             mean_phase = phase_maps.get_phase(self.dimx/2, self.dimy/2, unbin=True)
-            mean_phase = mean_phase.add(high_order_phase)
+            mean_phase = mean_phase.add(high_order_phase.get_phase(self.dimx/2, self.dimy/2, axis=mean_phase.axis))
             mean_spectrum.correct_phase(mean_phase)
                         
             if np.nanmean(mean_spectrum.data.real) < 0:
                 logging.info("Negative polarity : 0th order phase map has been corrected (add PI)")
                 phase_maps.reverse_polarity()
-
-
-            if (orb.utils.fft.spectrum_mean_energy(mean_spectrum.data.imag)
-                > .5 * orb.utils.fft.spectrum_mean_energy(mean_spectrum.data.real)):
-                logging.warn("Too much energy in the imaginary part, check the phase correction")
       
         ## Spectrum computation
 
@@ -1373,8 +1292,9 @@ class Interferogram(orb.cube.InterferogramCube):
                              phase_maps, x_min + ii + ijob, y_min, y_max),
                           phase_maps.axis,
                           phase_maps.params.convert(),
-                          high_order_phase_data,
-                          high_order_phase_axis,
+                          high_order_phase,
+                          x_min + ii + ijob,
+                          y_min,
                           phase_cube, balanced,
                           wavenumber)))
                         for ijob in range(ncpus)]
@@ -3046,7 +2966,6 @@ class Spectrum(orb.cube.SpectralCube):
             deep_frame = orb.image.Image(deep_frame_path)
             out_cube.set_deep_frame(deep_frame.data)
             out_cube.set_params(deep_frame.params)
-
         
         out_cube.set_param('wavenumber_calibration', True)
         out_cube.set_param('wavetype', 'WAVENUMBER')

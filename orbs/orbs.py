@@ -947,7 +947,9 @@ class Orbs(Tools):
         
         star_list_path, _ = cube.detect_stars(
             min_star_number=self.config.DETECT_STAR_NB,
-            path=self._get_star_list_path(camera_number))
+            path=self._get_star_list_path(camera_number),
+            filter_background=True)
+        
         self.indexer.set_file_group(camera_number)
         self.indexer['star_list'] = self._get_star_list_path(camera_number)
 
@@ -974,7 +976,8 @@ class Orbs(Tools):
         alignment_vector_path_1 = self.indexer['cam1.alignment_vector']
 
         star_list_path, fwhm_pix = cube.cube_A.detect_stars(
-            min_star_number=self.config.DETECT_STAR_NB)
+            min_star_number=self.config.DETECT_STAR_NB,
+            filter_background=True)
 
         cube.create_cosmic_ray_maps(alignment_vector_path_1, star_list_path, fwhm_pix)
         cube.clean_cosmic_ray_map(1)
@@ -1400,15 +1403,12 @@ class Orbs(Tools):
             phase_maps_path = self.indexer.get_path(
                 'phase_maps', file_group=camera_number)
 
-        high_order_phase_path = self._get_phase_file_path(self.options['filter_name'])
-
         ## Compute spectrum
         cube.compute_spectrum(
             phase_correction=phase_correction,
             wave_calibration=wave_calibration,
             window_type=apodization_function,
             phase_maps_path=phase_maps_path,
-            high_order_phase_path=high_order_phase_path,
             balanced=balanced,
             wavenumber=wavenumber)
 
@@ -1458,16 +1458,8 @@ class Orbs(Tools):
         
         perf = Performance(cube, "Phase map creation", camera_number,
                            instrument=self.instrument)
-        
-        high_order_phase_path = self._get_phase_file_path(
-            self.options['filter_name'])
-
-        if high_order_phase_path is None or not os.path.exists(high_order_phase_path):
-            high_order_phase_path = None
-            logging.warnings('No high order phase loaded')
             
-        cube.create_phase_maps(int(self.config['PHASE_BINNING']), FIT_ORDER,
-                               high_order_phase_path=high_order_phase_path)
+        cube.create_phase_maps(int(self.config['PHASE_BINNING']), FIT_ORDER)
             
         perf_stats = perf.print_stats()
         del perf
@@ -1480,13 +1472,24 @@ class Orbs(Tools):
             spectrum.params.reset('standard_image_path', self.options['standard_image_path_1.hdf5'])
         
         logging.info('registering standard image')
+        self.indexer.set_file_group(0)
+        path = self.indexer['merged.standard_image_unreg']
+        if path is not None:
+            if os.path.exists(path):
+                logging.warning('Standard image already registered. If you want to redo the registration please remove: {}'.format(path))
+                return path
+            
         try:
             std_im = spectrum.get_standard_image()
             std_im.writeto(self._get_wcs_standard_image_path())
+            self.indexer['standard_image_unreg'] = self._get_wcs_standard_image_path()
+        
             # image must be reopened for the correct wcs parameters to be loaded
             std_im = orb.image.Image(self._get_wcs_standard_image_path())
-            std_im.register()
+            std_im.register(filter_background=True)
             std_im.writeto(self._get_wcs_standard_image_path())
+            self.indexer['standard_image'] = self._get_wcs_standard_image_path()
+        
             return self._get_wcs_standard_image_path()
         
         except Exception as e:

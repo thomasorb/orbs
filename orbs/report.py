@@ -119,13 +119,20 @@ class Graph(object):
                 slname = self.getp('name').split('.')[0] + '.star_list'
                 
             star_list_path = indexer.get_path(slname)
-            if os.path.exists(star_list_path):
-                sl = pd.read_hdf(star_list_path)
-            else:
-                logging.warning('no star list file attached to {} ({} does not exist)'.format(path, star_list_path))
-                sl = None
             
-            data = orb.utils.io.read_fits(path)
+            sl = None
+            if star_list_path is not None:
+                if os.path.exists(star_list_path):
+                    sl = pd.read_hdf(star_list_path)
+                else:
+                    logging.warning('no star list file attached to {} ({} does not exist)'.format(path, star_list_path))
+                
+            if 'fits' in path:
+                data = orb.utils.io.read_fits(path)
+            elif 'hdf' in path:
+                data = orb.image.Image(path).data
+            else:
+                raise Exception('image must be of type hdf or fits')
             imshow(data, star_list=sl)
 
         elif self.getp('type') == 'starsgrid':
@@ -133,14 +140,22 @@ class Graph(object):
                 slname = self.getp('slname')
             except Exception as e:
                 slname = self.getp('name').split('.')[0] + '.star_list'
-                
-            star_list_path = indexer.get_path(slname)
+
+            if not os.path.exists(slname):
+                star_list_path = indexer.get_path(slname)
+            else:
+                star_list_path = slname
             if os.path.exists(star_list_path):
                 sl = pd.read_hdf(star_list_path)
             else:
                 raise Exception('no star list file attached to {} ({} does not exist)'.format(path, star_list_path))
-            
-            data = orb.utils.io.read_fits(path)
+
+            if 'fits' in path:
+                data = orb.utils.io.read_fits(path)
+            elif 'hdf' in path:
+                data = orb.image.Image(path).data
+            else:
+                raise Exception('image must be of type hdf or fits')
             starsgrid(data, sl)
 
             
@@ -171,6 +186,7 @@ class Graph(object):
             interf.plot()
             
         elif self.getp('type') == 'spectrum_cube':
+            pl.figure(figsize=(8, 4))
             cube = orb.cube.SpectralCube(path)
             ix, iy = self.getp(('x', 'y'), cast=int)
             r = self.getp('r', cast=float)
@@ -179,24 +195,24 @@ class Graph(object):
             pl.legend()
 
         elif self.getp('type') == 'calib_image':
-            cube = orb.cube.SpectralCube(path)
-            im = cube.get_deep_frame()
+            im = orb.image.Image(path)
             im.imshow(perc=90)
-            pl.colorbar()
-            
             try:
-                starcat = im.get_stars_from_catalog()
+                starcat = im.get_stars_from_catalog(max_stars=200)
+                starcat.to_hdf('calib_grid.hdf', 'data', mode='w')
             except Exception as e:
                 logging.warn('star position could not be added: ', e)
             else:
                 pl.scatter(starcat.x, starcat.y, c='red', marker='+')
+            
             try:
                 xmin, xmax, ymin, ymax = self.getp(('xmin', 'xmax', 'ymin', 'ymax'), cast=int)
                 pl.xlim((xmin, xmax))
                 pl.ylim((ymin, ymax))
             except Exception as e:
                 logging.debug('error getting xlim, ylim parameters: {}'.format(e))
-                
+
+            
         elif self.getp('type') == 'modulation_ratio':
             logging.info('Note that this may take a while. if you want to skip it, please use the --fast option')
             cube = orb.cube.SpectralCube(path)
@@ -204,11 +220,17 @@ class Graph(object):
             imshow(im)
         else:
             raise TypeError('type {}  not understood'.format(self.getp('type')))
-        pl.xlabel(self.getp('xlabel'))
-        pl.ylabel(self.getp('ylabel'))
-        pl.gcf().suptitle(self.getp('title'))
-        pl.grid()
 
+        pl.gcf().suptitle(self.getp('title'))    
+        pl.grid()
+        
+        try:
+            pl.xlabel(self.getp('xlabel'))
+            pl.ylabel(self.getp('ylabel'))
+            
+        except Exception: pass
+            
+            
 
         
 
