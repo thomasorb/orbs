@@ -30,6 +30,7 @@ If you have followed the installation steps for orb, you already have a conda en
 ```bash
 conda install -n orb3 -c conda-forge clint html2text distro lxml python-magic
 conda activate orb3
+pip install gitpython
 pip install cadcdata --no-deps
 pip install cadcutils --no-deps
 ```
