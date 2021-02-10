@@ -1656,12 +1656,13 @@ class InterferogramMerger(orb.core.Tools):
         """return self.params as a fits header"""
         return orb.utils.io.dict2header(dict(self.params))
     
-    def compute_alignment_parameters(self, combine_first_frames=True):
+    def compute_alignment_parameters(self, star_list_2=None,
+                                     combine_first_frames=True):
         """
         Return the alignment coefficients to align the cube of the
         camera 2 on the cube of the camera 1
 
-        :param star_list_path_B: Path to a list of star for camera B
+        :param star_list_2: list of star for camera B
         
         :param combine_first_frames: If True, only the fist frames are
           combined to compute alignement parameters (default False).
@@ -1692,10 +1693,17 @@ class InterferogramMerger(orb.core.Tools):
             frameA = np.nanmedian(self.cube_A[:,:,:N_FRAMES], axis=2)
             frameB = np.nanmedian(self.cube_B[:,:,:N_FRAMES], axis=2)
             
-
         if HPFILTER: # Filter alignment frames
-            frameA = orb.utils.image.high_pass_diff_image_filter(frameA, deg=1)
-            frameB = orb.utils.image.high_pass_diff_image_filter(frameB, deg=1)
+            logging.warning('Filtering alignment frames')
+            #frameA = orb.utils.image.high_pass_diff_image_filter(frameA, deg=1)
+            #frameB = orb.utils.image.high_pass_diff_image_filter(frameB, deg=1)
+            frameA = orb.utils.image.filter_background(frameA)
+            frameA = orb.utils.image.low_pass_image_filter(frameA, 5)
+            frameA += 100
+            frameB = orb.utils.image.filter_background(frameB)
+            frameB = orb.utils.image.low_pass_image_filter(frameB, 5)
+            frameB += 100
+        
         
         frameA = orb.image.Image(frameA, instrument=self.instrument,
                                  config=self.config, data_prefix=self._data_prefix,
@@ -1708,10 +1716,13 @@ class InterferogramMerger(orb.core.Tools):
         frameA.reset_sip()
         frameB.reset_sip()
 
+        frameA.writeto(self._data_path_hdr + 'frameA.debug.hdf5')
+        frameB.writeto(self._data_path_hdr + 'frameB.debug.hdf5')
+
         XYSTEP_SIZE = 0.2 # Pixel step size of the search range
 
-        ANGLE_STEPS = 60 # Angle steps for brute force guess
-        ANGLE_RANGE = 1.5 # Angle range for brute force guess
+        ANGLE_STEPS = 40 # Angle steps for brute force guess
+        ANGLE_RANGE = 1 # Angle range for brute force guess
         RANGE_COEFF = self.config.ALIGNER_RANGE_COEFF
 
         def get_ranges(xystep_size, angle_range, angle_steps, range_coeff):
@@ -1736,8 +1747,9 @@ class InterferogramMerger(orb.core.Tools):
 
         result = frameB.compute_alignment_parameters(
             frameA,
-            xy_range=(xy_range1, xy_range2),
-            r_range=(r_range1, r_range2),
+            (xy_range1, xy_range2),
+            (r_range1, r_range2),
+            star_list1=star_list_2,
             fwhm_arc=self.config.INIT_FWHM,
             correct_distortion=False,
             coeffs=[self.dx, self.dy, self.dr, self.da, self.db, self.zoom_factor])
@@ -1826,6 +1838,7 @@ class InterferogramMerger(orb.core.Tools):
             self.indexer['transformed_interfero_cube'] = self._get_transformed_interfero_cube_path()
 
     def compute_correction_vectors(self,
+                                   star_list_path=None,
                                    smooth_vector=True,
                                    compute_ext_light=True,
                                    aperture_photometry=True,
@@ -2009,21 +2022,28 @@ merge() method).
 
         ## COMPUTING STARS PHOTOMETRY #############################
         logging.info("Computing stars photometry")
-        
-        star_list_A, fwhm_A = self.cube_A.detect_stars(path=self._get_star_list_path(1))
-        star_list_B, fwhm_B = self.cube_B.detect_stars(path=self._get_star_list_path(2))
+
+        self.cube_A.deep_frame = orb.utils.io.read_fits(self.indexer['cam1.deep_frame'])
+        if star_list_path is None:
+            star_list_A, fwhm_A = self.cube_A.detect_stars(path=self._get_star_list_path(1))
+        else:
+            star_list_A = orb.utils.astrometry.load_star_list(
+                star_list_path, remove_nans=True)
+            star_list_A = self.cube_A.get_deep_frame().fit_stars(star_list_A)
+            
         if self.indexer is not None:
             self.indexer['merger_star_list1'] = self._get_star_list_path(1)
             self.indexer['merger_star_list2'] = self._get_star_list_path(2)
-            
+
+        fwhm_A = np.nanmedian(star_list_A['fwhm'])
         fwhm_arc_A = np.nanmedian(star_list_A['fwhm_arc'])
         logging.info(
             'mean FWHM of the stars in camera 1: {} arc-seconds'.format(
                 fwhm_arc_A))
-        fwhm_arc_B = np.nanmedian(star_list_B['fwhm_arc'])
-        logging.info(
-            'mean FWHM of the stars in camera 2: {} arc-seconds'.format(
-                fwhm_arc_B))
+        # fwhm_arc_B = np.nanmedian(star_list_B['fwhm_arc'])
+        # logging.info(
+        #     'mean FWHM of the stars in camera 2: {} arc-seconds'.format(
+        #         fwhm_arc_B))
 
         if not os.path.exists(self._get_fit_results_path(1)):
             astrom_A = self.cube_A.fit_stars_in_cube(
@@ -2037,7 +2057,7 @@ merge() method).
         if not os.path.exists(self._get_fit_results_path(2)):
             astrom_B = self.cube_B.fit_stars_in_cube(
                 star_list_A, fix_fwhm=False, fix_height=False, no_fit=False,
-                fix_aperture_fwhm_pix=fwhm_B * 1.5, multi_fit=True,
+                fix_aperture_fwhm_pix=fwhm_A * 1.5, multi_fit=True,
                 filter_background=filter_background)
             orb.utils.io.save_dflist(astrom_B, self._get_fit_results_path(2))
         else:
@@ -2141,7 +2161,7 @@ merge() method).
         if not os.path.exists(self._get_fit_results_path('M')):
             astrom_merged = self.cube_B.fit_stars_in_cube(
                 star_list_A, local_background=local_background,
-                fix_aperture_fwhm_pix=fwhm_B * 1.5, multi_fit=True,
+                fix_aperture_fwhm_pix=fwhm_A * 1.5, multi_fit=True,
                 add_cube=[self.cube_A, modulation_ratio],
                 no_fit=no_fit, filter_background=filter_background)
             orb.utils.io.save_dflist(astrom_merged, self._get_fit_results_path('M'))

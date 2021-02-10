@@ -787,6 +787,19 @@ class Orbs(Tools):
                 "Please choose a correct camera number : 0, 1 or 2")
         return balanced
 
+
+    def get_star_list_path(self, camera_number):
+        if camera_number not in [1,2]:
+            raise Exception('Please choose a correct camera number : 1 or 2')
+        
+        star_list_path = None
+        key = 'star_list_path_{}'.format(camera_number)
+        if key in self.options:
+            star_list_path = self.options[key]
+            logging.warning('precomputed star list found {}'.format(star_list_path))
+        return star_list_path
+        
+        
     def set_init_angle(self, init_angle):
         """Change config variable :py:const:`orbs.orbs.Orbs.INIT_ANGLE`. 
 
@@ -944,11 +957,13 @@ class Orbs(Tools):
         cube = self._init_raw_data_cube(camera_number)
         perf = Performance(cube, "Alignment vector computation", camera_number,
                            instrument=self.instrument)
-        
-        star_list_path, _ = cube.detect_stars(
-            min_star_number=self.config.DETECT_STAR_NB,
-            path=self._get_star_list_path(camera_number),
-            filter_background=True)
+
+        star_list_path = self.get_star_list_path(camera_number)
+        if star_list_path is None:
+            star_list_path, _ = cube.detect_stars(
+                min_star_number=self.config.DETECT_STAR_NB,
+                path=self._get_star_list_path(camera_number),
+                filter_background=True)
         
         self.indexer.set_file_group(camera_number)
         self.indexer['star_list'] = self._get_star_list_path(camera_number)
@@ -975,9 +990,14 @@ class Orbs(Tools):
 
         alignment_vector_path_1 = self.indexer['cam1.alignment_vector']
 
-        star_list_path, fwhm_pix = cube.cube_A.detect_stars(
-            min_star_number=self.config.DETECT_STAR_NB,
-            filter_background=True)
+        star_list_path = self.get_star_list_path(1)
+        if star_list_path is None:
+            star_list_path, fwhm_pix = cube.cube_A.detect_stars(
+                min_star_number=self.config.DETECT_STAR_NB,
+                filter_background=True)
+        else:
+            star_list = orb.utils.astrometry.load_star_list(star_list_path)
+            fwhm_pix = cube.cube_A.detect_fwhm(star_list)
 
         cube.create_cosmic_ray_maps(alignment_vector_path_1, star_list_path, fwhm_pix)
         cube.clean_cosmic_ray_map(1)
@@ -1176,6 +1196,11 @@ class Orbs(Tools):
 
         # find alignment coefficients
         if not no_star:
+            star_list_path = self.get_star_list_path(2)
+            if star_list_path is not None:
+                star_list = orb.utils.astrometry.load_star_list(star_list_path)
+                fwhm_pix, _ = cube.cube_B.detect_fwhm(star_list)
+
             if self.indexer['merged.alignment_parameters'] is not None:
                 if os.path.exists(self.indexer['merged.alignment_parameters']):
                     logging.warn('alignment parameters already computed from a previous reduction process. Computation will not be done again. To force computation please remove {}'.format(self.indexer['merged.alignment_parameters']))
@@ -1188,9 +1213,11 @@ class Orbs(Tools):
                     logging.info('alignment parameters: dx {:.2f}, dy {:.2f}, dr {:.2f}, da {:.2f}, db {:.2f}, rcx {:.2f}, rcy {:.2f}, z {:.2f}'.format(
                         *alignment_parameters))
                 else:
-                    cube.compute_alignment_parameters(combine_first_frames=True)
+                    cube.compute_alignment_parameters(combine_first_frames=True,
+                                                      star_list_2=star_list)
             else:
-                cube.compute_alignment_parameters(combine_first_frames=True)
+                cube.compute_alignment_parameters(combine_first_frames=True,
+                                                  star_list_2=star_list)
         else:
             if laser:
                 raise NotImplementedError('init_dx, init_dy and init_angle must be defined in find_laser_alignment itself')
@@ -1215,7 +1242,7 @@ class Orbs(Tools):
           function. (Default True).
          
         .. seealso:: :meth:`process.InterferogramMerger.merge`
-        """                    
+        """
         # get cubes path
         interf_cube_path_1 = self.indexer.get_path(
             'cam1.interfero_cube', err=True)
@@ -1243,8 +1270,11 @@ class Orbs(Tools):
             filter_background = True
             
             logging.warning('C4 filter: photometry will use fitted flux instead of aperture flux')
-            
+
+        star_list_path = self.get_star_list_path(1)
+        
         cube.compute_correction_vectors(
+            star_list_path=star_list_path,
             smooth_vector=smooth_vector,
             compute_ext_light=(not self.options['no_sky']
                                and self.config['EXT_ILLUMINATION']),
@@ -1496,9 +1526,9 @@ class Orbs(Tools):
             logging.warn('no standard image can be created: {}'.format(e))
             return None
         
-    def _compute_wcs(self, camera_number):
+    def _compute_wcs(self, camera_number, wcs_calibration=True):
         """Register deep frame and compute wcs
-        """
+        """    
         if os.path.exists(self._get_wcs_deep_frame_path()):
             self.indexer.set_file_group(camera_number)
             self.indexer['wcs_deep_frame'] = self._get_wcs_deep_frame_path()
@@ -1522,14 +1552,20 @@ class Orbs(Tools):
             
         deep_frame = orb.image.Image(deep_frame_path, instrument=self.instrument,
                                      params=self.options)
-        try:
-            deep_frame.register()
-        except Exception as e:
-            exc_info = sys.exc_info()
-            logging.warn('Error during WCS computation, check WCS parameters in the option file: {}'.format(e))
-            traceback.print_exception(*exc_info)
-            del exc_info
-            correct_wcs = None
+
+        if not wcs_calibration:
+            logging.warning('wcs computation skipped')
+            
+        else:
+            try:
+                deep_frame.register()
+            except Exception as e:
+                exc_info = sys.exc_info()
+                logging.warn('Error during WCS computation, check WCS parameters in the option file: {}'.format(e))
+                traceback.print_exception(*exc_info)
+                del exc_info
+            
+        
         deep_frame.writeto(self._get_wcs_deep_frame_path())
         self.indexer.set_file_group(camera_number)
         self.indexer['wcs_deep_frame'.format(camera_number)] = self._get_wcs_deep_frame_path()
@@ -1600,13 +1636,22 @@ class Orbs(Tools):
         return perf_stats
 
 
-    def extract_standard_spectrum(self):
+    def extract_standard_spectrum(self, wcs_calibration=True):
+
         im = orb.image.Image(self._get_wcs_deep_frame_path())
-        target_x, target_y = im.find_object(is_standard=True)
-        logging.info('standard position guessed from astrometry solution: ({:.1f},{:.1f})'.format(target_x, target_y))
-        fit = im.fit_stars([[target_x, target_y]])
-        target_x, target_y = float(fit.x), float(fit.y)
-        logging.info('standard position fitted: ({:.1f},{:.1f})'.format(target_x, target_y))
+        
+        if not wcs_calibration:
+            logging.warning('wcs computation skipped, TARGETX, TARGETY keyword used to find target')
+            target_x = self.options['target_x']
+            target_y = self.options['target_y']
+            logging.info('standard position: ({:.1f},{:.1f})'.format(target_x, target_y))
+        
+        else:
+            target_x, target_y = im.find_object(is_standard=True)
+            logging.info('standard position guessed from astrometry solution: ({:.1f},{:.1f})'.format(target_x, target_y))
+            fit = im.fit_stars([[target_x, target_y]])
+            target_x, target_y = float(fit.x), float(fit.y)
+            logging.info('standard position fitted: ({:.1f},{:.1f})'.format(target_x, target_y))
         
         crop = im.crop(target_x, target_y, 45)
         crop.to_fits(self._get_standard_cropped_image_path())

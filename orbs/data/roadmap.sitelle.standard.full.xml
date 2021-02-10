@@ -25,9 +25,11 @@
 
   <step name='compute_wcs' cam='1'>
     <arg value='1' type='int'></arg>
+    <kwarg name='wcs_calibration'></kwarg>
   </step>
 
   <step name='extract_standard_spectrum' cam='0'>
+    <kwarg name='wcs_calibration'></kwarg>
   </step>
 
 </steps>
