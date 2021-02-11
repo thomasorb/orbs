@@ -610,10 +610,15 @@ class Orbs(Tools):
         """
         return self._get_file_folder_path_hdr(1) + 'wcs_deep_frame.hdf5'
 
-    def _get_wcs_standard_image_path(self):
+    def _get_standard_image_path(self, camera_number):
         """Return path to the registered standard image
         """
-        return self._get_file_folder_path_hdr(1) + 'wcs_standard_image.hdf5'
+        return self._get_file_folder_path_hdr(camera_number) + 'standard_image.hdf5'
+
+    def _get_wcs_standard_image_path(self, camera_number):
+        """Return path to the registered standard image
+        """
+        return self._get_file_folder_path_hdr(camera_number) + 'wcs_standard_image.hdf5'
 
     def _get_standard_cropped_image_path(self):
         """Return path to the cropped standard deep frame
@@ -1493,34 +1498,78 @@ class Orbs(Tools):
             
         perf_stats = perf.print_stats()
         del perf
-        return perf_stats                
+        return perf_stats
 
     def _get_standard_image(self, spectrum):
         """register standard image
         """
-        if 'standard_image_path_1.hdf5' in self.options:
-            spectrum.params.reset('standard_image_path', self.options['standard_image_path_1.hdf5'])
+        def _create_image(cubepath, camera_number):
+            path = self._get_standard_image_path(camera_number)
+            if os.path.exists(path):
+                logging.warning('standard image for camera {} already computed. To recompute it please remove {}'.format(camera_number, path))
+                return orb.image.Image(path)
+        
+            std_cube = orb.cube.HDFCube(cubepath)
+            std_im = std_cube.compute_sum_image() / std_cube.dimz
+            std_im = orb.image.Image(std_im, params=std_cube.params)
+            std_im.reset_wcs(std_im.params.RA_DEG, std_im.params.DEC_DEG)
+            std_im.writeto(path)
+            self.indexer['standard_image_unreg_{}'.format(camera_number)] = path
+        
+            return std_im
+
+        self.indexer.set_file_group(0)
+        if 'standard_image_path_1.hdf5' not in self.options:
+            raise Exception('no standard image given')
+
+        std_path = self._get_standard_image_path(0)
+        if os.path.exists(std_path):
+            logging.warning('standard image already computed. To recompute it please remove {}'.format(std_path))
+        else:
+            im1 = _create_image(self.options['standard_image_path_1.hdf5'], 1)
+            im2 = _create_image(self.options['standard_image_path_2.hdf5'], 2)
+
+            # align images
+            logging.info('merging both cameras to create standard image')
+
+            align_path = self.indexer['merged.alignment_parameters']
+            if align_path is None:
+                raise Exception('alignment parameters not found')
+            params = orb.utils.io.read_fits(align_path)
+            params = im2.compute_alignment_parameters(
+                im1, xy_range=np.arange(-5, 5, 0.1),
+                r_range=np.arange(-0.2,0.2,0.01),
+                coeffs=tuple(list(params[:5]) + list([params[7]])))
+
+            im2t = im2.transform(params)
+            std_im = im1.copy()
+            std_im.data = im1.data + im2t.data
+            std_im.params['camera'] = 0
+
+            std_im.writeto(self._get_standard_image_path(0))
+            self.indexer['standard_image_unreg'] = self._get_standard_image_path(0)
+        
         
         logging.info('registering standard image')
         self.indexer.set_file_group(0)
-        path = self.indexer['merged.standard_image_unreg']
-        if path is not None:
-            if os.path.exists(path):
-                logging.warning('Standard image already registered. If you want to redo the registration please remove: {}'.format(path))
-                return path
+        
+        path = self._get_wcs_standard_image_path(0)
+        if os.path.exists(path):
+            logging.warning('Standard image already registered. If you want to redo the registration please remove: {}'.format(path))
+            return path
             
-        try:
-            std_im = spectrum.get_standard_image()
-            std_im.writeto(self._get_wcs_standard_image_path())
-            self.indexer['standard_image_unreg'] = self._get_wcs_standard_image_path()
-        
+        try:    
             # image must be reopened for the correct wcs parameters to be loaded
-            std_im = orb.image.Image(self._get_wcs_standard_image_path())
-            std_im.register(filter_background=True)
-            std_im.writeto(self._get_wcs_standard_image_path())
-            self.indexer['standard_image'] = self._get_wcs_standard_image_path()
+            std_im = orb.image.Image(self._get_standard_image_path(0))
+            
+            std_im.reset_wcs(std_im.params.RA_DEG, std_im.params.DEC_DEG)
+            std_im.register()
+            std_im.params['camera'] = 0
         
-            return self._get_wcs_standard_image_path()
+            std_im.writeto(self._get_wcs_standard_image_path(0))
+            self.indexer['standard_image'] = self._get_wcs_standard_image_path(0)
+        
+            return self._get_wcs_standard_image_path(0)
         
         except Exception as e:
             logging.warn('no standard image can be created: {}'.format(e))
