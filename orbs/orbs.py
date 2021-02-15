@@ -1202,6 +1202,7 @@ class Orbs(Tools):
         # find alignment coefficients
         if not no_star:
             star_list_path = self.get_star_list_path(2)
+            star_list = None
             if star_list_path is not None:
                 star_list = orb.utils.astrometry.load_star_list(star_list_path)
                 fwhm_pix, _ = cube.cube_B.detect_fwhm(star_list)
