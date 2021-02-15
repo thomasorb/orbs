@@ -948,7 +948,7 @@ class Interferogram(orb.cube.InterferogramCube):
         logging.info('Computing phase maps up to order {}'.format(poly_order))        
 
         high_order_phase = self.get_high_order_phase()
-
+        
         if os.path.exists(self._get_binned_interferogram_cube_path()):
            logging.warning('Binned interferogram cube already computed. If you want to recompute it please delete: {}'.format(
                self._get_binned_interferogram_cube_path()))
@@ -1012,7 +1012,7 @@ class Interferogram(orb.cube.InterferogramCube):
             phase_cube_model = phasemaps.generate_phase_cube(None)
             if high_order_phase is not None:
                 high_order_model = high_order_phase.generate_phase_cube(
-                    None, low_order_model.shape[0], low_order_model.shape[1], axis=phasemaps.axis)
+                    None, phase_cube_model.shape[0], phase_cube_model.shape[1], axis=phasemaps.axis)
                 phase_cube_model += high_order_model
                 del high_order_model
             
