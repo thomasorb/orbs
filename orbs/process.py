@@ -491,6 +491,9 @@ class RawData(orb.cube.InterferogramCube):
             progress.update(ik, info="loading " + str(ik))
 
             frames = self[:,:,ik:ik+ncpus]
+            if frames.ndim == 2:
+                frames = frames.reshape((frames.shape[0], frames.shape[1], 1))
+            
             if cr_map_cube is not None:
                 cr_frames_data = cr_map_cube[:,:,ik:ik+ncpus].astype(np.bool)
                 cr_frames = list()
@@ -1806,6 +1809,9 @@ class InterferogramMerger(orb.core.Tools):
 
             progress.update(ik, info="loading: " + str(ik))
             framesB = self.cube_B[:,:,ik:ik+ncpus]
+            if framesB.ndim == 2:
+                framesB = framesB.reshape((framesB.shape[0], framesB.shape[1], 1))
+            
 
             # transform frames of camera B to align them with those of camera A
             jobs = [(ijob, job_server.submit(
@@ -2776,7 +2782,14 @@ class CosmicRayDetector(InterferogramMerger):
 
             progress.update(int(ik/ncpus_max), info="loading ({})".format(ik))
             framesA = self.cube_A[:,:,ik:ik+ncpus].astype(np.float32)
+            if framesA.ndim == 2:
+                framesA = framesA.reshape((framesA.shape[0], framesA.shape[1], 1))
+            
             framesB_init = self.cube_B[:,:,ik:ik+ncpus].astype(np.float32)
+            if framesB_init.ndim == 2:
+                framesB_init = framesB_init.reshape(
+                    (framesB_init.shape[0], framesB_init.shape[1], 1))
+            
             framesB = np.empty_like(framesA)
             cr_mapA = np.empty_like(framesA, dtype=bool)
             cr_mapB = np.empty_like(framesA, dtype=bool)
