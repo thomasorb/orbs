@@ -816,9 +816,11 @@ class Interferogram(orb.cube.InterferogramCube):
         """Return path to the high order phase std"""
         return self._data_path_hdr + 'high_order_phase_std.hdf5'
 
-    def _get_binned_phase_cube_path(self):
+    def _get_binned_phase_cube_path(self, abs=False):
         """Return path to the binned phase cube."""
-        return self._data_path_hdr + "binned_phase_cube.hdf5"
+        if not abs:
+            return self._data_path_hdr + "binned_phase_cube.hdf5"
+        return self._data_path_hdr + "binned_phase_cube.abs.hdf5"
 
     def _get_binned_interferogram_cube_path(self):
         """Return path to the binned interferogram cube."""
@@ -932,17 +934,13 @@ class Interferogram(orb.cube.InterferogramCube):
         self._close_pp_server(job_server)
             
 
-    def create_phase_maps(self, binning, poly_order,
-                          high_order_phase_path=None):
+    def create_phase_maps(self, binning, poly_order):
         """Create phase maps
 
         :param binning: Interferogram cube is binned before to
           accelerate computation.
 
         :param poly_order: Order of the fitted polynomial (must be >= 1)
-
-        :param high_order_phase_path: (Optional) Path to an HDF5 phase
-          file.
         """
         auto_recompute = False
         if not isinstance(poly_order, int): raise TypeError('poly_order must be an int')
@@ -992,7 +990,7 @@ class Interferogram(orb.cube.InterferogramCube):
                 
         if redo_polyfit:
             final_phase_maps_path = phase_cube.iterative_polyfit(
-                poly_order, high_order_phase=high_order_phase)
+                poly_order, self._get_binned_phase_cube_path(abs=True), high_order_phase)
             
             logging.info('final computed phase maps path: {}'.format(final_phase_maps_path))
             if self.indexer is not None:                 

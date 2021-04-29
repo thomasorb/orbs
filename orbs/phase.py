@@ -32,6 +32,7 @@ __docformat__ = 'reStructuredText'
 
 import numpy as np
 import logging
+import os
 
 import orb.fft
 import orb.core
@@ -58,8 +59,9 @@ class BinnedInterferogramCube(orb.cube.InterferogramCube):
             warnings.simplefilter('ignore', UserWarning)
             warnings.simplefilter('ignore', FutureWarning)
             
-            phase_col = np.empty_like(col)
-            phase_col.fill(np.nan)
+            phase_col = np.full_like(col, np.nan)
+            abs_col = np.full_like(phase_col, np.nan)
+            
             for ij in range(col.shape[0]):
                 interf = orb.fft.Interferogram(
                     col[ij,:],
@@ -74,18 +76,20 @@ class BinnedInterferogramCube(orb.cube.InterferogramCube):
                     if calibrate:
                         spectrum = spectrum.interpolate(base_axis, quality=10)
                     iphase = np.copy(spectrum.get_phase().data)
+                    iabs = np.copy(spectrum.get_amplitude())
                     # note: the [:iphase.size] has been added when the phase is
                     # not interpolated (calibrate=False) because the
                     # number of samples can be smaller after the
                     # symmetric() step
                     phase_col[ij,:iphase.size] = iphase
-            return phase_col
+                    abs_col[ij,:iabs.size] = iabs
+            return phase_col, abs_col
 
         calib_map = self.get_calibration_coeff_map()
         base_axis = np.copy(self.get_base_axis().data)
-        phase_cube = np.empty(self.shape, dtype=float)
-        phase_cube.fill(np.nan)
-
+        phase_cube = np.full(self.shape, np.nan, dtype=float)
+        abs_cube = np.full(self.shape, np.nan, dtype=float)
+        
         job_server, ncpus = self._init_pp_server()
         progress = orb.core.ProgressBar(self.dimx)
         for ii in range(0, self.dimx, ncpus):
@@ -110,11 +114,12 @@ class BinnedInterferogramCube(orb.cube.InterferogramCube):
 
                 for ijob, job in jobs:
                     # new data is written in place of old data
-                    phase_cube[ii+ijob,:,:] = job()
+                    phase_cube[ii+ijob,:,:], abs_cube[ii+ijob,:,:] = job()
                     
         progress.end()
         self._close_pp_server(job_server)
 
+        # write phase cube
         out_cube = orb.cube.RWHDFCube(
             path,
             shape=self.shape,
@@ -127,7 +132,21 @@ class BinnedInterferogramCube(orb.cube.InterferogramCube):
         
         del out_cube
 
-        return path
+        # write amplitude cube
+        abs_path = os.path.splitext(path)[0] + '.abs.hdf5'
+        
+        out_cube = orb.cube.RWHDFCube(
+            abs_path,
+            shape=self.shape,
+            instrument=self.instrument,
+            config=self.config,
+            params=self.params,
+            reset=True)
+        
+        out_cube[:,:,:] = abs_cube
+
+
+        return path, abs_path
 
  
 #################################################
@@ -155,10 +174,13 @@ class BinnedPhaseCube(orb.cube.Cube):
         return orb.fft.Phase(
             self[x, y, :], self.get_base_axis(), params=self.params)
         
-    def polyfit(self, polydeg, coeffs=None, suffix=None, high_order_phase=None):
+    def polyfit(self, polydeg, abs_path, high_order_phase, coeffs=None, suffix=None):
         """Create phase maps from a polynomial fit of the binned phase cube
 
         :param polydeg: Degree of the fitting polynomial. Must be >= 0.
+
+        :param abs_path: Path to the binned amplitude cube, used
+          to weight phase data during the fit.
 
         :param coeffs: Used to fix some coefficients to a given
           value. If not None, must be a list of length = polydeg +
@@ -176,7 +198,7 @@ class BinnedPhaseCube(orb.cube.Cube):
           PhaseMaps).
 
         """
-        def fit_phase_in_column(col, deg, incoeffs_col, params, base_axis,
+        def fit_phase_in_column(col, abscol, deg, incoeffs_col, params, base_axis,
                                 high_order_phase_col):
             warnings.simplefilter('ignore', RuntimeWarning)
             outcoeffs_col = np.empty((col.shape[0], deg + 1), dtype=float)
@@ -191,7 +213,7 @@ class BinnedPhaseCube(orb.cube.Cube):
                     _phase.data -= high_order_phase_col[ij,:]
                 try:
                     outcoeffs_col[ij,:], outcoeffs_err_col[ij,:] = _phase.polyfit(
-                        deg, coeffs=icoeffs, 
+                        deg, amplitude=abscol[ij,:], coeffs=icoeffs, 
                         return_coeffs=True)
                 except orb.utils.err.FitError:
                     logging.debug('fit error')
@@ -200,20 +222,18 @@ class BinnedPhaseCube(orb.cube.Cube):
         if not isinstance(polydeg, int): raise TypeError('polydeg must be an integer')
         if polydeg < 0: raise ValueError('polydeg must be >= 0')
 
-        
-        if high_order_phase is not None:
-            if isinstance(high_order_phase, orb.fft.Phase):
-                high_order_phase_proj = np.zeros(self.shape, dtype=float)
-                high_order_phase_proj += high_order_phase.project(self.get_base_axis()).data
-                
-            elif isinstance(high_order_phase, orb.fft.HighOrderPhaseCube):
-                high_order_phase_proj = high_order_phase.generate_phase_cube(
-                    None, self.dimx, self.dimy, axis=self.get_base_axis())
-            else:
-                raise TypeError('high_order_phase must be an orb.fft.Phase/HighOrderPhaseMaps instance')
-                
-        else: 
-            high_order_phase_proj = None
+        abs_cube = orb.cube.Cube(abs_path)
+        assert abs_cube.shape == self.shape, 'amplitude cube has shape {} and phase cube has shape {}'.format(abs_cube.shape, self.shape)
+
+        if isinstance(high_order_phase, orb.fft.Phase):
+            high_order_phase_proj = np.zeros(self.shape, dtype=float)
+            high_order_phase_proj += high_order_phase.project(self.get_base_axis()).data
+
+        elif isinstance(high_order_phase, orb.fft.HighOrderPhaseCube):
+            high_order_phase_proj = high_order_phase.generate_phase_cube(
+                None, self.dimx, self.dimy, axis=self.get_base_axis())
+        else:
+            raise TypeError('high_order_phase must be an orb.fft.Phase/HighOrderPhaseMaps instance')
 
         logging.info('Coefficients: {}'.format(coeffs))
         
@@ -257,9 +277,12 @@ class BinnedPhaseCube(orb.cube.Cube):
             if ii + ncpus >= self.dimx:
                 ncpus = self.dimx - ii
 
+            ijob = 0
+                            
             jobs = [(ijob, job_server.submit(
                 fit_phase_in_column, 
                 args=(np.copy(self[ii+ijob,:,:]),
+                      np.copy(abs_cube[ii+ijob,:,:]),
                       polydeg,
                       [icoeff[ii+ijob,:] for icoeff in coeffs],
                       self.params.convert(), np.copy(base_axis),
@@ -306,12 +329,15 @@ class BinnedPhaseCube(orb.cube.Cube):
             
         return phase_maps_path
     
-    def iterative_polyfit(self, polydeg, suffix=None, high_order_phase=None):
+    def iterative_polyfit(self, polydeg, abs_path, high_order_phase, suffix=None):
         """Fit the cube iteratively, starting by fitting all orders, then
         fixing the last free order to the model of the map obtained
         from the preceding fit.
 
         :param polydeg: Degree of the fitting polynomial. Must be >= 0.
+
+        :param abs_path: Path to the binned amplitude cube, used
+          to weight phase data during the fit.
 
         :param suffix: Phase maps hdf5 file suffix (added before the
           extension .hdf5)
@@ -332,8 +358,9 @@ class BinnedPhaseCube(orb.cube.Cube):
         
         for ideg in range(polydeg + 1)[::-1]:
             ipm_path = self.polyfit(
-                polydeg, suffix=suffix + 'iter{}'.format(ideg),
-                coeffs=coeffs, high_order_phase=high_order_phase)
+                polydeg, abs_path, high_order_phase,
+                suffix=suffix + 'iter{}'.format(ideg),
+                coeffs=coeffs)
             if ideg > 0:
                 ipm = orb.fft.PhaseMaps(ipm_path)
                 ipm.modelize()
