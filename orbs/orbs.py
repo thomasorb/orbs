@@ -1002,7 +1002,7 @@ class Orbs(Tools):
                 filter_background=True)
         else:
             star_list = orb.utils.astrometry.load_star_list(star_list_path)
-            fwhm_pix = cube.cube_A.detect_fwhm(star_list)
+            fwhm_pix = cube.cube_A.detect_fwhm(star_list)[0]
 
         cube.create_cosmic_ray_maps(alignment_vector_path_1, star_list_path, fwhm_pix)
         cube.clean_cosmic_ray_map(1)

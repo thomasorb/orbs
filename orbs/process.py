@@ -1735,7 +1735,7 @@ class InterferogramMerger(orb.core.Tools):
             
             r_range = np.linspace(-angle_range/2.,
                                   angle_range/2.,
-                                  angle_steps)
+                                  int(angle_steps))
 
             return x_range, r_range
 
