@@ -458,7 +458,7 @@ class Orbs(Tools):
             try: # check if the airmass as already been computed
                 airmass = orb.utils.io.read_fits(self._get_airmass_file_path())
                 logging.info('airmass read from file')
-            except IOError:
+            except Exception:
                 cube1 = Cube(self.options['image_list_path_1.hdf5'],
                              instrument=self.instrument,
                              zpd_index=self.options['zpd_index'])
