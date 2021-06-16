@@ -48,7 +48,7 @@ During ORB install you have already created a folder name `orb-stable`. You can 
 ```bash
 cd path/to/orb-stable
 git clone https://github.com/thomasorb/orbs.git
-python setup.py install (not for developer)
+python setup.py install # not for developer
 ```
 **(developer only)**
 ```bash
