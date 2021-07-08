@@ -1601,7 +1601,7 @@ class Orbs(Tools):
             
             
         deep_frame = orb.image.Image(deep_frame_path, instrument=self.instrument,
-                                     params=self.options)
+                                     params=self.options, reset_wcs=True)
 
         if not wcs_calibration:
             logging.warning('wcs computation skipped')
