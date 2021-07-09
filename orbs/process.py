@@ -1519,7 +1519,7 @@ class InterferogramMerger(orb.core.Tools):
                 config=self.config,
                 params=self.params,
                 data_prefix=self._data_prefix,
-                camera=1)
+                camera=1, reset_wcs=True)
         if interf_cube_path_B is not None:
             self.cube_B = orb.cube.InterferogramCube(
                 interf_cube_path_B,
@@ -1527,7 +1527,7 @@ class InterferogramMerger(orb.core.Tools):
                 config=self.config,
                 params=self.params,
                 data_prefix=self._data_prefix,
-                camera=2)
+                camera=2, reset_wcs=True)
 
         self.bin_A = self.cube_A.params.binning
         self.bin_B = self.cube_B.params.binning
@@ -2170,7 +2170,7 @@ merge() method).
                 no_fit=no_fit, filter_background=filter_background)
             orb.utils.io.save_dflist(astrom_merged, self._get_fit_results_path('M'))
         else:
-            logging.warning('cube B photometry already computed. If you want to redo it remove {}'.format(self._get_fit_results_path('M')))
+            logging.warning('cube M photometry already computed. If you want to redo it remove {}'.format(self._get_fit_results_path('M')))
 
         astrom_merged = orb.utils.io.load_dflist(self._get_fit_results_path('M'))
 

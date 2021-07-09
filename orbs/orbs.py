@@ -1521,7 +1521,8 @@ class Orbs(Tools):
 
         self.indexer.set_file_group(0)
         if 'standard_image_path_1.hdf5' not in self.options:
-            raise Exception('no standard image given')
+            logging.warning('no standard image given')
+            return None
 
         std_path = self._get_standard_image_path(0)
         if os.path.exists(std_path):
