@@ -2509,6 +2509,12 @@ merge() method).
                 ext_level_vector[ik:ik+NFRAMES],
                 add_frameB)                
 
+            # avoid bug when only one frame left
+            if flux_frames.ndim == 2:
+                flux_frames = flux_frames.reshape((flux_frames.shape[0],
+                                                   flux_frames.shape[1],
+                                                   1))
+                
             flux_frame += np.nansum(flux_frames, axis=2)
             
             for ijob in range(NFRAMES):
@@ -2516,6 +2522,12 @@ merge() method).
                     flux_frames[:,:,ijob])
 
             progress.update(int(ik), info="writing: " + str(ik))
+
+            if result_frames.ndim == 2:
+                result_frames = result_frames.reshape((result_frames.shape[0],
+                                                       result_frames.shape[1],
+                                                       1)) 
+                
             out_cube[:,:,ik:ik+NFRAMES] = result_frames
   
         progress.end()
