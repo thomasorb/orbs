@@ -154,7 +154,7 @@ def start(args, resume=False):
         camera = 'single1'
     elif args.extphase:
         target = 'extphase'
-        camera = 'single1'
+        camera = 'full'
 
     
     # check first if reduction can be resumed
