@@ -147,14 +147,16 @@ def start(args, resume=False):
     if np.sum([args.flat, args.standard, args.laser, args.extphase]) > 1:
         raise Exception("only one special target (flat, standard, laser, extphase) can be choosen")
         sys.exit(2)
-    if args.flat: target = 'flat'
-    elif args.standard: target = 'standard'
+    if args.flat:
+        target = 'flat'
+        camera = 'single1'
+    elif args.standard:
+        target = 'standard'
     elif args.laser:
         target = 'laser'
         camera = 'single1'
     elif args.extphase:
         target = 'extphase'
-        camera = 'full'
 
     
     # check first if reduction can be resumed

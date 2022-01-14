@@ -1779,13 +1779,13 @@ class Orbs(Tools):
         shutil.copyfile(phase_maps_path, exported_path)
         logging.info('Flat phase maps exported at {}'.format(exported_path))
 
-        high_order_phase_path = self.indexer.get_path(
-            'high_order_phase', file_group=camera_number)
+        # high_order_phase_path = self.indexer.get_path(
+        #     'high_order_phase', file_group=camera_number)
 
-        exported_path = ('.' + os.sep + os.path.split(high_order_phase_path)[-1])
+        # exported_path = ('.' + os.sep + os.path.split(str(high_order_phase_path))[-1])
 
-        shutil.copyfile(high_order_phase_path, exported_path)
-        logging.info('High order phase file exported to {}'.format(exported_path))
+        # shutil.copyfile(high_order_phase_path, exported_path)
+        # logging.info('High order phase file exported to {}'.format(exported_path))
 
     def export_calibrated_spectrum_cube(self, camera_number):
         """Extract a calibrated spectrum cube from the 'frame-divided'
