@@ -1521,7 +1521,8 @@ class Orbs(Tools):
 
         self.indexer.set_file_group(0)
         if 'standard_image_path_1.hdf5' not in self.options:
-            raise Exception('no standard image given')
+            logging.warning('no standard image given')
+            return None
 
         std_path = self._get_standard_image_path(0)
         if os.path.exists(std_path):
@@ -1601,7 +1602,7 @@ class Orbs(Tools):
             
             
         deep_frame = orb.image.Image(deep_frame_path, instrument=self.instrument,
-                                     params=self.options)
+                                     params=self.options, reset_wcs=True)
 
         if not wcs_calibration:
             logging.warning('wcs computation skipped')
@@ -1778,13 +1779,13 @@ class Orbs(Tools):
         shutil.copyfile(phase_maps_path, exported_path)
         logging.info('Flat phase maps exported at {}'.format(exported_path))
 
-        high_order_phase_path = self.indexer.get_path(
-            'high_order_phase', file_group=camera_number)
+        # high_order_phase_path = self.indexer.get_path(
+        #     'high_order_phase', file_group=camera_number)
 
-        exported_path = ('.' + os.sep + os.path.split(high_order_phase_path)[-1])
+        # exported_path = ('.' + os.sep + os.path.split(str(high_order_phase_path))[-1])
 
-        shutil.copyfile(high_order_phase_path, exported_path)
-        logging.info('High order phase file exported to {}'.format(exported_path))
+        # shutil.copyfile(high_order_phase_path, exported_path)
+        # logging.info('High order phase file exported to {}'.format(exported_path))
 
     def export_calibrated_spectrum_cube(self, camera_number):
         """Extract a calibrated spectrum cube from the 'frame-divided'

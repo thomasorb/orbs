@@ -1519,7 +1519,7 @@ class InterferogramMerger(orb.core.Tools):
                 config=self.config,
                 params=self.params,
                 data_prefix=self._data_prefix,
-                camera=1)
+                camera=1, reset_wcs=True)
         if interf_cube_path_B is not None:
             self.cube_B = orb.cube.InterferogramCube(
                 interf_cube_path_B,
@@ -1527,7 +1527,7 @@ class InterferogramMerger(orb.core.Tools):
                 config=self.config,
                 params=self.params,
                 data_prefix=self._data_prefix,
-                camera=2)
+                camera=2, reset_wcs=True)
 
         self.bin_A = self.cube_A.params.binning
         self.bin_B = self.cube_B.params.binning
@@ -1949,7 +1949,31 @@ merge() method).
             
             return median_vector
 
+        def fast_fit_stars_in_cube(cube, star_list, fwhm):
 
+            def get_star_spectrum(cube, ii, ij, fwhm, region):
+                ispec = cube.get_zvector(ii, ij, fwhm*3)
+                iback = cube.get_zvector_from_region(region, median=True)
+                ispec = ispec.data / ispec.params.pixels - iback.data / iback.params.pixels
+                return ispec
+
+            rmin = fwhm * 4
+            rmax = fwhm * 10
+
+            photom = list()
+
+            star_list = orb.utils.astrometry.load_star_list(star_list, remove_nans=True)
+            
+            progress = orb.core.ProgressBar(star_list.shape[0])
+            for i in range(star_list.shape[0]):
+                ii, ij = star_list[i,:]
+                region = cube.get_region('annulus({},{},{},{})'.format(ii+1, ij+1, float(rmin), float(rmax)))
+
+                photom.append(get_star_spectrum(cube, ii, ij, fwhm, region))
+                progress.update(i)
+            progress.end()
+            return np.array(photom)
+        
         SMOOTH_DEG = 0 # number of pixels used on each side to
                        # smooth the transmission vector
 
@@ -1993,6 +2017,12 @@ merge() method).
             self._get_tuning_parameter('NO_TRANSMISSION_CORRECTION', 0)))
         if NO_TRANSMISSION_CORRECTION:
             logging.warn('No transmission correction')
+
+        # Do a robust, much faster (but maybe less precise) fit
+        ROBUST_FIT = bool(int(
+            self._get_tuning_parameter('ROBUST_FIT', 0)))
+        if ROBUST_FIT:
+            logging.warn('Robust fit')
 
 
         local_background = True
@@ -2049,29 +2079,35 @@ merge() method).
         #     'mean FWHM of the stars in camera 2: {} arc-seconds'.format(
         #         fwhm_arc_B))
 
-        if not os.path.exists(self._get_fit_results_path(1)):
-            astrom_A = self.cube_A.fit_stars_in_cube(
-                star_list_A, fix_fwhm=False, fix_height=False, no_fit=False,
-                fix_aperture_fwhm_pix=fwhm_A * 1.5, multi_fit=True,
-                filter_background=filter_background)
-            orb.utils.io.save_dflist(astrom_A, self._get_fit_results_path(1))
-        else:
-            logging.warning('cube A photometry already computed. If you want to redo it remove {}'.format(self._get_fit_results_path(1)))
+        if not ROBUST_FIT:
+            if not os.path.exists(self._get_fit_results_path(1)):
+                astrom_A = self.cube_A.fit_stars_in_cube(
+                    star_list_A, fix_fwhm=False, fix_height=False, no_fit=False,
+                    fix_aperture_fwhm_pix=fwhm_A * 1.5, multi_fit=True,
+                    filter_background=filter_background)
+                orb.utils.io.save_dflist(astrom_A, self._get_fit_results_path(1))
+            else:
+                logging.warning('cube A photometry already computed. If you want to redo it remove {}'.format(self._get_fit_results_path(1)))
 
-        if not os.path.exists(self._get_fit_results_path(2)):
-            astrom_B = self.cube_B.fit_stars_in_cube(
-                star_list_A, fix_fwhm=False, fix_height=False, no_fit=False,
-                fix_aperture_fwhm_pix=fwhm_A * 1.5, multi_fit=True,
-                filter_background=filter_background)
-            orb.utils.io.save_dflist(astrom_B, self._get_fit_results_path(2))
+            if not os.path.exists(self._get_fit_results_path(2)):
+                astrom_B = self.cube_B.fit_stars_in_cube(
+                    star_list_A, fix_fwhm=False, fix_height=False, no_fit=False,
+                    fix_aperture_fwhm_pix=fwhm_A * 1.5, multi_fit=True,
+                    filter_background=filter_background)
+                orb.utils.io.save_dflist(astrom_B, self._get_fit_results_path(2))
+            else:
+                logging.warning('cube B photometry already computed. If you want to redo it remove {}'.format(self._get_fit_results_path(2)))
+
+            astrom_A = orb.utils.io.load_dflist(self._get_fit_results_path(1))
+            astrom_B = orb.utils.io.load_dflist(self._get_fit_results_path(2))
+
+            photom_A = orb.utils.astrometry.dflist2arr(astrom_A, key=photometry_type)
+            photom_B = orb.utils.astrometry.dflist2arr(astrom_B, key=photometry_type)
+
         else:
-            logging.warning('cube B photometry already computed. If you want to redo it remove {}'.format(self._get_fit_results_path(2)))
-        
-        astrom_A = orb.utils.io.load_dflist(self._get_fit_results_path(1))
-        astrom_B = orb.utils.io.load_dflist(self._get_fit_results_path(2))
-        
-        photom_A = orb.utils.astrometry.dflist2arr(astrom_A, key=photometry_type)
-        photom_B = orb.utils.astrometry.dflist2arr(astrom_B, key=photometry_type)
+            photom_A = fast_fit_stars_in_cube(self.cube_A, star_list_A, fwhm_A)
+            photom_B = fast_fit_stars_in_cube(self.cube_B, star_list_A, fwhm_A)
+            
         
         ## MODULATION RATIO #######################################
         # Calculating the mean modulation ratio (to correct for
@@ -2150,8 +2186,12 @@ merge() method).
                     modulation_ratio))
 
         if not 0.99 < modulation_ratio < 1.01:
-            logging.warning('Bad modulation ratio: {}. Modulation ratio fixed at 1. Outputs should be checked with care,'.format(modulation_ratio))
-            modulation_ratio = 1.
+            logging.warning('Strange modulation ratio: {}. Outputs should be checked with care'.format(modulation_ratio))
+
+            if not 0.8 < modulation_ratio < 1.2:
+                logging.warning('Bad modulation ratio: {}. Modulation ratio fixed at 1. Outputs should be checked with care'.format(modulation_ratio))
+        
+                modulation_ratio = 1.
             
         orb.utils.io.write_fits(
             self._get_modulation_ratio_path(), 
@@ -2162,22 +2202,26 @@ merge() method).
             self.indexer['modulation_ratio'] = self._get_modulation_ratio_path()
 
         # PHOTOMETRY ON MERGED FRAMES #############################
-        if not os.path.exists(self._get_fit_results_path('M')):
-            astrom_merged = self.cube_B.fit_stars_in_cube(
-                star_list_A, local_background=local_background,
-                fix_aperture_fwhm_pix=fwhm_A * 1.5, multi_fit=True,
-                add_cube=[self.cube_A, modulation_ratio],
-                no_fit=no_fit, filter_background=filter_background)
-            orb.utils.io.save_dflist(astrom_merged, self._get_fit_results_path('M'))
+        if not ROBUST_FIT:
+            if not os.path.exists(self._get_fit_results_path('M')):
+                astrom_merged = self.cube_B.fit_stars_in_cube(
+                    star_list_A, local_background=local_background,
+                    fix_aperture_fwhm_pix=fwhm_A * 1.5, multi_fit=True,
+                    add_cube=[self.cube_A, modulation_ratio],
+                    no_fit=no_fit, filter_background=filter_background)
+                orb.utils.io.save_dflist(astrom_merged, self._get_fit_results_path('M'))
+            else:
+                logging.warning('cube M photometry already computed. If you want to redo it remove {}'.format(self._get_fit_results_path('M')))
+
+            astrom_merged = orb.utils.io.load_dflist(self._get_fit_results_path('M'))
+
+            photom_merged = orb.utils.astrometry.dflist2arr(
+                astrom_merged, key=photometry_type)
+            photom_merged_err = orb.utils.astrometry.dflist2arr(
+                astrom_merged, key=photometry_type + '_err')
         else:
-            logging.warning('cube B photometry already computed. If you want to redo it remove {}'.format(self._get_fit_results_path('M')))
-
-        astrom_merged = orb.utils.io.load_dflist(self._get_fit_results_path('M'))
-
-        photom_merged = orb.utils.astrometry.dflist2arr(
-            astrom_merged, key=photometry_type)
-        photom_merged_err = orb.utils.astrometry.dflist2arr(
-            astrom_merged, key=photometry_type + '_err')
+            photom_merged = modulation_ratio * photom_A + photom_B
+            photom_merged_err = np.zeros_like(photom_merged)
 
         ## TRANSMISSION VECTOR ####################################
         logging.info("Computing transmission vector")
@@ -2187,7 +2231,11 @@ merge() method).
         trans_err_list = list()
         
         # normalization of the merged photometry vector
-        chisq_A = orb.utils.astrometry.dflist2arr(astrom_A, key='reduced-chi-square')
+        if not ROBUST_FIT:
+            chisq_A = orb.utils.astrometry.dflist2arr(astrom_A, key='reduced-chi-square')
+        else:
+            chisq_A = np.ones_like(photom_A)
+            
         for istar in range(star_list_A.shape[0]):
             if not np.all(np.isnan(photom_merged)):
                 trans = np.copy(photom_merged[istar,:])
@@ -2268,7 +2316,7 @@ merge() method).
         if smooth_vector:
             if SMOOTH_DEG > 0:
                 transmission_vector = orb.utils.vector.smooth(transmission_vector,
-                                                       deg=SMOOTH_DEG)
+                                                              deg=SMOOTH_DEG)
 
         # Normalization of the star transmission vector to 1.5% clip
         nz = np.nonzero(transmission_vector)
@@ -2509,6 +2557,12 @@ merge() method).
                 ext_level_vector[ik:ik+NFRAMES],
                 add_frameB)                
 
+            # avoid bug when only one frame left
+            if flux_frames.ndim == 2:
+                flux_frames = flux_frames.reshape((flux_frames.shape[0],
+                                                   flux_frames.shape[1],
+                                                   1))
+                
             flux_frame += np.nansum(flux_frames, axis=2)
             
             for ijob in range(NFRAMES):
@@ -2516,6 +2570,12 @@ merge() method).
                     flux_frames[:,:,ijob])
 
             progress.update(int(ik), info="writing: " + str(ik))
+
+            if result_frames.ndim == 2:
+                result_frames = result_frames.reshape((result_frames.shape[0],
+                                                       result_frames.shape[1],
+                                                       1)) 
+                
             out_cube[:,:,ik:ik+NFRAMES] = result_frames
   
         progress.end()
